@@ -71,6 +71,21 @@ order.Size = UDim2.fromOffset(324, 58)
 order.Parent = panel
 Instance.new("UICorner", order).CornerRadius = UDim.new(0, 10)
 
+local function refreshSupplierQuote()
+	if player:GetAttribute("CompanyReady") ~= true then
+		return
+	end
+	local response = remote:InvokeServer({
+		version = 1,
+		requestId = HttpService:GenerateGUID(false),
+		action = "Supplier.RequestQuote",
+		payload = { speciesId = "FrasierFir", sizeId = "Medium" },
+	})
+	if response.ok and response.data then
+		detail.Text = string.format("Frasier Fir · Medium · $%d wholesale", response.data.unitCost)
+	end
+end
+
 local function updateReady()
 	local ready = player:GetAttribute("CompanyReady")
 	status.Text = ready and ("Plot: " .. tostring(player:GetAttribute("PlotId")))
@@ -80,6 +95,9 @@ player:GetAttributeChangedSignal("CompanyReady"):Connect(updateReady)
 player:GetAttributeChangedSignal("CompanyLoadError"):Connect(updateReady)
 player:GetAttributeChangedSignal("PlotId"):Connect(updateReady)
 updateReady()
+
+player:GetAttributeChangedSignal("CompanyReady"):Connect(refreshSupplierQuote)
+task.spawn(refreshSupplierQuote)
 
 local function refreshSummary()
 	if player:GetAttribute("CompanyReady") ~= true then
