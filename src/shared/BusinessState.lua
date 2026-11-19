@@ -3,7 +3,7 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 7
+BusinessState.SCHEMA_VERSION = 8
 
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
@@ -28,6 +28,8 @@ function BusinessState.new(companyId: string?, ownerUserId: number?)
 		stock = {},
 		pendingOrders = {},
 		sales = 0,
+		customerVisits = 0,
+		abandonedCustomers = 0,
 		revenue = 0,
 		spent = 0,
 		history = {},
@@ -89,8 +91,13 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.autoPricing = false
 	end
 	if state.schemaVersion == 6 then
-		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.schemaVersion = 7
 		state.progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil }
+	end
+	if state.schemaVersion == 7 then
+		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.customerVisits = 0
+		state.abandonedCustomers = 0
 		return BusinessState.validate(state) and state or nil, BusinessState.validate(state) and nil or "InvalidState"
 	end
 	if not isValidLegacyV1(state) then
@@ -109,6 +116,8 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.reservations = {}
 	state.staff = { Cashier = 0, LotWorker = 0 }
 	state.progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil }
+	state.customerVisits = 0
+	state.abandonedCustomers = 0
 	return state, nil
 end
 
@@ -187,6 +196,14 @@ function BusinessState.validate(state)
 		end
 	end
 	if not isFiniteInteger(state.sales) or state.sales < 0 then
+		return false
+	end
+	if
+		not isFiniteInteger(state.customerVisits)
+		or state.customerVisits < state.sales
+		or not isFiniteInteger(state.abandonedCustomers)
+		or state.abandonedCustomers < 0
+	then
 		return false
 	end
 	if not isFiniteInteger(state.revenue) or state.revenue < 0 then

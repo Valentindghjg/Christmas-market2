@@ -12,20 +12,25 @@ function CustomerSimulationService.beginVisit(state, customerNumber: number, tim
 	if type(roll) ~= "number" or roll < 0 or roll > 1 then
 		return false, "InvalidRoll"
 	end
+	state.customerVisits += 1
 	local profile = CustomerProfile.create(customerNumber)
 	if not profile then
+		state.abandonedCustomers += 1
 		return false, "InvalidCustomer"
 	end
 	local candidate = CustomerSelection.choose(state, profile)
 	if not candidate then
+		state.abandonedCustomers += 1
 		return false, "NoEligibleStock"
 	end
 	if roll > candidate.conversionScore then
+		state.abandonedCustomers += 1
 		return false, "NoConversion"
 	end
 	local reserved, reservation =
 		CustomerService.reserve(state, candidate.placementId, profile.id, timestamp, profile.patienceSeconds)
 	if not reserved then
+		state.abandonedCustomers += 1
 		return false, reservation
 	end
 	return true,
