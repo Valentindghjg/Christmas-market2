@@ -7,6 +7,7 @@ local config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Ga
 local PersistenceService = require(script.Parent.Services:WaitForChild("PersistenceService"))
 local CompanyStateService = require(script.Parent.Services:WaitForChild("CompanyStateService"))
 local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
+local WorldService = require(script.Parent.Services:WaitForChild("WorldService"))
 
 local remotes = ReplicatedStorage:FindFirstChild("Remotes") or Instance.new("Folder")
 remotes.Name = "Remotes"
@@ -19,6 +20,7 @@ businessAction.Parent = remotes
 local persistence = PersistenceService.new()
 local companies = CompanyStateService.new(persistence)
 local plots = PlotService.new(config.PersonalPlotIds)
+WorldService.build()
 
 local function loadPlayer(player: Player)
 	local state, errorCode = companies:loadPersonalCompany(player.UserId)

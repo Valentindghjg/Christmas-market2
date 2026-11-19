@@ -39,3 +39,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Migrated company state to schema v4 with persisted employee flags and added EmployeeService. Cashier and lot-worker hires debit only server-configured one-time costs, reject duplicates and write financial history. Added cashier hire contract coverage; action-protocol/UI binding remains pending.
 
 2026-11-19: Connected employee hires to Protocol v1 and CompanyStateService. Only Owner/Manager actions can reach EmployeeService; unrecognized IDs are rejected before mutation, and the existing serial save path supplies replay safety.
+
+2026-11-19: Added WorldService, a source-controlled original Roblox-primitive winter graybox: snow ground, asphalt road, six named plots with delivery bays and spawn markers, starter tents, checkout counters, a supplier truck and nine tree variants. It never imports external assets and preserves an existing world instance. Source validation passes; **Studio visual/walkability verification is BLOCKED** until the connected Rojo plugin is reconnected and applies the new service.
