@@ -6,11 +6,13 @@ local Protocol = {}
 Protocol.VERSION = 1
 Protocol.Actions = {
 	SupplierPlaceOrder = "Supplier.PlaceOrder",
+	SupplierRequestQuote = "Supplier.RequestQuote",
 	DeliveryUnload = "Delivery.Unload",
 }
 
 local actionSet = {
 	[Protocol.Actions.SupplierPlaceOrder] = true,
+	[Protocol.Actions.SupplierRequestQuote] = true,
 	[Protocol.Actions.DeliveryUnload] = true,
 }
 
@@ -68,6 +70,18 @@ function Protocol.validateRequest(request)
 			or request.payload.quantity > GameConfig.MaxOrderQuantity
 		then
 			return false, "InvalidQuantity"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.SupplierRequestQuote then
+		if not hasOnlyKeys(request.payload, { speciesId = true, sizeId = true }) then
+			return false, "UnexpectedField"
+		end
+		if type(request.payload.speciesId) ~= "string" or not GameConfig.Trees[request.payload.speciesId] then
+			return false, "UnknownSpecies"
+		end
+		if not GameConfig.isValidSize(request.payload.sizeId) then
+			return false, "InvalidSize"
 		end
 		return true, nil
 	end

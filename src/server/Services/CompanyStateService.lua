@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
+local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
@@ -51,6 +52,9 @@ local function canPerformAction(state, userId: number, action: string): boolean
 	if action == Protocol.Actions.SupplierPlaceOrder then
 		return role == "Owner" or role == "Manager"
 	end
+	if action == Protocol.Actions.SupplierRequestQuote then
+		return role ~= nil
+	end
 	if action == Protocol.Actions.DeliveryUnload then
 		return role == "Owner" or role == "Manager" or role == "Worker"
 	end
@@ -86,6 +90,12 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 	local response
 	if not canPerformAction(state, userId, request.action) then
 		response = { ok = false, errorCode = "Forbidden" }
+	elseif request.action == Protocol.Actions.SupplierRequestQuote then
+		response = {
+			ok = true,
+			revision = state.revision,
+			data = SupplierCatalog.quote(request.payload.speciesId, request.payload.sizeId),
+		}
 	else
 		local started, record = Protocol.beginRequest(state, request.requestId, request.action, self._clock())
 		if not started then
