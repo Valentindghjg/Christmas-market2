@@ -16,6 +16,10 @@ GameConfig.CustomerReservationSeconds = 30
 GameConfig.AutoPricingIntervalSeconds = 3
 GameConfig.CustomerVisitIntervalSeconds = 5
 GameConfig.MaxCustomerVisitsPerTick = 3
+GameConfig.Quests = {
+	FirstSale = { metric = "sales", target = 1, rewardCash = 50 },
+	SalesFive = { metric = "sales", target = 5, rewardCash = 150 },
+}
 GameConfig.AutoPricing = {
 	TargetDisplayStock = 5,
 	MaxDiscountFraction = 0.15,

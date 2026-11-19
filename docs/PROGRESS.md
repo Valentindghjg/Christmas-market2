@@ -85,3 +85,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Added Cashier checkout throughput. The base station processes one server-owned customer visit per tick; each hired cashier adds one additional bounded visit using the same reservation, settlement and persistence path.
 
 2026-11-19: Capped staff state and customer processing defensively: the current catalog permits one of each employee role, and the server additionally enforces a configured maximum number of logical customer visits per company tick.
+
+2026-11-19: Added persistent, idempotent sale quests with server-owned progress checks and cash rewards. Replays are rejected after the first successful claim; existing company records migrate to schema v9.

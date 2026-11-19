@@ -3,7 +3,7 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 8
+BusinessState.SCHEMA_VERSION = 9
 
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
@@ -45,6 +45,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?)
 		reservations = {},
 		staff = { Cashier = 0, LotWorker = 0 },
 		progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil },
+		questClaims = {},
 	}
 end
 
@@ -95,9 +96,13 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil }
 	end
 	if state.schemaVersion == 7 then
-		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.schemaVersion = 8
 		state.customerVisits = 0
 		state.abandonedCustomers = 0
+	end
+	if state.schemaVersion == 8 then
+		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.questClaims = {}
 		return BusinessState.validate(state) and state or nil, BusinessState.validate(state) and nil or "InvalidState"
 	end
 	if not isValidLegacyV1(state) then
@@ -118,6 +123,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil }
 	state.customerVisits = 0
 	state.abandonedCustomers = 0
+	state.questClaims = {}
 	return state, nil
 end
 
@@ -164,6 +170,14 @@ function BusinessState.validate(state)
 		or (state.progression.hqTier ~= nil and type(state.progression.hqTier) ~= "string")
 	then
 		return false
+	end
+	if type(state.questClaims) ~= "table" then
+		return false
+	end
+	for questId, claimed in pairs(state.questClaims) do
+		if type(questId) ~= "string" or claimed ~= true then
+			return false
+		end
 	end
 	if type(state.layout) ~= "table" or type(state.layout.placements) ~= "table" then
 		return false
