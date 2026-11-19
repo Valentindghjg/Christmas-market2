@@ -77,3 +77,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Connected the initial HUD and supplier action to the shared DE/EN localization catalogue using the Roblox locale with English fallback.
 
 2026-11-19: Replaced the supplier UI's hardcoded wholesale price with a server-derived Supplier.RequestQuote response. The client remains display-only for pricing and cannot inject a cost into an order.
+
+2026-11-19: Added a server delivery-reconciliation scheduler. Due orders transition once from Pending to Delivered under the company lock and are persisted immediately; repeated scheduler passes do not write or re-count completed arrivals.

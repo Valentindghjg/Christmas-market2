@@ -337,12 +337,14 @@ function BusinessState.reconcileDeliveries(state, timestamp: number)
 	if not BusinessState.validate(state) or not isFiniteInteger(timestamp) then
 		return false, "InvalidState"
 	end
+	local delivered = 0
 	for _, order in pairs(state.pendingOrders) do
 		if order.status == "Pending" and order.dueAt <= timestamp then
 			order.status = "Delivered"
+			delivered += 1
 		end
 	end
-	return true, nil
+	return true, delivered
 end
 
 function BusinessState.unloadOrder(state, orderId: string, timestamp: number)

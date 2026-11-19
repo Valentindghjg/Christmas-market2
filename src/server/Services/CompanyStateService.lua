@@ -126,6 +126,29 @@ function CompanyStateService:simulateCustomerVisits()
 	return failures == 0, sales, failures
 end
 
+function CompanyStateService:reconcileDeliveriesAll()
+	local failures = 0
+	local arrivals = 0
+	for companyId, session in pairs(self._sessions) do
+		if session.healthy then
+			self:_enter(session)
+			local reconciled, delivered = BusinessState.reconcileDeliveries(session.state, self._clock())
+			if reconciled and delivered > 0 then
+				session.state.revision += 1
+				local saved = self._persistence:save(companyId, session.state)
+				if saved then
+					arrivals += delivered
+				else
+					session.healthy = false
+					failures += 1
+				end
+			end
+			self:_leave(session)
+		end
+	end
+	return failures == 0, arrivals, failures
+end
+
 local function canPerformAction(state, userId: number, action: string): boolean
 	local role = state.members[tostring(userId)]
 	if action == Protocol.Actions.SupplierPlaceOrder then
