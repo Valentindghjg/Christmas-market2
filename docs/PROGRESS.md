@@ -33,3 +33,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Added the first server-owned customer checkout primitive. It consumes one displayed placement once, derives sale price from the persisted medium price and tree size, then atomically credits cash/revenue/sales and a provisional reputation point. Added a one-time settlement test. NPC navigation, reservation and queueing remain separate work.
 
 2026-11-19: Added PricingService with server-enforced medium-price bounds derived from data-driven catalog benchmarks. Manual price changes persist in company state and disable automatic pricing; both valid and out-of-range changes have contract tests. Player action wiring for the pricing screen remains pending UI work.
+
+2026-11-19: Added pure server-owned Demand scoring. It combines price ratio, reputation and seasonal/variety/stock factors into a bounded conversion score; tests verify that higher price lowers conversion and edge values remain safe. NPC spawning and pathfinding still need to consume this score.
