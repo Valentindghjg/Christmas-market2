@@ -1,0 +1,27 @@
+name: Quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install pinned Roblox tools
+        uses: paradoxum-games/setup-rokit@v3
+        with:
+          version: 1.2.0
+          cache: true
+      - name: Check Luau formatting
+        run: stylua --check src tests
+      - name: Lint Luau
+        run: selene src tests
+      - name: Validate Rojo project
+        run: rojo build default.project.json --output build.rbxlx

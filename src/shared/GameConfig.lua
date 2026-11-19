@@ -11,41 +11,56 @@ GameConfig.MaxHistoryEntries = 100
 local validSizes = { Small = true, Medium = true, Large = true }
 
 GameConfig.Trees = {
-    -- Medium wholesale values are screenshot-observed. Small and Large wholesale
-    -- values are provisional balance values and must be tuned through playtests.
-    FrasierFir = { displayName = "Frasier Fir", wholesale = { Small = 26, Medium = 32, Large = 42 }, typicalMedium = 80, initialMediumPrice = 82 },
-    NobleFir = { displayName = "Noble Fir", wholesale = { Small = 30, Medium = 37, Large = 48 }, typicalMedium = 92, initialMediumPrice = 96 },
-    BlueSpruce = { displayName = "Blue Spruce", wholesale = { Small = 34, Medium = 42, Large = 55 }, typicalMedium = 105, initialMediumPrice = 105 },
+	-- Medium wholesale values are screenshot-observed. Small and Large wholesale
+	-- values are provisional balance values and must be tuned through playtests.
+	FrasierFir = {
+		displayName = "Frasier Fir",
+		wholesale = { Small = 26, Medium = 32, Large = 42 },
+		typicalMedium = 80,
+		initialMediumPrice = 82,
+	},
+	NobleFir = {
+		displayName = "Noble Fir",
+		wholesale = { Small = 30, Medium = 37, Large = 48 },
+		typicalMedium = 92,
+		initialMediumPrice = 96,
+	},
+	BlueSpruce = {
+		displayName = "Blue Spruce",
+		wholesale = { Small = 34, Medium = 42, Large = 55 },
+		typicalMedium = 105,
+		initialMediumPrice = 105,
+	},
 }
 
 function GameConfig.isValidSize(size: unknown): boolean
-    return type(size) == "string" and validSizes[size] == true
+	return type(size) == "string" and validSizes[size] == true
 end
 
 function GameConfig.wholesaleFor(species: unknown, size: unknown): number?
-    if type(species) ~= "string" or not GameConfig.isValidSize(size) then
-        return nil
-    end
-    local tree = GameConfig.Trees[species]
-    return tree and tree.wholesale[size] or nil
+	if type(species) ~= "string" or not GameConfig.isValidSize(size) then
+		return nil
+	end
+	local tree = GameConfig.Trees[species]
+	return tree and tree.wholesale[size] or nil
 end
 
 GameConfig.Employees = {
-    Cashier = { hireCost = 1200, role = "Checkout" },
-    LotWorker = { hireCost = 1800, role = "DeliveryStockingLoading" },
+	Cashier = { hireCost = 1200, role = "Checkout" },
+	LotWorker = { hireCost = 1800, role = "DeliveryStockingLoading" },
 }
 
 GameConfig.HQ = {
-    ChristmasPavilion = {
-        cashCost = 2500,
-        requiredReputation = 250,
-        requiredLotExpansion = 1,
-        requiredParkingSpaces = 4,
-        unlockedTreeCount = 4,
-        checkoutStations = 2,
-        employeeCapacity = 3,
-        customerPatienceBonus = 0.12,
-    },
+	ChristmasPavilion = {
+		cashCost = 2500,
+		requiredReputation = 250,
+		requiredLotExpansion = 1,
+		requiredParkingSpaces = 4,
+		unlockedTreeCount = 4,
+		checkoutStations = 2,
+		employeeCapacity = 3,
+		customerPatienceBonus = 0.12,
+	},
 }
 
 return GameConfig
