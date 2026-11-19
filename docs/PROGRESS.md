@@ -29,3 +29,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Added a server-only PlotService. It allocates the first free approved plot, never accepts a client-selected plot, preserves one plot per player, verifies ownership and releases plots on leave. Added allocation and release tests. Physical plot anchors/spawns will bind to this service once the non-model graybox layout is added.
 
 2026-11-19: Added persistent placement data in schema v3 and a PlacementService. A tree can only move from stored stock to a finite, bounded transform on the assigned plot; pickup atomically returns it to storage. Both operations are validated server actions and use deterministic request-based placement IDs. Added a storage→display→storage contract test.
+
+2026-11-19: Added the first server-owned customer checkout primitive. It consumes one displayed placement once, derives sale price from the persisted medium price and tree size, then atomically credits cash/revenue/sales and a provisional reputation point. Added a one-time settlement test. NPC navigation, reservation and queueing remain separate work.
