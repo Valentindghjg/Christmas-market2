@@ -41,3 +41,11 @@ Owner explicitly reserved approval for **publication** and **paid actions**. Kee
 
 ## Reference material
 32 screenshots were provided in conversation and packaged separately; image binaries are not yet in GitHub. The repository's screenshot observations are in IMPLEMENTATION_PLAN.md. Do not claim the original assets or source code were acquired.
+
+## 2026-11-19 — owner changes delivery roles (supersedes 3D model ownership)
+- Owner is Product Owner and approves publication and paid actions.
+- ChatGPT is project planner, lead architect, task author and reviewer.
+- Claude Code is the implementation agent responsible for **all** development, including Luau systems, UI, 3D models, map, integration and tests.
+- Earlier instruction that the owner supplies final 3D models is **superseded**. Claude Code may generate original Roblox Studio procedural/primitive models and create original assets, without copying proprietary third-party content.
+- Execution is not automatic: Claude Code must be launched and given the task brief in an environment with repo access. ChatGPT will review reported commits and test evidence when available.
+- Keep publication and paid action approval boundary unchanged.
