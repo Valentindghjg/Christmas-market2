@@ -3,9 +3,18 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalizationService = game:GetService("LocalizationService")
 
 local player = Players.LocalPlayer
 local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BusinessAction")
+local Localization = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Localization"))
+local locale = string.lower(string.sub(LocalizationService.RobloxLocaleId, 1, 2))
+if locale ~= "de" and locale ~= "en" then
+	locale = "en"
+end
+local function localized(key: string): string
+	return Localization.get(locale, key)
+end
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "ChristmasMarketUI"
@@ -34,7 +43,7 @@ hud.Position = UDim2.fromScale(0.02, 0.02)
 hud.Size = UDim2.fromOffset(270, 84)
 hud.Parent = gui
 Instance.new("UICorner", hud).CornerRadius = UDim.new(0, 12)
-local cash = label(hud, "Cash: loading…", UDim2.fromOffset(16, 12), UDim2.fromOffset(240, 26), 20)
+local cash = label(hud, localized("cash") .. ": loading…", UDim2.fromOffset(16, 12), UDim2.fromOffset(240, 26), 20)
 local status = label(hud, "Christmas Market 2", UDim2.fromOffset(16, 44), UDim2.fromOffset(240, 22), 14)
 
 local panel = Instance.new("Frame")
@@ -46,14 +55,14 @@ panel.Position = UDim2.fromScale(0.5, 0.97)
 panel.Size = UDim2.fromOffset(360, 176)
 panel.Parent = gui
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
-label(panel, "Tree Supplier", UDim2.fromOffset(18, 14), UDim2.fromOffset(300, 28), 22)
+label(panel, localized("supplier"), UDim2.fromOffset(18, 14), UDim2.fromOffset(300, 28), 22)
 local detail =
 	label(panel, "Frasier Fir · Medium · $32 wholesale", UDim2.fromOffset(18, 50), UDim2.fromOffset(320, 24), 15)
 
 local order = Instance.new("TextButton")
 order.Name = "OrderFrasier"
 order.BackgroundColor3 = Color3.fromRGB(201, 153, 53)
-order.Text = "Order 1 tree"
+order.Text = localized("placeOrder")
 order.TextColor3 = Color3.fromRGB(30, 48, 35)
 order.Font = Enum.Font.GothamBold
 order.TextSize = 17
@@ -83,7 +92,13 @@ local function refreshSummary()
 		payload = {},
 	})
 	if response.ok and response.data then
-		cash.Text = string.format("Cash: $%d · Rep: %d", response.data.cash, response.data.reputation)
+		cash.Text = string.format(
+			"%s: $%d · %s: %d",
+			localized("cash"),
+			response.data.cash,
+			localized("reputation"),
+			response.data.reputation
+		)
 		local plot = response.data.plot
 		if plot then
 			status.Text =
@@ -118,6 +133,6 @@ order.Activated:Connect(function()
 	end
 	order.Active = true
 	if response.ok then
-		order.Text = "Order 1 tree"
+		order.Text = localized("placeOrder")
 	end
 end)

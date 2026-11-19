@@ -73,3 +73,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Added a role-authorized Company.GetSummary query that returns only presentation-safe cash, reputation, progression and aggregate analytics. It rejects client-provided state fields and never exposes the full saved company record.
 
 2026-11-19: Connected the mobile-friendly HUD to the filtered Company.GetSummary query. Cash, reputation and parking status refresh from server-derived state every five seconds and after placing an order.
+
+2026-11-19: Connected the initial HUD and supplier action to the shared DE/EN localization catalogue using the Roblox locale with English fallback.
