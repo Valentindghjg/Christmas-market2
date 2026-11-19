@@ -1,25 +1,28 @@
-# Christmas Market 2 — Codex project entry
+# Christmas Market 2 — Roblox / Luau
 
-Goal: Build an original Roblox Studio/Luau Christmas tree lot simulator closely matching the gameplay and world structure visible in the reference screenshots.
+An original Christmas-tree sales simulator based on screenshot-observed gameplay, with a distinct snowy world, personal and collaborative company modes, and a modern bilingual festive interface.
 
-## Source of truth
-- [Implementation blueprint](docs/IMPLEMENTATION_PLAN.md)
-- Reference screenshots should be placed under `docs/references/roblox-game/`. **They are not yet uploaded to this repository.** Obtain the ZIP from the project owner; do not invent or assume access to screenshots.
-- The screenshots show UI and partial map views, not original game code, geometry, or hidden mechanics.
+## Canonical documentation
+- [Owner-approved product decisions](docs/PRODUCT_SPEC.md)
+- [Detailed game design](docs/GAME_DESIGN.md)
+- [Technical architecture](docs/TECHNICAL_ARCHITECTURE.md)
+- [Testing and release gates](docs/TEST_PLAN.md)
+- [Implementation milestones and screenshot evidence](docs/IMPLEMENTATION_PLAN.md)
+- [3D model integration contract](docs/MODEL_INTEGRATION.md)
+- [Decisions and ongoing GitHub sync policy](docs/DECISION_LOG.md)
+- [Actual development progress](docs/PROGRESS.md)
 
-## Execution order
-1. Establish Rojo-compatible Roblox Studio project layout and testing conventions.
-2. Build graybox winter world and plots with original geometry.
-3. Implement server-authoritative economy, inventory, suppliers, delivery bays, pricing and persistence.
-4. Add customer NPC loop and checkout.
-5. Add HQ, land, parking, employees, quests and decoration.
-6. Match the visible UI on mobile and desktop.
-7. Add original low-poly assets and tune visual fidelity against the screenshots.
-8. Verify each mechanic in Studio and document gaps requiring original-game observation.
+## Current status
+Rojo scaffold and initial pure Luau business/inventory/localization modules exist. The game is **not yet playable or verified in Roblox Studio**. Reference screenshot binaries have **not yet been committed**; they should be uploaded under `docs/references/roblox-game/`. The owner supplies final 3D models gradually. Development can proceed with temporary invisible placeholders for interactions.
 
-## Rules for Codex
-- Treat screenshot observations separately from inferred behavior.
-- Never fabricate unavailable source assets or imply exact replication from screenshots alone.
-- Do not copy proprietary Roblox assets, scripts or branding without permission.
-- Implement systems as testable modules, validate all purchases on server, and protect DataStore state.
-- Work in small reviewed commits, keep a running progress log, and ask before monetization or irreversible changes.
+## Working agreement
+Commit project-relevant decisions, specifications, code and verified test outcomes from active chat sessions to this repository and update canonical documents when decisions change. Never copy unrelated private chat data or credentials into this public repository. No background sync is implied. **Publication and paid actions require explicit owner approval.** Monetization stays disabled until then.
+
+## Initial development sequence
+1. Luau unit tests, secure command protocol, session-safe DataStore.
+2. Personal plots, supplier orders, deliveries, stocking and sales.
+3. NPC customers, staff, pricing and progression.
+4. Collaborative companies, UI, localization, analytics and quests.
+5. Owner assets, QA, event systems, approved monetization and release.
+
+No proprietary Roblox game code or models should be copied without authorization.
