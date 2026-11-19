@@ -22,6 +22,21 @@ local companies = CompanyStateService.new(persistence)
 local plots = PlotService.new(config.PersonalPlotIds)
 WorldService.build()
 
+local function spawnAtClaimedPlot(player: Player, character: Model)
+	local plotId = player:GetAttribute("PlotId")
+	if type(plotId) ~= "string" then
+		return
+	end
+	local world = workspace:FindFirstChild("ChristmasMarketWorld")
+	local plotsFolder = world and world:FindFirstChild("Plots")
+	local plot = plotsFolder and plotsFolder:FindFirstChild(plotId)
+	local spawn = plot and plot:FindFirstChild("Spawn")
+	local root = character:WaitForChild("HumanoidRootPart", 10)
+	if spawn and spawn:IsA("BasePart") and root and root:IsA("BasePart") then
+		character:PivotTo(spawn.CFrame + Vector3.new(0, 4, 0))
+	end
+end
+
 task.spawn(function()
 	while true do
 		task.wait(config.AutosaveSeconds)
@@ -60,6 +75,12 @@ local function loadPlayer(player: Player)
 			player:SetAttribute("CompanyReady", true)
 			player:SetAttribute("CompanyLoadError", nil)
 			player:SetAttribute("PlotId", plotId)
+			player.CharacterAdded:Connect(function(character)
+				spawnAtClaimedPlot(player, character)
+			end)
+			if player.Character then
+				task.spawn(spawnAtClaimedPlot, player, player.Character)
+			end
 		else
 			companies:unloadCompany("personal:" .. tostring(player.UserId))
 			player:SetAttribute("CompanyReady", false)
