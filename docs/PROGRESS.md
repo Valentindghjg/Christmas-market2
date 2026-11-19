@@ -35,3 +35,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Added PricingService with server-enforced medium-price bounds derived from data-driven catalog benchmarks. Manual price changes persist in company state and disable automatic pricing; both valid and out-of-range changes have contract tests. Player action wiring for the pricing screen remains pending UI work.
 
 2026-11-19: Added pure server-owned Demand scoring. It combines price ratio, reputation and seasonal/variety/stock factors into a bounded conversion score; tests verify that higher price lowers conversion and edge values remain safe. NPC spawning and pathfinding still need to consume this score.
+
+2026-11-19: Migrated company state to schema v4 with persisted employee flags and added EmployeeService. Cashier and lot-worker hires debit only server-configured one-time costs, reject duplicates and write financial history. Added cashier hire contract coverage; action-protocol/UI binding remains pending.
