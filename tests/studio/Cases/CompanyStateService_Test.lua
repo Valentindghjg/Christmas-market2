@@ -77,4 +77,25 @@ return function(t)
 		expect.truthy(service:autosaveAll())
 		expect.equal(saves, 1)
 	end)
+
+	t.test("applies automatic pricing through the authoritative save boundary", function()
+		local saves = 0
+		local persistence = fakePersistence()
+		local originalSave = persistence.save
+		persistence.save = function(self, companyId, state)
+			saves += 1
+			return originalSave(self, companyId, state)
+		end
+		local service = Service.new(persistence, function()
+			return 100
+		end)
+		local state = service:loadPersonalCompany(42)
+		state.autoPricing = true
+		state.layout.placements.fir_1 = { speciesId = "FrasierFir", sizeId = "Medium" }
+		local ok, updated = service:applyAutoPricingAll()
+		expect.truthy(ok)
+		expect.equal(updated, 1)
+		expect.equal(saves, 1)
+		expect.equal(state.mediumPrices.FrasierFir, 78)
+	end)
 end

@@ -13,6 +13,7 @@ GameConfig.MaxPriceMultiplier = 2.5
 GameConfig.DeliverySeconds = 60
 GameConfig.AutosaveSeconds = 60
 GameConfig.CustomerReservationSeconds = 30
+GameConfig.AutoPricingIntervalSeconds = 3
 GameConfig.AutoPricing = {
 	TargetDisplayStock = 5,
 	MaxDiscountFraction = 0.15,

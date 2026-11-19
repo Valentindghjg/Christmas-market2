@@ -51,3 +51,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Started hardening the checkout lifecycle: displayed stock is now server-reserved with a fixed server-derived price before settlement, expires safely, and can only be credited once by the reservation owner. Existing records migrate to schema v5 with empty reservations.
 
 2026-11-19: Added a bounded, stock-sensitive auto-pricing calculation. It persists through schema v6, is opt-in, uses only server state/configuration, and leaves prices already locked by checkout reservations untouched.
+
+2026-11-19: Wired opt-in auto-pricing into a three-second server-owned scheduler. The scheduler enters the same company critical section as player actions and persists each updated company; a persistence failure marks that session unavailable rather than continuing unpersisted changes.

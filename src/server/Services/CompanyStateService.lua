@@ -64,6 +64,30 @@ function CompanyStateService:autosaveAll()
 	return failures == 0, failures
 end
 
+-- System pricing uses the same per-company critical section and save boundary as player actions.
+function CompanyStateService:applyAutoPricingAll()
+	local failures = 0
+	local updatedCompanies = 0
+	for companyId, session in pairs(self._sessions) do
+		if session.healthy and session.state.autoPricing then
+			self:_enter(session)
+			local updated = PricingService.applyAutomatic(session.state)
+			if updated then
+				session.state.revision += 1
+				local saved = self._persistence:save(companyId, session.state)
+				if saved then
+					updatedCompanies += 1
+				else
+					session.healthy = false
+					failures += 1
+				end
+			end
+			self:_leave(session)
+		end
+	end
+	return failures == 0, updatedCompanies, failures
+end
+
 local function canPerformAction(state, userId: number, action: string): boolean
 	local role = state.members[tostring(userId)]
 	if action == Protocol.Actions.SupplierPlaceOrder then
