@@ -34,6 +34,16 @@ end)
 
 task.spawn(function()
 	while true do
+		task.wait(config.CustomerVisitIntervalSeconds)
+		local saved, _, failures = companies:simulateCustomerVisits()
+		if not saved then
+			warn(string.format("[ChristmasMarket2] customer-sale save failed for %d company sessions", failures))
+		end
+	end
+end)
+
+task.spawn(function()
+	while true do
 		task.wait(config.AutoPricingIntervalSeconds)
 		local saved, _, failures = companies:applyAutoPricingAll()
 		if not saved then

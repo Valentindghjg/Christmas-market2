@@ -9,6 +9,7 @@ local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local PlacementService = require(script.Parent:WaitForChild("PlacementService"))
 local PricingService = require(script.Parent:WaitForChild("PricingService"))
 local EmployeeService = require(script.Parent:WaitForChild("EmployeeService"))
+local CustomerSimulationService = require(script.Parent:WaitForChild("CustomerSimulationService"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
@@ -17,12 +18,14 @@ local function now(): number
 	return os.time()
 end
 
-function CompanyStateService.new(persistence, clock)
+function CompanyStateService.new(persistence, clock, randomRoll)
 	local self = setmetatable({}, CompanyStateService)
 	self._persistence = persistence
 	self._clock = clock or now
+	self._randomRoll = randomRoll or math.random
 	self._sessions = {}
 	self._limiter = Protocol.newRateLimiter(10, 10)
+	self._customerSequence = 0
 	return self
 end
 
@@ -86,6 +89,39 @@ function CompanyStateService:applyAutoPricingAll()
 		end
 	end
 	return failures == 0, updatedCompanies, failures
+end
+
+-- Performs at most one logical NPC visit per healthy company and persists a completed sale atomically.
+function CompanyStateService:simulateCustomerVisits()
+	local failures = 0
+	local sales = 0
+	for companyId, session in pairs(self._sessions) do
+		if session.healthy then
+			self:_enter(session)
+			self._customerSequence += 1
+			local started, visit = CustomerSimulationService.beginVisit(
+				session.state,
+				self._customerSequence,
+				self._clock(),
+				self._randomRoll()
+			)
+			if started then
+				local completed = CustomerSimulationService.completeVisit(session.state, visit, self._clock())
+				if completed then
+					session.state.revision += 1
+					local saved = self._persistence:save(companyId, session.state)
+					if saved then
+						sales += 1
+					else
+						session.healthy = false
+						failures += 1
+					end
+				end
+			end
+			self:_leave(session)
+		end
+	end
+	return failures == 0, sales, failures
 end
 
 local function canPerformAction(state, userId: number, action: string): boolean

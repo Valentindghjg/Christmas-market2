@@ -59,3 +59,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Added server-side candidate selection for NPCs. It ignores reserved stock, requires matching preference and budget, derives the actual sale price from the authoritative catalog, and provides a bounded demand conversion score.
 
 2026-11-19: Added the server-side NPC visit transaction: a bounded demand roll can reserve one eligible tree under the profile's patience window, then settle through the existing exactly-once checkout API. Failed conversions do not mutate stock or reservations.
+
+2026-11-19: Wired a bounded five-second customer-visit scheduler into healthy company sessions. It shares the authoritative company lock with player actions, performs no client-driven sale calculations, and persists each completed sale before reporting it as successful.

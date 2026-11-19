@@ -98,4 +98,26 @@ return function(t)
 		expect.equal(saves, 1)
 		expect.equal(state.mediumPrices.FrasierFir, 78)
 	end)
+
+	t.test("simulates a successful customer sale through the save boundary", function()
+		local saves = 0
+		local persistence = fakePersistence()
+		local originalSave = persistence.save
+		persistence.save = function(self, companyId, state)
+			saves += 1
+			return originalSave(self, companyId, state)
+		end
+		local service = Service.new(persistence, function()
+			return 100
+		end, function()
+			return 0
+		end)
+		local state = service:loadPersonalCompany(42)
+		state.layout.placements.fir = { speciesId = "FrasierFir", sizeId = "Small" }
+		local ok, sales = service:simulateCustomerVisits()
+		expect.truthy(ok)
+		expect.equal(sales, 1)
+		expect.equal(saves, 1)
+		expect.equal(state.sales, 1)
+	end)
 end
