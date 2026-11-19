@@ -7,6 +7,8 @@ GameConfig.SizeMultipliers = { Small = 0.8, Medium = 1.0, Large = 1.3 }
 GameConfig.MaxOrderQuantity = 100
 GameConfig.MaxStockPerSku = 100000
 GameConfig.MaxHistoryEntries = 100
+GameConfig.MinPriceMultiplier = 0.5
+GameConfig.MaxPriceMultiplier = 2.5
 -- Fallback only; a server ConfigService value will supersede this when configured.
 GameConfig.DeliverySeconds = 60
 GameConfig.PersonalPlotIds = { "Plot_01", "Plot_02", "Plot_03", "Plot_04", "Plot_05", "Plot_06" }
