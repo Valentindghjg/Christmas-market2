@@ -79,3 +79,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Replaced the supplier UI's hardcoded wholesale price with a server-derived Supplier.RequestQuote response. The client remains display-only for pricing and cannot inject a cost into an order.
 
 2026-11-19: Added a server delivery-reconciliation scheduler. Due orders transition once from Pending to Delivered under the company lock and are persisted immediately; repeated scheduler passes do not write or re-count completed arrivals.
+
+2026-11-19: Added Lot Worker delivery automation. A hired worker scans only that company's delivered orders, unloads each once through the authoritative inventory transition, and saves the resulting state under the company lock.

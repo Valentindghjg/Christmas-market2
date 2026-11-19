@@ -149,6 +149,36 @@ function CompanyStateService:reconcileDeliveriesAll()
 	return failures == 0, arrivals, failures
 end
 
+function CompanyStateService:autoUnloadDeliveriesAll()
+	local failures = 0
+	local unloaded = 0
+	for companyId, session in pairs(self._sessions) do
+		if session.healthy and session.state.staff.LotWorker > 0 then
+			self:_enter(session)
+			local changed = false
+			for orderId, order in pairs(session.state.pendingOrders) do
+				if order.status == "Delivered" then
+					local didUnload = BusinessState.unloadOrder(session.state, orderId, self._clock())
+					if didUnload then
+						changed = true
+						unloaded += 1
+					end
+				end
+			end
+			if changed then
+				session.state.revision += 1
+				local saved = self._persistence:save(companyId, session.state)
+				if not saved then
+					session.healthy = false
+					failures += 1
+				end
+			end
+			self:_leave(session)
+		end
+	end
+	return failures == 0, unloaded, failures
+end
+
 local function canPerformAction(state, userId: number, action: string): boolean
 	local role = state.members[tostring(userId)]
 	if action == Protocol.Actions.SupplierPlaceOrder then

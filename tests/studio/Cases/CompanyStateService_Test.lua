@@ -1,5 +1,6 @@
 --!strict
 return function(t)
+	local BusinessState = require(game:GetService("ReplicatedStorage").Shared.BusinessState)
 	local Service = require(
 		game:GetService("ServerScriptService")
 			:WaitForChild("Server")
@@ -12,8 +13,6 @@ return function(t)
 		local records = {}
 		return {
 			load = function(_, companyId, ownerUserId)
-				local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
-				local BusinessState = require(Shared:WaitForChild("BusinessState"))
 				records[companyId] = records[companyId] or BusinessState.new(companyId, ownerUserId)
 				return records[companyId], nil
 			end,
@@ -119,5 +118,20 @@ return function(t)
 		expect.equal(sales, 1)
 		expect.equal(saves, 1)
 		expect.equal(state.sales, 1)
+	end)
+
+	t.test("lot worker unloads delivered stock through the save boundary", function()
+		local persistence = fakePersistence()
+		local service = Service.new(persistence, function()
+			return 160
+		end)
+		local state = service:loadPersonalCompany(42)
+		state.staff.LotWorker = 1
+		expect.truthy(BusinessState.placeOrder(state, "worker_999", "FrasierFir", "Medium", 1, 100))
+		expect.truthy(BusinessState.reconcileDeliveries(state, 160))
+		local ok, unloaded = service:autoUnloadDeliveriesAll()
+		expect.truthy(ok)
+		expect.equal(unloaded, 1)
+		expect.equal(state.pendingOrders["order:worker_999"].status, "Unloaded")
 	end)
 end
