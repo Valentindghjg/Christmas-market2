@@ -3,7 +3,7 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 1
+BusinessState.SCHEMA_VERSION = 2
 
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
@@ -13,9 +13,16 @@ local function isFiniteInteger(value: unknown): boolean
 		and value == math.floor(value)
 end
 
-function BusinessState.new()
+function BusinessState.new(companyId: string?, ownerUserId: number?)
+	local resolvedCompanyId = companyId or "personal:0"
+	local resolvedOwnerUserId = ownerUserId or 0
 	return {
 		schemaVersion = BusinessState.SCHEMA_VERSION,
+		companyId = resolvedCompanyId,
+		ownerUserId = resolvedOwnerUserId,
+		mode = "personal",
+		members = { [tostring(resolvedOwnerUserId)] = "Owner" },
+		revision = 0,
 		cash = GameConfig.StartingCash,
 		reputation = GameConfig.StartingReputation,
 		stock = {},
@@ -29,11 +36,68 @@ function BusinessState.new()
 			NobleFir = GameConfig.Trees.NobleFir.initialMediumPrice,
 			BlueSpruce = GameConfig.Trees.BlueSpruce.initialMediumPrice,
 		},
+		recentRequests = {},
+		updatedAt = 0,
 	}
+end
+
+local function isValidLegacyV1(state): boolean
+	return type(state) == "table"
+		and state.schemaVersion == 1
+		and isFiniteInteger(state.cash)
+		and state.cash >= 0
+		and isFiniteInteger(state.reputation)
+		and state.reputation >= 0
+		and type(state.stock) == "table"
+		and type(state.pendingOrders) == "table"
+		and type(state.history) == "table"
+		and isFiniteInteger(state.sales)
+		and state.sales >= 0
+		and isFiniteInteger(state.revenue)
+		and state.revenue >= 0
+		and isFiniteInteger(state.spent)
+		and state.spent >= 0
+end
+
+-- Migrates the original scaffold record without changing balances or stock.
+function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
+	if type(state) ~= "table" then
+		return nil, "InvalidState"
+	end
+	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
+		return BusinessState.validate(state) and state or nil, BusinessState.validate(state) and nil or "InvalidState"
+	end
+	if not isValidLegacyV1(state) then
+		return nil, "UnsupportedSchema"
+	end
+	state.schemaVersion = BusinessState.SCHEMA_VERSION
+	state.companyId = companyId or "personal:0"
+	state.ownerUserId = ownerUserId or 0
+	state.mode = "personal"
+	state.members = { [tostring(state.ownerUserId)] = "Owner" }
+	state.revision = 0
+	state.recentRequests = {}
+	state.updatedAt = 0
+	return state, nil
 end
 
 function BusinessState.validate(state)
 	if type(state) ~= "table" or state.schemaVersion ~= BusinessState.SCHEMA_VERSION then
+		return false
+	end
+	if type(state.companyId) ~= "string" or #state.companyId < 1 or #state.companyId > 128 then
+		return false
+	end
+	if not isFiniteInteger(state.ownerUserId) or state.ownerUserId < 0 then
+		return false
+	end
+	if state.mode ~= "personal" and state.mode ~= "shared" then
+		return false
+	end
+	if type(state.members) ~= "table" or state.members[tostring(state.ownerUserId)] ~= "Owner" then
+		return false
+	end
+	if not isFiniteInteger(state.revision) or state.revision < 0 then
 		return false
 	end
 	if not isFiniteInteger(state.cash) or state.cash < 0 then
@@ -43,6 +107,9 @@ function BusinessState.validate(state)
 		return false
 	end
 	if type(state.stock) ~= "table" or type(state.pendingOrders) ~= "table" or type(state.history) ~= "table" then
+		return false
+	end
+	if type(state.recentRequests) ~= "table" or not isFiniteInteger(state.updatedAt) or state.updatedAt < 0 then
 		return false
 	end
 	if not isFiniteInteger(state.sales) or state.sales < 0 then

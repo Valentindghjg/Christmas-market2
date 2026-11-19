@@ -23,4 +23,22 @@ return function(t)
 		expect.equal(state.cash, beforeCash)
 		expect.equal(Inventory.count(state.stock, Inventory.key("BlueSpruce", "Large")), 0)
 	end)
+	-- A v1 save retains all financial state while gaining v2 ownership fields.
+	t.test("migrates legacy state without losing balances", function()
+		local legacy = BusinessState.new()
+		legacy.schemaVersion = 1
+		legacy.companyId = nil
+		legacy.ownerUserId = nil
+		legacy.mode = nil
+		legacy.members = nil
+		legacy.revision = nil
+		legacy.recentRequests = nil
+		legacy.updatedAt = nil
+		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(migrated.cash, 84)
+		expect.equal(migrated.companyId, "personal:42")
+		expect.equal(migrated.members["42"], "Owner")
+	end)
 end
