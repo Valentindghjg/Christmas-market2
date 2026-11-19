@@ -71,6 +71,19 @@ order.Size = UDim2.fromOffset(324, 58)
 order.Parent = panel
 Instance.new("UICorner", order).CornerRadius = UDim.new(0, 10)
 
+local unload = Instance.new("TextButton")
+unload.Name = "UnloadDelivery"
+unload.BackgroundColor3 = Color3.fromRGB(114, 172, 113)
+unload.Text = "No delivery ready"
+unload.TextColor3 = Color3.fromRGB(20, 48, 35)
+unload.Font = Enum.Font.GothamBold
+unload.TextSize = 14
+unload.Position = UDim2.fromOffset(18, 152)
+unload.Size = UDim2.fromOffset(324, 20)
+unload.Visible = false
+unload.Parent = panel
+local deliveredOrderId: string? = nil
+
 local function refreshSupplierQuote()
 	if player:GetAttribute("CompanyReady") ~= true then
 		return
@@ -122,6 +135,15 @@ local function refreshSummary()
 			status.Text =
 				string.format("Plot: %s · Parking: %d", tostring(player:GetAttribute("PlotId")), plot.parkingSpaces)
 		end
+		deliveredOrderId = nil
+		for _, delivery in ipairs(response.data.deliveries or {}) do
+			if delivery.status == "Delivered" then
+				deliveredOrderId = delivery.orderId
+				break
+			end
+		end
+		unload.Visible = deliveredOrderId ~= nil
+		unload.Text = deliveredOrderId and "Unload delivered trees" or "No delivery ready"
 	end
 end
 
@@ -129,6 +151,22 @@ task.spawn(function()
 	while gui.Parent do
 		refreshSummary()
 		task.wait(5)
+	end
+end)
+
+unload.Activated:Connect(function()
+	if not deliveredOrderId then
+		return
+	end
+	local response = remote:InvokeServer({
+		version = 1,
+		requestId = HttpService:GenerateGUID(false),
+		action = "Delivery.Unload",
+		payload = { orderId = deliveredOrderId },
+	})
+	if response.ok then
+		detail.Text = "Trees unloaded into storage"
+		refreshSummary()
 	end
 end)
 

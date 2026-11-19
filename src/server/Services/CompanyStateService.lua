@@ -221,6 +221,27 @@ local function canPerformAction(state, userId: number, action: string): boolean
 	return false
 end
 
+local function deliverySummary(state)
+	local orders = {}
+	for orderId, order in pairs(state.pendingOrders) do
+		if #orders >= 10 then
+			break
+		end
+		table.insert(orders, {
+			orderId = orderId,
+			speciesId = order.speciesId,
+			sizeId = order.sizeId,
+			quantity = order.quantity,
+			status = order.status,
+			dueAt = order.dueAt,
+		})
+	end
+	table.sort(orders, function(a, b)
+		return a.orderId < b.orderId
+	end)
+	return orders
+end
+
 function CompanyStateService:_enter(session)
 	while session.busy do
 		task.wait()
@@ -265,6 +286,7 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 				reputation = state.reputation,
 				plot = state.progression,
 				analytics = AnalyticsService.summary(state),
+				deliveries = deliverySummary(state),
 			},
 		}
 	else
