@@ -17,6 +17,7 @@ Protocol.Actions = {
 	ProgressionBuyParking = "Progression.BuyParking",
 	ProgressionBuyHQ = "Progression.BuyHQ",
 	CompanyGetSummary = "Company.GetSummary",
+	QuestClaim = "Quest.Claim",
 }
 
 local actionSet = {
@@ -32,6 +33,7 @@ local actionSet = {
 	[Protocol.Actions.ProgressionBuyParking] = true,
 	[Protocol.Actions.ProgressionBuyHQ] = true,
 	[Protocol.Actions.CompanyGetSummary] = true,
+	[Protocol.Actions.QuestClaim] = true,
 }
 
 local function isFiniteInteger(value: unknown): boolean
@@ -182,6 +184,12 @@ function Protocol.validateRequest(request)
 	if request.action == Protocol.Actions.ProgressionBuyHQ then
 		if not hasOnlyKeys(request.payload, { hqId = true }) or request.payload.hqId ~= "ChristmasPavilion" then
 			return false, "InvalidHQ"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.QuestClaim then
+		if not hasOnlyKeys(request.payload, { questId = true }) or type(request.payload.questId) ~= "string" then
+			return false, "InvalidQuest"
 		end
 		return true, nil
 	end

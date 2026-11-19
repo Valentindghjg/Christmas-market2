@@ -13,6 +13,7 @@ local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local CustomerSimulationService = require(script.Parent:WaitForChild("CustomerSimulationService"))
 local ProgressionService = require(script.Parent:WaitForChild("ProgressionService"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
+local QuestService = require(script.Parent:WaitForChild("QuestService"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
@@ -195,6 +196,9 @@ local function canPerformAction(state, userId: number, action: string): boolean
 	if action == Protocol.Actions.CompanyGetSummary then
 		return role ~= nil
 	end
+	if action == Protocol.Actions.QuestClaim then
+		return role == "Owner" or role == "Manager"
+	end
 	if action == Protocol.Actions.DeliveryUnload then
 		return role == "Owner" or role == "Manager" or role == "Worker"
 	end
@@ -303,6 +307,8 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 				succeeded, result = ProgressionService.buyParking(state)
 			elseif request.action == Protocol.Actions.ProgressionBuyHQ then
 				succeeded, result = ProgressionService.buyHQ(state, request.payload.hqId)
+			elseif request.action == Protocol.Actions.QuestClaim then
+				succeeded, result = QuestService.claim(state, request.payload.questId)
 			end
 			Protocol.finishRequest(record, succeeded and "Success" or tostring(result))
 			if succeeded then

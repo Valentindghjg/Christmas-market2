@@ -87,3 +87,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Capped staff state and customer processing defensively: the current catalog permits one of each employee role, and the server additionally enforces a configured maximum number of logical customer visits per company tick.
 
 2026-11-19: Added persistent, idempotent sale quests with server-owned progress checks and cash rewards. Replays are rejected after the first successful claim; existing company records migrate to schema v9.
+
+2026-11-19: Connected quest claims to the validated BusinessAction protocol, company lock and save boundary. A client submits only a quest ID; completion, reward and duplicate prevention remain server-owned.
