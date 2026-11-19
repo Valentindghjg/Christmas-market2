@@ -29,3 +29,13 @@ FrasierFir, NobleFir, BlueSpruce (each Small/Medium/Large); StarterSalesTent, Ch
 
 ## Integration behavior
 Missing model: fail gracefully and log `MissingArtAsset`; never grant extra inventory or charge a player for a placement that failed. Config IDs must not be derived from art model filenames.
+
+# 3D asset ownership update — 2026-11-19
+
+**Supersedes prior owner-supplied asset responsibility.** Claude Code is now responsible for creating the game's original 3D models and snowy world, as well as their integration and tests. The owner may optionally contribute models, but is not required to.
+
+Recommended approach: Roblox Studio procedural construction and original low-poly meshes built from native Parts/MeshParts. Begin with gameplay-functional graybox models, then improve silhouettes, materials, colors, collisions, LOD and performance. Avoid copyrighted extraction and unlicensed Toolbox assets.
+
+Asset contract remains: `ArtAssets/Trees/<Species>/<Size>`, `Buildings/<TierId>`, `Props/<AssetId>`, `Vehicles/<AssetId>`, `NPCs/<CharacterId>`, `Environment/<AssetId>`. Stable pivots/PrimaryPart; TreeBase, Entrance, Checkout_1, DeliveryPoint and CargoAnchor attachments as applicable. Model scripts must not bypass server gameplay logic.
+
+Definition of done per model: original geometry, named/pivoted correctly, appropriate collision and scale, performant on mobile, screenshot-reviewed, Studio-tested, and documented in asset inventory.
