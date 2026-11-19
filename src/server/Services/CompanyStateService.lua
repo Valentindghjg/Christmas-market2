@@ -1,0 +1,119 @@
+--!strict
+-- Serializes all authoritative company mutations behind one in-memory session per company.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local BusinessState = require(Shared:WaitForChild("BusinessState"))
+local Protocol = require(Shared:WaitForChild("Protocol"))
+
+local CompanyStateService = {}
+CompanyStateService.__index = CompanyStateService
+
+local function now(): number
+	return os.time()
+end
+
+function CompanyStateService.new(persistence, clock)
+	local self = setmetatable({}, CompanyStateService)
+	self._persistence = persistence
+	self._clock = clock or now
+	self._sessions = {}
+	self._limiter = Protocol.newRateLimiter(10, 10)
+	return self
+end
+
+function CompanyStateService:loadPersonalCompany(userId: number)
+	local companyId = "personal:" .. tostring(userId)
+	local state, errorCode = self._persistence:load(companyId, userId)
+	if not state then
+		return nil, errorCode
+	end
+	self._sessions[companyId] = { state = state, busy = false, healthy = true }
+	return state, nil
+end
+
+function CompanyStateService:unloadCompany(companyId: string)
+	local session = self._sessions[companyId]
+	if not session then
+		return true, nil
+	end
+	local saved, errorCode = self._persistence:save(companyId, session.state)
+	if not saved then
+		session.healthy = false
+		return false, errorCode
+	end
+	self._sessions[companyId] = nil
+	return self._persistence:release(companyId)
+end
+
+local function canPerformAction(state, userId: number, action: string): boolean
+	local role = state.members[tostring(userId)]
+	if action == Protocol.Actions.SupplierPlaceOrder then
+		return role == "Owner" or role == "Manager"
+	end
+	return false
+end
+
+function CompanyStateService:_enter(session)
+	while session.busy do
+		task.wait()
+	end
+	session.busy = true
+end
+
+function CompanyStateService:_leave(session)
+	session.busy = false
+end
+
+function CompanyStateService:handle(companyId: string, userId: number, request)
+	local valid, validationError = Protocol.validateRequest(request)
+	if not valid then
+		return { ok = false, errorCode = validationError }
+	end
+	if not Protocol.allowRequest(self._limiter, userId, request.action, self._clock()) then
+		return { ok = false, errorCode = "RateLimited" }
+	end
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return { ok = false, errorCode = "CompanyUnavailable" }
+	end
+
+	self:_enter(session)
+	local state = session.state
+	local response
+	if not canPerformAction(state, userId, request.action) then
+		response = { ok = false, errorCode = "Forbidden" }
+	else
+		local started, record = Protocol.beginRequest(state, request.requestId, request.action, self._clock())
+		if not started then
+			response = { ok = false, errorCode = "DuplicateRequest", revision = state.revision }
+		else
+			local succeeded, result = false, "UnknownAction"
+			if request.action == Protocol.Actions.SupplierPlaceOrder then
+				succeeded, result = BusinessState.buyStock(
+					state,
+					request.payload.speciesId,
+					request.payload.sizeId,
+					request.payload.quantity
+				)
+			end
+			Protocol.finishRequest(record, succeeded and "Success" or tostring(result))
+			if succeeded then
+				state.revision += 1
+			end
+			local saved, saveError = self._persistence:save(companyId, state)
+			if not saved then
+				session.healthy = false
+				response = { ok = false, errorCode = "SaveFailed:" .. tostring(saveError) }
+			elseif succeeded then
+				response = { ok = true, revision = state.revision, data = { cost = result } }
+			else
+				response = { ok = false, errorCode = result, revision = state.revision }
+			end
+		end
+	end
+	self:_leave(session)
+	return response
+end
+
+return CompanyStateService
