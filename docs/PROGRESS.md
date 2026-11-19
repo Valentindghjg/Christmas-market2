@@ -65,3 +65,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Bound claimed personal plots to character spawning. After a successful company load and plot claim, the server moves the current and future character to that plot's authored spawn marker.
 
 2026-11-19: Added persisted progression state and server-authoritative purchase services for lot expansions, parking and the Christmas Pavilion. Costs are charged only after all cash, reputation and prerequisite checks succeed; existing records migrate to schema v7.
+
+2026-11-19: Exposed progression purchases through the validated, idempotent BusinessAction protocol. Clients can select an allowed upgrade only; prices, prerequisites, mutation and persistence remain server-owned.

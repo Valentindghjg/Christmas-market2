@@ -10,6 +10,7 @@ local PlacementService = require(script.Parent:WaitForChild("PlacementService"))
 local PricingService = require(script.Parent:WaitForChild("PricingService"))
 local EmployeeService = require(script.Parent:WaitForChild("EmployeeService"))
 local CustomerSimulationService = require(script.Parent:WaitForChild("CustomerSimulationService"))
+local ProgressionService = require(script.Parent:WaitForChild("ProgressionService"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
@@ -144,6 +145,13 @@ local function canPerformAction(state, userId: number, action: string): boolean
 	if action == Protocol.Actions.EmployeeHire then
 		return role == "Owner" or role == "Manager"
 	end
+	if
+		action == Protocol.Actions.ProgressionBuyLotExpansion
+		or action == Protocol.Actions.ProgressionBuyParking
+		or action == Protocol.Actions.ProgressionBuyHQ
+	then
+		return role == "Owner" or role == "Manager"
+	end
 	return false
 end
 
@@ -216,6 +224,12 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 				succeeded, result = PricingService.setAutomatic(state, request.payload.enabled)
 			elseif request.action == Protocol.Actions.EmployeeHire then
 				succeeded, result = EmployeeService.hire(state, request.payload.employeeId)
+			elseif request.action == Protocol.Actions.ProgressionBuyLotExpansion then
+				succeeded, result = ProgressionService.buyLotExpansion(state)
+			elseif request.action == Protocol.Actions.ProgressionBuyParking then
+				succeeded, result = ProgressionService.buyParking(state)
+			elseif request.action == Protocol.Actions.ProgressionBuyHQ then
+				succeeded, result = ProgressionService.buyHQ(state, request.payload.hqId)
 			end
 			Protocol.finishRequest(record, succeeded and "Success" or tostring(result))
 			if succeeded then

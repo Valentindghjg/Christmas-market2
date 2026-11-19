@@ -13,6 +13,9 @@ Protocol.Actions = {
 	PricingSetMediumPrice = "Pricing.SetMediumPrice",
 	PricingSetAuto = "Pricing.SetAuto",
 	EmployeeHire = "Employee.Hire",
+	ProgressionBuyLotExpansion = "Progression.BuyLotExpansion",
+	ProgressionBuyParking = "Progression.BuyParking",
+	ProgressionBuyHQ = "Progression.BuyHQ",
 }
 
 local actionSet = {
@@ -24,6 +27,9 @@ local actionSet = {
 	[Protocol.Actions.PricingSetMediumPrice] = true,
 	[Protocol.Actions.PricingSetAuto] = true,
 	[Protocol.Actions.EmployeeHire] = true,
+	[Protocol.Actions.ProgressionBuyLotExpansion] = true,
+	[Protocol.Actions.ProgressionBuyParking] = true,
+	[Protocol.Actions.ProgressionBuyHQ] = true,
 }
 
 local function isFiniteInteger(value: unknown): boolean
@@ -153,6 +159,21 @@ function Protocol.validateRequest(request)
 			or (request.payload.employeeId ~= "Cashier" and request.payload.employeeId ~= "LotWorker")
 		then
 			return false, "UnknownEmployee"
+		end
+		return true, nil
+	end
+	if
+		request.action == Protocol.Actions.ProgressionBuyLotExpansion
+		or request.action == Protocol.Actions.ProgressionBuyParking
+	then
+		if not hasOnlyKeys(request.payload, {}) then
+			return false, "UnexpectedField"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.ProgressionBuyHQ then
+		if not hasOnlyKeys(request.payload, { hqId = true }) or request.payload.hqId ~= "ChristmasPavilion" then
+			return false, "InvalidHQ"
 		end
 		return true, nil
 	end
