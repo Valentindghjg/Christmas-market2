@@ -7,3 +7,5 @@
 Next: add automated unit tests with a Luau-compatible runner, wire session-safe persistence and server-validated remotes, then implement plot allocation and delivery loop. Later upload screenshot binaries, integrate owner-created models and obtain explicit approval before paid products or publication.
 
 2026-11-19: Owner reassigned all 3D modeling, map creation and asset integration to Claude Code. ChatGPT plans and reviews; Claude Code implements; owner approves paid actions and publication. Documentation updated. No claim that Claude Code has been started or Studio tests run.
+
+2026-11-19: Created 50 numbered Claude Code implementation issues (CM2-01 through CM2-50) spanning P0-P5. Central index: docs/CLAUDE_BACKLOG.md. These are planned/open tasks, not completed gameplay. Owner approval still required for publication and paid actions.
