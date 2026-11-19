@@ -3,7 +3,7 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 4
+BusinessState.SCHEMA_VERSION = 5
 
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
@@ -39,6 +39,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?)
 		recentRequests = {},
 		updatedAt = 0,
 		layout = { placements = {} },
+		reservations = {},
 		staff = { Cashier = 0, LotWorker = 0 },
 	}
 end
@@ -74,9 +75,13 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.layout = { placements = {} }
 	end
 	if state.schemaVersion == 3 then
-		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.schemaVersion = 4
 		state.staff = { Cashier = 0, LotWorker = 0 }
-		return state, nil
+	end
+	if state.schemaVersion == 4 then
+		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.reservations = {}
+		return BusinessState.validate(state) and state or nil, BusinessState.validate(state) and nil or "InvalidState"
 	end
 	if not isValidLegacyV1(state) then
 		return nil, "UnsupportedSchema"
@@ -90,6 +95,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.recentRequests = {}
 	state.updatedAt = 0
 	state.layout = { placements = {} }
+	state.reservations = {}
 	state.staff = { Cashier = 0, LotWorker = 0 }
 	return state, nil
 end
@@ -126,6 +132,9 @@ function BusinessState.validate(state)
 		return false
 	end
 	if type(state.layout) ~= "table" or type(state.layout.placements) ~= "table" then
+		return false
+	end
+	if type(state.reservations) ~= "table" then
 		return false
 	end
 	if
@@ -167,6 +176,22 @@ function BusinessState.validate(state)
 			or not isFiniteInteger(quantity)
 			or quantity < 0
 			or quantity > GameConfig.MaxStockPerSku
+		then
+			return false
+		end
+	end
+	for placementId, reservation in pairs(state.reservations) do
+		if
+			type(placementId) ~= "string"
+			or type(reservation) ~= "table"
+			or type(reservation.customerId) ~= "string"
+			or #reservation.customerId < 1
+			or #reservation.customerId > 128
+			or not isFiniteInteger(reservation.expiresAt)
+			or reservation.expiresAt < 0
+			or not isFiniteInteger(reservation.salePrice)
+			or reservation.salePrice < 1
+			or type(state.layout.placements[placementId]) ~= "table"
 		then
 			return false
 		end
