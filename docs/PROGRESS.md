@@ -57,3 +57,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Added deterministic server-owned NPC customer profiles for species/size preference, budget and patience. Profile compatibility is pure, bounded logic ready for the NPC state machine; client input cannot choose customer attributes.
 
 2026-11-19: Added server-side candidate selection for NPCs. It ignores reserved stock, requires matching preference and budget, derives the actual sale price from the authoritative catalog, and provides a bounded demand conversion score.
+
+2026-11-19: Added the server-side NPC visit transaction: a bounded demand roll can reserve one eligible tree under the profile's patience window, then settle through the existing exactly-once checkout API. Failed conversions do not mutate stock or reservations.
