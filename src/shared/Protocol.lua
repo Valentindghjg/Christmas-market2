@@ -6,10 +6,12 @@ local Protocol = {}
 Protocol.VERSION = 1
 Protocol.Actions = {
 	SupplierPlaceOrder = "Supplier.PlaceOrder",
+	DeliveryUnload = "Delivery.Unload",
 }
 
 local actionSet = {
 	[Protocol.Actions.SupplierPlaceOrder] = true,
+	[Protocol.Actions.DeliveryUnload] = true,
 }
 
 local function isFiniteInteger(value: unknown): boolean
@@ -66,6 +68,19 @@ function Protocol.validateRequest(request)
 			or request.payload.quantity > GameConfig.MaxOrderQuantity
 		then
 			return false, "InvalidQuantity"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.DeliveryUnload then
+		if not hasOnlyKeys(request.payload, { orderId = true }) then
+			return false, "UnexpectedField"
+		end
+		if
+			type(request.payload.orderId) ~= "string"
+			or #request.payload.orderId < 8
+			or #request.payload.orderId > 80
+		then
+			return false, "InvalidOrderId"
 		end
 		return true, nil
 	end

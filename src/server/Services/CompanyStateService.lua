@@ -51,6 +51,9 @@ local function canPerformAction(state, userId: number, action: string): boolean
 	if action == Protocol.Actions.SupplierPlaceOrder then
 		return role == "Owner" or role == "Manager"
 	end
+	if action == Protocol.Actions.DeliveryUnload then
+		return role == "Owner" or role == "Manager" or role == "Worker"
+	end
 	return false
 end
 
@@ -90,12 +93,16 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 		else
 			local succeeded, result = false, "UnknownAction"
 			if request.action == Protocol.Actions.SupplierPlaceOrder then
-				succeeded, result = BusinessState.buyStock(
+				succeeded, result = BusinessState.placeOrder(
 					state,
+					request.requestId,
 					request.payload.speciesId,
 					request.payload.sizeId,
-					request.payload.quantity
+					request.payload.quantity,
+					self._clock()
 				)
+			elseif request.action == Protocol.Actions.DeliveryUnload then
+				succeeded, result = BusinessState.unloadOrder(state, request.payload.orderId, self._clock())
 			end
 			Protocol.finishRequest(record, succeeded and "Success" or tostring(result))
 			if succeeded then
@@ -106,7 +113,7 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 				session.healthy = false
 				response = { ok = false, errorCode = "SaveFailed:" .. tostring(saveError) }
 			elseif succeeded then
-				response = { ok = true, revision = state.revision, data = { cost = result } }
+				response = { ok = true, revision = state.revision, data = result }
 			else
 				response = { ok = false, errorCode = result, revision = state.revision }
 			end

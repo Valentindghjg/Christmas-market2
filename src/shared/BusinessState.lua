@@ -192,6 +192,91 @@ function BusinessState.buyStock(state, species: string, size: string, quantity: 
 	return true, cost
 end
 
+-- Creates a server-priced delivery order. Stock stays out of storage until unloaded.
+function BusinessState.placeOrder(
+	state,
+	requestId: string,
+	species: string,
+	size: string,
+	quantity: number,
+	timestamp: number
+)
+	if not BusinessState.validate(state) then
+		return false, "InvalidState"
+	end
+	if type(requestId) ~= "string" or #requestId < 8 then
+		return false, "InvalidOrderId"
+	end
+	if not GameConfig.Trees[species] or not GameConfig.isValidSize(size) then
+		return false, "InvalidItem"
+	end
+	if not isFiniteInteger(quantity) or quantity < 1 or quantity > GameConfig.MaxOrderQuantity then
+		return false, "InvalidQuantity"
+	end
+	if not isFiniteInteger(timestamp) or timestamp < 0 then
+		return false, "InvalidTime"
+	end
+	local orderId = "order:" .. requestId
+	if state.pendingOrders[orderId] then
+		return false, "DuplicateOrder"
+	end
+	local unitCost = GameConfig.wholesaleFor(species, size)
+	local cost = (unitCost or 0) * quantity
+	if not unitCost or state.cash < cost then
+		return false, "InsufficientFunds"
+	end
+	state.cash -= cost
+	state.spent += cost
+	state.pendingOrders[orderId] = {
+		orderId = orderId,
+		requestId = requestId,
+		speciesId = species,
+		sizeId = size,
+		quantity = quantity,
+		createdAt = timestamp,
+		dueAt = timestamp + GameConfig.DeliverySeconds,
+		status = "Pending",
+	}
+	BusinessState.record(state, "OrderPlaced", -cost)
+	return true, { orderId = orderId, cost = cost }
+end
+
+function BusinessState.reconcileDeliveries(state, timestamp: number)
+	if not BusinessState.validate(state) or not isFiniteInteger(timestamp) then
+		return false, "InvalidState"
+	end
+	for _, order in pairs(state.pendingOrders) do
+		if order.status == "Pending" and order.dueAt <= timestamp then
+			order.status = "Delivered"
+		end
+	end
+	return true, nil
+end
+
+function BusinessState.unloadOrder(state, orderId: string, timestamp: number)
+	if not BusinessState.validate(state) then
+		return false, "InvalidState"
+	end
+	BusinessState.reconcileDeliveries(state, timestamp)
+	local order = state.pendingOrders[orderId]
+	if type(order) ~= "table" then
+		return false, "UnknownOrder"
+	end
+	if order.status ~= "Delivered" then
+		return false, "DeliveryNotReady"
+	end
+	local key = Inventory.key(order.speciesId, order.sizeId)
+	if Inventory.count(state.stock, key) + order.quantity > GameConfig.MaxStockPerSku then
+		return false, "Capacity"
+	end
+	if not Inventory.add(state.stock, key, order.quantity) then
+		return false, "Capacity"
+	end
+	order.status = "Unloaded"
+	BusinessState.record(state, "OrderUnloaded", 0)
+	return true, orderId
+end
+
 function BusinessState.sellStock(state, species: string, size: string, salePrice: number)
 	if not BusinessState.validate(state) then
 		return false, "InvalidState"

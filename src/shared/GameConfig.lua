@@ -7,6 +7,8 @@ GameConfig.SizeMultipliers = { Small = 0.8, Medium = 1.0, Large = 1.3 }
 GameConfig.MaxOrderQuantity = 100
 GameConfig.MaxStockPerSku = 100000
 GameConfig.MaxHistoryEntries = 100
+-- Fallback only; a server ConfigService value will supersede this when configured.
+GameConfig.DeliverySeconds = 60
 
 local validSizes = { Small = true, Medium = true, Large = true }
 
