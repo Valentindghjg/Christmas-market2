@@ -3,7 +3,7 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 6
+BusinessState.SCHEMA_VERSION = 7
 
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
@@ -42,6 +42,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?)
 		layout = { placements = {} },
 		reservations = {},
 		staff = { Cashier = 0, LotWorker = 0 },
+		progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil },
 	}
 end
 
@@ -84,8 +85,12 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.reservations = {}
 	end
 	if state.schemaVersion == 5 then
-		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.schemaVersion = 6
 		state.autoPricing = false
+	end
+	if state.schemaVersion == 6 then
+		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil }
 		return BusinessState.validate(state) and state or nil, BusinessState.validate(state) and nil or "InvalidState"
 	end
 	if not isValidLegacyV1(state) then
@@ -103,6 +108,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.layout = { placements = {} }
 	state.reservations = {}
 	state.staff = { Cashier = 0, LotWorker = 0 }
+	state.progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil }
 	return state, nil
 end
 
@@ -138,6 +144,16 @@ function BusinessState.validate(state)
 		return false
 	end
 	if type(state.autoPricing) ~= "boolean" then
+		return false
+	end
+	if
+		type(state.progression) ~= "table"
+		or not isFiniteInteger(state.progression.lotExpansion)
+		or state.progression.lotExpansion < 0
+		or not isFiniteInteger(state.progression.parkingSpaces)
+		or state.progression.parkingSpaces < 0
+		or (state.progression.hqTier ~= nil and type(state.progression.hqTier) ~= "string")
+	then
 		return false
 	end
 	if type(state.layout) ~= "table" or type(state.layout.placements) ~= "table" then

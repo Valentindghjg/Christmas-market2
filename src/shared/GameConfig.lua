@@ -76,4 +76,9 @@ GameConfig.HQ = {
 	},
 }
 
+GameConfig.Progression = {
+	LotExpansion = { cashCost = 750, requiredReputation = 50, maxLevel = 3 },
+	Parking = { cashCost = 200, maxSpaces = 4 },
+}
+
 return GameConfig

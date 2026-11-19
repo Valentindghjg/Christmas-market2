@@ -63,3 +63,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Wired a bounded five-second customer-visit scheduler into healthy company sessions. It shares the authoritative company lock with player actions, performs no client-driven sale calculations, and persists each completed sale before reporting it as successful.
 
 2026-11-19: Bound claimed personal plots to character spawning. After a successful company load and plot claim, the server moves the current and future character to that plot's authored spawn marker.
+
+2026-11-19: Added persisted progression state and server-authoritative purchase services for lot expansions, parking and the Christmas Pavilion. Costs are charged only after all cash, reputation and prerequisite checks succeed; existing records migrate to schema v7.
