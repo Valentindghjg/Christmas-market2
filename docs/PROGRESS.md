@@ -81,3 +81,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Added a server delivery-reconciliation scheduler. Due orders transition once from Pending to Delivered under the company lock and are persisted immediately; repeated scheduler passes do not write or re-count completed arrivals.
 
 2026-11-19: Added Lot Worker delivery automation. A hired worker scans only that company's delivered orders, unloads each once through the authoritative inventory transition, and saves the resulting state under the company lock.
+
+2026-11-19: Added Cashier checkout throughput. The base station processes one server-owned customer visit per tick; each hired cashier adds one additional bounded visit using the same reservation, settlement and persistence path.

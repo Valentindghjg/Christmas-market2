@@ -100,24 +100,28 @@ function CompanyStateService:simulateCustomerVisits()
 	for companyId, session in pairs(self._sessions) do
 		if session.healthy then
 			self:_enter(session)
-			self._customerSequence += 1
-			local started, visit = CustomerSimulationService.beginVisit(
-				session.state,
-				self._customerSequence,
-				self._clock(),
-				self._randomRoll()
-			)
-			if started then
-				local completed = CustomerSimulationService.completeVisit(session.state, visit, self._clock())
-				if completed then
-					session.state.revision += 1
-					local saved = self._persistence:save(companyId, session.state)
-					if saved then
-						sales += 1
-					else
-						session.healthy = false
-						failures += 1
-					end
+			local completedSales = 0
+			local visitsThisTick = 1 + session.state.staff.Cashier
+			for _ = 1, visitsThisTick do
+				self._customerSequence += 1
+				local started, visit = CustomerSimulationService.beginVisit(
+					session.state,
+					self._customerSequence,
+					self._clock(),
+					self._randomRoll()
+				)
+				if started and CustomerSimulationService.completeVisit(session.state, visit, self._clock()) then
+					completedSales += 1
+				end
+			end
+			if completedSales > 0 then
+				session.state.revision += 1
+				local saved = self._persistence:save(companyId, session.state)
+				if saved then
+					sales += completedSales
+				else
+					session.healthy = false
+					failures += 1
 				end
 			end
 			self:_leave(session)

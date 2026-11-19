@@ -134,4 +134,20 @@ return function(t)
 		expect.equal(unloaded, 1)
 		expect.equal(state.pendingOrders["order:worker_999"].status, "Unloaded")
 	end)
+
+	t.test("cashier raises customer processing capacity", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end, function()
+			return 0
+		end)
+		local state = service:loadPersonalCompany(42)
+		state.staff.Cashier = 1
+		state.layout.placements.fir_1 = { speciesId = "FrasierFir", sizeId = "Small" }
+		state.layout.placements.fir_2 = { speciesId = "NobleFir", sizeId = "Small" }
+		local ok, sales = service:simulateCustomerVisits()
+		expect.truthy(ok)
+		expect.equal(sales, 2)
+		expect.equal(state.sales, 2)
+	end)
 end
