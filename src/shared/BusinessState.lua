@@ -3,7 +3,7 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 2
+BusinessState.SCHEMA_VERSION = 3
 
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
@@ -38,6 +38,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?)
 		},
 		recentRequests = {},
 		updatedAt = 0,
+		layout = { placements = {} },
 	}
 end
 
@@ -67,6 +68,11 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		return BusinessState.validate(state) and state or nil, BusinessState.validate(state) and nil or "InvalidState"
 	end
+	if state.schemaVersion == 2 then
+		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.layout = { placements = {} }
+		return state, nil
+	end
 	if not isValidLegacyV1(state) then
 		return nil, "UnsupportedSchema"
 	end
@@ -78,6 +84,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.revision = 0
 	state.recentRequests = {}
 	state.updatedAt = 0
+	state.layout = { placements = {} }
 	return state, nil
 end
 
@@ -110,6 +117,9 @@ function BusinessState.validate(state)
 		return false
 	end
 	if type(state.recentRequests) ~= "table" or not isFiniteInteger(state.updatedAt) or state.updatedAt < 0 then
+		return false
+	end
+	if type(state.layout) ~= "table" or type(state.layout.placements) ~= "table" then
 		return false
 	end
 	if #state.recentRequests > GameConfig.MaxHistoryEntries then

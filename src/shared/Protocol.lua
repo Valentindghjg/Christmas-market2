@@ -8,12 +8,16 @@ Protocol.Actions = {
 	SupplierPlaceOrder = "Supplier.PlaceOrder",
 	SupplierRequestQuote = "Supplier.RequestQuote",
 	DeliveryUnload = "Delivery.Unload",
+	InventoryPlace = "Inventory.Place",
+	InventoryPickup = "Inventory.Pickup",
 }
 
 local actionSet = {
 	[Protocol.Actions.SupplierPlaceOrder] = true,
 	[Protocol.Actions.SupplierRequestQuote] = true,
 	[Protocol.Actions.DeliveryUnload] = true,
+	[Protocol.Actions.InventoryPlace] = true,
+	[Protocol.Actions.InventoryPickup] = true,
 }
 
 local function isFiniteInteger(value: unknown): boolean
@@ -95,6 +99,27 @@ function Protocol.validateRequest(request)
 			or #request.payload.orderId > 80
 		then
 			return false, "InvalidOrderId"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.InventoryPlace then
+		if not hasOnlyKeys(request.payload, { speciesId = true, sizeId = true, transform = true }) then
+			return false, "UnexpectedField"
+		end
+		if type(request.payload.speciesId) ~= "string" or not GameConfig.Trees[request.payload.speciesId] then
+			return false, "UnknownSpecies"
+		end
+		if not GameConfig.isValidSize(request.payload.sizeId) or type(request.payload.transform) ~= "table" then
+			return false, "InvalidPlacement"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.InventoryPickup then
+		if
+			not hasOnlyKeys(request.payload, { placementId = true })
+			or type(request.payload.placementId) ~= "string"
+		then
+			return false, "InvalidPlacementId"
 		end
 		return true, nil
 	end

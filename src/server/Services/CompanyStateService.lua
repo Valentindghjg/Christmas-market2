@@ -6,6 +6,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
+local PlacementService = require(script.Parent:WaitForChild("PlacementService"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
@@ -56,6 +57,9 @@ local function canPerformAction(state, userId: number, action: string): boolean
 		return role ~= nil
 	end
 	if action == Protocol.Actions.DeliveryUnload then
+		return role == "Owner" or role == "Manager" or role == "Worker"
+	end
+	if action == Protocol.Actions.InventoryPlace or action == Protocol.Actions.InventoryPickup then
 		return role == "Owner" or role == "Manager" or role == "Worker"
 	end
 	return false
@@ -113,6 +117,16 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 				)
 			elseif request.action == Protocol.Actions.DeliveryUnload then
 				succeeded, result = BusinessState.unloadOrder(state, request.payload.orderId, self._clock())
+			elseif request.action == Protocol.Actions.InventoryPlace then
+				succeeded, result = PlacementService.place(
+					state,
+					"placement:" .. request.requestId,
+					request.payload.speciesId,
+					request.payload.sizeId,
+					request.payload.transform
+				)
+			elseif request.action == Protocol.Actions.InventoryPickup then
+				succeeded, result = PlacementService.pickup(state, request.payload.placementId)
 			end
 			Protocol.finishRequest(record, succeeded and "Success" or tostring(result))
 			if succeeded then
