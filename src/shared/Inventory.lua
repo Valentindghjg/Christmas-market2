@@ -3,6 +3,10 @@ local Inventory = {}
 
 export type InventoryState = {[string]: number}
 
+local function isPositiveInteger(value: unknown): boolean
+    return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge and value == math.floor(value) and value > 0
+end
+
 function Inventory.key(species: string, size: string): string
     assert(species:match("^[%w_]+$") ~= nil, "invalid species")
     assert(size == "Small" or size == "Medium" or size == "Large", "invalid size")
@@ -10,11 +14,13 @@ function Inventory.key(species: string, size: string): string
 end
 
 function Inventory.count(state: InventoryState, key: string): number
-    return state[key] or 0
+    local value = state[key]
+    if type(value) ~= "number" or value ~= math.floor(value) or value < 0 or value ~= value then return 0 end
+    return value
 end
 
 function Inventory.add(state: InventoryState, key: string, amount: number): boolean
-    if amount ~= math.floor(amount) or amount <= 0 then return false end
+    if not isPositiveInteger(amount) then return false end
     local old = Inventory.count(state, key)
     if old + amount > 100000 then return false end
     state[key] = old + amount
@@ -22,7 +28,7 @@ function Inventory.add(state: InventoryState, key: string, amount: number): bool
 end
 
 function Inventory.remove(state: InventoryState, key: string, amount: number): boolean
-    if amount ~= math.floor(amount) or amount <= 0 then return false end
+    if not isPositiveInteger(amount) then return false end
     local old = Inventory.count(state, key)
     if old < amount then return false end
     if old == amount then state[key] = nil else state[key] = old - amount end

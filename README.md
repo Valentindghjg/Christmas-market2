@@ -15,6 +15,14 @@ An original Christmas-tree sales simulator based on screenshot-observed gameplay
 ## Current status
 Rojo scaffold and initial pure Luau business/inventory/localization modules exist. The game is **not yet playable or verified in Roblox Studio**. Reference screenshot binaries have **not yet been committed**; they should be uploaded under `docs/references/roblox-game/`. The owner supplies final 3D models gradually. Development can proceed with temporary invisible placeholders for interactions.
 
+## Local development
+1. Install [Rokit](https://github.com/rojo-rbx/rokit).
+2. From the repository root, run `rojo serve default.project.json`. Rokit installs the pinned Rojo version from `rokit.toml` on first use.
+3. In Roblox Studio, use the Rojo plugin to connect to `http://localhost:34872` and sync `default.project.json`.
+4. Verify the project mapping with `rojo build default.project.json --output build.rbxlx`.
+
+Unit-test modules are mapped to `ServerStorage.UnitTest`. After connecting/reconnecting Rojo, start a Studio Play session and run `require(game:GetService("ServerStorage").UnitTest.RunUnitTest)()` in the server command bar or through the Studio MCP server console.
+
 ## Working agreement
 Commit project-relevant decisions, specifications, code and verified test outcomes from active chat sessions to this repository and update canonical documents when decisions change. Never copy unrelated private chat data or credentials into this public repository. No background sync is implied. **Publication and paid actions require explicit owner approval.** Monetization stays disabled until then.
 
