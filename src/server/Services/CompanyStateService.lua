@@ -8,6 +8,7 @@ local Protocol = require(Shared:WaitForChild("Protocol"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local PlacementService = require(script.Parent:WaitForChild("PlacementService"))
 local PricingService = require(script.Parent:WaitForChild("PricingService"))
+local EmployeeService = require(script.Parent:WaitForChild("EmployeeService"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
@@ -64,6 +65,9 @@ local function canPerformAction(state, userId: number, action: string): boolean
 		return role == "Owner" or role == "Manager" or role == "Worker"
 	end
 	if action == Protocol.Actions.PricingSetMediumPrice or action == Protocol.Actions.PricingSetAuto then
+		return role == "Owner" or role == "Manager"
+	end
+	if action == Protocol.Actions.EmployeeHire then
 		return role == "Owner" or role == "Manager"
 	end
 	return false
@@ -136,6 +140,8 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 					PricingService.setMediumPrice(state, request.payload.speciesId, request.payload.mediumPrice)
 			elseif request.action == Protocol.Actions.PricingSetAuto then
 				succeeded, result = PricingService.setAutomatic(state, request.payload.enabled)
+			elseif request.action == Protocol.Actions.EmployeeHire then
+				succeeded, result = EmployeeService.hire(state, request.payload.employeeId)
 			end
 			Protocol.finishRequest(record, succeeded and "Success" or tostring(result))
 			if succeeded then

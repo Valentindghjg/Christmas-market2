@@ -12,6 +12,7 @@ Protocol.Actions = {
 	InventoryPickup = "Inventory.Pickup",
 	PricingSetMediumPrice = "Pricing.SetMediumPrice",
 	PricingSetAuto = "Pricing.SetAuto",
+	EmployeeHire = "Employee.Hire",
 }
 
 local actionSet = {
@@ -22,6 +23,7 @@ local actionSet = {
 	[Protocol.Actions.InventoryPickup] = true,
 	[Protocol.Actions.PricingSetMediumPrice] = true,
 	[Protocol.Actions.PricingSetAuto] = true,
+	[Protocol.Actions.EmployeeHire] = true,
 }
 
 local function isFiniteInteger(value: unknown): boolean
@@ -142,6 +144,15 @@ function Protocol.validateRequest(request)
 	if request.action == Protocol.Actions.PricingSetAuto then
 		if not hasOnlyKeys(request.payload, { enabled = true }) or type(request.payload.enabled) ~= "boolean" then
 			return false, "InvalidAutoPrice"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.EmployeeHire then
+		if
+			not hasOnlyKeys(request.payload, { employeeId = true })
+			or (request.payload.employeeId ~= "Cashier" and request.payload.employeeId ~= "LotWorker")
+		then
+			return false, "UnknownEmployee"
 		end
 		return true, nil
 	end
