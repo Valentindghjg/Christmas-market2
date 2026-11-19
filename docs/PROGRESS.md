@@ -55,3 +55,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Wired opt-in auto-pricing into a three-second server-owned scheduler. The scheduler enters the same company critical section as player actions and persists each updated company; a persistence failure marks that session unavailable rather than continuing unpersisted changes.
 
 2026-11-19: Added deterministic server-owned NPC customer profiles for species/size preference, budget and patience. Profile compatibility is pure, bounded logic ready for the NPC state machine; client input cannot choose customer attributes.
+
+2026-11-19: Added server-side candidate selection for NPCs. It ignores reserved stock, requires matching preference and budget, derives the actual sale price from the authoritative catalog, and provides a bounded demand conversion score.
