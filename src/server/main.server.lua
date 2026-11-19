@@ -22,6 +22,16 @@ local companies = CompanyStateService.new(persistence)
 local plots = PlotService.new(config.PersonalPlotIds)
 WorldService.build()
 
+task.spawn(function()
+	while true do
+		task.wait(config.AutosaveSeconds)
+		local saved, failures = companies:autosaveAll()
+		if not saved then
+			warn(string.format("[ChristmasMarket2] autosave failed for %d company sessions", failures))
+		end
+	end
+end)
+
 local function loadPlayer(player: Player)
 	local state, errorCode = companies:loadPersonalCompany(player.UserId)
 	if state then

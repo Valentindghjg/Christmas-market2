@@ -45,3 +45,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Added the first mobile-friendly client UI: a status HUD and a Tree Supplier panel. Its order button generates a request ID and calls the existing server `BusinessAction` contract; it never computes price, cash or inventory locally. Studio visual/input verification remains blocked pending Rojo reconnect.
 
 2026-11-19: Closed CM2-01 (repository audit) and CM2-02 (reproducible Rojo toolchain) after their documented findings, setup, build evidence and progress records were reviewed. Remaining issues stay open until their specific CI/Studio acceptance evidence exists.
+
+2026-11-19: Added 60-second authoritative autosave for all healthy loaded company sessions. Save failures mark the corresponding session unhealthy and block subsequent business actions instead of risking further unsaved mutations. Added autosave contract coverage with a fake persistence store.

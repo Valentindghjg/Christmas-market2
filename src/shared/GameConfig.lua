@@ -11,6 +11,7 @@ GameConfig.MinPriceMultiplier = 0.5
 GameConfig.MaxPriceMultiplier = 2.5
 -- Fallback only; a server ConfigService value will supersede this when configured.
 GameConfig.DeliverySeconds = 60
+GameConfig.AutosaveSeconds = 60
 GameConfig.PersonalPlotIds = { "Plot_01", "Plot_02", "Plot_03", "Plot_04", "Plot_05", "Plot_06" }
 
 local validSizes = { Small = true, Medium = true, Large = true }

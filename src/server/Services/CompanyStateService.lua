@@ -50,6 +50,20 @@ function CompanyStateService:unloadCompany(companyId: string)
 	return self._persistence:release(companyId)
 end
 
+function CompanyStateService:autosaveAll()
+	local failures = 0
+	for companyId, session in pairs(self._sessions) do
+		if session.healthy then
+			local saved = self._persistence:save(companyId, session.state)
+			if not saved then
+				session.healthy = false
+				failures += 1
+			end
+		end
+	end
+	return failures == 0, failures
+end
+
 local function canPerformAction(state, userId: number, action: string): boolean
 	local role = state.members[tostring(userId)]
 	if action == Protocol.Actions.SupplierPlaceOrder then

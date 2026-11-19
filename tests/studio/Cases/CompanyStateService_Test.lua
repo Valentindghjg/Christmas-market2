@@ -60,4 +60,21 @@ return function(t)
 		expect.equal(replay.errorCode, "DuplicateRequest")
 		expect.equal(replay.revision, 1)
 	end)
+
+	-- Autosave persists all healthy sessions without accepting client input.
+	t.test("autosaves loaded company", function()
+		local saves = 0
+		local persistence = fakePersistence()
+		local originalSave = persistence.save
+		persistence.save = function(self, companyId, state)
+			saves += 1
+			return originalSave(self, companyId, state)
+		end
+		local service = Service.new(persistence, function()
+			return 100
+		end)
+		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:autosaveAll())
+		expect.equal(saves, 1)
+	end)
 end
