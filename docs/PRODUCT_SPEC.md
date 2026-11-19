@@ -48,3 +48,13 @@ P5: owner assets, visual QA, Christmas events, optional paid products only after
 
 ## Working assumptions
 Starting cash 84/reputation 90 are screenshot examples, not verified first-join defaults; use configurable test values. Initial implementation is personal-plot mode, followed by shared-company mode. Exact prices and demand are data-driven and tuned later. Do not silently present inferred rules as original facts.
+
+# Delivery-role amendment — 2026-11-19
+
+This section supersedes earlier statements that the owner supplies 3D models.
+
+**Product Owner:** user; controls product vision and approval for publication and paid actions.
+**Planner / Lead Architect:** ChatGPT; owns specifications, work breakdown, acceptance criteria, technical review and decision log.
+**Implementer:** Claude Code; owns all implementation: Luau, UI, 3D models, original snowy world, asset pipeline, integration, automated and Studio tests, documentation and commit evidence.
+
+Claude Code should prioritize original Roblox-native models made from Parts/MeshParts and scripted procedural construction where appropriate; external model generation may require tools unavailable to the agent. Never represent placeholder geometry as final art. Preserve the close-to-reference gameplay direction without copying protected assets. This amendment changes roles only, not product mechanics or approval requirements.
