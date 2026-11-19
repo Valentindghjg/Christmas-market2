@@ -112,6 +112,21 @@ function BusinessState.validate(state)
 	if type(state.recentRequests) ~= "table" or not isFiniteInteger(state.updatedAt) or state.updatedAt < 0 then
 		return false
 	end
+	if #state.recentRequests > GameConfig.MaxHistoryEntries then
+		return false
+	end
+	for _, request in ipairs(state.recentRequests) do
+		if
+			type(request) ~= "table"
+			or type(request.requestId) ~= "string"
+			or type(request.action) ~= "string"
+			or type(request.result) ~= "string"
+			or not isFiniteInteger(request.at)
+			or request.at < 0
+		then
+			return false
+		end
+	end
 	if not isFiniteInteger(state.sales) or state.sales < 0 then
 		return false
 	end
