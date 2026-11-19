@@ -3,7 +3,7 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 5
+BusinessState.SCHEMA_VERSION = 6
 
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
@@ -36,6 +36,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?)
 			NobleFir = GameConfig.Trees.NobleFir.initialMediumPrice,
 			BlueSpruce = GameConfig.Trees.BlueSpruce.initialMediumPrice,
 		},
+		autoPricing = false,
 		recentRequests = {},
 		updatedAt = 0,
 		layout = { placements = {} },
@@ -79,8 +80,12 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.staff = { Cashier = 0, LotWorker = 0 }
 	end
 	if state.schemaVersion == 4 then
-		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.schemaVersion = 5
 		state.reservations = {}
+	end
+	if state.schemaVersion == 5 then
+		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.autoPricing = false
 		return BusinessState.validate(state) and state or nil, BusinessState.validate(state) and nil or "InvalidState"
 	end
 	if not isValidLegacyV1(state) then
@@ -92,6 +97,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.mode = "personal"
 	state.members = { [tostring(state.ownerUserId)] = "Owner" }
 	state.revision = 0
+	state.autoPricing = false
 	state.recentRequests = {}
 	state.updatedAt = 0
 	state.layout = { placements = {} }
@@ -129,6 +135,9 @@ function BusinessState.validate(state)
 		return false
 	end
 	if type(state.recentRequests) ~= "table" or not isFiniteInteger(state.updatedAt) or state.updatedAt < 0 then
+		return false
+	end
+	if type(state.autoPricing) ~= "boolean" then
 		return false
 	end
 	if type(state.layout) ~= "table" or type(state.layout.placements) ~= "table" then
