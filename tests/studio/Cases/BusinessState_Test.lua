@@ -53,4 +53,10 @@ return function(t)
 		expect.equal(migrated.cash, 84)
 		expect.truthy(migrated.reservations)
 	end)
+
+	t.test("rejects impossible employee counts", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.staff.Cashier = 2
+		expect.falsy(BusinessState.validate(state))
+	end)
 end

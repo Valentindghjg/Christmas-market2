@@ -15,6 +15,7 @@ GameConfig.AutosaveSeconds = 60
 GameConfig.CustomerReservationSeconds = 30
 GameConfig.AutoPricingIntervalSeconds = 3
 GameConfig.CustomerVisitIntervalSeconds = 5
+GameConfig.MaxCustomerVisitsPerTick = 3
 GameConfig.AutoPricing = {
 	TargetDisplayStock = 5,
 	MaxDiscountFraction = 0.15,

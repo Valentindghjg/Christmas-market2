@@ -177,6 +177,8 @@ function BusinessState.validate(state)
 		or not isFiniteInteger(state.staff.LotWorker)
 		or state.staff.Cashier < 0
 		or state.staff.LotWorker < 0
+		or state.staff.Cashier > 1
+		or state.staff.LotWorker > 1
 	then
 		return false
 	end

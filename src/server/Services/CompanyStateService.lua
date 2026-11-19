@@ -9,6 +9,7 @@ local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local PlacementService = require(script.Parent:WaitForChild("PlacementService"))
 local PricingService = require(script.Parent:WaitForChild("PricingService"))
 local EmployeeService = require(script.Parent:WaitForChild("EmployeeService"))
+local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local CustomerSimulationService = require(script.Parent:WaitForChild("CustomerSimulationService"))
 local ProgressionService = require(script.Parent:WaitForChild("ProgressionService"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
@@ -101,7 +102,7 @@ function CompanyStateService:simulateCustomerVisits()
 		if session.healthy then
 			self:_enter(session)
 			local completedSales = 0
-			local visitsThisTick = 1 + session.state.staff.Cashier
+			local visitsThisTick = math.min(1 + session.state.staff.Cashier, GameConfig.MaxCustomerVisitsPerTick)
 			for _ = 1, visitsThisTick do
 				self._customerSequence += 1
 				local started, visit = CustomerSimulationService.beginVisit(
