@@ -69,3 +69,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Exposed progression purchases through the validated, idempotent BusinessAction protocol. Clients can select an allowed upgrade only; prices, prerequisites, mutation and persistence remain server-owned.
 
 2026-11-19: Added persistent customer-visit and abandonment aggregates plus a server analytics summary (conversion, average sale, revenue and spend). Existing records migrate to schema v8 without changing financial balances.
+
+2026-11-19: Added a role-authorized Company.GetSummary query that returns only presentation-safe cash, reputation, progression and aggregate analytics. It rejects client-provided state fields and never exposes the full saved company record.

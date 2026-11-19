@@ -16,6 +16,7 @@ Protocol.Actions = {
 	ProgressionBuyLotExpansion = "Progression.BuyLotExpansion",
 	ProgressionBuyParking = "Progression.BuyParking",
 	ProgressionBuyHQ = "Progression.BuyHQ",
+	CompanyGetSummary = "Company.GetSummary",
 }
 
 local actionSet = {
@@ -30,6 +31,7 @@ local actionSet = {
 	[Protocol.Actions.ProgressionBuyLotExpansion] = true,
 	[Protocol.Actions.ProgressionBuyParking] = true,
 	[Protocol.Actions.ProgressionBuyHQ] = true,
+	[Protocol.Actions.CompanyGetSummary] = true,
 }
 
 local function isFiniteInteger(value: unknown): boolean
@@ -98,6 +100,12 @@ function Protocol.validateRequest(request)
 		end
 		if not GameConfig.isValidSize(request.payload.sizeId) then
 			return false, "InvalidSize"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.CompanyGetSummary then
+		if not hasOnlyKeys(request.payload, {}) then
+			return false, "UnexpectedField"
 		end
 		return true, nil
 	end
