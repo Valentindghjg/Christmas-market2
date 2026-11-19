@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local PersistenceService = require(script.Parent.Services:WaitForChild("PersistenceService"))
 local CompanyStateService = require(script.Parent.Services:WaitForChild("CompanyStateService"))
+local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
 
 local remotes = ReplicatedStorage:FindFirstChild("Remotes") or Instance.new("Folder")
 remotes.Name = "Remotes"
@@ -17,12 +18,21 @@ businessAction.Parent = remotes
 
 local persistence = PersistenceService.new()
 local companies = CompanyStateService.new(persistence)
+local plots = PlotService.new(config.PersonalPlotIds)
 
 local function loadPlayer(player: Player)
 	local state, errorCode = companies:loadPersonalCompany(player.UserId)
 	if state then
-		player:SetAttribute("CompanyReady", true)
-		player:SetAttribute("CompanyLoadError", nil)
+		local plotId, plotError = plots:claim(player.UserId)
+		if plotId then
+			player:SetAttribute("CompanyReady", true)
+			player:SetAttribute("CompanyLoadError", nil)
+			player:SetAttribute("PlotId", plotId)
+		else
+			companies:unloadCompany("personal:" .. tostring(player.UserId))
+			player:SetAttribute("CompanyReady", false)
+			player:SetAttribute("CompanyLoadError", plotError)
+		end
 	else
 		player:SetAttribute("CompanyReady", false)
 		player:SetAttribute("CompanyLoadError", errorCode)
@@ -37,9 +47,13 @@ Players.PlayerRemoving:Connect(function(player)
 	if not ok then
 		warn(string.format("[ChristmasMarket2] company unload failed for %d: %s", player.UserId, tostring(errorCode)))
 	end
+	plots:release(player.UserId)
 end)
 
 businessAction.OnServerInvoke = function(player, request)
+	if player:GetAttribute("CompanyReady") ~= true then
+		return { ok = false, errorCode = "CompanyUnavailable" }
+	end
 	return companies:handle("personal:" .. tostring(player.UserId), player.UserId, request)
 end
 
