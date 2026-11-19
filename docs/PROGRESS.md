@@ -71,3 +71,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Added persistent customer-visit and abandonment aggregates plus a server analytics summary (conversion, average sale, revenue and spend). Existing records migrate to schema v8 without changing financial balances.
 
 2026-11-19: Added a role-authorized Company.GetSummary query that returns only presentation-safe cash, reputation, progression and aggregate analytics. It rejects client-provided state fields and never exposes the full saved company record.
+
+2026-11-19: Connected the mobile-friendly HUD to the filtered Company.GetSummary query. Cash, reputation and parking status refresh from server-derived state every five seconds and after placing an order.

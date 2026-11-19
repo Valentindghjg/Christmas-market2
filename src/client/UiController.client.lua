@@ -72,6 +72,33 @@ player:GetAttributeChangedSignal("CompanyLoadError"):Connect(updateReady)
 player:GetAttributeChangedSignal("PlotId"):Connect(updateReady)
 updateReady()
 
+local function refreshSummary()
+	if player:GetAttribute("CompanyReady") ~= true then
+		return
+	end
+	local response = remote:InvokeServer({
+		version = 1,
+		requestId = HttpService:GenerateGUID(false),
+		action = "Company.GetSummary",
+		payload = {},
+	})
+	if response.ok and response.data then
+		cash.Text = string.format("Cash: $%d · Rep: %d", response.data.cash, response.data.reputation)
+		local plot = response.data.plot
+		if plot then
+			status.Text =
+				string.format("Plot: %s · Parking: %d", tostring(player:GetAttribute("PlotId")), plot.parkingSpaces)
+		end
+	end
+end
+
+task.spawn(function()
+	while gui.Parent do
+		refreshSummary()
+		task.wait(5)
+	end
+end)
+
 order.Activated:Connect(function()
 	order.Active = false
 	order.Text = "Ordering…"
@@ -84,6 +111,7 @@ order.Activated:Connect(function()
 	if response.ok then
 		cash.Text = "Order accepted: $" .. tostring(response.data.cost)
 		detail.Text = "Truck is on the way"
+		refreshSummary()
 	else
 		order.Text = "Order unavailable"
 		status.Text = "Error: " .. tostring(response.errorCode)
