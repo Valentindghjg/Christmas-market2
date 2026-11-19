@@ -52,7 +52,7 @@ panel.BackgroundColor3 = Color3.fromRGB(38, 89, 63)
 panel.BorderSizePixel = 0
 panel.AnchorPoint = Vector2.new(0.5, 1)
 panel.Position = UDim2.fromScale(0.5, 0.97)
-panel.Size = UDim2.fromOffset(360, 176)
+panel.Size = UDim2.fromOffset(360, 202)
 panel.Parent = gui
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
 label(panel, localized("supplier"), UDim2.fromOffset(18, 14), UDim2.fromOffset(300, 28), 22)
@@ -67,7 +67,7 @@ order.TextColor3 = Color3.fromRGB(30, 48, 35)
 order.Font = Enum.Font.GothamBold
 order.TextSize = 17
 order.Position = UDim2.fromOffset(18, 94)
-order.Size = UDim2.fromOffset(324, 58)
+order.Size = UDim2.fromOffset(324, 45)
 order.Parent = panel
 Instance.new("UICorner", order).CornerRadius = UDim.new(0, 10)
 
@@ -78,11 +78,25 @@ unload.Text = "No delivery ready"
 unload.TextColor3 = Color3.fromRGB(20, 48, 35)
 unload.Font = Enum.Font.GothamBold
 unload.TextSize = 14
-unload.Position = UDim2.fromOffset(18, 152)
+unload.Position = UDim2.fromOffset(18, 143)
 unload.Size = UDim2.fromOffset(324, 20)
 unload.Visible = false
 unload.Parent = panel
 local deliveredOrderId: string? = nil
+local storedFrasierMedium = 0
+local placementCount = 0
+
+local place = Instance.new("TextButton")
+place.Name = "PlaceFrasier"
+place.BackgroundColor3 = Color3.fromRGB(237, 212, 142)
+place.Text = "Place Frasier Fir"
+place.TextColor3 = Color3.fromRGB(30, 48, 35)
+place.Font = Enum.Font.GothamBold
+place.TextSize = 14
+place.Position = UDim2.fromOffset(18, 168)
+place.Size = UDim2.fromOffset(324, 20)
+place.Visible = false
+place.Parent = panel
 
 local function refreshSupplierQuote()
 	if player:GetAttribute("CompanyReady") ~= true then
@@ -144,6 +158,10 @@ local function refreshSummary()
 		end
 		unload.Visible = deliveredOrderId ~= nil
 		unload.Text = deliveredOrderId and "Unload delivered trees" or "No delivery ready"
+		storedFrasierMedium = response.data.stock and (response.data.stock["FrasierFir:Medium"] or 0) or 0
+		placementCount = response.data.placementCount or 0
+		place.Visible = storedFrasierMedium > 0
+		place.Text = string.format("Place Frasier Fir (%d stored)", storedFrasierMedium)
 	end
 end
 
@@ -151,6 +169,27 @@ task.spawn(function()
 	while gui.Parent do
 		refreshSummary()
 		task.wait(5)
+	end
+end)
+
+place.Activated:Connect(function()
+	if storedFrasierMedium < 1 then
+		return
+	end
+	local slot = placementCount % 5
+	local response = remote:InvokeServer({
+		version = 1,
+		requestId = HttpService:GenerateGUID(false),
+		action = "Inventory.Place",
+		payload = {
+			speciesId = "FrasierFir",
+			sizeId = "Medium",
+			transform = { x = -20 + slot * 10, y = 0, z = 8, rotation = 0 },
+		},
+	})
+	if response.ok then
+		detail.Text = "Tree placed for customers"
+		refreshSummary()
 	end
 end)
 

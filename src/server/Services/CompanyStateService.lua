@@ -242,6 +242,18 @@ local function deliverySummary(state)
 	return orders
 end
 
+local function stockSummary(state)
+	return table.clone(state.stock)
+end
+
+local function placementCount(state): number
+	local count = 0
+	for _ in pairs(state.layout.placements) do
+		count += 1
+	end
+	return count
+end
+
 function CompanyStateService:_enter(session)
 	while session.busy do
 		task.wait()
@@ -287,6 +299,8 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 				plot = state.progression,
 				analytics = AnalyticsService.summary(state),
 				deliveries = deliverySummary(state),
+				stock = stockSummary(state),
+				placementCount = placementCount(state),
 			},
 		}
 	else

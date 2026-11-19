@@ -91,3 +91,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-19: Connected quest claims to the validated BusinessAction protocol, company lock and save boundary. A client submits only a quest ID; completion, reward and duplicate prevention remain server-owned.
 
 2026-11-19: Added a bounded delivery summary to the presentation-safe company response and an unload control in the supplier UI. The UI can only submit a server-issued order ID; status, inventory transition and persistence remain authoritative.
+
+2026-11-19: Added compact storage and placement counts to the safe company summary and a fixed-template placement control for stored medium Frasier Firs. The server still validates stock, plot bounds and placement identity before any state transition.
