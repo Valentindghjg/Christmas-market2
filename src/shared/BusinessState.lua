@@ -3,7 +3,7 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 3
+BusinessState.SCHEMA_VERSION = 4
 
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
@@ -39,6 +39,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?)
 		recentRequests = {},
 		updatedAt = 0,
 		layout = { placements = {} },
+		staff = { Cashier = 0, LotWorker = 0 },
 	}
 end
 
@@ -69,8 +70,12 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		return BusinessState.validate(state) and state or nil, BusinessState.validate(state) and nil or "InvalidState"
 	end
 	if state.schemaVersion == 2 then
-		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.schemaVersion = 3
 		state.layout = { placements = {} }
+	end
+	if state.schemaVersion == 3 then
+		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.staff = { Cashier = 0, LotWorker = 0 }
 		return state, nil
 	end
 	if not isValidLegacyV1(state) then
@@ -85,6 +90,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.recentRequests = {}
 	state.updatedAt = 0
 	state.layout = { placements = {} }
+	state.staff = { Cashier = 0, LotWorker = 0 }
 	return state, nil
 end
 
@@ -120,6 +126,15 @@ function BusinessState.validate(state)
 		return false
 	end
 	if type(state.layout) ~= "table" or type(state.layout.placements) ~= "table" then
+		return false
+	end
+	if
+		type(state.staff) ~= "table"
+		or not isFiniteInteger(state.staff.Cashier)
+		or not isFiniteInteger(state.staff.LotWorker)
+		or state.staff.Cashier < 0
+		or state.staff.LotWorker < 0
+	then
 		return false
 	end
 	if #state.recentRequests > GameConfig.MaxHistoryEntries then
