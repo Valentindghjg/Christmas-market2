@@ -10,6 +10,8 @@ Protocol.Actions = {
 	DeliveryUnload = "Delivery.Unload",
 	InventoryPlace = "Inventory.Place",
 	InventoryPickup = "Inventory.Pickup",
+	PricingSetMediumPrice = "Pricing.SetMediumPrice",
+	PricingSetAuto = "Pricing.SetAuto",
 }
 
 local actionSet = {
@@ -18,6 +20,8 @@ local actionSet = {
 	[Protocol.Actions.DeliveryUnload] = true,
 	[Protocol.Actions.InventoryPlace] = true,
 	[Protocol.Actions.InventoryPickup] = true,
+	[Protocol.Actions.PricingSetMediumPrice] = true,
+	[Protocol.Actions.PricingSetAuto] = true,
 }
 
 local function isFiniteInteger(value: unknown): boolean
@@ -120,6 +124,24 @@ function Protocol.validateRequest(request)
 			or type(request.payload.placementId) ~= "string"
 		then
 			return false, "InvalidPlacementId"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.PricingSetMediumPrice then
+		if not hasOnlyKeys(request.payload, { speciesId = true, mediumPrice = true }) then
+			return false, "UnexpectedField"
+		end
+		if type(request.payload.speciesId) ~= "string" or not GameConfig.Trees[request.payload.speciesId] then
+			return false, "UnknownSpecies"
+		end
+		if not isFiniteInteger(request.payload.mediumPrice) then
+			return false, "InvalidPrice"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.PricingSetAuto then
+		if not hasOnlyKeys(request.payload, { enabled = true }) or type(request.payload.enabled) ~= "boolean" then
+			return false, "InvalidAutoPrice"
 		end
 		return true, nil
 	end
