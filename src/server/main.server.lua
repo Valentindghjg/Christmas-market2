@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
 local PersistenceService = require(script.Parent.Services:WaitForChild("PersistenceService"))
 local CompanyStateService = require(script.Parent.Services:WaitForChild("CompanyStateService"))
 local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
@@ -98,6 +99,8 @@ local function loadPlayer(player: Player)
 		local plotId, plotError = plots:claim(player.UserId)
 		if plotId then
 			WorldService.applyHQVisual(plotId, state.progression.hqTier)
+			WorldService.applyLotExpansionVisual(plotId, state.progression.lotExpansion)
+			WorldService.applyParkingVisual(plotId, state.progression.parkingSpaces)
 			player:SetAttribute("CompanyReady", true)
 			player:SetAttribute("CompanyLoadError", nil)
 			player:SetAttribute("PlotId", plotId)
@@ -134,10 +137,20 @@ businessAction.OnServerInvoke = function(player, request)
 		return { ok = false, errorCode = "CompanyUnavailable" }
 	end
 	local response = companies:handle("personal:" .. tostring(player.UserId), player.UserId, request)
-	if response.ok and request.action == "Progression.BuyHQ" then
+	if response.ok and request.action == Protocol.Actions.ProgressionBuyHQ then
 		local plotId = player:GetAttribute("PlotId")
 		if type(plotId) == "string" then
 			WorldService.applyHQVisual(plotId, response.data)
+		end
+	elseif response.ok and request.action == Protocol.Actions.ProgressionBuyLotExpansion then
+		local plotId = player:GetAttribute("PlotId")
+		if type(plotId) == "string" and type(response.data) == "number" then
+			WorldService.applyLotExpansionVisual(plotId, response.data)
+		end
+	elseif response.ok and request.action == Protocol.Actions.ProgressionBuyParking then
+		local plotId = player:GetAttribute("PlotId")
+		if type(plotId) == "string" and type(response.data) == "number" then
+			WorldService.applyParkingVisual(plotId, response.data)
 		end
 	end
 	return response

@@ -372,4 +372,61 @@ function WorldService.applyHQVisual(plotId: string, hqTier: string?)
 	return true
 end
 
+function WorldService.applyLotExpansionVisual(plotId: string, level: number)
+	local world = workspace:FindFirstChild("ChristmasMarketWorld")
+	local plots = world and world:FindFirstChild("Plots")
+	local plot = plots and plots:FindFirstChild(plotId)
+	if not (plot and plot:IsA("Model") and plot.PrimaryPart) or level < 0 then
+		return false
+	end
+	local visuals = plot:FindFirstChild("ProgressionVisuals") or Instance.new("Folder")
+	visuals.Name = "ProgressionVisuals"
+	visuals.Parent = plot
+	local existing = visuals:FindFirstChild("LotExpansionPad")
+	if existing then
+		existing:Destroy()
+	end
+	local growth = math.min(math.floor(level), 3)
+	local pad = part(
+		visuals,
+		"LotExpansionPad",
+		Vector3.new(80 + growth * 8, 0.18, 54 + growth * 6),
+		plot.PrimaryPart.Position + Vector3.new(0, -0.05, 0),
+		Color3.fromRGB(224, 239, 244),
+		Enum.Material.Snow
+	)
+	pad:SetAttribute("LotExpansionLevel", growth)
+	return true
+end
+
+function WorldService.applyParkingVisual(plotId: string, spaces: number)
+	local world = workspace:FindFirstChild("ChristmasMarketWorld")
+	local plots = world and world:FindFirstChild("Plots")
+	local plot = plots and plots:FindFirstChild(plotId)
+	if not (plot and plot:IsA("Model") and plot.PrimaryPart) or spaces < 0 then
+		return false
+	end
+	local visuals = plot:FindFirstChild("ProgressionVisuals") or Instance.new("Folder")
+	visuals.Name = "ProgressionVisuals"
+	visuals.Parent = plot
+	for _, child in visuals:GetChildren() do
+		if string.sub(child.Name, 1, 8) == "Parking_" then
+			child:Destroy()
+		end
+	end
+	for index = 1, math.min(math.floor(spaces), 4) do
+		local offset = Vector3.new(-24 + (index - 1) * 12, 0.48, 20)
+		local space = part(
+			visuals,
+			"Parking_" .. index,
+			Vector3.new(8, 0.08, 12),
+			plot.PrimaryPart.Position + offset,
+			Color3.fromRGB(239, 243, 244),
+			Enum.Material.Concrete
+		)
+		space:SetAttribute("ParkingSpace", index)
+	end
+	return true
+end
+
 return WorldService
