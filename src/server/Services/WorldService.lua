@@ -341,6 +341,16 @@ function WorldService.build()
 		cloneArt(scenery, "Environment", AssetCatalog.Environment.StylizedBushes, position + Vector3.new(8, 0, 6))
 		cloneArt(scenery, "Environment", AssetCatalog.Environment.WinterLogs, position + Vector3.new(-8, 0, -6))
 	end
+	local marketAlley = Instance.new("Folder")
+	marketAlley.Name = "ImportedMarketAlley"
+	marketAlley.Parent = world
+	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.MarketGazebo, Vector3.new(0, 0, 52))
+	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.RusticMarketStand1, Vector3.new(-26, 0, 52))
+	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.RusticMarketStand2, Vector3.new(26, 0, 52))
+	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBench1, Vector3.new(-10, 0, 34))
+	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBench2, Vector3.new(10, 0, 34))
+	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketCart, Vector3.new(-44, 0, 52))
+	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBags, Vector3.new(44, 0, 52))
 	return world
 end
 
