@@ -1,5 +1,8 @@
 --!strict
 -- Original low-poly winter graybox built from Roblox primitives; no external assets.
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local AssetCatalog = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AssetCatalog"))
+
 local WorldService = {}
 
 local function part(
@@ -90,6 +93,61 @@ local function tent(parent: Instance, position: Vector3): Model
 	)
 	roof.Shape = Enum.PartType.Wedge
 	model.PrimaryPart = floor
+	return model
+end
+
+-- Uses the approved imported market model when Studio has it, while retaining a
+-- primitive fallback for source-only and automated test environments.
+local function salesStand(parent: Instance, position: Vector3): Model
+
+	local art = ReplicatedStorage:FindFirstChild("ArtAssets")
+	local buildings = art and art:FindFirstChild("Buildings")
+	local template = buildings and buildings:FindFirstChild(AssetCatalog.Buildings.MarketStarter)
+	if not (template and template:IsA("Model")) then
+		return tent(parent, position)
+	end
+
+	local model = template:Clone()
+	model.Name = "StarterSalesTent"
+	model.Parent = parent
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = true
+		end
+	end
+	local box, size = model:GetBoundingBox()
+	local targetCenter = position + Vector3.new(0, size.Y / 2, 0)
+	model:PivotTo(model:GetPivot() + (targetCenter - box.Position))
+	model:SetAttribute("ArtAssetId", AssetCatalog.Buildings.MarketStarter)
+	return model
+end
+
+local function cloneArt(
+	parent: Instance,
+	category: string,
+	assetId: string,
+	groundPosition: Vector3
+): Model?
+	local art = ReplicatedStorage:FindFirstChild("ArtAssets")
+	local folder = art and art:FindFirstChild(category)
+	local template = folder and folder:FindFirstChild(assetId)
+	if not (template and template:IsA("Model")) then
+		return nil
+	end
+
+	local model = template:Clone()
+	model.Name = assetId
+	model.Parent = parent
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = true
+		end
+	end
+	local box, size = model:GetBoundingBox()
+	model:PivotTo(model:GetPivot() + (groundPosition + Vector3.new(0, size.Y / 2, 0) - box.Position))
+	model:SetAttribute("ArtAssetId", assetId)
 	return model
 end
 
@@ -230,8 +288,14 @@ function WorldService.build()
 			Enum.Material.Grass
 		)
 		spawn.Transparency = 0.35
-		tent(plot, center + Vector3.new(-8, 0.6, -4))
+		salesStand(plot, center + Vector3.new(-8, 0.6, -4))
 		checkout(plot, center + Vector3.new(16, 0.6, -14))
+		cloneArt(plot, "Environment", AssetCatalog.Environment.FenceWooden, center + Vector3.new(-34, 0.6, 24))
+		cloneArt(plot, "Environment", AssetCatalog.Environment.FenceWooden, center + Vector3.new(34, 0.6, 24))
+		cloneArt(plot, "Props", AssetCatalog.Props.CrateWooden, center + Vector3.new(25, 0.6, 10))
+		cloneArt(plot, "Props", AssetCatalog.Props.BarrelWooden, center + Vector3.new(29, 0.6, 10))
+		cloneArt(plot, "Props", AssetCatalog.Props.DeliveryPackage1, center + Vector3.new(25, 0.6, 14))
+		cloneArt(plot, "Props", AssetCatalog.Props.DeliveryPackage2, center + Vector3.new(29, 0.6, 14))
 	end
 
 	local assets = Instance.new("Folder")
@@ -252,6 +316,30 @@ function WorldService.build()
 		local x = -190 + ((index * 37) % 370)
 		local z = index % 2 == 0 and -125 or 125
 		tree(world, "ForestTree" .. index, Vector3.new(x, 0, z), 0.8)
+	end
+
+	local scenery = Instance.new("Folder")
+	scenery.Name = "ImportedWinterScenery"
+	scenery.Parent = world
+	for _, position in ipairs({
+		Vector3.new(-150, 0, -120),
+		Vector3.new(-40, 0, -120),
+		Vector3.new(70, 0, -120),
+		Vector3.new(150, 0, -120),
+		Vector3.new(-150, 0, 120),
+		Vector3.new(-40, 0, 120),
+		Vector3.new(70, 0, 120),
+		Vector3.new(150, 0, 120),
+	}) do
+		cloneArt(scenery, "Environment", AssetCatalog.Environment.PineTreeGroup, position)
+	end
+	for _, position in ipairs({
+		Vector3.new(-180, 0, -104), Vector3.new(180, 0, -104),
+		Vector3.new(-180, 0, 104), Vector3.new(180, 0, 104),
+	}) do
+		cloneArt(scenery, "Environment", AssetCatalog.Environment.StylizedRocks, position)
+		cloneArt(scenery, "Environment", AssetCatalog.Environment.StylizedBushes, position + Vector3.new(8, 0, 6))
+		cloneArt(scenery, "Environment", AssetCatalog.Environment.WinterLogs, position + Vector3.new(-8, 0, -6))
 	end
 	return world
 end
