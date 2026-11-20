@@ -98,11 +98,12 @@ end
 
 -- Uses the approved imported market model when Studio has it, while retaining a
 -- primitive fallback for source-only and automated test environments.
-local function salesStand(parent: Instance, position: Vector3): Model
+local function salesStand(parent: Instance, position: Vector3, assetId: string?): Model
 
 	local art = ReplicatedStorage:FindFirstChild("ArtAssets")
 	local buildings = art and art:FindFirstChild("Buildings")
-	local template = buildings and buildings:FindFirstChild(AssetCatalog.Buildings.MarketStarter)
+	assetId = assetId or AssetCatalog.Buildings.MarketStarter
+	local template = buildings and buildings:FindFirstChild(assetId)
 	if not (template and template:IsA("Model")) then
 		return tent(parent, position)
 	end
@@ -119,7 +120,7 @@ local function salesStand(parent: Instance, position: Vector3): Model
 	local box, size = model:GetBoundingBox()
 	local targetCenter = position + Vector3.new(0, size.Y / 2, 0)
 	model:PivotTo(model:GetPivot() + (targetCenter - box.Position))
-	model:SetAttribute("ArtAssetId", AssetCatalog.Buildings.MarketStarter)
+	model:SetAttribute("ArtAssetId", assetId)
 	return model
 end
 
@@ -352,6 +353,23 @@ function WorldService.build()
 	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketCart, Vector3.new(-44, 0, 52))
 	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBags, Vector3.new(44, 0, 52))
 	return world
+end
+
+function WorldService.applyHQVisual(plotId: string, hqTier: string?)
+	local world = workspace:FindFirstChild("ChristmasMarketWorld")
+	local plots = world and world:FindFirstChild("Plots")
+	local plot = plots and plots:FindFirstChild(plotId)
+	if not (plot and plot:IsA("Model") and plot.PrimaryPart) then
+		return false
+	end
+	local existing = plot:FindFirstChild("StarterSalesTent")
+	if existing then
+		existing:Destroy()
+	end
+	local assetId = hqTier == "ChristmasPavilion" and AssetCatalog.Buildings.MarketPavilion
+		or AssetCatalog.Buildings.MarketStarter
+	salesStand(plot, plot.PrimaryPart.Position + Vector3.new(-8, 0.6, -4), assetId)
+	return true
 end
 
 return WorldService

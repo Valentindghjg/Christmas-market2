@@ -99,3 +99,5 @@ Next: add automated unit tests with a Luau-compatible runner, wire session-safe 
 2026-11-20: Added an `AssetCatalog` contract test that locks the starter-stand identifier and rejects empty registry values. `rojo build` and `selene src tests` passed with zero errors/warnings; the Studio Play Server unit-test runner reported 4/4 passing tests.
 
 2026-11-20: Extended the imported world art with a seven-model market alley: gazebo, two rustic stalls, two benches, cart and bags. The placement is optional when local Studio art is absent. `rojo build` and `selene src tests` passed; a Studio Play Server confirmed the `ImportedMarketAlley` folder with all seven models.
+
+2026-11-21: Connected the server-authoritative Christmas Pavilion upgrade to plot visuals. Loading a company applies its persisted HQ tier, and a successful `Progression.BuyHQ` immediately replaces only that player's starter stand. `rojo build` and `selene src tests` passed; in a Studio Play Server, `applyHQVisual("Plot_01", "ChristmasPavilion")` changed the stand asset from `MarketStarter` to `MarketPavilion`.

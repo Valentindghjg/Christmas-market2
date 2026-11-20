@@ -97,6 +97,7 @@ local function loadPlayer(player: Player)
 	if state then
 		local plotId, plotError = plots:claim(player.UserId)
 		if plotId then
+			WorldService.applyHQVisual(plotId, state.progression.hqTier)
 			player:SetAttribute("CompanyReady", true)
 			player:SetAttribute("CompanyLoadError", nil)
 			player:SetAttribute("PlotId", plotId)
@@ -132,7 +133,14 @@ businessAction.OnServerInvoke = function(player, request)
 	if player:GetAttribute("CompanyReady") ~= true then
 		return { ok = false, errorCode = "CompanyUnavailable" }
 	end
-	return companies:handle("personal:" .. tostring(player.UserId), player.UserId, request)
+	local response = companies:handle("personal:" .. tostring(player.UserId), player.UserId, request)
+	if response.ok and request.action == "Progression.BuyHQ" then
+		local plotId = player:GetAttribute("PlotId")
+		if type(plotId) == "string" then
+			WorldService.applyHQVisual(plotId, response.data)
+		end
+	end
+	return response
 end
 
 for _, player in Players:GetPlayers() do
