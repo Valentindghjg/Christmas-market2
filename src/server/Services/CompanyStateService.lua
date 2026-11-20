@@ -365,4 +365,14 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 	return response
 end
 
+-- Server-only projection for world visuals. It deliberately exposes no mutable
+-- company state to clients; callers must be trusted server code.
+function CompanyStateService:getPlacements(companyId: string)
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return nil
+	end
+	return session.state.layout.placements
+end
+
 return CompanyStateService

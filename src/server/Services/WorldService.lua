@@ -429,4 +429,37 @@ function WorldService.applyParkingVisual(plotId: string, spaces: number)
 	return true
 end
 
+function WorldService.syncDisplayedTrees(plotId: string, placements)
+	local world = workspace:FindFirstChild("ChristmasMarketWorld")
+	local plots = world and world:FindFirstChild("Plots")
+	local plot = plots and plots:FindFirstChild(plotId)
+	if not (plot and plot:IsA("Model") and plot.PrimaryPart) or type(placements) ~= "table" then
+		return false
+	end
+	local display = plot:FindFirstChild("DisplayedTrees")
+	if display then
+		display:Destroy()
+	end
+	display = Instance.new("Folder")
+	display.Name = "DisplayedTrees"
+	display.Parent = plot
+	local sizeScales = { Small = 0.6, Medium = 0.8, Large = 1.0 }
+	for placementId, placement in pairs(placements) do
+		if type(placement) == "table" and type(placement.transform) == "table" then
+			local transform = placement.transform
+			local scale = sizeScales[placement.sizeId] or 0.8
+			local model = tree(
+				display,
+				"DisplayedTree_" .. placementId,
+				plot.PrimaryPart.Position + Vector3.new(transform.x, 0.6, transform.z),
+				scale
+			)
+			model:SetAttribute("PlacementId", placementId)
+			model:SetAttribute("SpeciesId", placement.speciesId)
+			model:SetAttribute("SizeId", placement.sizeId)
+		end
+	end
+	return true
+end
+
 return WorldService

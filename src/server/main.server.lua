@@ -101,6 +101,7 @@ local function loadPlayer(player: Player)
 			WorldService.applyHQVisual(plotId, state.progression.hqTier)
 			WorldService.applyLotExpansionVisual(plotId, state.progression.lotExpansion)
 			WorldService.applyParkingVisual(plotId, state.progression.parkingSpaces)
+			WorldService.syncDisplayedTrees(plotId, state.layout.placements)
 			player:SetAttribute("CompanyReady", true)
 			player:SetAttribute("CompanyLoadError", nil)
 			player:SetAttribute("PlotId", plotId)
@@ -151,6 +152,14 @@ businessAction.OnServerInvoke = function(player, request)
 		local plotId = player:GetAttribute("PlotId")
 		if type(plotId) == "string" and type(response.data) == "number" then
 			WorldService.applyParkingVisual(plotId, response.data)
+		end
+	elseif response.ok and (request.action == Protocol.Actions.InventoryPlace or request.action == Protocol.Actions.InventoryPickup) then
+		local plotId = player:GetAttribute("PlotId")
+		if type(plotId) == "string" then
+			local placements = companies:getPlacements("personal:" .. tostring(player.UserId))
+			if placements then
+				WorldService.syncDisplayedTrees(plotId, placements)
+			end
 		end
 	end
 	return response
