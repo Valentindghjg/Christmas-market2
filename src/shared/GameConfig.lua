@@ -116,6 +116,51 @@ GameConfig.Progression = {
 	Parking = { cashCost = 200, maxSpaces = 4, evidence = GameConfig.Evidence.Provisional },
 }
 
+-- Customer cars, parking and order pickup (docs/REFERENCE_GAME_LIVE_TEST.md §3).
+GameConfig.Customers = {
+	-- OBSERVED: parking tier 1 holds 2 customer cars.
+	BaseParkingSpaces = 2,
+	-- PROVISIONAL: how long a paid customer waits at the car for the tree.
+	PickupPatienceSeconds = 120,
+	-- PROVISIONAL: loading within this many seconds counts as fast service.
+	FastLoadSeconds = 30,
+	-- OBSERVED shape (+6 slow / +9 fast); scaled to this game's reputation curve.
+	SlowLoadReputation = 1,
+	FastLoadReputation = 2,
+	MissedPickupReputationPenalty = 1,
+	-- PROVISIONAL: a hired Lot Worker needs this long to carry a tree to the car.
+	WorkerLoadSeconds = 15,
+	-- Server-side reach check for carry/load interactions, in studs.
+	InteractDistance = 16,
+	MaxOpenCustomerOrders = 8,
+}
+
+-- Receiving bays hold delivered stock until it is stocked onto the lot.
+GameConfig.Receiving = {
+	BayCount = 4, -- OBSERVED
+	BayCapacity = 9, -- INFERRED from the "x / 9 free" order panel
+	BaseStorage = 30, -- OBSERVED starter-lot delivery storage
+	StoragePerLotExpansion = 10, -- OBSERVED (+10 for expansion 1)
+}
+
+-- Finite supplier stock that refreshes on a timer (docs/REFERENCE_GAME_LIVE_TEST.md §4.1).
+GameConfig.Supplier = {
+	RefreshSeconds = 240, -- OBSERVED ~4 minutes
+	BaseStock = { Small = 15, Medium = 12, Large = 7 }, -- OBSERVED typical availability
+	StockVariance = 0.3, -- PROVISIONAL
+	HighDemandChance = 0.25, -- PROVISIONAL
+	LowDemandChance = 0.1, -- PROVISIONAL
+	SellBackFraction = 0.25, -- OBSERVED
+	RecommendedPerSpecies = { Small = 1, Medium = 2 }, -- OBSERVED recommended-order shape
+}
+
+-- OBSERVED size ranges in tenths of a foot; each displayed tree gets a stable height inside its range.
+GameConfig.TreeHeightTenths = {
+	Small = { min = 50, max = 60 },
+	Medium = { min = 70, max = 80 },
+	Large = { min = 90, max = 100 },
+}
+
 -- Offsets from the plot centre. The lot ground is 80 x 54 studs (WorldService), so
 -- the bounds keep displayed trees on the owner's lot instead of neighbouring land.
 GameConfig.Placement = {

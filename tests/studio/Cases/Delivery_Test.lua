@@ -40,11 +40,12 @@ return function(t)
 		expect.equal(Inventory.count(state.stock, Inventory.key("FrasierFir", "Medium")), 1)
 	end)
 
-	t.test("caps open supplier orders without charging", function()
+	-- G4: each open order occupies one of the receiving bays.
+	t.test("caps open supplier orders at the bay count without charging", function()
 		local GameConfig = require(Shared:WaitForChild("GameConfig"))
 		local state = BusinessState.new("personal:42", 42)
 		state.cash = 100000
-		for index = 1, GameConfig.MaxOpenOrders do
+		for index = 1, GameConfig.Receiving.BayCount do
 			expect.truthy(
 				BusinessState.placeOrder(state, string.format("bulk_%04d", index), "FrasierFir", "Small", 1, 100)
 			)
@@ -52,7 +53,50 @@ return function(t)
 		local cashBefore = state.cash
 		local ok, reason = BusinessState.placeOrder(state, "bulk_overflow", "FrasierFir", "Small", 1, 100)
 		expect.falsy(ok)
-		expect.equal(reason, "TooManyOpenOrders")
+		expect.equal(reason, "NoFreeBay")
 		expect.equal(state.cash, cashBefore)
+	end)
+
+	t.test("rejects an order larger than one bay", function()
+		local GameConfig = require(Shared:WaitForChild("GameConfig"))
+		local state = BusinessState.new("personal:42", 42)
+		state.cash = 100000
+		local ok, reason = BusinessState.placeOrder(
+			state,
+			"bay_overflow",
+			"FrasierFir",
+			"Small",
+			GameConfig.Receiving.BayCapacity + 1,
+			100
+		)
+		expect.falsy(ok)
+		expect.equal(reason, "BayCapacity")
+		expect.equal(state.cash, 100000)
+	end)
+
+	t.test("counts stored and ordered trees against delivery storage", function()
+		local GameConfig = require(Shared:WaitForChild("GameConfig"))
+		local state = BusinessState.new("personal:42", 42)
+		state.cash = 100000
+		state.stock["NobleFir:Medium"] = GameConfig.Receiving.BaseStorage - 2
+		local ok, reason = BusinessState.placeOrder(state, "storage_full", "FrasierFir", "Small", 3, 100)
+		expect.falsy(ok)
+		expect.equal(reason, "StorageFull")
+		expect.equal(state.cash, 100000)
+		expect.truthy(BusinessState.placeOrder(state, "storage_fits", "FrasierFir", "Small", 2, 100))
+		-- One lot expansion adds the observed +10 storage.
+		state.progression.lotExpansion = 1
+		expect.equal(BusinessState.storageCapacity(state), GameConfig.Receiving.BaseStorage + 10)
+		expect.truthy(BusinessState.placeOrder(state, "storage_more", "FrasierFir", "Small", 3, 100))
+	end)
+
+	t.test("reports receiving usage", function()
+		local state = BusinessState.new("personal:42", 42)
+		expect.truthy(BusinessState.placeOrder(state, "summary_01", "FrasierFir", "Small", 2, 100))
+		local summary = BusinessState.receivingSummary(state)
+		expect.equal(summary.baysUsed, 1)
+		expect.equal(summary.bayCount, 4)
+		expect.equal(summary.storageUsed, 2)
+		expect.equal(summary.storageCapacity, 30)
 	end)
 end

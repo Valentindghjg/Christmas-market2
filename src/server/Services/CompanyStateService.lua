@@ -16,7 +16,9 @@ local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
+local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
 local CustomerSimulationService = require(script.Parent:WaitForChild("CustomerSimulationService"))
+local SupplierStockService = require(script.Parent:WaitForChild("SupplierStockService"))
 local EmployeeService = require(script.Parent:WaitForChild("EmployeeService"))
 local PlacementService = require(script.Parent:WaitForChild("PlacementService"))
 local PricingService = require(script.Parent:WaitForChild("PricingService"))
@@ -45,12 +47,18 @@ function CompanyStateService.new(persistence, clock, randomRoll)
 	self._globalLimiter = Protocol.newRateLimiter(40, 10)
 	self._customerSequence = 0
 	self._placementsChanged = nil
+	self._ordersChanged = nil
 	return self
 end
 
 -- Trusted server code (world visuals) subscribes to authoritative display changes.
 function CompanyStateService:setPlacementsChangedHandler(handler)
 	self._placementsChanged = handler
+end
+
+-- Trusted server code (cars, pickup trees, carried trees) follows customer orders.
+function CompanyStateService:setCustomerOrdersChangedHandler(handler)
+	self._ordersChanged = handler
 end
 
 function CompanyStateService:loadPersonalCompany(userId: number)
@@ -224,33 +232,50 @@ end
 function CompanyStateService:_notifyPlacements(companyId: string, session)
 	local handler = self._placementsChanged
 	if handler and self._sessions[companyId] == session then
-		local ok, err = pcall(handler, companyId, session.state.layout.placements)
+		local ok, err = pcall(handler, companyId, session.state.layout.placements, session.state.mediumPrices)
 		if not ok then
 			warn(string.format("[ChristmasMarket2] placement visual sync failed for %s: %s", companyId, tostring(err)))
 		end
 	end
 end
 
+-- loadedNumbers lists orders just loaded into cars (they leave with the tree on the roof).
+function CompanyStateService:_notifyOrders(companyId: string, session, loadedNumbers: { number }?)
+	local handler = self._ordersChanged
+	if handler and self._sessions[companyId] == session then
+		local summary = CustomerOrderService.summary(session.state)
+		summary.loadedNumbers = loadedNumbers or {}
+		local ok, err = pcall(handler, companyId, summary)
+		if not ok then
+			warn(string.format("[ChristmasMarket2] customer order sync failed for %s: %s", companyId, tostring(err)))
+		end
+	end
+end
+
 -- Runs one server-owned pass over every available session under its critical section.
--- step(state) returns the number of changes and whether displayed trees changed.
+-- step(state) returns the number of changes, whether displayed trees changed and
+-- whether customer orders changed.
 function CompanyStateService:_runPass(filter, step)
 	local failures = 0
 	local total = 0
 	for _, companyId in ipairs(self:_companyIds()) do
 		local session = self._sessions[companyId]
 		if session and session.healthy and not session.unloading and (filter == nil or filter(session.state)) then
-			local ok, changes, placementsChanged = self:_withSession(companyId, session, function(state)
-				local changed, displayChanged = step(state)
+			local ok, changes, flags = self:_withSession(companyId, session, function(state)
+				local changed, displayChanged, ordersChanged = step(state)
 				if changed > 0 then
 					state.revision += 1
 					session.dirty = true
 				end
-				return changed, displayChanged
+				return changed, { display = displayChanged == true, orders = ordersChanged }
 			end)
 			if ok then
 				total += changes
-				if placementsChanged then
+				if flags.display then
 					self:_notifyPlacements(companyId, session)
+				end
+				if flags.orders then
+					self:_notifyOrders(companyId, session, type(flags.orders) == "table" and flags.orders.loaded or nil)
 				end
 			elseif changes == "InternalError" then
 				failures += 1
@@ -271,10 +296,19 @@ function CompanyStateService:applyAutoPricingAll()
 end
 
 -- Performs bounded logical NPC visits per company; a completed sale is one atomic change.
+-- Customers arrive by car: with every parking space taken the next car drives past.
 function CompanyStateService:simulateCustomerVisits()
 	return self:_runPass(nil, function(state)
 		local completedSales = 0
-		local visitsThisTick = math.min(1 + state.staff.Cashier, GameConfig.MaxCustomerVisitsPerTick)
+		local freeParking = CustomerOrderService.freeParking(state)
+		if freeParking < 1 then
+			-- Counted for analytics only; it is saved with the next real change or lock renewal.
+			if next(state.layout.placements) ~= nil then
+				state.drivePastCustomers += 1
+			end
+			return 0, false, false
+		end
+		local visitsThisTick = math.min(1 + state.staff.Cashier, GameConfig.MaxCustomerVisitsPerTick, freeParking)
 		for _ = 1, visitsThisTick do
 			self._customerSequence += 1
 			local started, visit =
@@ -283,8 +317,65 @@ function CompanyStateService:simulateCustomerVisits()
 				completedSales += 1
 			end
 		end
-		return completedSales, completedSales > 0
+		return completedSales, completedSales > 0, completedSales > 0
 	end)
+end
+
+-- Customers whose patience ran out leave; a Lot Worker loads waiting orders.
+function CompanyStateService:serviceCustomerOrdersAll()
+	return self:_runPass(function(state)
+		return next(state.customerOrders) ~= nil
+	end, function(state)
+		local expired = CustomerOrderService.expire(state, self._clock())
+		local loadedCount, loadedNumbers = CustomerOrderService.autoLoad(state, self._clock())
+		local changed = expired + loadedCount
+		return changed, false, if changed > 0 then { loaded = loadedNumbers } else false
+	end)
+end
+
+function CompanyStateService:refreshSupplierStockAll()
+	return self:_runPass(nil, function(state)
+		local refreshed = SupplierStockService.refreshIfDue(state, self._clock(), self._randomRoll)
+		return if refreshed then 1 else 0, false, false
+	end)
+end
+
+-- Drops anything this player carries (respawn, leaving). Server-trusted callers only.
+function CompanyStateService:releaseCarried(companyId: string, userId: number): number
+	local session = self._sessions[companyId]
+	if not session then
+		return 0
+	end
+	local ok, released = self:_withSession(companyId, session, function(state)
+		local count = CustomerOrderService.releaseCarriedBy(state, userId)
+		if count > 0 then
+			state.revision += 1
+			session.dirty = true
+		end
+		return count
+	end)
+	if ok and released > 0 then
+		self:_notifyOrders(companyId, session)
+	end
+	return if ok then released else 0
+end
+
+-- The order this player carries according to the authoritative record, if any.
+function CompanyStateService:getCarriedOrderNumber(companyId: string, userId: number): number?
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return nil
+	end
+	return CustomerOrderService.carriedOrderNumber(session.state, userId)
+end
+
+-- Server-only projection of customer orders for world visuals and reach checks.
+function CompanyStateService:getCustomerOrders(companyId: string)
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return nil
+	end
+	return CustomerOrderService.summary(session.state)
 end
 
 function CompanyStateService:reconcileDeliveriesAll()
@@ -329,6 +420,10 @@ local ACTION_ROLES = {
 	[Protocol.Actions.DeliveryUnload] = OWNER_MANAGER_WORKER,
 	[Protocol.Actions.InventoryPlace] = OWNER_MANAGER_WORKER,
 	[Protocol.Actions.InventoryPickup] = OWNER_MANAGER_WORKER,
+	[Protocol.Actions.OrderCarry] = OWNER_MANAGER_WORKER,
+	[Protocol.Actions.OrderLoad] = OWNER_MANAGER_WORKER,
+	[Protocol.Actions.OrderRelease] = OWNER_MANAGER_WORKER,
+	[Protocol.Actions.SupplierSellBack] = OWNER_MANAGER,
 }
 -- Read-only queries are available to every member, including visitors.
 local MEMBER_QUERIES = {
@@ -390,6 +485,15 @@ end
 local PLACEMENT_ACTIONS = {
 	[Protocol.Actions.InventoryPlace] = true,
 	[Protocol.Actions.InventoryPickup] = true,
+	[Protocol.Actions.SupplierSellBack] = true,
+	-- Price labels on displayed trees follow manual price changes.
+	[Protocol.Actions.PricingSetMediumPrice] = true,
+}
+
+local ORDER_ACTIONS = {
+	[Protocol.Actions.OrderCarry] = true,
+	[Protocol.Actions.OrderLoad] = true,
+	[Protocol.Actions.OrderRelease] = true,
 }
 
 -- Applies one validated request to the live record. Must not yield.
@@ -417,6 +521,9 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 				deliveries = deliverySummary(state),
 				stock = table.clone(state.stock),
 				placementCount = placementCount(state),
+				receiving = BusinessState.receivingSummary(state),
+				supplier = SupplierStockService.summary(state, self._clock()),
+				customers = CustomerOrderService.summary(state),
 			},
 		}
 	end
@@ -434,6 +541,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 	local succeeded, result = false, "UnknownAction"
 	local action = request.action
 	if action == Protocol.Actions.SupplierPlaceOrder then
+		SupplierStockService.refreshIfDue(state, self._clock(), self._randomRoll)
 		succeeded, result = BusinessState.placeOrder(
 			state,
 			request.requestId,
@@ -468,6 +576,15 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 		succeeded, result = ProgressionService.buyHQ(state, payload.hqId)
 	elseif action == Protocol.Actions.QuestClaim then
 		succeeded, result = QuestService.claim(state, payload.questId)
+	elseif action == Protocol.Actions.OrderCarry then
+		succeeded, result = CustomerOrderService.carry(state, userId, payload.orderNumber)
+	elseif action == Protocol.Actions.OrderLoad then
+		succeeded, result =
+			CustomerOrderService.load(state, userId, payload.orderNumber, payload.carNumber, self._clock())
+	elseif action == Protocol.Actions.OrderRelease then
+		succeeded, result = CustomerOrderService.release(state, userId, payload.orderNumber)
+	elseif action == Protocol.Actions.SupplierSellBack then
+		succeeded, result = SupplierStockService.sellBack(state, payload.speciesId, payload.sizeId, payload.quantity)
 	end
 	Protocol.finishRequest(record, succeeded and "Success" or tostring(result))
 	-- The request record changed even when the action was rejected.
@@ -481,6 +598,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 		revision = state.revision,
 		data = result,
 		placementsChanged = PLACEMENT_ACTIONS[action] == true,
+		ordersChanged = ORDER_ACTIONS[action] == true,
 	}
 end
 
@@ -508,7 +626,14 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 	if response.placementsChanged then
 		self:_notifyPlacements(companyId, session)
 	end
+	if response.ordersChanged then
+		local loaded = if request.action == Protocol.Actions.OrderLoad and type(response.data) == "table"
+			then { response.data.orderNumber }
+			else nil
+		self:_notifyOrders(companyId, session, loaded)
+	end
 	response.placementsChanged = nil
+	response.ordersChanged = nil
 	return response
 end
 

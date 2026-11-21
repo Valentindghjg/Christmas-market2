@@ -39,10 +39,10 @@ Use dependency injection or explicit initialization ordering; avoid circular req
 
 ## 3. Network contract
 All client-to-server calls are untrusted. Use a small versioned action protocol, not arbitrary client-defined price/cash/item payloads. Example action names:
-`Supplier.RequestQuote`, `Supplier.PlaceOrder`, `Delivery.Unload`, `Inventory.Place`, `Inventory.Pickup`, `Pricing.SetMediumPrice`, `Pricing.SetAuto`, `Employee.Hire`, `Progression.Upgrade`, `Company.Invite`, `Company.SetRole`, `Quest.Claim`.
+`Supplier.RequestQuote`, `Supplier.PlaceOrder`, `Delivery.Unload`, `Inventory.Place`, `Inventory.Pickup`, `Pricing.SetMediumPrice`, `Pricing.SetAuto`, `Employee.Hire`, `Progression.Upgrade`, `Company.Invite`, `Company.SetRole`, `Quest.Claim`, `Order.Carry`, `Order.Load`, `Order.Release`, `Supplier.SellBack` (implemented 2026-11-21; order interactions also arrive through server-side ProximityPrompts that are validated like remote calls, including a server reach check).
 Request: `{version=1, requestId=<UUID>, action=<enum>, payload=<validated fields>}`. Response: `{ok, errorCode?, revision?, data?}`. Request IDs deduplicate financial actions within a session and persisted recent IDs where needed. Validate types, lengths, ranges, enum values, plot ownership, proximity where applicable, server-derived prices and role permissions. Per-action rate limits; never trust a client-supplied purchase cost, sale result, or inventory quantity.
 
-Server->client: filtered state snapshots on join and revisioned deltas after mutations. Client can optimistically animate UI but server state wins. Avoid broadcasting private company details to other plots.
+Server->client: a one-way `Notify` RemoteEvent carries localized notice keys (order complete, wrong car, out of reach). Filtered state snapshots on join and revisioned deltas after mutations. Client can optimistically animate UI but server state wins. Avoid broadcasting private company details to other plots.
 
 ## 4. Data model (schema v1 proposal)
 ```lua

@@ -3,7 +3,7 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 9
+BusinessState.SCHEMA_VERSION = 10
 
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
@@ -11,6 +11,63 @@ local function isFiniteInteger(value: unknown): boolean
 		and value ~= math.huge
 		and value ~= -math.huge
 		and value == math.floor(value)
+end
+
+-- Supplier stock starts at the configured base so a fresh company can order at once;
+-- the first server refresh then rolls real availability.
+function BusinessState.newSupplier()
+	local stock = {}
+	for speciesId in pairs(GameConfig.Trees) do
+		for _, sizeId in ipairs(GameConfig.SizeIds) do
+			stock[Inventory.key(speciesId, sizeId)] = GameConfig.Supplier.BaseStock[sizeId]
+		end
+	end
+	return { refreshAt = 0, stock = stock, demand = {} }
+end
+
+-- Fields added in schema 10 (customer pickup orders, parking, supplier stock pool).
+local function addSchema10Fields(state)
+	state.customerOrders = {}
+	state.nextOrderNumber = 1
+	state.loadedOrders = 0
+	state.missedPickups = 0
+	state.drivePastCustomers = 0
+	state.supplier = BusinessState.newSupplier()
+end
+
+-- Config limits can shrink between builds; trim instead of locking the player out.
+local function normalizeSchema10(state)
+	if type(state.supplier) == "table" and type(state.supplier.stock) == "table" then
+		for key, quantity in pairs(state.supplier.stock) do
+			if type(quantity) == "number" and quantity == quantity then
+				state.supplier.stock[key] = math.clamp(math.floor(quantity), 0, 1000)
+			end
+		end
+	end
+	if type(state.customerOrders) == "table" then
+		local numbers = {}
+		for _, order in pairs(state.customerOrders) do
+			if type(order) == "table" and type(order.orderNumber) == "number" then
+				table.insert(numbers, order.orderNumber)
+			end
+		end
+		table.sort(numbers)
+		for index = GameConfig.Customers.MaxOpenCustomerOrders + 1, #numbers do
+			state.customerOrders[tostring(numbers[index])] = nil
+		end
+	end
+end
+
+-- Nobody carries a tree in a freshly loaded session.
+function BusinessState.clearCarried(state)
+	if type(state.customerOrders) ~= "table" then
+		return
+	end
+	for _, order in pairs(state.customerOrders) do
+		if type(order) == "table" then
+			order.carriedBy = nil
+		end
+	end
 end
 
 function BusinessState.new(companyId: string?, ownerUserId: number?)
@@ -46,6 +103,12 @@ function BusinessState.new(companyId: string?, ownerUserId: number?)
 		staff = { Cashier = 0, LotWorker = 0 },
 		progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil },
 		questClaims = {},
+		customerOrders = {},
+		nextOrderNumber = 1,
+		loadedOrders = 0,
+		missedPickups = 0,
+		drivePastCustomers = 0,
+		supplier = BusinessState.newSupplier(),
 	}
 end
 
@@ -105,6 +168,8 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
 		end
+		BusinessState.clearCarried(state)
+		normalizeSchema10(state)
 		return validated(state)
 	end
 	if state.schemaVersion == 2 then
@@ -135,8 +200,12 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.abandonedCustomers = 0
 	end
 	if state.schemaVersion == 8 then
-		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.schemaVersion = 9
 		state.questClaims = {}
+	end
+	if state.schemaVersion == 9 then
+		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		addSchema10Fields(state)
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
 		end
@@ -161,8 +230,69 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.customerVisits = sales(state)
 	state.abandonedCustomers = 0
 	state.questClaims = {}
+	addSchema10Fields(state)
 	backfillMediumPrices(state)
 	return validated(state)
+end
+
+local DEMAND_TAGS = { High = true, Low = true }
+
+local function validSupplier(supplier): boolean
+	if
+		type(supplier) ~= "table"
+		or not isFiniteInteger(supplier.refreshAt)
+		or supplier.refreshAt < 0
+		or type(supplier.stock) ~= "table"
+		or type(supplier.demand) ~= "table"
+	then
+		return false
+	end
+	for key, quantity in pairs(supplier.stock) do
+		if type(key) ~= "string" or not isFiniteInteger(quantity) or quantity < 0 or quantity > 1000 then
+			return false
+		end
+	end
+	for key, tag in pairs(supplier.demand) do
+		if type(key) ~= "string" or not DEMAND_TAGS[tag] then
+			return false
+		end
+	end
+	return true
+end
+
+local function validCustomerOrders(state): boolean
+	if type(state.customerOrders) ~= "table" or not isFiniteInteger(state.nextOrderNumber) then
+		return false
+	end
+	if state.nextOrderNumber < 1 then
+		return false
+	end
+	local count = 0
+	for key, order in pairs(state.customerOrders) do
+		count += 1
+		if
+			type(key) ~= "string"
+			or type(order) ~= "table"
+			or not isFiniteInteger(order.orderNumber)
+			or key ~= tostring(order.orderNumber)
+			or order.orderNumber < 1
+			or order.orderNumber >= state.nextOrderNumber
+			or not GameConfig.Trees[order.speciesId]
+			or not GameConfig.isValidSize(order.sizeId)
+			or not isFiniteInteger(order.heightTenths)
+			or not isFiniteInteger(order.salePrice)
+			or order.salePrice < 0
+			or not isFiniteInteger(order.soldAt)
+			or not isFiniteInteger(order.expiresAt)
+			or order.expiresAt < order.soldAt
+			or not isFiniteInteger(order.parkingSpace)
+			or order.parkingSpace < 1
+			or (order.carriedBy ~= nil and not isFiniteInteger(order.carriedBy))
+		then
+			return false
+		end
+	end
+	return count <= GameConfig.Customers.MaxOpenCustomerOrders
 end
 
 function BusinessState.validate(state)
@@ -272,6 +402,14 @@ function BusinessState.validate(state)
 	if not isFiniteInteger(state.revenue) or state.revenue < 0 then
 		return false
 	end
+	for _, counter in ipairs({ state.loadedOrders, state.missedPickups, state.drivePastCustomers }) do
+		if not isFiniteInteger(counter) or counter < 0 then
+			return false
+		end
+	end
+	if not validSupplier(state.supplier) or not validCustomerOrders(state) then
+		return false
+	end
 	if not isFiniteInteger(state.spent) or state.spent < 0 then
 		return false
 	end
@@ -378,11 +516,26 @@ function BusinessState.placeOrder(
 	if BusinessState.openOrderCount(state) >= GameConfig.MaxOpenOrders then
 		return false, "TooManyOpenOrders"
 	end
+	-- Each open order occupies one receiving bay until it is unloaded.
+	if BusinessState.openOrderCount(state) >= GameConfig.Receiving.BayCount then
+		return false, "NoFreeBay"
+	end
+	if quantity > GameConfig.Receiving.BayCapacity then
+		return false, "BayCapacity"
+	end
+	if BusinessState.storageUsed(state) + quantity > BusinessState.storageCapacity(state) then
+		return false, "StorageFull"
+	end
+	local supplierKey = Inventory.key(species, size)
+	if Inventory.count(state.supplier.stock, supplierKey) < quantity then
+		return false, "SupplierOutOfStock"
+	end
 	local unitCost = GameConfig.wholesaleFor(species, size)
 	local cost = (unitCost or 0) * quantity
 	if not unitCost or state.cash < cost then
 		return false, "InsufficientFunds"
 	end
+	state.supplier.stock[supplierKey] -= quantity
 	state.cash -= cost
 	state.spent += cost
 	state.pendingOrders[orderId] = {
@@ -446,6 +599,37 @@ function BusinessState.openOrderCount(state): number
 		count += 1
 	end
 	return count
+end
+
+-- Delivery storage grows with each lot expansion (OBSERVED 30, +10 per level).
+function BusinessState.storageCapacity(state): number
+	local level = if type(state.progression) == "table" then state.progression.lotExpansion else 0
+	return GameConfig.Receiving.BaseStorage + level * GameConfig.Receiving.StoragePerLotExpansion
+end
+
+-- Trees waiting in storage plus trees already ordered count against storage.
+function BusinessState.storageUsed(state): number
+	local used = 0
+	for _, quantity in pairs(state.stock) do
+		used += quantity
+	end
+	for _, order in pairs(state.pendingOrders) do
+		if type(order) == "table" and isFiniteInteger(order.quantity) then
+			used += order.quantity
+		end
+	end
+	return used
+end
+
+function BusinessState.receivingSummary(state)
+	local used = BusinessState.openOrderCount(state)
+	return {
+		baysUsed = math.min(used, GameConfig.Receiving.BayCount),
+		bayCount = GameConfig.Receiving.BayCount,
+		bayCapacity = GameConfig.Receiving.BayCapacity,
+		storageUsed = BusinessState.storageUsed(state),
+		storageCapacity = BusinessState.storageCapacity(state),
+	}
 end
 
 -- Removes orders unloaded by schema versions that kept completed orders forever.

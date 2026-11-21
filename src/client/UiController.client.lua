@@ -8,6 +8,10 @@ local LocalizationService = game:GetService("LocalizationService")
 local player = Players.LocalPlayer
 local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BusinessAction") :: RemoteFunction
 local Localization = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Localization"))
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+-- Display only; the server computes the real refund.
+local FRASIER_MEDIUM_REFUND =
+	math.floor((GameConfig.wholesaleFor("FrasierFir", "Medium") or 0) * GameConfig.Supplier.SellBackFraction + 0.5)
 local locale = string.lower(string.sub(LocalizationService.RobloxLocaleId, 1, 2))
 if locale ~= "de" and locale ~= "en" then
 	locale = "en"
@@ -23,8 +27,17 @@ end
 local ERROR_KEYS = {
 	InsufficientFunds = "insufficientFunds",
 	ConnectionError = "connectionError",
+	NoFreeBay = "noFreeBay",
+	StorageFull = "storageFull",
+	SupplierOutOfStock = "supplierOutOfStock",
+	NotEnoughTrees = "notEnoughTrees",
+	OutOfReach = "outOfReach",
+	HandsFull = "handsFull",
 }
 local function errorText(errorCode: unknown): string
+	if errorCode == "BayCapacity" then
+		return localizedFormat("errorStatus", localizedFormat("bayCapacity", GameConfig.Receiving.BayCapacity))
+	end
 	local key = type(errorCode) == "string" and ERROR_KEYS[errorCode]
 	return localizedFormat("errorStatus", if key then localized(key) else tostring(errorCode))
 end
@@ -97,7 +110,7 @@ panel.BackgroundColor3 = Color3.fromRGB(38, 89, 63)
 panel.BorderSizePixel = 0
 panel.AnchorPoint = Vector2.new(0.5, 1)
 panel.Position = UDim2.fromScale(0.5, 0.97)
-panel.Size = UDim2.fromOffset(360, 202)
+panel.Size = UDim2.fromOffset(360, 280)
 panel.Parent = gui
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
 label(panel, localized("supplier"), UDim2.fromOffset(18, 14), UDim2.fromOffset(300, 28), 22)
@@ -120,11 +133,20 @@ local place =
 place.Visible = false
 place.Parent = panel
 
+-- G4/G5/G1 status lines and sell-back.
+local supplierLine = label(panel, "", UDim2.fromOffset(18, 192), UDim2.fromOffset(324, 18), 13)
+local receivingLine = label(panel, "", UDim2.fromOffset(18, 210), UDim2.fromOffset(324, 18), 13)
+local customerLine = label(panel, "", UDim2.fromOffset(18, 228), UDim2.fromOffset(324, 18), 13)
+local sellBack =
+	button("SellBackFrasier", Color3.fromRGB(214, 186, 120), UDim2.fromOffset(18, 250), UDim2.fromOffset(324, 22), 13)
+sellBack.Visible = false
+sellBack.Parent = panel
+
 local deliveredOrderId: string? = nil
 local storedFrasierMedium = 0
 local placementCount = 0
 -- One in-flight request per button: a double tap must not place two orders.
-local busy = { order = false, unload = false, place = false }
+local busy = { order = false, unload = false, place = false, sellBack = false }
 
 local function refreshSupplierQuote()
 	if player:GetAttribute("CompanyReady") ~= true then
@@ -182,7 +204,47 @@ local function refreshSummary()
 	placementCount = data.placementCount or 0
 	place.Visible = storedFrasierMedium > 0
 	place.Text = localizedFormat("placeTree", "Frasier Fir", storedFrasierMedium)
+	local supplier = data.supplier
+	if supplier and supplier.stock then
+		supplierLine.Text =
+			localizedFormat("supplierStock", supplier.stock["FrasierFir:Medium"] or 0, supplier.refreshIn or 0)
+	end
+	local receiving = data.receiving
+	if receiving then
+		receivingLine.Text = localizedFormat(
+			"receivingStatus",
+			receiving.baysUsed,
+			receiving.bayCount,
+			receiving.storageUsed,
+			receiving.storageCapacity
+		)
+	end
+	local customers = data.customers
+	if customers then
+		customerLine.Text = localizedFormat(
+			"customerStatus",
+			customers.activeCustomers,
+			customers.parkingSpaces,
+			customers.loadedOrders,
+			customers.missedPickups
+		)
+	end
+	sellBack.Visible = storedFrasierMedium + placementCount > 0
+	sellBack.Text = localizedFormat("sellBack", FRASIER_MEDIUM_REFUND)
 end
+
+sellBack.Activated:Connect(function()
+	if busy.sellBack then
+		return
+	end
+	busy.sellBack = true
+	local response = invoke("Supplier.SellBack", { speciesId = "FrasierFir", sizeId = "Medium", quantity = 1 })
+	detail.Text = if response.ok
+		then localizedFormat("soldBack", response.data.refund)
+		else errorText(response.errorCode)
+	refreshSummary()
+	busy.sellBack = false
+end)
 
 task.spawn(function()
 	while gui.Parent do

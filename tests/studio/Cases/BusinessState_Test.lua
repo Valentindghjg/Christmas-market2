@@ -124,4 +124,28 @@ return function(t)
 		state.staff.Cashier = 2
 		expect.falsy(BusinessState.validate(state))
 	end)
+	t.test("migrates v9 records to schema 10 with customer orders and supplier stock", function()
+		local legacy = BusinessState.new("personal:42", 42)
+		legacy.schemaVersion = 9
+		legacy.customerOrders = nil
+		legacy.nextOrderNumber = nil
+		legacy.loadedOrders = nil
+		legacy.missedPickups = nil
+		legacy.drivePastCustomers = nil
+		legacy.supplier = nil
+		legacy.cash = 1234
+		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(migrated.schemaVersion, 10)
+		expect.equal(migrated.cash, 1234)
+		expect.equal(migrated.nextOrderNumber, 1)
+		expect.truthy(migrated.supplier.stock["FrasierFir:Medium"] > 0)
+	end)
+
+	t.test("rejects a corrupt customer order", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.customerOrders["5"] = { orderNumber = 5 }
+		expect.falsy(BusinessState.validate(state))
+	end)
 end

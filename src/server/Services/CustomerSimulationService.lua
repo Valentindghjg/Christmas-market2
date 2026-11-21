@@ -4,10 +4,12 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local CustomerProfile = require(Shared:WaitForChild("CustomerProfile"))
 local CustomerSelection = require(Shared:WaitForChild("CustomerSelection"))
 local CustomerService = require(script.Parent:WaitForChild("CustomerService"))
+local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
 
 local CustomerSimulationService = {}
 
 -- A deterministic server visit reserves at most one eligible tree; callers own scheduling.
+-- A customer only arrives when a parking space is free (callers check freeParking).
 function CustomerSimulationService.beginVisit(state, customerNumber: number, timestamp: number, roll: number)
 	if type(roll) ~= "number" or roll < 0 or roll > 1 then
 		return false, "InvalidRoll"
@@ -42,11 +44,18 @@ function CustomerSimulationService.beginVisit(state, customerNumber: number, tim
 		}
 end
 
+-- Settles the sale, then leaves the customer waiting at the car for the tree.
 function CustomerSimulationService.completeVisit(state, visit, timestamp: number)
 	if type(visit) ~= "table" or type(visit.placementId) ~= "string" or type(visit.customerId) ~= "string" then
 		return false, "InvalidVisit"
 	end
-	return CustomerService.completeReservedSale(state, visit.placementId, visit.customerId, timestamp)
+	local sold, sale = CustomerService.completeReservedSale(state, visit.placementId, visit.customerId, timestamp)
+	if not sold then
+		return false, sale
+	end
+	local _, order = CustomerOrderService.createFromSale(state, sale, timestamp)
+	sale.order = order
+	return true, sale
 end
 
 return CustomerSimulationService

@@ -18,9 +18,17 @@ Protocol.Actions = {
 	ProgressionBuyHQ = "Progression.BuyHQ",
 	CompanyGetSummary = "Company.GetSummary",
 	QuestClaim = "Quest.Claim",
+	OrderCarry = "Order.Carry",
+	OrderLoad = "Order.Load",
+	OrderRelease = "Order.Release",
+	SupplierSellBack = "Supplier.SellBack",
 }
 
 local actionSet = {
+	[Protocol.Actions.OrderCarry] = true,
+	[Protocol.Actions.OrderLoad] = true,
+	[Protocol.Actions.OrderRelease] = true,
+	[Protocol.Actions.SupplierSellBack] = true,
 	[Protocol.Actions.SupplierPlaceOrder] = true,
 	[Protocol.Actions.SupplierRequestQuote] = true,
 	[Protocol.Actions.DeliveryUnload] = true,
@@ -53,6 +61,10 @@ local function isFiniteNumber(value: unknown): boolean
 end
 
 local TRANSFORM_KEYS = { x = true, y = true, z = true, rotation = true }
+
+local function isOrderNumber(value: unknown): boolean
+	return isFiniteInteger(value) and (value :: number) >= 1 and (value :: number) < 2 ^ 31
+end
 
 local function hasOnlyKeys(payload, allowed)
 	for key in pairs(payload) do
@@ -201,6 +213,43 @@ function Protocol.validateRequest(request)
 	if request.action == Protocol.Actions.ProgressionBuyHQ then
 		if not hasOnlyKeys(request.payload, { hqId = true }) or request.payload.hqId ~= "ChristmasPavilion" then
 			return false, "InvalidHQ"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.OrderCarry or request.action == Protocol.Actions.OrderRelease then
+		if not hasOnlyKeys(request.payload, { orderNumber = true }) then
+			return false, "UnexpectedField"
+		end
+		if not isOrderNumber(request.payload.orderNumber) then
+			return false, "InvalidOrderNumber"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.OrderLoad then
+		if not hasOnlyKeys(request.payload, { orderNumber = true, carNumber = true }) then
+			return false, "UnexpectedField"
+		end
+		if not isOrderNumber(request.payload.orderNumber) or not isOrderNumber(request.payload.carNumber) then
+			return false, "InvalidOrderNumber"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.SupplierSellBack then
+		if not hasOnlyKeys(request.payload, { speciesId = true, sizeId = true, quantity = true }) then
+			return false, "UnexpectedField"
+		end
+		if type(request.payload.speciesId) ~= "string" or not GameConfig.Trees[request.payload.speciesId] then
+			return false, "UnknownSpecies"
+		end
+		if not GameConfig.isValidSize(request.payload.sizeId) then
+			return false, "InvalidSize"
+		end
+		if
+			not isFiniteInteger(request.payload.quantity)
+			or request.payload.quantity < 1
+			or request.payload.quantity > GameConfig.MaxOrderQuantity
+		then
+			return false, "InvalidQuantity"
 		end
 		return true, nil
 	end

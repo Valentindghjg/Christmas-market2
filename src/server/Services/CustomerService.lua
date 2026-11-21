@@ -93,6 +93,7 @@ function CustomerService.completeReservedSale(state, placementId: string, custom
 		return false, "Unavailable"
 	end
 	local salePrice = reservation.salePrice
+	local placement = state.layout.placements[placementId]
 	state.reservations[placementId] = nil
 	state.layout.placements[placementId] = nil
 	state.cash += salePrice
@@ -100,7 +101,14 @@ function CustomerService.completeReservedSale(state, placementId: string, custom
 	state.sales += 1
 	state.reputation += 1
 	BusinessState.record(state, "Sale", salePrice)
-	return true, { salePrice = salePrice, reputationGain = 1 }
+	return true,
+		{
+			salePrice = salePrice,
+			reputationGain = 1,
+			placementId = placementId,
+			speciesId = placement.speciesId,
+			sizeId = placement.sizeId,
+		}
 end
 
 return CustomerService

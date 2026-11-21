@@ -81,4 +81,35 @@ return function(t)
 		expect.falsy(ok)
 		expect.equal(reason, "InvalidQuest")
 	end)
+	-- G1/G5 actions accept only bounded integers and known items.
+	t.test("validates order carry, load and sell-back payloads", function()
+		local function check(action, payload)
+			return Protocol.validateRequest({
+				version = 1,
+				requestId = "g1_request",
+				action = action,
+				payload = payload,
+			})
+		end
+		expect.truthy(check(Protocol.Actions.OrderCarry, { orderNumber = 3 }))
+		expect.truthy(check(Protocol.Actions.OrderLoad, { orderNumber = 3, carNumber = 3 }))
+		expect.truthy(check(Protocol.Actions.OrderRelease, { orderNumber = 3 }))
+		local _, fractional = check(Protocol.Actions.OrderCarry, { orderNumber = 1.5 })
+		expect.equal(fractional, "InvalidOrderNumber")
+		local _, missingCar = check(Protocol.Actions.OrderLoad, { orderNumber = 3 })
+		expect.equal(missingCar, "InvalidOrderNumber")
+		local _, injected = check(Protocol.Actions.OrderLoad, { orderNumber = 3, carNumber = 3, reputation = 99 })
+		expect.equal(injected, "UnexpectedField")
+		expect.truthy(
+			check(Protocol.Actions.SupplierSellBack, { speciesId = "NobleFir", sizeId = "Small", quantity = 2 })
+		)
+		local _, refund = check(
+			Protocol.Actions.SupplierSellBack,
+			{ speciesId = "NobleFir", sizeId = "Small", quantity = 2, refund = 1000 }
+		)
+		expect.equal(refund, "UnexpectedField")
+		local _, zero =
+			check(Protocol.Actions.SupplierSellBack, { speciesId = "NobleFir", sizeId = "Small", quantity = 0 })
+		expect.equal(zero, "InvalidQuantity")
+	end)
 end

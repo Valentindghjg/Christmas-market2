@@ -40,7 +40,9 @@ function ProgressionService.buyParking(state)
 	if not ok then
 		return false, errorCode
 	end
-	state.progression.parkingSpaces += 1
+	-- Every lot starts with the base spaces, so the first purchase adds to those.
+	state.progression.parkingSpaces = math.max(state.progression.parkingSpaces, GameConfig.Customers.BaseParkingSpaces)
+		+ 1
 	return true, state.progression.parkingSpaces
 end
 

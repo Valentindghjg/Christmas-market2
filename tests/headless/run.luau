@@ -43,7 +43,9 @@ local services = child(server, "Services")
 for name, path in pairs({
 	AnalyticsService = "src/server/Services/AnalyticsService.lua",
 	CompanyStateService = "src/server/Services/CompanyStateService.lua",
+	CustomerOrderService = "src/server/Services/CustomerOrderService.lua",
 	CustomerService = "src/server/Services/CustomerService.lua",
+	SupplierStockService = "src/server/Services/SupplierStockService.lua",
 	CustomerSimulationService = "src/server/Services/CustomerSimulationService.lua",
 	EmployeeService = "src/server/Services/EmployeeService.lua",
 	PersistenceService = "src/server/Services/PersistenceService.lua",
@@ -67,6 +69,7 @@ local sourcePaths = {
 	Localization = "src/shared/Localization.lua",
 	Protocol = "src/shared/Protocol.lua",
 	SupplierCatalog = "src/shared/SupplierCatalog.lua",
+	TreeHeight = "src/shared/TreeHeight.lua",
 }
 for name, path in pairs(sourcePaths) do
 	child(shared, name, path)
