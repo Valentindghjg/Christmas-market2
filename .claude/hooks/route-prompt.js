@@ -13,7 +13,7 @@ process.stdin.on("end", () => {
 		"Model routing (CLAUDE.md, owner rule). Before you answer this message, classify it:",
 		"- Planning (design, decisions, spec, backlog, priorities, balancing, art direction, workflow, \"how should this work\"): invoke the skill cm2-plan first.",
 		"- Work that changes code, tests, models or the map, or carries out a plan: invoke the skill cm2-task first.",
-		"- Working through the backlog without stopping (\"durcharbeiten\", \"arbeite durch\", \"mach weiter\", \"weiter\", \"hustle\", \"hasseln\", \"alles abarbeiten\"): invoke the skill cm2-run first.",
+		"- Working through the backlog without stopping (\"durcharbeiten\", \"arbeite durch\", \"mach weiter\", \"weiter\", \"hustle\", \"hasseln\", \"alles abarbeiten\"): invoke the skill hasseln first.",
 		"- A short question or conversation: neither skill.",
 	].join("\n");
 	process.stdout.write(

@@ -3,7 +3,7 @@ Updated: 2026-11-19
 Status: 50 GitHub issues created; **not yet implemented or verified**.
 
 ## Für den Owner am PC
-Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisions). Written by the `planner` during `cm2-run` in the fixed format from `.claude/skills/cm2-run/SKILL.md`; the next run checks each entry's `Prüfen` field first and starts with its `Danach` task.
+Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisions). Written by the `planner` during `hasseln` in the fixed format from `.claude/skills/hasseln/SKILL.md`; the next run checks each entry's `Prüfen` field first and starts with its `Danach` task.
 
 _Keine offenen Einträge._
 

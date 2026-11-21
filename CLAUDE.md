@@ -27,7 +27,7 @@ You are the implementation engineer for this Roblox Studio / Luau game. The huma
 - When there is no ready ticket, compare the current implementation and verified results against the approved product spec, milestone gates, and test plan. Pick the highest-priority gap you can work on, including missing features, integration, bug fixes, and verification. Create a follow-up task in `docs/CLAUDE_BACKLOG.md` with its goal, dependencies, and verifiable acceptance criteria, then immediately start implementing or verifying it. Repeat this cycle without waiting for the Product Owner to assign work. An empty backlog triggers this check.
 - If a task is blocked, try to resolve the blocker. If it persists, record it and continue with independent work, creating a follow-up task when needed. Publication and paid actions require explicit Product Owner approval.
 - End the run only when all approved requirements in scope are implemented and verified, the Product Owner explicitly asks you to stop, or a concrete blocker prevents all remaining in-scope work. Report any unresolved blockers and what would let you resume.
-- The skill **`cm2-run`** (`.claude/skills/cm2-run/SKILL.md`, owner decision 2026-11-22) carries out this loop: task after task through `cm2-task`, one session, no pauses at milestones, never a push. On a blocker it secures the work (commit to `main` if checks and review pass, else a local `wip/<ID>` branch), the planner records a machine-readable entry in "Für den Owner am PC" at the top of `docs/CLAUDE_BACKLOG.md`, and the run goes on with independent work. Whenever a run ends before everything is done, the planner refreshes the whole backlog as if the owner had resolved every PC entry. Triggers: `/cm2-run`, "durcharbeiten", "mach weiter", "weiter", "hustle".
+- The skill **`hasseln`** (`.claude/skills/hasseln/SKILL.md`, owner decision 2026-11-22) carries out this loop: task after task through `cm2-task`, one session, no pauses at milestones, never a push. On a blocker it secures the work (commit to `main` if checks and review pass, else a local `wip/<ID>` branch), the planner records a machine-readable entry in "Für den Owner am PC" at the top of `docs/CLAUDE_BACKLOG.md`, and the run goes on with independent work. Whenever a run ends before everything is done, the planner refreshes the whole backlog as if the owner had resolved every PC entry. Triggers: `/hasseln`, "durcharbeiten", "mach weiter", "weiter", "hustle".
 
 ## First milestones: P0 -> P1
 1. Audit existing code and fix correctness/security issues before expanding.
@@ -69,12 +69,12 @@ Owner decision 2026-11-21 (PRODUCT_SPEC). Every task that changes code, tests, m
 - **Automatic model switch in the chat:** decide from each message whether it is planning or work.
   - Planning (design, decisions, spec, backlog, priorities, balancing, "how should this work"): invoke the skill `cm2-plan` first. It switches the chat to Opus 5.5, high effort.
   - Work (implement, fix, build models, playtest, carry out a plan): invoke the skill `cm2-task`. It switches the chat to Sonnet 5.5 for orchestrating, and each agent then runs on its own model from the table.
-  - Working through the backlog ("durcharbeiten", "mach weiter", "weiter", "hustle"): invoke the skill `cm2-run`. It runs `cm2-task` for each task in turn.
+  - Working through the backlog ("durcharbeiten", "mach weiter", "weiter", "hustle"): invoke the skill `hasseln`. It runs `cm2-task` for each task in turn.
   - Short questions and conversation need neither skill and use the session model.
   - The switch lasts for the current turn. Each new message is classified again.
   - If a switch is not applied (`availableModels` or auto mode), the chat stays on its model and the skill raises the effort to high. Exception: if planning would need Opus but the chat stays on Sonnet, `cm2-plan` stops and asks the user to switch to Opus.
 - **Hooks (`.claude/settings.json`, scripts in `.claude/hooks/`):**
-  - `route-prompt.js` (UserPromptSubmit) reminds the chat on every message to classify it and to invoke `cm2-plan`, `cm2-task` or `cm2-run`. A hook cannot switch the model itself; only the skills can.
+  - `route-prompt.js` (UserPromptSubmit) reminds the chat on every message to classify it and to invoke `cm2-plan`, `cm2-task` or `hasseln`. A hook cannot switch the model itself; only the skills can.
   - `guard-main-edits.js` (PreToolUse on Edit, Write and NotebookEdit) blocks the main chat from writing `src/`, `tests/`, `assets/` and `docs/plans/`. Subagents are allowed. Set `CM2_ALLOW_MAIN_EDITS=1` to switch the guard off.
   - Shell commands are not guarded.
 

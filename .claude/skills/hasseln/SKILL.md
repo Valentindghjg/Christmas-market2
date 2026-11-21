@@ -1,12 +1,12 @@
 ---
-name: cm2-run
-description: Works through the whole Christmas Market 2 backlog in one go - task after task through the cm2-task pipeline, without waiting for replies, until everything in scope is done, the owner says stop, or nothing workable is left. Invoke it when the user says "durcharbeiten", "arbeite durch", "mach weiter", "weiter", "hustle", "hasseln", "alles abarbeiten" or types /cm2-run. On any blocker it secures the work, records a machine-readable "Für den Owner am PC" entry and has the planner refresh the backlog.
+name: hasseln
+description: Works through the whole Christmas Market 2 backlog in one go - task after task through the cm2-task pipeline, without waiting for replies, until everything in scope is done, the owner says stop, or nothing workable is left. Invoke it when the user says "durcharbeiten", "arbeite durch", "mach weiter", "weiter", "hustle", "hasseln", "alles abarbeiten" or types /hasseln. On any blocker it secures the work, records a machine-readable "Für den Owner am PC" entry and has the planner refresh the backlog.
 model: claude-sonnet-5-5
 effort: high
 argument-hint: "[scope: empty = whole backlog | milestone like P1 | task IDs | a number of tasks]"
 ---
 
-# cm2-run: work through the backlog
+# hasseln: work through the backlog (formerly cm2-run)
 
 Owner decision 2026-11-22 (DECISION_LOG). This chat orchestrates on Sonnet 5.5; every step runs in the agent named by `cm2-task`, on that agent's own model.
 First check the model the system prompt names. If it is not Sonnet 5.5, the switch was not applied: stay on the current model and continue (this skill sets the effort to high).
@@ -27,7 +27,7 @@ Scope: $ARGUMENTS
 ## 1. Start
 1. `git status` and `git log --oneline -5`. Note foreign uncommitted changes and leave them alone.
 2. Read the section **"Für den Owner am PC"** at the top of `docs/CLAUDE_BACKLOG.md`. For each entry, check whether the owner has resolved it (the entry's `Prüfen` field says how, e.g. the Studio MCP answers `list_roblox_studios`, the Rojo plugin is connected, a decision is in DECISION_LOG). Collect what is resolved and what is still open.
-3. If any entry is resolved, or the backlog has no launch order yet (section "Launch order"), start `planner` once: "Refresh `docs/CLAUDE_BACKLOG.md` for a cm2-run: mark these PC entries resolved and move them to `Erledigt` with the date: <list>; put their follow-up tasks first in the launch order; [if missing] write the launch order section for the 2026-11-29 / 2026-12-06 target as planned under 'Launch replanning'. Change only docs." Then start `reviewer` with "Docs-only change by the planner for cm2-run: check it and commit it." These two steps are the only planning outside a task.
+3. If any entry is resolved, or the backlog has no launch order yet (section "Launch order"), start `planner` once: "Refresh `docs/CLAUDE_BACKLOG.md` for a hasseln: mark these PC entries resolved and move them to `Erledigt` with the date: <list>; put their follow-up tasks first in the launch order; [if missing] write the launch order section for the 2026-11-29 / 2026-12-06 target as planned under 'Launch replanning'. Change only docs." Then start `reviewer` with "Docs-only change by the planner for hasseln: check it and commit it." These two steps are the only planning outside a task.
 
 ## 2. Pick the next task
 Take the first task that meets all of these, in this order of sources: the "Launch order" section, then the milestone sections in dependency order, then the follow-up sections.
@@ -50,20 +50,20 @@ Invoke the skill `cm2-task` with the task ID and follow it step by step (planner
 ## 5. Secure and record a blocker
 A blocker is anything the run cannot fix itself after one obvious attempt: a missing tool, no access to Studio, Rojo, the network or an API, a check that fails for outside reasons, foreign changes in needed files, or a question only the owner can answer.
 1. **Secure the work.** Start `reviewer`: "Task <ID> stopped because of <reason>. Run the checks. If they and the review pass, commit to `main` as usual and say what is still missing. If not, commit the current state to a new local branch `wip/<ID>` (create it from the current `HEAD`, commit, switch back to `main`), so `main` stays clean. Report the branch and SHA." Nothing unfinished may stay uncommitted, and unfinished code never lands on `main`.
-2. **Record it.** Start `planner`: "Add a blocker to `docs/CLAUDE_BACKLOG.md` for cm2-run: <ID>, <reason>, <what was tried>, <WIP branch or commit>. Write it in the section 'Für den Owner am PC' in the exact format of that section, create the follow-up task with goal, dependencies and verifiable acceptance criteria, and place it in the launch order right after the owner fixes it. Change only docs." Then `reviewer`: "Docs-only change by the planner: check and commit."
+2. **Record it.** Start `planner`: "Add a blocker to `docs/CLAUDE_BACKLOG.md` for hasseln: <ID>, <reason>, <what was tried>, <WIP branch or commit>. Write it in the section 'Für den Owner am PC' in the exact format of that section, create the follow-up task with goal, dependencies and verifiable acceptance criteria, and place it in the launch order right after the owner fixes it. Change only docs." Then `reviewer`: "Docs-only change by the planner: check and commit."
 3. Continue with step 2. Tasks that need the same missing thing are skipped from now on.
 
 ## 6. Nothing ready
-- Scope empty (whole backlog): start `planner`: "Gap check for cm2-run: compare the implementation and the verified results with `docs/PRODUCT_SPEC.md`, the milestone gates in `docs/CLAUDE_BACKLOG.md` and `docs/TEST_PLAN.md`. Add follow-up tasks only for gaps you can trace to one of these three documents (name the section), with goal, dependencies and verifiable acceptance criteria. Report NONE if there is no such gap. Change only docs." If tasks were added: `reviewer` commits them, then step 2. If NONE: step 7.
+- Scope empty (whole backlog): start `planner`: "Gap check for hasseln: compare the implementation and the verified results with `docs/PRODUCT_SPEC.md`, the milestone gates in `docs/CLAUDE_BACKLOG.md` and `docs/TEST_PLAN.md`. Add follow-up tasks only for gaps you can trace to one of these three documents (name the section), with goal, dependencies and verifiable acceptance criteria. Report NONE if there is no such gap. Change only docs." If tasks were added: `reviewer` commits them, then step 2. If NONE: step 7.
 - Narrow scope: step 7.
 
 ## 7. End the run
 The run ends only when: everything in scope is done and verified; the owner says stop; three blockers in a row; or every remaining in-scope task is blocked or waits for the owner.
-1. **Refresh the backlog** unless everything is done. Start `planner`: "Refresh the whole `docs/CLAUDE_BACKLOG.md` after a cm2-run, assuming the owner will resolve every open 'Für den Owner am PC' entry before the next run: tick what is done, update status lines, fix dependencies, put the follow-up tasks of the PC entries first in the launch order, and make every PC entry complete in the section's format. Change only docs." Then `reviewer` commits it.
+1. **Refresh the backlog** unless everything is done. Start `planner`: "Refresh the whole `docs/CLAUDE_BACKLOG.md` after a hasseln, assuming the owner will resolve every open 'Für den Owner am PC' entry before the next run: tick what is done, update status lines, fix dependencies, put the follow-up tasks of the PC entries first in the launch order, and make every PC entry complete in the section's format. Change only docs." Then `reviewer` commits it.
 2. **Report** in German, in the "Reporting format for planner review" from CLAUDE.md, with this at the very top:
    - **Für dich am PC:** each open entry as ID, what to do in numbered steps, and what it unblocks. Say "nichts" if there is none.
    - Then: tasks done (ID, commit SHA, agents used), tasks blocked (ID, reason, WIP branch), tasks skipped because they need the owner, and why the run ended.
-   - Last: "Danach `/cm2-run` (oder „weiter“): er prüft zuerst die PC-Einträge und macht dort weiter."
+   - Last: "Danach `/hasseln` (oder „weiter“): er prüft zuerst die PC-Einträge und macht dort weiter."
 3. Only now call `wrap_up`, then the closing message.
 
 ## Format of "Für den Owner am PC"
@@ -79,9 +79,9 @@ The section stays at the top of `docs/CLAUDE_BACKLOG.md`, directly under the tit
   2. <...>
 - Prüfen: <how the next run checks that it is resolved>
 - Blockiert: <task IDs>
-- Danach: <follow-up task ID, which runs first in the next cm2-run>
+- Danach: <follow-up task ID, which runs first in the next hasseln>
 - WIP-Branch: <wip/<ID> @ <sha> | none>
-- Seit: <YYYY-MM-DD>, cm2-run
+- Seit: <YYYY-MM-DD>, hasseln
 ```
 
 Resolved entries move to a sub-section `#### Erledigt` at the end of that section.
