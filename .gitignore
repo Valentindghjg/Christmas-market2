@@ -1,3 +1,10 @@
-rojo-serve*.log
+# Rojo / Studio build outputs (regenerate with `rojo build` / `rojo sourcemap`)
 build.rbxlx
 sourcemap.json
+rojo-serve*.log
+*.rbxl.lock
+*.rbxlx.lock
+
+# Raw download archives duplicate the unpacked CC0 sources stored beside them;
+# assets/third_party/poly_pizza/README.md lists each original download page.
+assets/**/source.zip
