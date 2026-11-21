@@ -48,3 +48,27 @@ You are the implementation engineer for this Roblox Studio / Luau game. The huma
 - Next task started, including any follow-up task created
 
 Do not silently mark unimplemented features complete. Prefer a playable vertical slice over broad unfinished scaffolding.
+
+## Skills
+
+Project-level Roblox skills from `TabooHarmony/roblox-brain` are installed under `.claude/skills/` (29 skills, pinned in `skills-lock.json`). Each skill is a `SKILL.md` plus `references/full.md`.
+
+- **Core:** roblox-collaboration-mode, roblox-architecture, roblox-data, roblox-server-data, roblox-luau-core, roblox-luau-patterns, roblox-luau-types, roblox-networking, roblox-performance, roblox-security
+- **Gameplay:** roblox-animation-vfx, roblox-audio, roblox-building, roblox-camera, roblox-gui, roblox-input, roblox-lighting, roblox-localization, roblox-npc-ai, roblox-physics
+- **Design:** roblox-analytics, roblox-game-design, roblox-growth-design, roblox-monetization, roblox-player-psychology
+- **Tools:** roblox-cloud, roblox-publish-checklist, roblox-studio-mcp, roblox-tooling
+
+**Bei Widersprüchen gilt diese CLAUDE.md vor den Skills.** The same applies to the documents it names (PRODUCT_SPEC, DECISION_LOG, TECHNICAL_ARCHITECTURE, MODEL_INTEGRATION). Known conflicts and the rule that applies:
+
+1. **Working modes (roblox-collaboration-mode):** the skill infers a peer or autonomous mode from the user's phrasing. Applies here: "Continuous execution" above; carry approved milestones through without waiting for replies.
+2. **Approval gates (roblox-collaboration-mode):** the skill requires explicit approval for DataStore schemas, migrations, purchases and publishing in every mode. Applies here: only publication and paid products/actions need Product Owner approval; versioned schemas and migrations are part of the assignment (P0/P1 step 3, DECISION_LOG: engineering decides technical details).
+3. **Asking vs. deciding (roblox-collaboration-mode):** the skill says to ask once when instructions conflict and to leave hard choices to the user. Applies here: technical and minor gameplay decisions are made without further questions (DECISION_LOG); record them, and record blockers and continue with independent work.
+4. **Skill precedence (roblox-collaboration-mode):** the skill claims precedence over other skills on process. Applies here: this CLAUDE.md first, then the skills.
+5. **Asset sources (roblox-building, roblox-studio-mcp):** the skills search Toolbox/Creator Store first and insert or generate assets via MCP. Applies here: build original models from Parts/MeshParts/procedural geometry; never copy third-party proprietary models; no unlicensed Toolbox assets (MODEL_INTEGRATION). Licence-clear sources need recorded provenance (CC0 precedent: `assets/third_party/`, DECISION_LOG 2026-11-21).
+6. **Source of truth (roblox-studio-mcp, roblox-building):** the skills edit scripts and scenes directly in Studio via MCP. Applies here: Rojo plus this repository are the source of truth and all work is committed; a change that exists only in Studio is not part of the project.
+7. **Offline earnings (roblox-game-design, roblox-growth-design references):** they recommend offline earnings and "2x offline earnings" products for plot games. Applies here: no offline income (PRODUCT_SPEC, owner decision).
+8. **Monetization (roblox-monetization, roblox-growth-design, roblox-player-psychology):** consumables, premium boosts in the first minute, price ladders and paid RNG. Applies here: no enabling or creating paid products without explicit Product Owner approval; monetization stays disabled; paid randomized items additionally need policy review and disclosed odds (PRODUCT_SPEC).
+9. **Events (roblox-growth-design, roblox-game-design):** recurring LiveOps event cadence. Applies here: Christmas-only seasonal events (PRODUCT_SPEC).
+10. **Localization (roblox-localization):** LocalizationTables and Roblox auto-translation. Applies here: German and English through localized string keys (PRODUCT_SPEC); the current implementation is `src/shared/Localization.lua`.
+11. **Remote style (roblox-networking):** the skill prefers RemoteEvents and short RemoteFunctions. Applies here: the versioned request/response action protocol `{ok, errorCode, revision, data}` (TECHNICAL_ARCHITECTURE section 3).
+12. **Code layout (roblox-architecture):** the skill favours grouping by feature. Applies here: the layout in TECHNICAL_ARCHITECTURE section 1 (`src/shared`, `src/server/Services`, `src/client`). The skill itself advises against reorganizing a working repository.
