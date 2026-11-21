@@ -112,6 +112,16 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
   - .claude/agents/ (planner, implementer, implementer-high, implementer-opus, playtester, reviewer, modeler)
   - .claude/skills/cm2-task/
 
+## 2026-11-21 - Automatic model switch in the chat (owner)
+- **Previous rule:** the chat ran on the model chosen in the session.
+- **New rule:**
+  - Planning in the chat invokes the skill `cm2-plan`, which switches the turn to Opus 5.5 at high effort.
+  - Work invokes the skill `cm2-task`, which switches the turn to Sonnet 5.5 at medium effort; the agents then run on their pinned models.
+  - Each message is classified again.
+- **Mechanism:** the `model` and `effort` fields in the skill frontmatter, which apply for the rest of the turn (Claude Code skills documentation).
+- **Limit:** a value excluded through `availableModels`, or not supported in auto mode, is not applied.
+- **Affected files:** CLAUDE.md, .claude/skills/cm2-plan/, .claude/skills/cm2-task/.
+
 ## Change procedure
 1. Identify impacted documents and code/config.
 2. Amend the canonical source (PRODUCT_SPEC for owner decisions, GAME_DESIGN for mechanics, TECHNICAL_ARCHITECTURE for interfaces, TEST_PLAN for verification).

@@ -1,10 +1,14 @@
 ---
 name: cm2-task
 description: Runs one Christmas Market 2 task (code, bug fix or 3D model) through the fixed model pipeline - planner (Opus 5.5 high), implementer tier (Sonnet 5.5 medium, Sonnet 5.5 high or Opus 5.5 high) or modeler (Opus 5.5 medium), playtester (Sonnet 5.5 medium), reviewer (Opus 5.5 medium, commits). Use for every task that changes code, tests, models or the map in this repository, including each ticket of the continuous-execution loop.
+model: claude-sonnet-5-5
+effort: medium
 argument-hint: <backlog task ID or short task description>
 ---
 
 # cm2-task: plan, implement, playtest, review
+
+This chat now runs on Sonnet 5.5 at medium effort for orchestrating. Each step below gets its own model from its agent file.
 
 Task: $ARGUMENTS
 If no task is given, pick the next ready task under the "Continuous execution" rules in `CLAUDE.md`.
