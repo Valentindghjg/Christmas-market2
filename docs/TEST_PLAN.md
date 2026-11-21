@@ -57,7 +57,7 @@ L. Monetization is active at launch (owner decision 2026-11-21): every product n
 
 ## 3b. Studio playtest procedure (driven through the Roblox Studio MCP)
 - Start Play (Server + Client). The server unit-test runner is `require(ServerStorage.UnitTest.RunUnitTest)(nil, 10)` in the Server data model.
-- Customers are random and orders expire after 120 s, so use `ServerStorage.StudioTestHook` (Studio only): `Invoke("forceCustomer", n)` makes the next arriving customer profile `n` and converts it (profiles 4, 13, 22, … want a Medium Frasier Fir); `Invoke("advanceClock", seconds)` fast-forwards deliveries and order expiry; `Invoke("customerOrders", userId)` returns the order summary.
+- Customers are random and orders expire after 120 s, so use `ServerStorage.StudioTestHook` (Studio only): `Invoke("forceCustomer", n)` makes the next arriving customer profile `n` and converts it (profiles 5, 17, 29, … want a Medium Fraser Fir; profiles 8, 20, 32, … a Medium Douglas Fir); `Invoke("advanceClock", seconds)` fast-forwards deliveries and order expiry; `Invoke("customerOrders", userId)` returns the order summary.
 - Proximity prompts only appear when the target is on screen: before pressing E, place the character and point the camera at the pickup tree or car.
 - Known limit: the Play viewport captured black in `screen_capture`, so world checks are numeric (instance paths, positions, bounding boxes) rather than visual.
 

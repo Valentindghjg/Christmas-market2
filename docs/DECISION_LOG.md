@@ -153,6 +153,14 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - **Technical decisions recorded with the order:** calendar, likes and daily rewards use the server's UTC date; cross-server "Join" uses a MemoryStore save-to-server map; until the group ID is supplied the group bonus is hidden.
 - **Affected files:** docs/CLAUDE_BACKLOG.md, docs/DECISION_LOG.md.
 
+## 2026-11-22 - Starter species and observed wholesale table, CM2-G6 (engineering)
+- Previous rule: three species (FrasierFir, NobleFir, BlueSpruce); only Medium wholesale observed, Small and Large wholesale PROVISIONAL (26/42, 30/48, 34/55). New rule: four starter species in the OBSERVED supplier order Douglas Fir (Common), Fraser Fir (Uncommon), Noble Fir (Rare), Blue Spruce (Uncommon), with all 12 wholesale values OBSERVED (REFERENCE_GAME_LIVE_TEST §4.1). The 80 %/130 % rule stays for retail prices only.
+- New species ID `DouglasFir`. The ID `FrasierFir` stays as a stable save key; only its display name changes to "Fraser Fir" (owner spelling fix). No schema bump: saved data is keyed by species ID. Existing saves gain the Douglas medium price on load (existing backfill) and Douglas supplier stock at the next supplier refresh (at most 240 s).
+- Douglas Fir typical medium 70 and starting medium price 72 are PROVISIONAL, on the same 2.5 x wholesale convention as the other species, until CM2-G7 sets the benchmark to wholesale x 5.
+- Customer preferences cycle through four species; Douglas Fir is appended, so profiles 1-3 are unchanged (CM2-N1 replaces the cycle).
+- The Supplier panel lists the four species with server prices and acts on the selected species (Medium); the company summary gains a read-only `supplier.wholesale` map.
+- Affected files: GameConfig, BusinessState, SupplierCatalog, CustomerProfile, SupplierStockService, WorldService, UiController, Localization, tests, GAME_DESIGN, TEST_PLAN, MODEL_INTEGRATION.
+
 ## Change procedure
 1. Identify impacted documents and code/config.
 2. Amend the canonical source (PRODUCT_SPEC for owner decisions, GAME_DESIGN for mechanics, TECHNICAL_ARCHITECTURE for interfaces, TEST_PLAN for verification).

@@ -7,7 +7,7 @@ Authority: [PRODUCT_SPEC.md](PRODUCT_SPEC.md). **The owner decisions of 2026-11-
 Christmas-tree retail tycoon: buy stock from supplier, wait for truck, unload, place trees, set prices, attract and serve NPC customers, earn cash and reputation, upgrade the lot and HQ. Distinct snowy map, gameplay close to reference screenshots, original assets and cleaner festive UI. No rebirth, no offline income, no ongoing employee wages. Two modes: separate businesses on a shared server and opt-in collaborative companies.
 
 ## 2. Evidence policy
-- **OBSERVED in screenshots:** supplier, pricing, delivery/stock zones, checkout, staff, HQ, plot upgrades, decor, quests, analytics, store; medium Frasier Fir $82, Noble Fir $96, Blue Spruce $105; small 80% and large 130% of medium; cashier hire $1,200, lot worker $1,800; Christmas Pavilion prerequisites: expansion 1, parking 4, reputation 250, cash $2,500.
+- **OBSERVED in screenshots:** supplier, pricing, delivery/stock zones, checkout, staff, HQ, plot upgrades, decor, quests, analytics, store; medium Frasier Fir $82, Noble Fir $96, Blue Spruce $105; small 80% and large 130% of medium; wholesale per species and size (REFERENCE_GAME_LIVE_TEST §4.1); cashier hire $1,200, lot worker $1,800; Christmas Pavilion prerequisites: expansion 1, parking 4, reputation 250, cash $2,500.
 - **OWNER DECIDED:** close-to-original mechanics; own map; dynamic demand by price/species/season/reputation; optional automatic pricing; delivery truck; detailed customer AI; staff automation; no wages/offline earnings/prestige; dual multiplayer modes; permanent data/statistics; DE/EN; Christmas-only events.
 - **PROVISIONAL / INFERRED:** all unobserved numeric tuning, delivery seconds, conversion rates, NPC profiles, first-join balance, map size, exact decoration costs and later HQ tiers. These must remain in config, not silently be described as original-game facts.
 
@@ -24,8 +24,9 @@ Inventory buckets: Pending -> Delivered -> Stored -> Displayed -> Reserved -> So
 
 ## 4. Initial economy and pricing
 Currency: in-game dollars (not Robux). All money represented as nonnegative integer amounts.
-Tree IDs: FrasierFir, NobleFir, BlueSpruce initially in configuration; species list expands with verified reference evidence or original game design.
-Medium price examples: Frasier 82, Noble 96, Blue Spruce 105; small = round(0.8 * medium), large = round(1.3 * medium). Initial wholesale medium examples: 32, 37, 42. Wholesale prices by size are **not observed**; configure separately instead of asserting original ratio.
+Tree IDs: DouglasFir, FrasierFir, NobleFir, BlueSpruce, in the OBSERVED supplier and unlock order (REFERENCE_GAME_LIVE_TEST §4.1, `GameConfig.SpeciesOrder`). IDs are stable save keys; the display name of `FrasierFir` is "Fraser Fir" (owner spelling fix 2026-11-21). The species list grows with the HQ-tier species (CM2-G9).
+Medium price examples: Frasier 82, Noble 96, Blue Spruce 105; small = round(0.8 * medium), large = round(1.3 * medium).
+Wholesale per tree is **OBSERVED per species and size** (REFERENCE_GAME_LIVE_TEST §4.1), Small/Medium/Large: Douglas Fir 21/28/41, Fraser Fir 24/32/46, Noble Fir 28/37/54, Blue Spruce 32/42/61. The 80 %/130 % size rule applies to retail prices only; supplier costs come from this table.
 Player can set medium price per species, or toggle auto-price. Auto-price periodically targets a configurable market benchmark with a stock-sensitive adjustment, respects server min/max, and never changes existing reserved sales.
 Suggested **provisional** controls: price min 50% of benchmark, max 250%; price updates at most once every 3 seconds; quantity per order 1–100; demand score clamped [0,1]. Starting cash/reputation shown in screenshots (84/90) are **not established first-join defaults**; choose playtest-friendly defaults and label them.
 
