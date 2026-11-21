@@ -1,5 +1,5 @@
 --!strict
--- Executes the P0 shared-module contracts outside Studio for local and CI feedback.
+-- Executes every unit-test case outside Studio for local and CI feedback.
 local fs = require("@lune/fs")
 local process = require("@lune/process")
 
@@ -48,6 +48,7 @@ for name, path in pairs({
 	EmployeeService = "src/server/Services/EmployeeService.lua",
 	PersistenceService = "src/server/Services/PersistenceService.lua",
 	PlacementService = "src/server/Services/PlacementService.lua",
+	PlotService = "src/server/Services/PlotService.lua",
 	PricingService = "src/server/Services/PricingService.lua",
 	ProgressionService = "src/server/Services/ProgressionService.lua",
 	QuestService = "src/server/Services/QuestService.lua",
@@ -137,17 +138,17 @@ local function runCase(name: string)
 	(factory :: (unknown) -> ())(context)
 end
 
-for _, name in ipairs({
-	"GameConfig_Test",
-	"Economy_Test",
-	"Inventory_Test",
-	"BusinessState_Test",
-	"Localization_Test",
-	"Protocol_Test",
-	"CompanyStateService_Test",
-	"CustomerService_Test",
-	"PersistenceService_Test",
-}) do
+-- Every Studio case runs headlessly; new cases are discovered automatically.
+local caseNames = {}
+for _, fileName in ipairs(fs.readDir("tests/studio/Cases")) do
+	local caseName = string.match(fileName, "^(.+_Test)%.lua$")
+	if caseName then
+		table.insert(caseNames, caseName)
+	end
+end
+table.sort(caseNames)
+assert(#caseNames > 0, "no test cases discovered")
+for _, name in ipairs(caseNames) do
 	runCase(name)
 end
 print(string.format("[SUMMARY] %d run, %d passed, %d failed", total, total - failures, failures))
