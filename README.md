@@ -13,13 +13,22 @@ An original Christmas-tree sales simulator based on screenshot-observed gameplay
 - [Actual development progress](docs/PROGRESS.md)
 
 ## Current status
-Rojo scaffold and initial pure Luau business/inventory/localization modules exist. The game is **not yet playable or verified in Roblox Studio**. Reference screenshot binaries have **not yet been committed**; they should be uploaded under `docs/references/roblox-game/`. The owner supplies final 3D models gradually. Development can proceed with temporary invisible placeholders for interactions.
+P0 (foundation) is complete; P1 (playable core) is in progress. The server-authoritative loop - supplier order -> truck delivery -> unload -> display -> NPC checkout -> autosave - exists as code with 85 headless contract checks, a generated winter graybox map and a minimal DE/EN HUD. It has **not yet been verified end-to-end in Roblox Studio** (see [PROGRESS](docs/PROGRESS.md) for what was and was not run). Reference screenshot binaries are still not committed (`docs/references/roblox-game/`). CC0 source models live in `assets/third_party/`; Studio-imported art under `ReplicatedStorage.ArtAssets` is not yet part of the Rojo project, so a fresh build uses primitive fallbacks.
+
+## Repository layout
+- `src/shared` - pure, client-safe modules (config, economy, schema, protocol, localization)
+- `src/server` - bootstrap and authoritative services (`Services/`)
+- `src/client` - HUD/UI controller; sends requests only
+- `tests/studio/Cases` - unit-test cases, run by `tests/headless/run.luau` (Lune, CI) and `tests/studio/RunUnitTest.lua` (Studio)
+- `assets/third_party` - CC0 source models with provenance README
+- `docs` - specification, architecture, plans, progress and decision log
 
 ## Local development
 1. Install [Rokit](https://github.com/rojo-rbx/rokit).
 2. From the repository root, run `rojo serve default.project.json`. Rokit installs the pinned Rojo version from `rokit.toml` on first use.
 3. In Roblox Studio, use the Rojo plugin to connect to `http://localhost:34872` and sync `default.project.json`.
 4. Verify the project mapping with `rojo build default.project.json --output build.rbxlx`.
+5. Before committing, run the same checks as CI: `stylua --check src tests`, `selene src tests`, `lune run tests/headless/run.luau`.
 
 The `Quality` GitHub Actions workflow runs formatting, linting, shared-module type checks, headless core unit tests and a Rojo build on pushes and pull requests. Run the CI unit-test suite locally with `lune run tests/headless/run.luau`.
 

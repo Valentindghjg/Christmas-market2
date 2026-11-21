@@ -72,6 +72,12 @@ Status: 50 GitHub issues created; **not yet implemented or verified**.
 - [ ] [CM2-49](https://github.com/Valentindghjg/Christmas-market2/issues/50)
 - [ ] [CM2-50](https://github.com/Valentindghjg/Christmas-market2/issues/51)
 
+## Follow-up tasks (created 2026-11-21 from the engineering review)
+- [ ] **CM2-R1 Studio regression run of the hardened session layer.** Depends on: Rojo plugin reconnect + Studio API access. Accept: Studio Play Server runs `RunUnitTest` with 85/85 passing; a manual order -> deliver -> unload -> place -> NPC sale shows the sold tree disappearing; leave + rejoin restores cash/stock.
+- [ ] **CM2-R2 Version Studio art in the Rojo project.** Depends on: none. Accept: `ReplicatedStorage.ArtAssets` is exported to `.rbxm` files mapped in `default.project.json`, so `rojo build` contains the imported models and a fresh checkout no longer falls back to primitives.
+- [ ] **CM2-R3 Surface a failed-closed session to the player.** Depends on: none. Accept: when a session becomes unavailable mid-game the server sets `CompanyReady=false` with an error code and the HUD shows it; covered by a headless test.
+- [ ] **CM2-R4 Expand strict Luau type analysis beyond GameConfig/Economy/Inventory.** Depends on: Roblox definitions file in CI. Accept: `luau-lsp analyze` passes for all `src/shared` modules in CI.
+
 ## Milestone gates
 - P0: tools, unit tests, safe persistence and network foundation.
 - P1: order -> delivery -> display -> NPC checkout -> rejoin playable in Studio.
