@@ -16,7 +16,7 @@ Status: 50 GitHub issues created; **not yet implemented or verified**.
 - [x] [CM2-03](https://github.com/Valentindghjg/Christmas-market2/issues/3)
 - [x] [CM2-04](https://github.com/Valentindghjg/Christmas-market2/issues/4)
 - [x] [CM2-05](https://github.com/Valentindghjg/Christmas-market2/issues/5)
-- [ ] [CM2-06](https://github.com/Valentindghjg/Christmas-market2/issues/6)
+- [x] [CM2-06](https://github.com/Valentindghjg/Christmas-market2/issues/6)
 - [ ] [CM2-07](https://github.com/Valentindghjg/Christmas-market2/issues/7)
 - [ ] [CM2-08](https://github.com/Valentindghjg/Christmas-market2/issues/8)
 - [ ] [CM2-09](https://github.com/Valentindghjg/Christmas-market2/issues/9)

@@ -55,6 +55,32 @@ return function(t)
 		expect.truthy(migrated.questClaims)
 	end)
 
+	-- The latest migration must preserve all established persisted domains.
+	t.test("migrates v8 records without losing company domains", function()
+		local legacy = BusinessState.new("personal:42", 42)
+		legacy.schemaVersion = 8
+		legacy.questClaims = nil
+		legacy.stock[Inventory.key("NobleFir", "Large")] = 2
+		legacy.pendingOrders = {
+			order_legacy = { orderId = "order_legacy", speciesId = "NobleFir", sizeId = "Large", quantity = 2 },
+		}
+		legacy.mediumPrices.NobleFir = 111
+		legacy.progression.lotExpansion = 2
+		legacy.customerVisits = 12
+		legacy.revenue = 456
+
+		local migrated = BusinessState.migrate(legacy, "personal:42", 42)
+		expect.truthy(migrated)
+		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
+		expect.equal(Inventory.count(migrated.stock, Inventory.key("NobleFir", "Large")), 2)
+		expect.truthy(migrated.pendingOrders.order_legacy)
+		expect.equal(migrated.mediumPrices.NobleFir, 111)
+		expect.equal(migrated.progression.lotExpansion, 2)
+		expect.equal(migrated.customerVisits, 12)
+		expect.equal(migrated.revenue, 456)
+		expect.truthy(migrated.questClaims)
+	end)
+
 	t.test("rejects impossible employee counts", function()
 		local state = BusinessState.new("personal:42", 42)
 		state.staff.Cashier = 2
