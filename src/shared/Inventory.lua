@@ -1,5 +1,6 @@
 --!strict
 local Inventory = {}
+local GameConfig = require(script.Parent.GameConfig)
 
 export type InventoryState = { [string]: number }
 
@@ -31,7 +32,7 @@ function Inventory.add(state: InventoryState, key: string, amount: number): bool
 		return false
 	end
 	local old = Inventory.count(state, key)
-	if old + amount > 100000 then
+	if old + amount > GameConfig.MaxStockPerSku then
 		return false
 	end
 	state[key] = old + amount

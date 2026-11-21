@@ -23,7 +23,7 @@ end
 function SupplierCatalog.list()
 	local quotes = {}
 	for speciesId in pairs(GameConfig.Trees) do
-		for _, sizeId in ipairs({ "Small", "Medium", "Large" }) do
+		for _, sizeId in ipairs(GameConfig.SizeIds) do
 			table.insert(quotes, SupplierCatalog.quote(speciesId, sizeId))
 		end
 	end

@@ -107,7 +107,7 @@ local function runCase(name: string)
 	(factory :: (unknown) -> ())(context)
 end
 
-for _, name in ipairs({ "Economy_Test", "Inventory_Test", "BusinessState_Test", "Localization_Test" }) do
+for _, name in ipairs({ "GameConfig_Test", "Economy_Test", "Inventory_Test", "BusinessState_Test", "Localization_Test" }) do
 	runCase(name)
 end
 print(string.format("[SUMMARY] %d run, %d passed, %d failed", total, total - failures, failures))

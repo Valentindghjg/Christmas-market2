@@ -191,8 +191,8 @@ function BusinessState.validate(state)
 		or not isFiniteInteger(state.staff.LotWorker)
 		or state.staff.Cashier < 0
 		or state.staff.LotWorker < 0
-		or state.staff.Cashier > 1
-		or state.staff.LotWorker > 1
+		or state.staff.Cashier > GameConfig.Employees.Cashier.maxCount
+		or state.staff.LotWorker > GameConfig.Employees.LotWorker.maxCount
 	then
 		return false
 	end

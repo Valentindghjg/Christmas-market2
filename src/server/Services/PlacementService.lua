@@ -6,6 +6,7 @@ local Inventory = require(Shared:WaitForChild("Inventory"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 
 local PlacementService = {}
+local GameConfig = require(game:GetService("ReplicatedStorage").Shared.GameConfig)
 
 local function finite(value): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -17,14 +18,14 @@ local function validTransform(transform): boolean
 		and finite(transform.y)
 		and finite(transform.z)
 		and finite(transform.rotation)
-		and transform.x >= -50
-		and transform.x <= 50
-		and transform.y >= -2
-		and transform.y <= 5
-		and transform.z >= -50
-		and transform.z <= 50
-		and transform.rotation >= 0
-		and transform.rotation < 360
+		and transform.x >= GameConfig.Placement.MinX
+		and transform.x <= GameConfig.Placement.MaxX
+		and transform.y >= GameConfig.Placement.MinY
+		and transform.y <= GameConfig.Placement.MaxY
+		and transform.z >= GameConfig.Placement.MinZ
+		and transform.z <= GameConfig.Placement.MaxZ
+		and transform.rotation >= GameConfig.Placement.MinRotation
+		and transform.rotation < GameConfig.Placement.MaxRotationExclusive
 end
 
 function PlacementService.place(state, placementId: string, speciesId: string, sizeId: string, transform)
