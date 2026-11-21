@@ -148,4 +148,14 @@ return function(t)
 		state.customerOrders["5"] = { orderNumber = 5 }
 		expect.falsy(BusinessState.validate(state))
 	end)
+
+	t.test("a new company prices and stocks Douglas Fir", function()
+		local GameConfig = require(Shared:WaitForChild("GameConfig"))
+		local state = BusinessState.new("personal:42", 42)
+		expect.equal(state.mediumPrices.DouglasFir, 72)
+		expect.equal(state.supplier.stock["DouglasFir:Small"], GameConfig.Supplier.BaseStock.Small)
+		expect.equal(state.supplier.stock["DouglasFir:Medium"], GameConfig.Supplier.BaseStock.Medium)
+		expect.equal(state.supplier.stock["DouglasFir:Large"], GameConfig.Supplier.BaseStock.Large)
+		expect.truthy(BusinessState.validate(state))
+	end)
 end

@@ -2,7 +2,9 @@
 -- Deterministic customer preferences; no client-owned customer input is trusted.
 local CustomerProfile = {}
 
-local species = { "FrasierFir", "NobleFir", "BlueSpruce" }
+-- Douglas Fir is appended so existing profile numbers keep their species (tests and
+-- StudioTestHook); CM2-N1 replaces this cycle with real customer preferences.
+local species = { "FrasierFir", "NobleFir", "BlueSpruce", "DouglasFir" }
 local sizes = { "Small", "Medium", "Large" }
 
 local function positiveInteger(value: unknown): boolean

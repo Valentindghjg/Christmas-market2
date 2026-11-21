@@ -112,4 +112,22 @@ return function(t)
 			check(Protocol.Actions.SupplierSellBack, { speciesId = "NobleFir", sizeId = "Small", quantity = 0 })
 		expect.equal(zero, "InvalidQuantity")
 	end)
+
+	t.test("accepts Douglas Fir orders and rejects the display spelling as an ID", function()
+		local ok = Protocol.validateRequest({
+			version = 1,
+			requestId = "order_douglas",
+			action = Protocol.Actions.SupplierPlaceOrder,
+			payload = { speciesId = "DouglasFir", sizeId = "Small", quantity = 1 },
+		})
+		expect.truthy(ok)
+		local fraserOk, reason = Protocol.validateRequest({
+			version = 1,
+			requestId = "order_fraser",
+			action = Protocol.Actions.SupplierPlaceOrder,
+			payload = { speciesId = "FraserFir", sizeId = "Small", quantity = 1 },
+		})
+		expect.falsy(fraserOk)
+		expect.equal(reason, "UnknownSpecies")
+	end)
 end

@@ -58,6 +58,8 @@ Localization.Strings = {
 		customerStatus = "Cars %d/%d · Loaded %d · Missed %d",
 		sellBack = "Sell 1 back for $%d",
 		soldBack = "Sold back for $%d",
+		supplierPriceLegend = "Wholesale per tree: Small / Medium / Large",
+		supplierSpeciesRow = "%s\n$%d / $%d / $%d",
 	},
 	de = {
 		cash = "Geld",
@@ -114,6 +116,8 @@ Localization.Strings = {
 		customerStatus = "Autos %d/%d · Beladen %d · Verpasst %d",
 		sellBack = "1 zurückverkaufen für %d $",
 		soldBack = "Zurückverkauft für %d $",
+		supplierPriceLegend = "Einkauf pro Baum: Klein / Mittel / Groß",
+		supplierSpeciesRow = "%s\n%d $ / %d $ / %d $",
 	},
 }
 

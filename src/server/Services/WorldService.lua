@@ -310,7 +310,7 @@ function WorldService.build()
 	local assets = Instance.new("Folder")
 	assets.Name = "OriginalGrayboxAssets"
 	assets.Parent = world
-	for speciesIndex, species in ipairs({ "FrasierFir", "NobleFir", "BlueSpruce" }) do
+	for speciesIndex, species in ipairs(GameConfig.SpeciesOrder) do
 		for sizeIndex, size in ipairs({ "Small", "Medium", "Large" }) do
 			tree(
 				assets,

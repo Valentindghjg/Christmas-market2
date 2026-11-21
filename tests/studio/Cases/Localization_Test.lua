@@ -27,4 +27,15 @@ return function(t)
 		expect.equal(Localization.format("de", "orderAccepted", 32), "Bestellung angenommen: 32 $")
 		expect.equal(Localization.format("en", "orderAccepted", "not a number"), "Order accepted: $%d")
 	end)
+
+	t.test("formats the supplier species row", function()
+		expect.equal(
+			Localization.format("en", "supplierSpeciesRow", "Douglas Fir", 21, 28, 41),
+			"Douglas Fir\n$21 / $28 / $41"
+		)
+		expect.equal(
+			Localization.format("de", "supplierSpeciesRow", "Douglas Fir", 21, 28, 41),
+			"Douglas Fir\n21 $ / 28 $ / 41 $"
+		)
+	end)
 end

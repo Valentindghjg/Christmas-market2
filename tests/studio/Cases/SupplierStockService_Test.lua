@@ -61,8 +61,8 @@ return function(t)
 	end)
 
 	t.test("refunds a quarter of wholesale rounded half up", function()
-		-- Frasier large wholesale 42 -> 10.5 -> 11; medium 32 -> 8.
-		expect.equal(Supplier.refundFor("FrasierFir", "Large"), 11)
+		-- Fraser large wholesale 46 -> 11.5 -> 12; medium 32 -> 8.
+		expect.equal(Supplier.refundFor("FrasierFir", "Large"), 12)
 		expect.equal(Supplier.refundFor("FrasierFir", "Medium"), 8)
 	end)
 
@@ -126,5 +126,74 @@ return function(t)
 		expect.equal(summary.demand["BlueSpruce:Large"], "High")
 		expect.truthy(summary.stock["BlueSpruce:Large"] > 0)
 		expect.truthy(summary.recommended)
+	end)
+
+	t.test("matches the observed sell-back refunds", function()
+		expect.equal(Supplier.refundFor("DouglasFir", "Small"), 5)
+		expect.equal(Supplier.refundFor("NobleFir", "Large"), 14)
+		expect.equal(Supplier.refundFor("DouglasFir", "Large"), 10)
+	end)
+
+	t.test("recommends Douglas Fir and Fraser Fir first in supplier order", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.cash = 100000
+		local recommendation = Supplier.recommend(state)
+		expect.equal(#recommendation.lines, 6)
+		expect.equal(recommendation.quantity, 9)
+		expect.equal(recommendation.cost, 267)
+		local expected = {
+			{ "DouglasFir", "Small", 1 },
+			{ "DouglasFir", "Medium", 2 },
+			{ "FrasierFir", "Small", 1 },
+			{ "FrasierFir", "Medium", 2 },
+			{ "NobleFir", "Small", 1 },
+			{ "NobleFir", "Medium", 2 },
+		}
+		for index, line in ipairs(expected) do
+			expect.equal(recommendation.lines[index].speciesId, line[1])
+			expect.equal(recommendation.lines[index].sizeId, line[2])
+			expect.equal(recommendation.lines[index].quantity, line[3])
+		end
+	end)
+
+	t.test("the summary exposes the server wholesale table", function()
+		local state = BusinessState.new("personal:42", 42)
+		local wholesale = Supplier.summary(state, 0).wholesale
+		local count = 0
+		for _ in pairs(wholesale) do
+			count += 1
+		end
+		expect.equal(count, 12)
+		expect.equal(wholesale["DouglasFir:Medium"], 28)
+		expect.equal(wholesale["FrasierFir:Large"], 46)
+		expect.equal(wholesale["BlueSpruce:Large"], 61)
+	end)
+
+	t.test("an existing save gains Douglas Fir supplier stock at the next refresh", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.cash = 1000
+		state.stock["FrasierFir:Medium"] = 3
+		state.mediumPrices.FrasierFir = 90
+		state.mediumPrices.DouglasFir = nil
+		for _, sizeId in ipairs(GameConfig.SizeIds) do
+			state.supplier.stock["DouglasFir:" .. sizeId] = nil
+		end
+		state.supplier.refreshAt = 1000
+		local migrated, err = BusinessState.migrate(state, "personal:42", 42)
+		expect.equal(err, nil)
+		expect.truthy(migrated)
+		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
+		expect.equal(migrated.stock["FrasierFir:Medium"], 3)
+		expect.equal(migrated.mediumPrices.FrasierFir, 90)
+		expect.equal(migrated.mediumPrices.DouglasFir, GameConfig.Trees.DouglasFir.initialMediumPrice)
+		local early, reason = BusinessState.placeOrder(migrated, "douglas_early", "DouglasFir", "Small", 1, 100)
+		expect.falsy(early)
+		expect.equal(reason, "SupplierOutOfStock")
+		expect.equal(migrated.cash, 1000)
+		expect.truthy(Supplier.refreshIfDue(migrated, 1000, constant(0.5)))
+		local ok, order = BusinessState.placeOrder(migrated, "douglas_after", "DouglasFir", "Small", 1, 1000)
+		expect.truthy(ok)
+		expect.equal(order.cost, 21)
+		expect.equal(migrated.cash, 979)
 	end)
 end

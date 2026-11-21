@@ -70,6 +70,15 @@ function BusinessState.clearCarried(state)
 	end
 end
 
+-- Every configured species starts at its catalog default (validate() requires one price per species).
+local function defaultMediumPrices(): { [string]: number }
+	local prices = {}
+	for speciesId, tree in pairs(GameConfig.Trees) do
+		prices[speciesId] = tree.initialMediumPrice
+	end
+	return prices
+end
+
 function BusinessState.new(companyId: string?, ownerUserId: number?)
 	local resolvedCompanyId = companyId or "personal:0"
 	local resolvedOwnerUserId = ownerUserId or 0
@@ -90,11 +99,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?)
 		revenue = 0,
 		spent = 0,
 		history = {},
-		mediumPrices = {
-			FrasierFir = GameConfig.Trees.FrasierFir.initialMediumPrice,
-			NobleFir = GameConfig.Trees.NobleFir.initialMediumPrice,
-			BlueSpruce = GameConfig.Trees.BlueSpruce.initialMediumPrice,
-		},
+		mediumPrices = defaultMediumPrices(),
 		autoPricing = false,
 		recentRequests = {},
 		updatedAt = 0,

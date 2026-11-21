@@ -10,13 +10,9 @@ local Inventory = require(Shared:WaitForChild("Inventory"))
 
 local SupplierStockService = {}
 
+-- Supplier rows in the OBSERVED order (GameConfig.SpeciesOrder).
 local function sortedSpecies(): { string }
-	local ids = {}
-	for speciesId in pairs(GameConfig.Trees) do
-		table.insert(ids, speciesId)
-	end
-	table.sort(ids)
-	return ids
+	return table.clone(GameConfig.SpeciesOrder)
 end
 
 local function clampRoll(value: unknown): number
@@ -132,6 +128,20 @@ function SupplierStockService.sellBack(state, speciesId: string, sizeId: string,
 	return true, { sold = quantity, refund = total, fromLot = #fromLot }
 end
 
+-- Server wholesale per SKU so the client shows exactly the prices the server charges.
+local function wholesaleTable(): { [string]: number }
+	local prices = {}
+	for _, speciesId in ipairs(GameConfig.SpeciesOrder) do
+		for _, sizeId in ipairs(GameConfig.SizeIds) do
+			local unitCost = GameConfig.wholesaleFor(speciesId, sizeId)
+			if unitCost then
+				prices[Inventory.key(speciesId, sizeId)] = unitCost
+			end
+		end
+	end
+	return prices
+end
+
 function SupplierStockService.summary(state, timestamp: number)
 	return {
 		refreshIn = math.max(0, state.supplier.refreshAt - timestamp),
@@ -139,6 +149,7 @@ function SupplierStockService.summary(state, timestamp: number)
 		demand = table.clone(state.supplier.demand),
 		recommended = SupplierStockService.recommend(state),
 		sellBackFraction = GameConfig.Supplier.SellBackFraction,
+		wholesale = wholesaleTable(),
 	}
 end
 

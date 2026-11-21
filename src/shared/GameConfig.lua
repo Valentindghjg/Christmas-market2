@@ -49,27 +49,43 @@ GameConfig.PersonalPlotIds = { "Plot_01", "Plot_02", "Plot_03", "Plot_04", "Plot
 
 local validSizes = { Small = true, Medium = true, Large = true }
 
+-- OBSERVED supplier row order, which is also the unlock order of the starter species
+-- (docs/REFERENCE_GAME_LIVE_TEST.md §4.1). Every key of GameConfig.Trees appears here once.
+GameConfig.SpeciesOrder = { "DouglasFir", "FrasierFir", "NobleFir", "BlueSpruce" }
+
 GameConfig.Trees = {
-	-- Medium wholesale values are screenshot-observed. Small and Large wholesale
-	-- values are provisional balance values and must be tuned through playtests.
-	FrasierFir = {
-		displayName = "Frasier Fir",
+	-- Wholesale per species and size and the rarity are OBSERVED (docs/REFERENCE_GAME_LIVE_TEST.md §4.1).
+	-- typicalMedium and initialMediumPrice are PROVISIONAL until CM2-G7 (benchmark = wholesale x 5).
+	-- Species IDs are stable save keys: "FrasierFir" keeps its ID; only the display name is "Fraser Fir".
+	DouglasFir = {
+		displayName = "Douglas Fir",
+		rarity = "Common",
 		evidence = GameConfig.Evidence.Observed,
-		wholesale = { Small = 26, Medium = 32, Large = 42 },
+		wholesale = { Small = 21, Medium = 28, Large = 41 },
+		typicalMedium = 70,
+		initialMediumPrice = 72,
+	},
+	FrasierFir = {
+		displayName = "Fraser Fir",
+		rarity = "Uncommon",
+		evidence = GameConfig.Evidence.Observed,
+		wholesale = { Small = 24, Medium = 32, Large = 46 },
 		typicalMedium = 80,
 		initialMediumPrice = 82,
 	},
 	NobleFir = {
 		displayName = "Noble Fir",
+		rarity = "Rare",
 		evidence = GameConfig.Evidence.Observed,
-		wholesale = { Small = 30, Medium = 37, Large = 48 },
+		wholesale = { Small = 28, Medium = 37, Large = 54 },
 		typicalMedium = 92,
 		initialMediumPrice = 96,
 	},
 	BlueSpruce = {
 		displayName = "Blue Spruce",
+		rarity = "Uncommon",
 		evidence = GameConfig.Evidence.Observed,
-		wholesale = { Small = 34, Medium = 42, Large = 55 },
+		wholesale = { Small = 32, Medium = 42, Large = 61 },
 		typicalMedium = 105,
 		initialMediumPrice = 105,
 	},

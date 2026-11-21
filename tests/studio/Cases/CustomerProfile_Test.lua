@@ -18,4 +18,19 @@ return function(t)
 		expect.falsy(CustomerProfile.canPurchase(profile, { speciesId = "NobleFir", sizeId = "Small" }, 65))
 		expect.falsy(CustomerProfile.canPurchase(profile, { speciesId = "FrasierFir", sizeId = "Small" }, 999))
 	end)
+
+	t.test("cycles customer preferences through all four starter species", function()
+		local expected = { "FrasierFir", "NobleFir", "BlueSpruce", "DouglasFir" }
+		for number, speciesId in ipairs(expected) do
+			local profile = CustomerProfile.create(number)
+			expect.equal(profile.preferredSpeciesId, speciesId)
+			expect.equal(profile.preferredSizeId, "Small")
+		end
+		local five = CustomerProfile.create(5)
+		expect.equal(five.preferredSpeciesId, "FrasierFir")
+		expect.equal(five.preferredSizeId, "Medium")
+		local eight = CustomerProfile.create(8)
+		expect.equal(eight.preferredSpeciesId, "DouglasFir")
+		expect.equal(eight.preferredSizeId, "Medium")
+	end)
 end
