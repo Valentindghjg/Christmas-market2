@@ -29,5 +29,7 @@ jobs:
         run: >-
           luau-lsp analyze --sourcemap sourcemap.json
           src/shared/GameConfig.lua src/shared/Economy.lua src/shared/Inventory.lua
+      - name: Run core unit tests
+        run: lune run tests/headless/run.luau
       - name: Validate Rojo project
         run: rojo build default.project.json --output build.rbxlx

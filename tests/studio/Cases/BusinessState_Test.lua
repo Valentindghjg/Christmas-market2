@@ -42,16 +42,17 @@ return function(t)
 		expect.equal(migrated.members["42"], "Owner")
 	end)
 
-	-- Existing v4 records gain empty checkout reservations without balance changes.
-	t.test("migrates v4 state to reservation schema", function()
+	-- Existing v4 records reach the current schema without losing balances.
+	t.test("migrates v4 state to current schema", function()
 		local legacy = BusinessState.new("personal:42", 42)
 		legacy.schemaVersion = 4
 		legacy.reservations = nil
 		local migrated = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
-		expect.equal(migrated.schemaVersion, 5)
+		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(migrated.cash, 84)
 		expect.truthy(migrated.reservations)
+		expect.truthy(migrated.questClaims)
 	end)
 
 	t.test("rejects impossible employee counts", function()

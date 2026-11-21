@@ -21,7 +21,7 @@ Rojo scaffold and initial pure Luau business/inventory/localization modules exis
 3. In Roblox Studio, use the Rojo plugin to connect to `http://localhost:34872` and sync `default.project.json`.
 4. Verify the project mapping with `rojo build default.project.json --output build.rbxlx`.
 
-The `Quality` GitHub Actions workflow runs the same formatter, linter and Rojo build checks on pushes and pull requests.
+The `Quality` GitHub Actions workflow runs formatting, linting, shared-module type checks, headless core unit tests and a Rojo build on pushes and pull requests. Run the CI unit-test suite locally with `lune run tests/headless/run.luau`.
 
 Unit-test modules are mapped to `ServerStorage.UnitTest`. After connecting/reconnecting Rojo, start a Studio Play session and run `require(game:GetService("ServerStorage").UnitTest.RunUnitTest)()` in the server command bar or through the Studio MCP server console.
 
