@@ -4,6 +4,7 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
@@ -32,8 +33,25 @@ local function tell(player: Player, key: string, ...: number)
 	notify:FireClient(player, { key = key, args = { ... } })
 end
 
+-- Studio playtests can force customer conversions and fast-forward the business clock
+-- through StudioTestHook (below). Outside Studio both stay at their neutral values.
+local clockOffset = 0
+local forcedRolls = 0
+
+local function businessClock(): number
+	return os.time() + clockOffset
+end
+
+local function businessRoll(): number
+	if forcedRolls > 0 then
+		forcedRolls -= 1
+		return 0
+	end
+	return math.random()
+end
+
 local persistence = PersistenceService.new()
-local companies = CompanyStateService.new(persistence)
+local companies = CompanyStateService.new(persistence, businessClock, businessRoll)
 local plots = PlotService.new(config.PersonalPlotIds)
 WorldService.build()
 
@@ -342,6 +360,28 @@ businessAction.OnServerInvoke = function(player, request)
 		WorldService.applyParkingVisual(plotId, effectiveParking(response.data))
 	end
 	return response
+end
+
+-- Studio-only test instrument for reproducible playtests (docs/TEST_PLAN.md). It is
+-- never created on live servers, and clients cannot reach a ServerStorage BindableFunction.
+if RunService:IsStudio() then
+	local hook = Instance.new("BindableFunction")
+	hook.Name = "StudioTestHook"
+	hook.OnInvoke = function(command: string, value: number?)
+		if command == "forceCustomer" and type(value) == "number" and value >= 1 then
+			-- The next arriving customer has profile `value` and always converts.
+			companies:setCustomerSequence(math.floor(value) - 1)
+			forcedRolls = 1
+			return true
+		elseif command == "advanceClock" and type(value) == "number" and value > 0 and value <= 3600 then
+			clockOffset += value
+			return clockOffset
+		elseif command == "customerOrders" and type(value) == "number" then
+			return companies:getCustomerOrders(companyIdFor(value))
+		end
+		return nil
+	end
+	hook.Parent = game:GetService("ServerStorage")
 end
 
 for _, player in Players:GetPlayers() do

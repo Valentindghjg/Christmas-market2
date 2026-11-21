@@ -186,9 +186,10 @@ local function refreshSummary()
 	local data = response.data
 	cash.Text =
 		string.format("%s: $%d · %s: %d", localized("cash"), data.cash, localized("reputation"), data.reputation)
-	if data.plot then
+	-- Effective spaces include the base tier; data.plot holds only purchased upgrades.
+	if data.customers then
 		status.Text =
-			localizedFormat("plotParkingStatus", tostring(player:GetAttribute("PlotId")), data.plot.parkingSpaces)
+			localizedFormat("plotParkingStatus", tostring(player:GetAttribute("PlotId")), data.customers.parkingSpaces)
 	end
 	-- The server lists ready deliveries first.
 	deliveredOrderId = nil
@@ -258,11 +259,12 @@ place.Activated:Connect(function()
 		return
 	end
 	busy.place = true
-	local slot = placementCount % 5
+	-- Two rows of four east of the sales stand: clear of the stand, checkout, pickup row and parking.
+	local slot = placementCount % 8
 	local response = invoke("Inventory.Place", {
 		speciesId = "FrasierFir",
 		sizeId = "Medium",
-		transform = { x = -20 + slot * 10, y = 0, z = 8, rotation = 0 },
+		transform = { x = 14 + (slot % 4) * 7, y = 0, z = -3 + (slot // 4) * 8, rotation = 0 },
 	})
 	detail.Text = if response.ok then localized("treePlaced") else errorText(response.errorCode)
 	refreshSummary()

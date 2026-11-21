@@ -55,6 +55,12 @@ J. Localization and accessibility across input modes; no UI clipped by phone saf
 K. Event flags work only during Christmas event window; no offline passive payout.
 L. Monetization remains off until explicit owner approval; any future receipt handling needs separate test pass.
 
+## 3b. Studio playtest procedure (driven through the Roblox Studio MCP)
+- Start Play (Server + Client). The server unit-test runner is `require(ServerStorage.UnitTest.RunUnitTest)(nil, 10)` in the Server data model.
+- Customers are random and orders expire after 120 s, so use `ServerStorage.StudioTestHook` (Studio only): `Invoke("forceCustomer", n)` makes the next arriving customer profile `n` and converts it (profiles 4, 13, 22, … want a Medium Frasier Fir); `Invoke("advanceClock", seconds)` fast-forwards deliveries and order expiry; `Invoke("customerOrders", userId)` returns the order summary.
+- Proximity prompts only appear when the target is on screen: before pressing E, place the character and point the camera at the pickup tree or car.
+- Known limit: the Play viewport captured black in `screen_capture`, so world checks are numeric (instance paths, positions, bounding boxes) rather than visual.
+
 ## 4. Nonfunctional budgets (initial targets, subject to Studio measurement)
 - No permanent runaway NPC count; configurable caps per plot/server.
 - UI actions should acknowledge quickly; network timeouts produce actionable errors rather than double charges.

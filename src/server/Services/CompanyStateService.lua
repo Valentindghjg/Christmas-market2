@@ -51,6 +51,14 @@ function CompanyStateService.new(persistence, clock, randomRoll)
 	return self
 end
 
+-- Studio test instrument only (main.server.lua StudioTestHook): the next simulated
+-- customer gets profile number `value + 1`, so a playtest can pick a matching profile.
+function CompanyStateService:setCustomerSequence(value: number)
+	if type(value) == "number" and value >= 0 and value == math.floor(value) then
+		self._customerSequence = value
+	end
+end
+
 -- Trusted server code (world visuals) subscribes to authoritative display changes.
 function CompanyStateService:setPlacementsChangedHandler(handler)
 	self._placementsChanged = handler

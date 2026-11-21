@@ -55,6 +55,14 @@ Source: [REFERENCE_GAME_LIVE_TEST.md](REFERENCE_GAME_LIVE_TEST.md). Schema 9 -> 
   - Accepted risk: tree heights derive from the client-chosen request ID; this is cosmetic while height does not affect price or demand.
   - Rollout note: schema-9 servers reject schema-10 saves (fail-closed), so shut down old servers when publishing.
 
+## 2026-11-21 — Studio playtest of CM2-G1..G5: layout fixes and a Studio-only test hook (engineering)
+- Origin: engineering, found while playing the G1..G5 flow in Roblox Studio through the MCP.
+- Customer pickup trees moved from x 4..19 (inside the starter stand's 32 × 24 stud collision box) to a row at x 23..36, 13 studs from the plot centre toward the road; default stocking slots moved from a row behind the stand to two rows of four at x 14..35. Both are presentation defaults; server placement rules are unchanged.
+- The imported market alley moved from z = 52 (inside the south lots and on parking space 1) to the free strip between road and lots (z ≈ 24..42, x -93..-34), outside every car lane. Visual placement only.
+- The HUD parking figure now shows the effective parking spaces (base tier + upgrades) from the customer summary instead of only purchased upgrades (it read 0 while 2 spaces existed).
+- Added `StudioTestHook` (a BindableFunction in ServerStorage, created only when `RunService:IsStudio()`) with `forceCustomer`, `advanceClock` and `customerOrders`, plus a clock and roll injected into `CompanyStateService` (the constructor already supported both). Rationale: the customer rolls and the 120 s order patience are otherwise not reproducible in a playtest. It is unreachable for clients and absent on live servers.
+- Accepted: the order-action reach check runs before protocol validation, so malformed order payloads sent from far away answer `OutOfReach` rather than a validation code; every such request is rejected either way.
+
 ## Change procedure
 1. Identify impacted documents and code/config.
 2. Amend the canonical source (PRODUCT_SPEC for owner decisions, GAME_DESIGN for mechanics, TECHNICAL_ARCHITECTURE for interfaces, TEST_PLAN for verification).

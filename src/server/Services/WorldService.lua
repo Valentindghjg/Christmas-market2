@@ -355,13 +355,15 @@ function WorldService.build()
 	local marketAlley = Instance.new("Folder")
 	marketAlley.Name = "ImportedMarketAlley"
 	marketAlley.Parent = world
-	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.MarketGazebo, Vector3.new(0, 0, 52))
-	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.RusticMarketStand1, Vector3.new(-26, 0, 52))
-	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.RusticMarketStand2, Vector3.new(26, 0, 52))
-	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBench1, Vector3.new(-10, 0, 34))
-	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBench2, Vector3.new(10, 0, 34))
-	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketCart, Vector3.new(-44, 0, 52))
-	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBags, Vector3.new(44, 0, 52))
+	-- The alley sits in the strip between the road (|z| <= 16) and the lots (|z| >= 48), in
+	-- the gap between the plot 4 and plot 5 car lanes, so no stall stands on a parking space.
+	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.MarketGazebo, Vector3.new(-62, 0, 30))
+	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.RusticMarketStand1, Vector3.new(-76, 0, 30))
+	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.RusticMarketStand2, Vector3.new(-48, 0, 30))
+	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBench1, Vector3.new(-70, 0, 40))
+	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBench2, Vector3.new(-54, 0, 40))
+	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketCart, Vector3.new(-90, 0, 30))
+	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBags, Vector3.new(-36, 0, 30))
 	return world
 end
 
@@ -707,9 +709,10 @@ function WorldService.syncCustomerOrders(plotId: string, summary, callbacks)
 				pickup:Destroy()
 			end
 		elseif not pickup then
-			-- One pickup spot per parking space, so two waiting orders never overlap.
+			-- One pickup spot per parking space, so two waiting orders never overlap. The row
+			-- lies east of the sales stand (x 23..36) and clear of the checkout counter.
 			local column = math.clamp(order.parkingSpace, 1, 4) - 1
-			local position = center + Vector3.new(4 + column * 5, 0.6, if center.Z < 0 then 10 else -10)
+			local position = center + Vector3.new(23 + column * 4.5, 0.6, if center.Z < 0 then 13 else -13)
 			local scales = { Small = 0.6, Medium = 0.8, Large = 1.0 }
 			local pickupTree = tree(folder, treeName, position, scales[order.sizeId] or 0.8)
 			pickupTree:SetAttribute("OrderNumber", orderNumber)
