@@ -53,7 +53,7 @@ H. Shared company: invite, join, role enforcement, owner disconnect, simultaneou
 I. Reload restores all placements, upgrades, employees, stats, pricing and orders.
 J. Localization and accessibility across input modes; no UI clipped by phone safe areas.
 K. Event flags work only during Christmas event window; no offline passive payout.
-L. Monetization remains off until explicit owner approval; any future receipt handling needs separate test pass.
+L. Monetization is active at launch (owner decision 2026-11-21): every product needs a receipt test pass (grant once, replay rejected, offline player, failed grant retried) before the owner publishes.
 
 ## 3b. Studio playtest procedure (driven through the Roblox Studio MCP)
 - Start Play (Server + Client). The server unit-test runner is `require(ServerStorage.UnitTest.RunUnitTest)(nil, 10)` in the Server data model.
@@ -79,6 +79,6 @@ Each test run records date, build commit SHA, environment (CLI/Studio, platform)
 - [ ] No unapproved paid product enabled
 - [ ] All third-party assets/licenses reviewed
 - [ ] Owner models integrated and visual QA completed
-- [ ] DE/EN strings and input modes checked
+- [ ] English strings complete, no concatenated sentences (Roblox auto-translation), touch and keyboard input checked
 - [ ] Error handling and recovery tested
 - [ ] Owner explicitly approves publication

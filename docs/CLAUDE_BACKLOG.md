@@ -122,6 +122,9 @@ Source: [REFERENCE_GAME_LIVE_TEST.md](REFERENCE_GAME_LIVE_TEST.md) §11 (gaps G1
 - [ ] **CM2-G20 Repeatable Studio playtest.** Depends on: none. The manual MCP sequence of 2026-11-21 (order, advance clock, unload, place, force a customer, carry, wrong car, load, expiry, sell-back, soak) lives in a runnable script under `tests/studio/` that drives the Studio-only `StudioTestHook` and reports PASS/FAIL per step. Accept: one command in a Studio Play Server prints a summary; it never runs outside Studio.
 - [ ] **CM2-G21 Remaining Studio verification for G1/G2.** Depends on: none. Not yet done in Studio: Lot Worker auto-load of a waiting order, a respawn dropping the carried tree back at its pickup spot, plot isolation (a second player cannot carry or load another plot's order), the literal 10-minute soak, and screenshot evidence of cars, pickup trees and labels (the Play viewport captured black through the MCP; Edit mode has no world because it is built at runtime). Accept: each item recorded PASS/FAIL in PROGRESS.md with a screenshot where possible.
 
+## Launch replanning (2026-11-21)
+The owner interview changed scope and priorities (PRODUCT_SPEC, top section). Next step: the planner re-prioritises CM2-10..50 and CM2-G6..G18 into a launch order for the 2026-11-29 / 2026-12-06 target and writes one plan per task in `docs/plans/` before implementation. Tickets that conflict with the new decisions (collaborative roles CM2-38, DE/EN localization CM2-43, monetization prep CM2-46) are re-scoped in that pass.
+
 ## Milestone gates
 - P0: tools, unit tests, safe persistence and network foundation.
 - P1: order -> delivery -> display -> NPC checkout -> rejoin playable in Studio.

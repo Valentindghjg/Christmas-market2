@@ -1,7 +1,7 @@
 # Game Design Document — Christmas Market 2
 Status: APPROVED DIRECTION / detailed values are PROVISIONAL
 Updated: 2026-11-19
-Authority: [PRODUCT_SPEC.md](PRODUCT_SPEC.md). This document operationalizes, but does not override, the owner's decisions.
+Authority: [PRODUCT_SPEC.md](PRODUCT_SPEC.md). **The owner decisions of 2026-11-21 at the top of PRODUCT_SPEC supersede this document where they differ** (title Christmas Tree Village, English launch, manual checkout, visible customers and staff, Solo/Duo/Trio/Quad saves, active Robux shop, Advent events and calendar, all reference functions and numbers). This document operationalizes, but does not override, the owner's decisions.
 
 ## 1. Product and player experience
 Christmas-tree retail tycoon: buy stock from supplier, wait for truck, unload, place trees, set prices, attract and serve NPC customers, earn cash and reputation, upgrade the lot and HQ. Distinct snowy map, gameplay close to reference screenshots, original assets and cleaner festive UI. No rebirth, no offline income, no ongoing employee wages. Two modes: separate businesses on a shared server and opt-in collaborative companies.
@@ -46,7 +46,7 @@ No reset of long-term progress. Cosmetics/decoration influence appeal without be
 
 ## 8. Multiplayer
 Personal mode: each player owns a plot, separate inventory and funds, visible neighbors; no trading.
-Collaborative mode: owner creates persistent company, invites friends, and sets role: Owner, Manager, Worker, Visitor. Owner retains ownership even when offline; when absent, permitted members may continue authorized operations using a session-locked company save. Only one server has write authority for a company at a time; joining elsewhere should route to existing session if possible or show safe read-only/unavailable state. No pooled currency transfer between separate companies.
+*Superseded 2026-11-21 (PRODUCT_SPEC.md, owner decisions 2026-11-21): Solo/Duo/Trio/Quad saves with a 5-digit invite code, owner plus equal members, play while the owner is offline, one server per save, in-server teammate search.* ~~Collaborative mode: owner creates persistent company, invites friends, and sets role: Owner, Manager, Worker, Visitor.~~ Owner retains ownership even when offline; when absent, permitted members may continue authorized operations using a session-locked company save. Only one server has write authority for a company at a time; joining elsewhere should route to existing session if possible or show safe read-only/unavailable state. No pooled currency transfer between separate companies.
 
 ## 9. Quests, analytics and history
 Quests: e.g. deliver N trees, sell N of species, hire a worker, unlock parking; reward claims idempotent. Daily/seasonal quests reset only on server timestamps and never grant offline passive income.
@@ -56,6 +56,7 @@ Statistics: lifetime sales, gross revenue, purchases, conversion rate, customers
 Visual direction: evergreen/dark green, warm cream, gold accents, seasonal motifs, uncluttered layouts. HUD for cash/reputation/lot; supplier, pricing, employees, land, HQ, inventory/layout, decor, quests, analytics, shop. Touch targets >=44 logical pixels where practical; readable text, no color-only status; safe areas and scalable panels. Keyboard/mouse, touch and gamepad navigation; translate UI keys DE/EN with English fallback. Monetary actions show cost and confirmation for high-impact purchases.
 
 ## 11. Christmas event and monetization
+*Superseded 2026-11-21 (PRODUCT_SPEC.md, owner decisions 2026-11-21): Robux shop active at launch with the reference's products and prices; loot boxes in version 2; one event per Advent Sunday plus an Advent calendar Dec 1–24.*
 Christmas-only events, no generic year-round seasonal calendar. Base game remains functional when event is inactive.
 Robux features (gamepasses/boosts/packs) are design-only placeholders until owner explicitly approves activation and product IDs. No live paid transactions, publication or randomized paid rewards without approval, platform policy checks and accurate probability disclosure. Do not implement dark patterns.
 

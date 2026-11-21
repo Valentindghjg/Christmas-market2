@@ -18,7 +18,7 @@ tests/          pure module tests and Studio integration test scripts
 
 ## 2. Authority and service boundaries
 - SessionService: player/company join, ownership, lifecycle and cleanup.
-- CompanyService: personal/collaborative company roles and authorization.
+- CompanyService: save ownership and membership (Solo/Duo/Trio/Quad, owner + members, 5-digit invite code, one server per save; PRODUCT_SPEC.md, owner decisions 2026-11-21).
 - PlotService: plot allocation, boundaries, plot ownership and access.
 - EconomyService: all money movement and immutable transaction IDs.
 - SupplierService: catalog, unlocks, order validation and quote creation.
@@ -32,7 +32,7 @@ tests/          pure module tests and Studio integration test scripts
 - ProgressionService: prerequisites, HQ/parking/land unlocks.
 - QuestService: event counters, rewards and idempotent claims.
 - AnalyticsService: aggregate counters and bounded history.
-- MonetizationService: **feature-flagged off** until separate approval.
+- MonetizationService: active at launch with owner-created product IDs; idempotent receipts; paid random items only from version 2 with PolicyService checks (PRODUCT_SPEC.md, owner decisions 2026-11-21).
 - PersistenceService: schema migrations, lock acquisition, save/retry/release.
 
 Use dependency injection or explicit initialization ordering; avoid circular requires. Shared modules are data and pure logic only, never grant currency.

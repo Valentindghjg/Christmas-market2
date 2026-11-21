@@ -49,6 +49,14 @@ You are the implementation engineer for this Roblox Studio / Luau game. The huma
 
 Do not silently mark unimplemented features complete. Prefer a playable vertical slice over broad unfinished scaffolding.
 
+## Plan, implement, verify (Opus plans, Sonnet implements)
+Owner decision 2026-11-21 (PRODUCT_SPEC):
+1. **Plan (Opus 5.5, high effort):** for each backlog task the main session writes `docs/plans/<ID>.md` from `docs/plans/TEMPLATE.md`. The plan settles every decision: files, functions, signatures, config keys and values, error codes, strings, tests, playtest steps and acceptance criteria. Sonnet must never have to choose.
+2. **Implement (Sonnet 5.5, medium effort):** delegate to the `implementer` agent (`.claude/agents/implementer.md`) with the plan path. It implements exactly the plan and stops with a report on any ambiguity.
+3. **Playtest (Sonnet 5.5, medium effort):** delegate the plan's playtest section to the `playtester` agent (`.claude/agents/playtester.md`), which uses the Roblox Studio MCP.
+4. **Verify and commit (Opus):** review the diff against the plan, run the checks, fix or re-plan, then record PROGRESS.md and commit.
+5. **3D models:** Opus 5.5 at medium effort builds and self-reviews models against `docs/art/quality-reference/` (see PRODUCT_SPEC, Art).
+
 ## Skills
 
 Project-level Roblox skills from `TabooHarmony/roblox-brain` are installed under `.claude/skills/` (29 skills, pinned in `skills-lock.json`). Each skill is a `SKILL.md` plus `references/full.md`.
@@ -85,8 +93,8 @@ Project-level Roblox skills from `TabooHarmony/roblox-brain` are installed under
 5. **Asset sources (roblox-building, roblox-studio-mcp):** the skills search Toolbox/Creator Store first and insert or generate assets via MCP. Applies here: build original models from Parts/MeshParts/procedural geometry; never copy third-party proprietary models; no unlicensed Toolbox assets (MODEL_INTEGRATION). Licence-clear sources need recorded provenance (CC0 precedent: `assets/third_party/`, DECISION_LOG 2026-11-21).
 6. **Source of truth (roblox-studio-mcp, roblox-building):** the skills edit scripts and scenes directly in Studio via MCP. Applies here: Rojo plus this repository are the source of truth and all work is committed; a change that exists only in Studio is not part of the project.
 7. **Offline earnings (roblox-game-design, roblox-growth-design references):** they recommend offline earnings and "2x offline earnings" products for plot games. Applies here: no offline income (PRODUCT_SPEC, owner decision).
-8. **Monetization (roblox-monetization, roblox-growth-design, roblox-player-psychology):** consumables, premium boosts in the first minute, price ladders and paid RNG. Applies here: no enabling or creating paid products without explicit Product Owner approval; monetization stays disabled; paid randomized items additionally need policy review and disclosed odds (PRODUCT_SPEC).
+8. **Monetization (roblox-monetization, roblox-growth-design, roblox-player-psychology):** consumables, premium boosts in the first minute, price ladders and paid RNG. Applies here: the owner approved an active Robux shop at launch with the reference's products and prices (PRODUCT_SPEC 2026-11-21); the owner creates products and publishes; paid randomized items only from version 2, with policy review and disclosed odds.
 9. **Events (roblox-growth-design, roblox-game-design):** recurring LiveOps event cadence. Applies here: Christmas-only seasonal events (PRODUCT_SPEC).
-10. **Localization (roblox-localization):** LocalizationTables and Roblox auto-translation. Applies here: German and English through localized string keys (PRODUCT_SPEC); the current implementation is `src/shared/Localization.lua`.
+10. **Localization (roblox-localization):** LocalizationTables and Roblox auto-translation. Applies here: English-only launch through string keys in `src/shared/Localization.lua`, relying on Roblox auto-translation; an in-game language switch comes later (PRODUCT_SPEC 2026-11-21).
 11. **Remote style (roblox-networking):** the skill prefers RemoteEvents and short RemoteFunctions. Applies here: the versioned request/response action protocol `{ok, errorCode, revision, data}` (TECHNICAL_ARCHITECTURE section 3).
 12. **Code layout (roblox-architecture):** the skill favours grouping by feature. Applies here: the layout in TECHNICAL_ARCHITECTURE section 1 (`src/shared`, `src/server/Services`, `src/client`). The skill itself advises against reorganizing a working repository.

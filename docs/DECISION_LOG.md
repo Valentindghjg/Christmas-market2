@@ -63,6 +63,36 @@ Source: [REFERENCE_GAME_LIVE_TEST.md](REFERENCE_GAME_LIVE_TEST.md). Schema 9 -> 
 - Added `StudioTestHook` (a BindableFunction in ServerStorage, created only when `RunService:IsStudio()`) with `forceCustomer`, `advanceClock` and `customerOrders`, plus a clock and roll injected into `CompanyStateService` (the constructor already supported both). Rationale: the customer rolls and the 120 s order patience are otherwise not reproducible in a playtest. It is unreachable for clients and absent on live servers.
 - Accepted: the order-action reach check runs before protocol validation, so malformed order payloads sent from far away answer `OutOfReach` rather than a validation code; every such request is rejected either way.
 
+## 2026-11-21 — launch scope interview (owner)
+Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule → new rule:
+- **Title:** "Christmas Market 2" → the game is called **Christmas Tree Village** (repo name unchanged).
+- **Release:** no date → **1st Advent (2026-11-29)** if the owner declares it finished, otherwise 2nd Advent (2026-12-06). Go/no-go on 2026-11-28.
+- **Fidelity:** close-to-reference mechanics with partly provisional numbers → **all reference functions and numbers adopted**. Own look, map and names.
+- **Language:** DE/EN → **English-only launch** with Roblox auto-translation; language switch later.
+- **Checkout:** automatic → **manual player checkout** until a Cashier is hired.
+- **Customers and staff:** logical simulation → **visible R15 avatars** (customers in winter clothing, staff in uniform).
+- **Multiplayer:** collaborative company with roles → **Solo/Duo/Trio/Quad saves**:
+  - unlimited saves per player;
+  - the creator owns the save, members may play while the owner is offline;
+  - 5-digit invite code;
+  - in-server teammate search (cross-server later);
+  - one server per save, with a teleport-to-join.
+- **Monetization:** disabled until approval → **active Robux shop at launch** with the reference's products and prices; loot boxes in version 2; Roblox group 2× daily rewards.
+- **Events:** Christmas-only, undefined → **one event per Advent Sunday** (reference mechanics and themes, own item designs) plus an **Advent calendar** Dec 1–24 (high priority).
+- **World and progression:**
+  - Day/night: 18 min per game day (12 day + 6 night).
+  - Lot expansion extends backwards into the forest.
+  - Real tree species.
+  - HQ names: Sales Tent → Timber Pavilion → Alpine Hut → Mountain Chalet, plus Elf Workshop ("Coming soon" content).
+  - Mountain-village map with a covered bridge and a village square.
+  - All four leaderboards, including Robux spent.
+  - Licensed Roblox audio and an HQ radio.
+  - Staff fatigue as gentle as the reference.
+  - 12 players per server.
+- **Art:** CC0/primitive placeholders → **all current models removed**. Own palette; Blender for larger models and Parts only for small ones; Opus self-review against owner reference images.
+- **Process:** Opus plans (`docs/plans/`), Sonnet implements (`implementer` agent) and playtests (`playtester` agent); see CLAUDE.md.
+- **Affected files:** PRODUCT_SPEC.md, GAME_DESIGN.md, TECHNICAL_ARCHITECTURE.md, TEST_PLAN.md, CLAUDE.md, CLAUDE_BACKLOG.md, docs/plans/TEMPLATE.md, docs/art/quality-reference/README.md, .claude/agents/.
+
 ## Change procedure
 1. Identify impacted documents and code/config.
 2. Amend the canonical source (PRODUCT_SPEC for owner decisions, GAME_DESIGN for mechanics, TECHNICAL_ARCHITECTURE for interfaces, TEST_PLAN for verification).

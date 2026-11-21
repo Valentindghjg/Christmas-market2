@@ -1,5 +1,64 @@
 # Christmas Market 2 — binding product specification (2026-11-19)
 
+# Owner decisions 2026-11-21 — launch scope for "Christmas Tree Village" (supersede earlier text)
+Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST.md](REFERENCE_GAME_LIVE_TEST.md)). Where this section conflicts with anything below or in other docs, **this section wins**.
+
+## Frame
+- **Title:** Christmas Tree Village. The repository and project name stay "Christmas Market 2".
+- **Release target:** 1st Advent, **2026-11-29**, only if the owner declares it finished. Otherwise the 2nd Advent, **2026-12-06**, is the latest date. The owner decides on **2026-11-28**.
+- **Scope:** as much as possible at a high quality bar. Priority order: the core loop must be fully playable first, then everything else in priority order. Quality over quantity (for example, not 150 decor items at launch).
+- **Fidelity:** **all functions and all numbers** of the reference game are adopted (OWNER DECIDED). Unknown numbers get extrapolated values marked PROVISIONAL and are replaced once observed. Look, map, names and models are our own.
+- **Language:** launch in **English only**; Roblox automatic translation covers other languages. Keep all text key-based and in full sentences (no concatenated fragments). An in-game language switch (DE, ES, …) comes in a later update. *Supersedes "German and English" / "DE/EN".*
+- **Platforms:** PC and phone equally at launch (touch controls for every interaction), tablet included; gamepad after launch.
+- **Server:** 12 players per server, 6 plots. A solo player without a free plot goes to another server.
+
+## Gameplay (all as in the reference unless stated)
+- **Checkout:** the player checks out customers manually at the counter until a Cashier is hired.
+- **Customers:** visible walking NPCs (Roblox R15 avatars in varied winter clothing). They arrive by car, browse, pick a tree, carry it to checkout, queue, pay, wait at the car (G1) and leave a star review.
+- **Staff:** Cashier, Lot Worker and Lot Manager are visible avatars in a uniform in our palette. **Energy/fatigue as gentle as in the reference**; the rate is observed later (PROVISIONAL until then). Staff rest in a movable **break area**. No wages.
+- **Day/night:** one game day = **18 minutes** (12 min day + 6 min night). Fewer customers at night, lights glow. The day counter advances only while a save is actively played; no offline progress.
+- **Lot expansion extends the lot backwards:** the forest trees behind it disappear, the fence moves back, and the snow ground becomes lot ground. Every plot reserves room for all levels.
+- **Tree species:** real species in the reference's unlock order (with the spelling fix "Fraser Fir"). Special and event trees get our own names.
+- **HQ tiers (own names):** Sales Tent → Timber Pavilion → Alpine Hut → Mountain Chalet. The end goal **Elf Workshop** unlocks as in the reference (HQ tier 4 + Lot Manager); its content shows "Coming soon" until observed in the reference.
+- **Tutorial:** short and guided: order → place → customer picks up.
+- **Map:** mountain village theme. Cars enter over a **covered wooden bridge** across a frozen stream (instead of a tunnel). A **village square** has a large decorated tree and the leaderboards; 6 plots along the village road; snowy forest and mountains around.
+- **Leaderboards:** all four as in the reference: Robux spent, hours played, cash earned, reputation.
+- **Audio:** HQ radio plus background music and sound effects from Roblox's licensed audio library. The radio is audible only on the own plot; music and effects have separate volume settings.
+- **Lot sign:** company name, star rating from customer reviews, and "Likes" (other players can like a lot once per day).
+
+## Saves and multiplayer (supersedes "collaborative company mode with roles")
+- **Unlimited saves per player** (scrolling list) with rename and delete (with confirmation). No region field.
+- **Solo / Duo / Trio / Quad saves:** one shared plot and one shared cash balance. The **creator owns** the save. Every member may do everything in play; only the owner may rename, delete, remove members or renew the code. Members **may play the save while the owner is offline**.
+- **Invite:** a fixed **5-digit numeric code** per save. Joining works while a seat is free (2/3/4). The owner can regenerate the code and remove members.
+- **Finding random teammates:** at launch, a "looking for teammates" list inside the current server; whoever starts the search owns the new save. Cross-server matchmaking comes in an update.
+- **One server per save:** a save in use elsewhere shows "Being played by X – Join", which teleports into that server ("Server full, try again" when full).
+
+## Monetization and events (supersedes "disabled until separate approval")
+- **The Robux shop is active at launch** with the reference's products and prices: gamepasses, cash packs, boosts, starter pack, event items and premium decor. The owner creates the products in the Creator Dashboard; engineering wires them by ID and handles receipts idempotently. Publication remains the owner's action.
+- **Paid random rolls / loot boxes come in version 2**, not at launch, with disclosed odds and `PolicyService` country restrictions.
+- **Roblox group:** "Join group for 2× daily rewards" as in the reference. The owner creates the group and provides the group ID.
+- **Events:** one event per **Advent Sunday** (2026-11-29, 12-06, 12-13, 12-20) with the reference's mechanics and themes (timed event shop with countdown, special trees, decor pack). Items and models are our own designs; names invented by the reference game get our own variants. Further reference events are observed and mirrored.
+- **Advent calendar (high priority):** one free door per day from Dec 1 to Dec 24, with rewards increasing (cash, reputation, decor, boosts; specials on Dec 6 and Dec 24). Missed doors can be opened until Dec 24. Per player, credited to the active save.
+
+## Art
+- **Own palette**, low-poly winter style, with quality over free packs. **All current Codex/CC0 models are removed** and replaced.
+- **Larger and visible models** (buildings, cars, truck, trees, stalls, terrain props) are modeled in **Blender** and imported as MeshParts. Roblox Parts are used only for small items (signs, pallets, slats, small decor), always in the palette and cleanly finished.
+- **Self-review:** Opus 5.5 (medium effort) builds and reviews models itself against owner reference images in `docs/art/quality-reference/` (2 good, 2 bad, each with reasons; the owner supplies them later). Only models that pass are integrated. Until the images exist, model work waits and feature work continues.
+
+## Way of working and release
+- **Opus plans, Sonnet implements:** Opus writes a complete plan per task in `docs/plans/` (files, functions, numbers, tests, playtest steps). Sonnet implements without making design decisions and stops on ambiguity. Opus reviews, verifies and commits. Studio playtests run through the Roblox Studio MCP.
+- **Testing:**
+  - From now on, test in a private (unpublished) build.
+  - A friends test with 2–5 players before the 1st Advent (Duo, invite code, purchases).
+  - The owner's go/no-go is on 2026-11-28.
+  - The owner publishes and creates products, following a checklist prepared by engineering.
+
+## Observe in the reference game (engineering task, not owner questions)
+Starting cash and reputation of a new save; staff energy drain rate; the other events' contents; Elf Workshop contents; the first-time tutorial; the reference's Robux prices for items not yet seen.
+
+---
+
+
 ## Decision authority
 Owner supplies final 3D models gradually, via Studio models or FBX/GLB. Engineering owns code, UI, integration, testing, and minor gameplay decisions. Publication and paid actions require owner approval. Do not publish, enable monetization, purchase anything, or change paid products without approval.
 
@@ -11,15 +70,15 @@ Original Roblox Christmas-tree lot management simulator, gameplay as close as pr
 - Economy resembles screenshots where observed. Manual pricing plus optional automatic pricing. Demand depends on price, species, season (Christmas only), reputation, and stock variety. No rebirth/prestige and no offline earnings.
 - Customers have preferences, budgets, patience and needs. Staff automate checkout, delivery and stocking; one-time hire cost only, no wages.
 - Progression uses cash, reputation and prerequisite unlocks.
-- Multiplayer: personal plots in shared server AND collaborative company mode; no player-to-player trading at launch.
-- Persistent save of all progress, placements, configuration, statistics and bounded transaction history. Mobile, tablet, PC, console. German and English.
-- Monetization: optional gamepasses, boosts and packs as in references, but **disabled until separate approval**. Randomized paid items require policy review, disclosed probabilities, and jurisdictional checks. Never invent product IDs.
+- ~~Multiplayer: personal plots in shared server AND collaborative company mode~~ (superseded 2026-11-21: Solo/Duo/Trio/Quad saves, see top); no player-to-player trading at launch.
+- Persistent save of all progress, placements, configuration, statistics and bounded transaction history. Mobile, tablet, PC, console (gamepad after launch). ~~German and English~~ English at launch, more languages later (2026-11-21).
+- Monetization: gamepasses, boosts and packs as in references — ~~disabled until separate approval~~ **active at launch (owner decision 2026-11-21, see top)**; loot boxes in version 2. Randomized paid items require policy review, disclosed probabilities, and jurisdictional checks. Never invent product IDs.
 - Christmas-only seasonal events.
 
 ## Evidence tiers
 OBSERVED: screenshot shows cash/reputation/lot status HUD, supplier, delivery capacity, prices, HQ, catalog, employees, quests, analytics, layout, shop, and winter roads/plots. OBSERVED price rule: Small 80%, Large 130% of Medium; Frasier 82, Noble 96, Blue Spruce 105 medium displayed; cashier hire 1200, lot worker 1800; Pavilion prerequisites lot expansion 1, 4 parking spaces, 250 reputation, 2500 cash.
 INFERRED: exact customer AI algorithms, demand formula, delivery timing, NPC behavior, unlock schedule, detailed map dimensions, all progression values.
-OWNER DECIDED: own map, dual multiplayer modes, no offline pay, no wages, DE/EN, persistent statistics, modern UI, Christmas-only events.
+OWNER DECIDED: own map, ~~dual multiplayer modes~~ Solo/Duo/Trio/Quad saves, no offline pay, no wages, ~~DE/EN~~ English launch, persistent statistics, modern UI, Christmas-only events.
 UNVERIFIED: original server code, full asset library, exact balancing and exact screenshot dimensions.
 
 ## Delivery milestones and acceptance
