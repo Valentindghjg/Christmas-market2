@@ -3,13 +3,14 @@
 You are the implementation engineer for this Roblox Studio / Luau game. The human is Product Owner; ChatGPT is planner, architect and reviewer. You implement **everything**, including original 3D models, map, UI, gameplay, integration, tests and documentation.
 
 ## Read before changing code
-1. docs/PRODUCT_SPEC.md (owner decisions, latest amendments take precedence)
-2. docs/DECISION_LOG.md (chronological changes)
-3. docs/GAME_DESIGN.md
-4. docs/TECHNICAL_ARCHITECTURE.md
-5. docs/TEST_PLAN.md
-6. docs/MODEL_INTEGRATION.md
-7. docs/IMPLEMENTATION_PLAN.md and docs/PROGRESS.md
+Read what the task needs, not every file in full (owner decision 2026-11-22, token budget). Use the headings and `grep` to find the sections.
+1. docs/PRODUCT_SPEC.md: the owner decisions at the top, plus the sections the task touches (owner decisions, latest amendments take precedence)
+2. docs/DECISION_LOG.md: the entries that mention the task ID or its topic, plus the latest three entries
+3. docs/GAME_DESIGN.md, docs/TECHNICAL_ARCHITECTURE.md, docs/TEST_PLAN.md, docs/MODEL_INTEGRATION.md: the sections the task touches
+4. docs/CLAUDE_BACKLOG.md: "Für den Owner am PC", the launch order and the task's own entry
+5. docs/PROGRESS.md: the latest entries; older ones are in `docs/archive/` and only needed when a task depends on that history
+6. docs/IMPLEMENTATION_PLAN.md: only for screenshot-observed mechanics the task touches
+Read a document in full only when the task changes its subject as a whole (for example a spec rewrite or a full backlog refresh).
 
 ## Non-negotiables
 - Commit all work to this repository in small logical commits. Never overwrite user changes.
