@@ -99,7 +99,6 @@ end
 -- Uses the approved imported market model when Studio has it, while retaining a
 -- primitive fallback for source-only and automated test environments.
 local function salesStand(parent: Instance, position: Vector3, assetId: string?): Model
-
 	local art = ReplicatedStorage:FindFirstChild("ArtAssets")
 	local buildings = art and art:FindFirstChild("Buildings")
 	assetId = assetId or AssetCatalog.Buildings.MarketStarter
@@ -124,12 +123,7 @@ local function salesStand(parent: Instance, position: Vector3, assetId: string?)
 	return model
 end
 
-local function cloneArt(
-	parent: Instance,
-	category: string,
-	assetId: string,
-	groundPosition: Vector3
-): Model?
+local function cloneArt(parent: Instance, category: string, assetId: string, groundPosition: Vector3): Model?
 	local art = ReplicatedStorage:FindFirstChild("ArtAssets")
 	local folder = art and art:FindFirstChild(category)
 	local template = folder and folder:FindFirstChild(assetId)
@@ -335,8 +329,10 @@ function WorldService.build()
 		cloneArt(scenery, "Environment", AssetCatalog.Environment.PineTreeGroup, position)
 	end
 	for _, position in ipairs({
-		Vector3.new(-180, 0, -104), Vector3.new(180, 0, -104),
-		Vector3.new(-180, 0, 104), Vector3.new(180, 0, 104),
+		Vector3.new(-180, 0, -104),
+		Vector3.new(180, 0, -104),
+		Vector3.new(-180, 0, 104),
+		Vector3.new(180, 0, 104),
 	}) do
 		cloneArt(scenery, "Environment", AssetCatalog.Environment.StylizedRocks, position)
 		cloneArt(scenery, "Environment", AssetCatalog.Environment.StylizedBushes, position + Vector3.new(8, 0, 6))

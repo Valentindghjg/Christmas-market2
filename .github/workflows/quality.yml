@@ -23,5 +23,11 @@ jobs:
         run: stylua --check src tests
       - name: Lint Luau
         run: selene src tests
+      - name: Generate source map
+        run: rojo sourcemap default.project.json --output sourcemap.json
+      - name: Type-check Luau
+        run: >-
+          luau-lsp analyze --sourcemap sourcemap.json
+          src/shared/GameConfig.lua src/shared/Economy.lua src/shared/Inventory.lua
       - name: Validate Rojo project
         run: rojo build default.project.json --output build.rbxlx

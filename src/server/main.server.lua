@@ -153,7 +153,10 @@ businessAction.OnServerInvoke = function(player, request)
 		if type(plotId) == "string" and type(response.data) == "number" then
 			WorldService.applyParkingVisual(plotId, response.data)
 		end
-	elseif response.ok and (request.action == Protocol.Actions.InventoryPlace or request.action == Protocol.Actions.InventoryPickup) then
+	elseif
+		response.ok
+		and (request.action == Protocol.Actions.InventoryPlace or request.action == Protocol.Actions.InventoryPickup)
+	then
 		local plotId = player:GetAttribute("PlotId")
 		if type(plotId) == "string" then
 			local placements = companies:getPlacements("personal:" .. tostring(player.UserId))

@@ -13,7 +13,7 @@ Status: 50 GitHub issues created; **not yet implemented or verified**.
 ## P0 — Fundament
 - [x] [CM2-01](https://github.com/Valentindghjg/Christmas-market2/issues/1)
 - [x] [CM2-02](https://github.com/Valentindghjg/Christmas-market2/issues/2)
-- [ ] [CM2-03](https://github.com/Valentindghjg/Christmas-market2/issues/3)
+- [x] [CM2-03](https://github.com/Valentindghjg/Christmas-market2/issues/3)
 - [ ] [CM2-04](https://github.com/Valentindghjg/Christmas-market2/issues/4)
 - [ ] [CM2-05](https://github.com/Valentindghjg/Christmas-market2/issues/5)
 - [ ] [CM2-06](https://github.com/Valentindghjg/Christmas-market2/issues/6)
