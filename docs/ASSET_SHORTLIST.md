@@ -1,9 +1,10 @@
 # Auswahl: 3D-Assets fuer Christmas Market 2
 
-Stand: 2026-11-20. Alle unten genannten Quellen sind laut
-`C:\Users\valen\OneDrive\Dokumente\3d Modelle\README.md` CC0 1.0. Die
-Auswahl haelt den bestehenden warmen, stilisierten Low-Poly-Look der bereits
-im Repository liegenden Poly-Pizza-/Quaternius-Modelle bei.
+Stand: 2026-11-20. Alle unten genannten Quellen sind laut der README der
+lokalen CC0-Modellbibliothek des Product Owners (ausserhalb des Repositorys)
+CC0 1.0. Die Auswahl haelt den bestehenden warmen, stilisierten Low-Poly-Look
+der im Repository liegenden Poly-Pizza-/Quaternius-Modelle bei
+(`assets/third_party/poly_pizza/`, Herkunft und Lizenz siehe dortige README).
 
 Die Pfade hinter den Eintraegen sind Pfade **im jeweiligen ZIP-Archiv**. Nur
 diese einzelnen Dateien sollen bei Bedarf importiert werden, nicht ganze Packs.
