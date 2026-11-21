@@ -58,6 +58,24 @@ Project-level Roblox skills from `TabooHarmony/roblox-brain` are installed under
 - **Design:** roblox-analytics, roblox-game-design, roblox-growth-design, roblox-monetization, roblox-player-psychology
 - **Tools:** roblox-cloud, roblox-publish-checklist, roblox-studio-mcp, roblox-tooling
 
+### Using the skills (mandatory)
+- Before every Roblox task, load `roblox-collaboration-mode` first (with the precedence rules below), then each domain skill the change touches. Read the skill's `SKILL.md`. Open `references/full.md` when the change needs detail beyond the quick reference.
+- Task → skills:
+
+  | Task | Skills |
+  |---|---|
+  | Save schema, migration or persisted fields | roblox-data, roblox-server-data |
+  | New or changed actions/remotes, money, inventory | roblox-networking, roblox-security |
+  | NPC customers, cars, pathing | roblox-npc-ai, roblox-performance |
+  | World geometry and models | roblox-building, roblox-lighting |
+  | UI | roblox-gui, roblox-input, roblox-localization |
+  | Luau code | roblox-luau-core, roblox-luau-patterns, roblox-luau-types |
+  | Module/service placement | roblox-architecture |
+  | Tooling, tests, CI | roblox-tooling |
+  | Economy and balance | roblox-game-design |
+  | Before any release | roblox-publish-checklist |
+- Apply each loaded skill's checks as acceptance criteria in addition to the ticket's. In the planner report, list the skills used per task under "Tests run" or "Deviations".
+
 **Bei Widersprüchen gilt diese CLAUDE.md vor den Skills.** The same applies to the documents it names (PRODUCT_SPEC, DECISION_LOG, TECHNICAL_ARCHITECTURE, MODEL_INTEGRATION). Known conflicts and the rule that applies:
 
 1. **Working modes (roblox-collaboration-mode):** the skill infers a peer or autonomous mode from the user's phrasing. Applies here: "Continuous execution" above; carry approved milestones through without waiting for replies.
