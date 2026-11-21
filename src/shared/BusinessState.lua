@@ -67,13 +67,45 @@ local function isValidLegacyV1(state): boolean
 		and state.spent >= 0
 end
 
+-- `validate(state) and nil or "InvalidState"` always yields "InvalidState", so the
+-- result pair is spelled out explicitly.
+local function validated(state)
+	if BusinessState.validate(state) then
+		return state, nil
+	end
+	return nil, "InvalidState"
+end
+
+local function sales(state): number
+	return if isFiniteInteger(state.sales) and state.sales > 0 then state.sales else 0
+end
+
+-- Restores any missing or corrupt per-species medium price from the catalog default.
+local function backfillMediumPrices(state)
+	if type(state.mediumPrices) ~= "table" then
+		state.mediumPrices = {}
+	end
+	for speciesId, tree in pairs(GameConfig.Trees) do
+		local price = state.mediumPrices[speciesId]
+		if not isFiniteInteger(price) or price < 1 then
+			state.mediumPrices[speciesId] = tree.initialMediumPrice
+		end
+	end
+end
+
 -- Migrates the original scaffold record without changing balances or stock.
 function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	if type(state) ~= "table" then
 		return nil, "InvalidState"
 	end
+	if state.schemaVersion ~= 1 then
+		backfillMediumPrices(state)
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
-		return BusinessState.validate(state) and state or nil, BusinessState.validate(state) and nil or "InvalidState"
+		if type(state.pendingOrders) == "table" then
+			BusinessState.pruneCompletedOrders(state)
+		end
+		return validated(state)
 	end
 	if state.schemaVersion == 2 then
 		state.schemaVersion = 3
@@ -97,13 +129,18 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	end
 	if state.schemaVersion == 7 then
 		state.schemaVersion = 8
-		state.customerVisits = 0
+		-- validate() requires visits >= sales; records with past sales must stay loadable.
+		state.customerVisits =
+			math.max(isFiniteInteger(state.customerVisits) and state.customerVisits or 0, sales(state))
 		state.abandonedCustomers = 0
 	end
 	if state.schemaVersion == 8 then
 		state.schemaVersion = BusinessState.SCHEMA_VERSION
 		state.questClaims = {}
-		return BusinessState.validate(state) and state or nil, BusinessState.validate(state) and nil or "InvalidState"
+		if type(state.pendingOrders) == "table" then
+			BusinessState.pruneCompletedOrders(state)
+		end
+		return validated(state)
 	end
 	if not isValidLegacyV1(state) then
 		return nil, "UnsupportedSchema"
@@ -121,10 +158,11 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.reservations = {}
 	state.staff = { Cashier = 0, LotWorker = 0 }
 	state.progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil }
-	state.customerVisits = 0
+	state.customerVisits = sales(state)
 	state.abandonedCustomers = 0
 	state.questClaims = {}
-	return state, nil
+	backfillMediumPrices(state)
+	return validated(state)
 end
 
 function BusinessState.validate(state)
@@ -160,6 +198,15 @@ function BusinessState.validate(state)
 	end
 	if type(state.autoPricing) ~= "boolean" then
 		return false
+	end
+	if type(state.mediumPrices) ~= "table" then
+		return false
+	end
+	for speciesId in pairs(GameConfig.Trees) do
+		local price = state.mediumPrices[speciesId]
+		if not isFiniteInteger(price) or price < 1 then
+			return false
+		end
 	end
 	if
 		type(state.progression) ~= "table"
@@ -328,6 +375,9 @@ function BusinessState.placeOrder(
 	if state.pendingOrders[orderId] then
 		return false, "DuplicateOrder"
 	end
+	if BusinessState.openOrderCount(state) >= GameConfig.MaxOpenOrders then
+		return false, "TooManyOpenOrders"
+	end
 	local unitCost = GameConfig.wholesaleFor(species, size)
 	local cost = (unitCost or 0) * quantity
 	if not unitCost or state.cash < cost then
@@ -382,9 +432,32 @@ function BusinessState.unloadOrder(state, orderId: string, timestamp: number)
 	if not Inventory.add(state.stock, key, order.quantity) then
 		return false, "Capacity"
 	end
-	order.status = "Unloaded"
+	-- A completed order leaves the open-order map so the saved record stays
+	-- bounded; replay protection is provided by the persisted request IDs and the
+	-- history ledger keeps the audit trail.
+	state.pendingOrders[orderId] = nil
 	BusinessState.record(state, "OrderUnloaded", 0)
 	return true, orderId
+end
+
+function BusinessState.openOrderCount(state): number
+	local count = 0
+	for _ in pairs(state.pendingOrders) do
+		count += 1
+	end
+	return count
+end
+
+-- Removes orders unloaded by schema versions that kept completed orders forever.
+function BusinessState.pruneCompletedOrders(state): number
+	local removed = 0
+	for orderId, order in pairs(state.pendingOrders) do
+		if type(order) == "table" and order.status == "Unloaded" then
+			state.pendingOrders[orderId] = nil
+			removed += 1
+		end
+	end
+	return removed
 end
 
 function BusinessState.sellStock(state, species: string, size: string, salePrice: number)

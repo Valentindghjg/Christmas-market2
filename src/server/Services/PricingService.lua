@@ -50,6 +50,8 @@ local function displayedCount(state, speciesId: string): number
 end
 
 -- Applies a bounded, stock-sensitive server target. Reserved sales carry their locked price.
+-- Returns only the species whose price actually changed, so an idle scheduler tick does
+-- not dirty the company record or trigger a DataStore write.
 function PricingService.applyAutomatic(state)
 	if state.autoPricing ~= true then
 		return false, "AutoPricingDisabled"
@@ -61,8 +63,10 @@ function PricingService.applyAutomatic(state)
 		local target =
 			math.floor(tree.typicalMedium * (1 - stockPressure * GameConfig.AutoPricing.MaxDiscountFraction) + 0.5)
 		local price = math.max(minimum :: number, math.min(maximum :: number, target))
-		state.mediumPrices[speciesId] = price
-		updated[speciesId] = price
+		if state.mediumPrices[speciesId] ~= price then
+			state.mediumPrices[speciesId] = price
+			updated[speciesId] = price
+		end
 	end
 	return true, updated
 end

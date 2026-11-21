@@ -30,6 +30,16 @@ return function(t)
 		expect.equal(updated.NobleFir, 92)
 	end)
 
+	-- An idle scheduler tick reports no change, so it does not trigger a save.
+	t.test("auto pricing reports only changed species", function()
+		local state = BusinessState.new("personal:42", 42)
+		expect.truthy(PricingService.setAutomatic(state, true))
+		expect.truthy(PricingService.applyAutomatic(state))
+		local ok, updated = PricingService.applyAutomatic(state)
+		expect.truthy(ok)
+		expect.equal(next(updated), nil)
+	end)
+
 	t.test("does not alter locked reservation price", function()
 		local state = BusinessState.new("personal:42", 42)
 		state.layout.placements["fir_reserved"] = { speciesId = "FrasierFir", sizeId = "Medium" }

@@ -4,12 +4,13 @@ local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BusinessState = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BusinessState"))
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 
 local PersistenceService = {}
 PersistenceService.__index = PersistenceService
 
 local STORE_NAME = "ChristmasMarket2_CompanyState_v1"
-local LOCK_SECONDS = 120
+local LOCK_SECONDS = GameConfig.SessionLockSeconds
 local MAX_RETRIES = 3
 
 local function now(): number

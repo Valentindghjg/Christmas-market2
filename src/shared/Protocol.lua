@@ -48,6 +48,12 @@ local function isRequestId(value: unknown): boolean
 	return type(value) == "string" and #value >= 8 and #value <= 64 and value:match("^[%w_%-]+$") ~= nil
 end
 
+local function isFiniteNumber(value: unknown): boolean
+	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+end
+
+local TRANSFORM_KEYS = { x = true, y = true, z = true, rotation = true }
+
 local function hasOnlyKeys(payload, allowed)
 	for key in pairs(payload) do
 		if not allowed[key] then
@@ -131,7 +137,17 @@ function Protocol.validateRequest(request)
 		if type(request.payload.speciesId) ~= "string" or not GameConfig.Trees[request.payload.speciesId] then
 			return false, "UnknownSpecies"
 		end
-		if not GameConfig.isValidSize(request.payload.sizeId) or type(request.payload.transform) ~= "table" then
+		local transform = request.payload.transform
+		if not GameConfig.isValidSize(request.payload.sizeId) or type(transform) ~= "table" then
+			return false, "InvalidPlacement"
+		end
+		if
+			not hasOnlyKeys(transform, TRANSFORM_KEYS)
+			or not isFiniteNumber(transform.x)
+			or not isFiniteNumber(transform.y)
+			or not isFiniteNumber(transform.z)
+			or not isFiniteNumber(transform.rotation)
+		then
 			return false, "InvalidPlacement"
 		end
 		return true, nil
@@ -140,6 +156,7 @@ function Protocol.validateRequest(request)
 		if
 			not hasOnlyKeys(request.payload, { placementId = true })
 			or type(request.payload.placementId) ~= "string"
+			or #request.payload.placementId > 96
 		then
 			return false, "InvalidPlacementId"
 		end
@@ -188,7 +205,11 @@ function Protocol.validateRequest(request)
 		return true, nil
 	end
 	if request.action == Protocol.Actions.QuestClaim then
-		if not hasOnlyKeys(request.payload, { questId = true }) or type(request.payload.questId) ~= "string" then
+		if
+			not hasOnlyKeys(request.payload, { questId = true })
+			or type(request.payload.questId) ~= "string"
+			or not GameConfig.Quests[request.payload.questId]
+		then
 			return false, "InvalidQuest"
 		end
 		return true, nil
@@ -230,6 +251,16 @@ function Protocol.newRateLimiter(limit: number?, windowSeconds: number?)
 		windowSeconds = windowSeconds or 10,
 		buckets = {},
 	}
+end
+
+-- Drops a departed player's buckets so long-running servers do not accumulate them.
+function Protocol.forgetUser(limiter, playerUserId: number)
+	local prefix = tostring(playerUserId) .. ":"
+	for key in pairs(limiter.buckets) do
+		if string.sub(key, 1, #prefix) == prefix then
+			limiter.buckets[key] = nil
+		end
+	end
 end
 
 function Protocol.allowRequest(limiter, playerUserId: number, action: string, timestamp: number): boolean

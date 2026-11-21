@@ -45,4 +45,40 @@ return function(t)
 		expect.truthy(Protocol.allowRequest(limiter, 42, "Supplier.PlaceOrder", 101))
 		expect.falsy(Protocol.allowRequest(limiter, 42, "Supplier.PlaceOrder", 102))
 	end)
+
+	t.test("forgets a departed player's rate-limit buckets", function()
+		local limiter = Protocol.newRateLimiter(1, 10)
+		expect.truthy(Protocol.allowRequest(limiter, 42, "Supplier.PlaceOrder", 100))
+		expect.truthy(Protocol.allowRequest(limiter, 420, "Supplier.PlaceOrder", 100))
+		Protocol.forgetUser(limiter, 42)
+		expect.truthy(Protocol.allowRequest(limiter, 42, "Supplier.PlaceOrder", 101))
+		expect.falsy(Protocol.allowRequest(limiter, 420, "Supplier.PlaceOrder", 101))
+	end)
+
+	-- Extra transform keys could otherwise reach the saved record or carry non-serializable values.
+	t.test("rejects placement transforms with extra or non-finite fields", function()
+		local function place(transform)
+			return Protocol.validateRequest({
+				version = 1,
+				requestId = "place_1234",
+				action = Protocol.Actions.InventoryPlace,
+				payload = { speciesId = "FrasierFir", sizeId = "Medium", transform = transform },
+			})
+		end
+		expect.truthy(place({ x = 0, y = 0, z = 0, rotation = 0 }))
+		expect.falsy(place({ x = 0, y = 0, z = 0, rotation = 0, junk = "x" }))
+		expect.falsy(place({ x = 0 / 0, y = 0, z = 0, rotation = 0 }))
+		expect.falsy(place({ x = 0, y = 0, z = 0 }))
+	end)
+
+	t.test("rejects unknown quest IDs before they reach the company lock", function()
+		local ok, reason = Protocol.validateRequest({
+			version = 1,
+			requestId = "quest_1234",
+			action = Protocol.Actions.QuestClaim,
+			payload = { questId = "FreeMoney" },
+		})
+		expect.falsy(ok)
+		expect.equal(reason, "InvalidQuest")
+	end)
 end

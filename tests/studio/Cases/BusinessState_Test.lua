@@ -81,6 +81,44 @@ return function(t)
 		expect.truthy(migrated.questClaims)
 	end)
 
+	-- validate() requires visits >= sales, so the v7 -> v8 step must not reset visits to 0.
+	t.test("migrates pre-analytics records that already have sales", function()
+		local legacy = BusinessState.new("personal:42", 42)
+		legacy.schemaVersion = 7
+		legacy.questClaims = nil
+		legacy.customerVisits = nil
+		legacy.abandonedCustomers = nil
+		legacy.sales = 12
+		legacy.revenue = 900
+		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(migrated.sales, 12)
+		expect.equal(migrated.customerVisits, 12)
+	end)
+
+	t.test("restores missing medium prices during migration", function()
+		local legacy = BusinessState.new("personal:42", 42)
+		legacy.schemaVersion = 8
+		legacy.questClaims = nil
+		legacy.mediumPrices = { FrasierFir = 90 }
+		local migrated = BusinessState.migrate(legacy, "personal:42", 42)
+		expect.truthy(migrated)
+		expect.equal(migrated.mediumPrices.FrasierFir, 90)
+		expect.equal(migrated.mediumPrices.NobleFir, 96)
+	end)
+
+	t.test("prunes completed orders when loading the current schema", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.pendingOrders["order:old"] = { status = "Unloaded" }
+		state.pendingOrders["order:open"] = { status = "Pending" }
+		local migrated, reason = BusinessState.migrate(state, "personal:42", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(migrated.pendingOrders["order:old"], nil)
+		expect.truthy(migrated.pendingOrders["order:open"])
+	end)
+
 	t.test("rejects impossible employee counts", function()
 		local state = BusinessState.new("personal:42", 42)
 		state.staff.Cashier = 2

@@ -17,11 +17,22 @@ GameConfig.SizeMultipliers = { Small = 0.8, Medium = 1.0, Large = 1.3 } -- OBSER
 GameConfig.MaxOrderQuantity = 100
 GameConfig.MaxStockPerSku = 100000
 GameConfig.MaxHistoryEntries = 100
+-- PROVISIONAL caps that bound the saved record size and server-side display models.
+GameConfig.MaxOpenOrders = 20
+GameConfig.MaxPlacements = 100
 GameConfig.MinPriceMultiplier = 0.5
 GameConfig.MaxPriceMultiplier = 2.5
 -- Fallback only; a server ConfigService value will supersede this when configured.
 GameConfig.DeliverySeconds = 60
+-- Persistence cadence. Mutations only mark a session dirty; a flush writes dirty
+-- sessions at most once per SaveFlushSeconds, and every session is re-saved at
+-- least once per AutosaveSeconds to renew its lock. If no save has succeeded for
+-- SaveFailClosedSeconds the session stops accepting mutations, well before
+-- another server could take over the SessionLockSeconds lock.
+GameConfig.SaveFlushSeconds = 15
 GameConfig.AutosaveSeconds = 60
+GameConfig.SessionLockSeconds = 120
+GameConfig.SaveFailClosedSeconds = 90
 GameConfig.CustomerReservationSeconds = 30
 GameConfig.AutoPricingIntervalSeconds = 3
 GameConfig.CustomerVisitIntervalSeconds = 5
@@ -105,13 +116,15 @@ GameConfig.Progression = {
 	Parking = { cashCost = 200, maxSpaces = 4, evidence = GameConfig.Evidence.Provisional },
 }
 
+-- Offsets from the plot centre. The lot ground is 80 x 54 studs (WorldService), so
+-- the bounds keep displayed trees on the owner's lot instead of neighbouring land.
 GameConfig.Placement = {
-	MinX = -50,
-	MaxX = 50,
+	MinX = -38,
+	MaxX = 38,
 	MinY = -2,
 	MaxY = 5,
-	MinZ = -50,
-	MaxZ = 50,
+	MinZ = -25,
+	MaxZ = 25,
 	MinRotation = 0,
 	MaxRotationExclusive = 360,
 }

@@ -27,4 +27,32 @@ return function(t)
 		local _, repeated = BusinessState.reconcileDeliveries(state, 160)
 		expect.equal(repeated, 0)
 	end)
+
+	-- Completed orders leave the record and cannot be unloaded a second time.
+	t.test("removes an order once it is unloaded", function()
+		local state = BusinessState.new("personal:42", 42)
+		local _, order = BusinessState.placeOrder(state, "request_200", "FrasierFir", "Medium", 1, 100)
+		expect.truthy(BusinessState.unloadOrder(state, order.orderId, 160))
+		expect.equal(state.pendingOrders[order.orderId], nil)
+		local again, reason = BusinessState.unloadOrder(state, order.orderId, 160)
+		expect.falsy(again)
+		expect.equal(reason, "UnknownOrder")
+		expect.equal(Inventory.count(state.stock, Inventory.key("FrasierFir", "Medium")), 1)
+	end)
+
+	t.test("caps open supplier orders without charging", function()
+		local GameConfig = require(Shared:WaitForChild("GameConfig"))
+		local state = BusinessState.new("personal:42", 42)
+		state.cash = 100000
+		for index = 1, GameConfig.MaxOpenOrders do
+			expect.truthy(
+				BusinessState.placeOrder(state, string.format("bulk_%04d", index), "FrasierFir", "Small", 1, 100)
+			)
+		end
+		local cashBefore = state.cash
+		local ok, reason = BusinessState.placeOrder(state, "bulk_overflow", "FrasierFir", "Small", 1, 100)
+		expect.falsy(ok)
+		expect.equal(reason, "TooManyOpenOrders")
+		expect.equal(state.cash, cashBefore)
+	end)
 end
