@@ -5,7 +5,19 @@ Status: 50 GitHub issues created; **not yet implemented or verified**.
 ## Für den Owner am PC
 Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisions). Written by the `planner` during `hasseln` in the fixed format from `.claude/skills/hasseln/SKILL.md`; the next run checks each entry's `Prüfen` field first and starts with its `Danach` task.
 
-_Keine offenen Einträge._
+### PC-1 Screenshots vom Referenzspiel für den Modell-Look
+- Status: offen
+- Art: sonstiges
+- Problem: Die Modelle sollen sich am Look des Referenzspiels orientieren, aber im Repo liegen keine Screenshots davon (nur Textbeschreibungen).
+- Deine Schritte:
+  1. Lege Screenshots vom Referenzspiel in den Ordner `docs/references/roblox-game/` im Projekt: Verkaufsstand bzw. HQ-Stufen, Lieferwagen, Kundenautos, Abladeplätze, Bäume, Zaun, Map. Mehrere Winkel sind gut.
+  2. Alternativ: die 32 Screenshots aus `roblox_codex_blueprint.zip` dorthin entpacken (`docs/REFERENCE_IMAGE_HANDOFF.md`).
+  3. Nicht committen; der Ordner bleibt lokal (öffentliches Repo).
+- Prüfen: `docs/references/roblox-game/` enthält mindestens 5 Bilddateien.
+- Blockiert: keine (der Modeler nutzt bis dahin die Beschreibungen in `docs/REFERENCE_GAME_LIVE_TEST.md`)
+- Danach: der nächste offene MODEL-Task
+- WIP-Branch: none
+- Seit: 2026-11-22, Owner-Gespräch
 
 #### Erledigt
 _Noch keine._
@@ -136,7 +148,7 @@ The owner interview changed scope and priorities (PRODUCT_SPEC, top section). Th
 ### Rules for the order
 - Work top to bottom. A task is **ready** when every dependency is done (reviewer COMMITTED). If the next task is blocked, take the next ready one and record the blocker on the blocked line.
 - Every task runs through `cm2-task`: one plan `docs/plans/<ID>.md`, tier set by the planner (the tier column below is the planning estimate only).
-- **MODEL tasks are skipped** while `docs/art/quality-reference/` holds no owner reference images. Feature tasks keep the existing models or primitive fallbacks; nothing waits for art.
+- **MODEL tasks are ready since 2026-11-22**: the owner's reference images and the quality checklist are in `docs/art/quality-reference/`. The planner sets the quality tier (A or B) for every model in the plan. Feature tasks still never wait for art.
 - Every task ends with the standard checks (`stylua --check src tests`, `selene src tests`, `lune run tests/headless/run.luau`, `rojo build`) plus its own criteria below. A Studio criterion is PASS only if the `playtester` ran it; otherwise it is BLOCKED and the task stays open for that item.
 - No publication, no creation or activation of Robux products by engineering (PRODUCT_SPEC). Product, gamepass and group IDs come from the owner through config.
 
@@ -190,7 +202,7 @@ Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or ab
 30. [ ] **CM2-45c 3rd and 4th Advent event content** · M · Depends: CM2-45b. For 2026-12-13 and 12-20. Accept: as order 28 for each date.
 31. [ ] **CM2-50 Final integration and regression** · S · Depends: everything done before. Accept: full Studio script PASS on the release commit, recorded in PROGRESS.md.
 
-**MODEL tasks — skipped until `docs/art/quality-reference/` has the owner's reference images** (then they enter the order right after the current task, in this order)
+**MODEL tasks — ready since 2026-11-22** (reference images supplied). They enter the order right after the current task, in this order.
 - [ ] **CM2-R2 → CM2-AP Asset pipeline for Blender MeshParts** (re-scoped: the CC0 art is being removed, so R2 versions the new art instead) · M · Depends: reference images. `.rbxm`/`.fbx` sources under `assets/`, mapped in `default.project.json`, so `rojo build` contains the models; registry IDs and pivots unchanged.
 - [ ] **CM2-12 Trees** (4 starter species × 3 sizes, special trees) · MODEL.
 - [ ] **CM2-13 HQ tiers, fence, bays, checkout** (Sales Tent, Timber Pavilion, Alpine Hut, Mountain Chalet) · MODEL.

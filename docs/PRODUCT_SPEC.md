@@ -43,7 +43,12 @@ Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST
 ## Art
 - **Own palette**, low-poly winter style, with quality over free packs. **All current Codex/CC0 models are removed** and replaced.
 - **Larger and visible models** (buildings, cars, truck, trees, stalls, terrain props) are modeled in **Blender** and imported as MeshParts. Roblox Parts are used only for small items (signs, pallets, slats, small decor), always in the palette and cleanly finished.
-- **Self-review:** Opus 5.5 (medium effort) builds and reviews models itself against owner reference images in `docs/art/quality-reference/` (2 good, 2 bad, each with reasons; the owner supplies them later). Only models that pass are integrated. Until the images exist, model work waits and feature work continues.
+- **Self-review:** Opus 5.5 (medium effort) builds and reviews models itself against the owner's reference images in `docs/art/quality-reference/`. The owner supplied them on 2026-11-22: 3 liked, 3 disliked. The descriptions and the checklist are in its README. Only models that pass are integrated.
+- **Quality tiers (owner decision 2026-11-22):**
+  - The target is stylised low-poly that is neither too simple nor too detailed or realistic.
+  - Models seen often or for long (stand and HQ, cars, truck, buildings, trees for sale) need the higher tier A.
+  - Small, distant or rare models need at least tier B.
+- **Reference look (owner decision 2026-11-22):** every model follows the reference game's look: how it is built, its proportions, the arrangement of its parts and its colour mood. It is never identical: the silhouette details, palette values and decoration are our own, with no logos, names or textures from the reference.
 
 ## Way of working and release
 - **Model routing (owner decision 2026-11-21, amended):** every task runs through the skill `cm2-task`.

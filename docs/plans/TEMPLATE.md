@@ -15,7 +15,9 @@ Tier: S | M | L | MODEL (keep exactly one). Reason: one line.
 - **S** → `implementer` (Sonnet 5.5, medium): follows existing patterns; UI, localization, config values, docs, tests or a small feature. No change to the save schema, money, inventory, purchases or remote validation.
 - **M** → `implementer-high` (Sonnet 5.5, high): a feature across several services or non-trivial logic (NPC pathing, timers, state machines, world generation), with the same exclusions as S.
 - **L** → `implementer-opus` (Opus 5.5, high): save schema or migration, DataStore or session locks, money, inventory or purchases, remote validation or rate limits, concurrency, or a bug whose cause is not yet known.
-- **MODEL** → `modeler` (Opus 5.5, medium): 3D models and map geometry.
+- **MODEL** → `modeler` (Opus 5.5, medium): 3D models and map geometry. Also set the **quality tier** for every model, using the rules in `docs/art/quality-reference/README.md`:
+  - A: seen often or for long, such as the stand and HQ, cars, truck, buildings and trees for sale.
+  - B: small, distant or rare.
 
 If several tiers fit, the highest wins (L > M > S). A model task that also needs code changes becomes two plans.
 

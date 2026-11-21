@@ -161,6 +161,21 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - The Supplier panel lists the four species with server prices and acts on the selected species (Medium); the company summary gains a read-only `supplier.wholesale` map.
 - Affected files: GameConfig, BusinessState, SupplierCatalog, CustomerProfile, SupplierStockService, WorldService, UiController, Localization, tests, GAME_DESIGN, TEST_PLAN, MODEL_INTEGRATION.
 
+## 2026-11-22 - Art quality references (owner)
+- **Previous rule:** model work waits for 2 good and 2 bad owner images; the look is our own.
+- **New rule:**
+  - **References:** the owner supplied 6 images (3 liked, 3 disliked).
+    - Liked: a softly faceted low-poly tree (target), a simple layered conifer (minimum) and a faceted low-poly character (level for models seen often).
+    - Disliked: a noisy shard-leaf tree (too much), a bare blob-on-stick tree (too little) and a realistic leaf-card tree (wrong style).
+  - **Quality tiers:** tier A for models seen often or for long (stand and HQ, cars, truck, buildings, trees for sale); tier B for small, distant or rare models.
+  - **Reference look:** models follow the reference game's look (how they are built, proportions, arrangement, colour mood), but are never identical; silhouette details, palette values and decoration are our own.
+  - **MODEL tasks** are no longer skipped.
+- **Engineering decisions:**
+  - The images stay local and gitignored, because the repository is public and their licence is unknown. The README describes each image, so it stays binding without the files.
+  - The trees for sale count as tier A.
+  - Reference-game screenshots for the look are requested as PC-1 (not blocking; until then the text observations apply).
+- **Affected files:** PRODUCT_SPEC.md (Art), docs/art/quality-reference/README.md, .gitignore, docs/CLAUDE_BACKLOG.md, .claude/agents/modeler.md, docs/plans/TEMPLATE.md.
+
 ## Change procedure
 1. Identify impacted documents and code/config.
 2. Amend the canonical source (PRODUCT_SPEC for owner decisions, GAME_DESIGN for mechanics, TECHNICAL_ARCHITECTURE for interfaces, TEST_PLAN for verification).

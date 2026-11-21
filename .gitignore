@@ -8,3 +8,9 @@ rojo-serve*.log
 # Raw download archives duplicate the unpacked CC0 sources stored beside them;
 # assets/third_party/poly_pizza/README.md lists each original download page.
 assets/**/source.zip
+
+# Owner's model-quality reference images: web images with an unknown licence, kept
+# local because the repository is public (docs/art/quality-reference/README.md).
+docs/art/quality-reference/*.png
+docs/art/quality-reference/*.jpg
+docs/art/quality-reference/*.webp
