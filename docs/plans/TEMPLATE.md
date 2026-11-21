@@ -1,6 +1,6 @@
 # <ID> — <title>
 
-Written by: Opus (planner). Implemented by: `implementer` agent (Sonnet). Playtested by: `playtester` agent (Sonnet).
+Written by: `planner` (Opus 5.5, high). Implemented by: the agent for the tier below. Playtested by: `playtester` (Sonnet 5.5, medium). Reviewed and committed by: `reviewer` (Opus 5.5, medium). Pipeline: skill `cm2-task`.
 Rule: everything below is decided. If something is missing, the implementer stops and reports; it never chooses.
 
 ## Goal
@@ -8,6 +8,16 @@ One or two sentences: what the player can do afterwards.
 
 ## Source of truth
 Spec sections, reference observations (`docs/REFERENCE_GAME_LIVE_TEST.md` §…) and owner decisions this plan implements.
+
+## Implementer tier
+Tier: S | M | L | MODEL (keep exactly one). Reason: one line.
+
+- **S** → `implementer` (Sonnet 5.5, medium): follows existing patterns; UI, localization, config values, docs, tests or a small feature. No change to the save schema, money, inventory, purchases or remote validation.
+- **M** → `implementer-high` (Sonnet 5.5, high): a feature across several services or non-trivial logic (NPC pathing, timers, state machines, world generation), with the same exclusions as S.
+- **L** → `implementer-opus` (Opus 5.5, high): save schema or migration, DataStore or session locks, money, inventory or purchases, remote validation or rate limits, concurrency, or a bug whose cause is not yet known.
+- **MODEL** → `modeler` (Opus 5.5, medium): 3D models and map geometry.
+
+If several tiers fit, the highest wins (L > M > S). A model task that also needs code changes becomes two plans.
 
 ## Skills to load
 For example: roblox-data, roblox-networking, roblox-security, roblox-gui.

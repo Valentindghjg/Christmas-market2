@@ -46,7 +46,12 @@ Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST
 - **Self-review:** Opus 5.5 (medium effort) builds and reviews models itself against owner reference images in `docs/art/quality-reference/` (2 good, 2 bad, each with reasons; the owner supplies them later). Only models that pass are integrated. Until the images exist, model work waits and feature work continues.
 
 ## Way of working and release
-- **Opus plans, Sonnet implements:** Opus writes a complete plan per task in `docs/plans/` (files, functions, numbers, tests, playtest steps). Sonnet implements without making design decisions and stops on ambiguity. Opus reviews, verifies and commits. Studio playtests run through the Roblox Studio MCP.
+- **Model routing (owner decision 2026-11-21, amended):** every task runs through the skill `cm2-task`.
+  - Planning: always Opus 5.5, high effort. The plan settles every decision.
+  - Implementing: by task, Sonnet 5.5 medium (tier S), Sonnet 5.5 high (tier M) or Opus 5.5 high (tier L). Implementers make no design decisions and stop on ambiguity.
+  - Playtests: Sonnet 5.5, through the Roblox Studio MCP.
+  - Review and commit: Opus 5.5, medium effort.
+  - 3D models: Opus 5.5, medium effort.
 - **Testing:**
   - From now on, test in a private (unpublished) build.
   - A friends test with 2–5 players before the 1st Advent (Duo, invite code, purchases).

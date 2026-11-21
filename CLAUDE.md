@@ -49,13 +49,22 @@ You are the implementation engineer for this Roblox Studio / Luau game. The huma
 
 Do not silently mark unimplemented features complete. Prefer a playable vertical slice over broad unfinished scaffolding.
 
-## Plan, implement, verify (Opus plans, Sonnet implements)
-Owner decision 2026-11-21 (PRODUCT_SPEC):
-1. **Plan (Opus 5.5, high effort):** for each backlog task the main session writes `docs/plans/<ID>.md` from `docs/plans/TEMPLATE.md`. The plan settles every decision: files, functions, signatures, config keys and values, error codes, strings, tests, playtest steps and acceptance criteria. Sonnet must never have to choose.
-2. **Implement (Sonnet 5.5, medium effort):** delegate to the `implementer` agent (`.claude/agents/implementer.md`) with the plan path. It implements exactly the plan and stops with a report on any ambiguity.
-3. **Playtest (Sonnet 5.5, medium effort):** delegate the plan's playtest section to the `playtester` agent (`.claude/agents/playtester.md`), which uses the Roblox Studio MCP.
-4. **Verify and commit (Opus):** review the diff against the plan, run the checks, fix or re-plan, then record PROGRESS.md and commit.
-5. **3D models:** Opus 5.5 at medium effort builds and self-reviews models against `docs/art/quality-reference/` (see PRODUCT_SPEC, Art).
+## Plan, implement, verify (model routing)
+Owner decision 2026-11-21 (PRODUCT_SPEC). Every task that changes code, tests, models or the map runs through the skill **`cm2-task`** (`.claude/skills/cm2-task/SKILL.md`). Each step runs in its own agent; the agent file in `.claude/agents/` fixes model and effort:
+
+| Step | Agent | Model, effort |
+|---|---|---|
+| Plan `docs/plans/<ID>.md` from `docs/plans/TEMPLATE.md`; the plan settles every decision and sets the implementer tier | `planner` | Opus 5.5, high |
+| Implement, tier S (patterns, UI, config, docs, tests) | `implementer` | Sonnet 5.5, medium |
+| Implement, tier M (multi-service features, non-trivial logic) | `implementer-high` | Sonnet 5.5, high |
+| Implement, tier L (saves, money, inventory, security, concurrency) | `implementer-opus` | Opus 5.5, high |
+| 3D models and map (tier MODEL), self-review against `docs/art/quality-reference/` | `modeler` | Opus 5.5, medium |
+| Playtest in Studio through the Roblox Studio MCP | `playtester` | Sonnet 5.5, medium |
+| Review the diff against the plan, run the checks, record PROGRESS.md, commit | `reviewer` | Opus 5.5, medium |
+
+- The main session only orchestrates. It does not write plans, code, models or commits itself.
+- Start the agents with `subagent_type` only. Never pass `model` or `effort` to the Agent tool, because that overrides the agent file.
+- Implementers stop with a report on any ambiguity; the planner amends the plan.
 
 ## Skills
 

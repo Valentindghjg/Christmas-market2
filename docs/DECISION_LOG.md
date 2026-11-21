@@ -93,6 +93,25 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - **Process:** Opus plans (`docs/plans/`), Sonnet implements (`implementer` agent) and playtests (`playtester` agent); see CLAUDE.md.
 - **Affected files:** PRODUCT_SPEC.md, GAME_DESIGN.md, TECHNICAL_ARCHITECTURE.md, TEST_PLAN.md, CLAUDE.md, CLAUDE_BACKLOG.md, docs/plans/TEMPLATE.md, docs/art/quality-reference/README.md, .claude/agents/.
 
+## 2026-11-21 - Model routing per task (owner)
+- **Previous rule:** Opus plans and reviews in the main session, Sonnet (medium) implements and playtests.
+- **New rule:**
+  - planner: Opus 5.5 high.
+  - Implementer by tier: S Sonnet 5.5 medium, M Sonnet 5.5 high, L Opus 5.5 high.
+  - playtester: Sonnet 5.5 medium.
+  - reviewer (review and commit): Opus 5.5 medium.
+  - modeler (3D models): Opus 5.5 medium.
+- **Enforcement:**
+  - Model and effort are pinned in `.claude/agents/*.md`.
+  - The skill `cm2-task` fixes the step order and forbids model or effort overrides on the Agent call.
+  - The planner sets the tier in the plan.
+- **Engineering decision:** tier M is Sonnet 5.5 at high effort.
+- **Fix:** playtester and modeler get the `mcp__Roblox_Studio__*` tools; the playtester's tool list did not include them.
+- **Affected files:**
+  - CLAUDE.md, PRODUCT_SPEC.md, docs/plans/TEMPLATE.md
+  - .claude/agents/ (planner, implementer, implementer-high, implementer-opus, playtester, reviewer, modeler)
+  - .claude/skills/cm2-task/
+
 ## Change procedure
 1. Identify impacted documents and code/config.
 2. Amend the canonical source (PRODUCT_SPEC for owner decisions, GAME_DESIGN for mechanics, TECHNICAL_ARCHITECTURE for interfaces, TEST_PLAN for verification).
