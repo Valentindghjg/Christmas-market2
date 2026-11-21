@@ -40,7 +40,20 @@ function serverScriptService:WaitForChild(childName: string): Node
 end
 local server = child(serverScriptService, "Server")
 local services = child(server, "Services")
-child(services, "PersistenceService", "src/server/Services/PersistenceService.lua")
+for name, path in pairs({
+	AnalyticsService = "src/server/Services/AnalyticsService.lua",
+	CompanyStateService = "src/server/Services/CompanyStateService.lua",
+	CustomerService = "src/server/Services/CustomerService.lua",
+	CustomerSimulationService = "src/server/Services/CustomerSimulationService.lua",
+	EmployeeService = "src/server/Services/EmployeeService.lua",
+	PersistenceService = "src/server/Services/PersistenceService.lua",
+	PlacementService = "src/server/Services/PlacementService.lua",
+	PricingService = "src/server/Services/PricingService.lua",
+	ProgressionService = "src/server/Services/ProgressionService.lua",
+	QuestService = "src/server/Services/QuestService.lua",
+}) do
+	child(services, name, path)
+end
 local sourcePaths = {
 	AssetCatalog = "src/shared/AssetCatalog.lua",
 	BusinessState = "src/shared/BusinessState.lua",
@@ -130,6 +143,8 @@ for _, name in ipairs({
 	"Inventory_Test",
 	"BusinessState_Test",
 	"Localization_Test",
+	"Protocol_Test",
+	"CompanyStateService_Test",
 	"PersistenceService_Test",
 }) do
 	runCase(name)
