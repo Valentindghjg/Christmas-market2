@@ -19,7 +19,7 @@ Status: 50 GitHub issues created; **not yet implemented or verified**.
 - [x] [CM2-06](https://github.com/Valentindghjg/Christmas-market2/issues/6)
 - [x] [CM2-07](https://github.com/Valentindghjg/Christmas-market2/issues/7)
 - [x] [CM2-08](https://github.com/Valentindghjg/Christmas-market2/issues/8)
-- [ ] [CM2-09](https://github.com/Valentindghjg/Christmas-market2/issues/9)
+- [x] [CM2-09](https://github.com/Valentindghjg/Christmas-market2/issues/9)
 
 ## P1 — Spielbarer Kern
 - [ ] [CM2-10](https://github.com/Valentindghjg/Christmas-market2/issues/10)

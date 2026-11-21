@@ -145,6 +145,7 @@ for _, name in ipairs({
 	"Localization_Test",
 	"Protocol_Test",
 	"CompanyStateService_Test",
+	"CustomerService_Test",
 	"PersistenceService_Test",
 }) do
 	runCase(name)
