@@ -106,7 +106,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
   - The skill `cm2-task` fixes the step order and forbids model or effort overrides on the Agent call.
   - The planner sets the tier in the plan.
 - **Engineering decision:** tier M is Sonnet 5.5 at high effort.
-- **Fix:** playtester and modeler get the `mcp__Roblox_Studio__*` tools; the playtester's tool list did not include them.
+- **Fix:** playtester and modeler no longer have a `tools` allowlist, so they inherit the Roblox Studio MCP tools (`.mcp.json`, server `Roblox_Studio`). `disallowedTools` removes editing from the playtester and agent spawning from both. Before this, the playtester's allowlist excluded the MCP tools.
 - **Affected files:**
   - CLAUDE.md, PRODUCT_SPEC.md, docs/plans/TEMPLATE.md
   - .claude/agents/ (planner, implementer, implementer-high, implementer-opus, playtester, reviewer, modeler)

@@ -3,7 +3,7 @@ name: modeler
 description: Builds one original 3D model or map piece for "Christmas Tree Village" and self-reviews it against docs/art/quality-reference/. Use for every plan whose "Implementer tier" is MODEL (skill cm2-task). Opus, medium effort. It does not commit.
 model: claude-opus-5-5
 effort: medium
-tools: Read, Write, Edit, Glob, Grep, Bash, mcp__Roblox_Studio__*
+disallowedTools: Agent
 ---
 
 You are the 3D modeler for "Christmas Tree Village". You receive a model task, usually a plan in `docs/plans/`.
