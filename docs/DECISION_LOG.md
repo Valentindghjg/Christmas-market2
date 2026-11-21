@@ -133,6 +133,26 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
   - Hooks cannot set the model or effort (Claude Code hooks documentation). The switch stays in the skills.
 - **Affected files:** CLAUDE.md, .claude/settings.json, .claude/hooks/, .claude/skills/cm2-plan/, .claude/skills/cm2-task/, .claude/agents/planner.md.
 
+## 2026-11-21 - Launch order (engineering, from the owner's launch decisions)
+- **Previous rule:** milestones P1..P5 with tickets CM2-10..50, follow-ups CM2-G1..G21 and CM2-R1..R4 worked in milestone order.
+- **New rule:** `docs/CLAUDE_BACKLOG.md` "Launch replanning (2026-11-21)" is the binding work order: 37 lines in four gates, Gate A friends test (target 2026-11-26), Gate B go/no-go build (2026-11-28), Gate C by the 2nd Advent (2026-12-06), then after launch. MODEL tasks wait for the owner's reference images.
+- **Why this order:**
+  - Numbers first (G6), then a repeatable Studio script (G20), because every later task needs a playtest and Studio runs are the scarce resource.
+  - Save slots and co-op (S1..S3) come before further gameplay: they change the save key from user ID to save ID, and every feature added later would otherwise need a second migration. The friends test also needs Duo saves and invite codes.
+  - The core loop is completed with walking customers, manual checkout, reviews and visible staff before progression and content (owner: "core loop fully playable first").
+  - The Advent calendar and the 1st Advent event are in Gate B because their dates are fixed; decor, analytics depth and later events can follow until 2026-12-06.
+- **Re-scoped tickets (engineering, following PRODUCT_SPEC 2026-11-21):**
+  - CM2-38 roles → owner vs member in co-op saves (CM2-S2).
+  - CM2-43 DE/EN → English-only client at launch; DE strings stay for the later language switch.
+  - CM2-46 "shop disabled" → shop wired by owner-supplied IDs; entries without an ID show "Coming soon" and never prompt.
+  - CM2-G16 → decided by the owner (gentle fatigue, movable break area, no wages); merged into CM2-25/26.
+  - CM2-G12 → four leaderboards including Robux spent (owner decision supersedes "no Robux spent").
+  - CM2-R2 → asset pipeline for the new Blender MeshParts, because the CC0 art it would version is being removed.
+  - CM2-R1, CM2-G21, CM2-15, CM2-16 → steps of the Studio script CM2-G20.
+  - CM2-48 → the owner publishes; engineering delivers `docs/RELEASE_CHECKLIST.md`.
+- **Technical decisions recorded with the order:** calendar, likes and daily rewards use the server's UTC date; cross-server "Join" uses a MemoryStore save-to-server map; until the group ID is supplied the group bonus is hidden.
+- **Affected files:** docs/CLAUDE_BACKLOG.md, docs/DECISION_LOG.md.
+
 ## Change procedure
 1. Identify impacted documents and code/config.
 2. Amend the canonical source (PRODUCT_SPEC for owner decisions, GAME_DESIGN for mechanics, TECHNICAL_ARCHITECTURE for interfaces, TEST_PLAN for verification).
