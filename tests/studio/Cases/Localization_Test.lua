@@ -12,4 +12,19 @@ return function(t)
 		expect.equal(Localization.get("fr", "cash"), "Cash")
 		expect.equal(Localization.get("de", "missingKey"), "missingKey")
 	end)
+
+	-- The spec requires localized keys rather than hardcoded prose in both languages.
+	t.test("defines every key in both languages", function()
+		for key in pairs(Localization.Strings.en) do
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+		for key in pairs(Localization.Strings.de) do
+			expect.equal(type(Localization.Strings.en[key]), "string")
+		end
+	end)
+
+	t.test("formats templates and tolerates bad arguments", function()
+		expect.equal(Localization.format("de", "orderAccepted", 32), "Bestellung angenommen: 32 $")
+		expect.equal(Localization.format("en", "orderAccepted", "not a number"), "Order accepted: $%d")
+	end)
 end

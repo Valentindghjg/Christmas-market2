@@ -6,7 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local LocalizationService = game:GetService("LocalizationService")
 
 local player = Players.LocalPlayer
-local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BusinessAction")
+local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BusinessAction") :: RemoteFunction
 local Localization = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Localization"))
 local locale = string.lower(string.sub(LocalizationService.RobloxLocaleId, 1, 2))
 if locale ~= "de" and locale ~= "en" then
@@ -14,6 +14,33 @@ if locale ~= "de" and locale ~= "en" then
 end
 local function localized(key: string): string
 	return Localization.get(locale, key)
+end
+local function localizedFormat(key: string, ...: any): string
+	return Localization.format(locale, key, ...)
+end
+
+-- Server error codes that have a player-facing translation.
+local ERROR_KEYS = {
+	InsufficientFunds = "insufficientFunds",
+	ConnectionError = "connectionError",
+}
+local function errorText(errorCode: unknown): string
+	local key = type(errorCode) == "string" and ERROR_KEYS[errorCode]
+	return localizedFormat("errorStatus", if key then localized(key) else tostring(errorCode))
+end
+
+-- InvokeServer can throw (server error, disconnect); the UI must stay usable.
+local function invoke(action: string, payload: { [string]: any })
+	local called, response = pcall(remote.InvokeServer, remote, {
+		version = 1,
+		requestId = HttpService:GenerateGUID(false),
+		action = action,
+		payload = payload,
+	})
+	if not called or type(response) ~= "table" then
+		return { ok = false, errorCode = "ConnectionError" }
+	end
+	return response
 end
 
 local gui = Instance.new("ScreenGui")
@@ -35,6 +62,18 @@ local function label(parent: Instance, text: string, position: UDim2, size: UDim
 	return value
 end
 
+local function button(name: string, color: Color3, position: UDim2, size: UDim2, textSize: number): TextButton
+	local value = Instance.new("TextButton")
+	value.Name = name
+	value.BackgroundColor3 = color
+	value.TextColor3 = Color3.fromRGB(30, 48, 35)
+	value.Font = Enum.Font.GothamBold
+	value.TextSize = textSize
+	value.Position = position
+	value.Size = size
+	return value
+end
+
 local hud = Instance.new("Frame")
 hud.Name = "Hud"
 hud.BackgroundColor3 = Color3.fromRGB(20, 68, 48)
@@ -43,7 +82,13 @@ hud.Position = UDim2.fromScale(0.02, 0.02)
 hud.Size = UDim2.fromOffset(270, 84)
 hud.Parent = gui
 Instance.new("UICorner", hud).CornerRadius = UDim.new(0, 12)
-local cash = label(hud, localized("cash") .. ": loading…", UDim2.fromOffset(16, 12), UDim2.fromOffset(240, 26), 20)
+local cash = label(
+	hud,
+	localized("cash") .. ": " .. localized("loading"),
+	UDim2.fromOffset(16, 12),
+	UDim2.fromOffset(240, 26),
+	20
+)
 local status = label(hud, "Christmas Market 2", UDim2.fromOffset(16, 44), UDim2.fromOffset(240, 22), 14)
 
 local panel = Instance.new("Frame")
@@ -56,67 +101,49 @@ panel.Size = UDim2.fromOffset(360, 202)
 panel.Parent = gui
 Instance.new("UICorner", panel).CornerRadius = UDim.new(0, 14)
 label(panel, localized("supplier"), UDim2.fromOffset(18, 14), UDim2.fromOffset(300, 28), 22)
-local detail =
-	label(panel, "Frasier Fir · Medium · $32 wholesale", UDim2.fromOffset(18, 50), UDim2.fromOffset(320, 24), 15)
+local detail = label(panel, "Frasier Fir · Medium", UDim2.fromOffset(18, 50), UDim2.fromOffset(320, 24), 15)
 
-local order = Instance.new("TextButton")
-order.Name = "OrderFrasier"
-order.BackgroundColor3 = Color3.fromRGB(201, 153, 53)
+local order =
+	button("OrderFrasier", Color3.fromRGB(201, 153, 53), UDim2.fromOffset(18, 94), UDim2.fromOffset(324, 45), 17)
 order.Text = localized("placeOrder")
-order.TextColor3 = Color3.fromRGB(30, 48, 35)
-order.Font = Enum.Font.GothamBold
-order.TextSize = 17
-order.Position = UDim2.fromOffset(18, 94)
-order.Size = UDim2.fromOffset(324, 45)
 order.Parent = panel
 Instance.new("UICorner", order).CornerRadius = UDim.new(0, 10)
 
-local unload = Instance.new("TextButton")
-unload.Name = "UnloadDelivery"
-unload.BackgroundColor3 = Color3.fromRGB(114, 172, 113)
-unload.Text = "No delivery ready"
-unload.TextColor3 = Color3.fromRGB(20, 48, 35)
-unload.Font = Enum.Font.GothamBold
-unload.TextSize = 14
-unload.Position = UDim2.fromOffset(18, 143)
-unload.Size = UDim2.fromOffset(324, 20)
+local unload =
+	button("UnloadDelivery", Color3.fromRGB(114, 172, 113), UDim2.fromOffset(18, 143), UDim2.fromOffset(324, 20), 14)
+unload.Text = localized("noDeliveryReady")
 unload.Visible = false
 unload.Parent = panel
+
+local place =
+	button("PlaceFrasier", Color3.fromRGB(237, 212, 142), UDim2.fromOffset(18, 168), UDim2.fromOffset(324, 20), 14)
+place.Visible = false
+place.Parent = panel
+
 local deliveredOrderId: string? = nil
 local storedFrasierMedium = 0
 local placementCount = 0
-
-local place = Instance.new("TextButton")
-place.Name = "PlaceFrasier"
-place.BackgroundColor3 = Color3.fromRGB(237, 212, 142)
-place.Text = "Place Frasier Fir"
-place.TextColor3 = Color3.fromRGB(30, 48, 35)
-place.Font = Enum.Font.GothamBold
-place.TextSize = 14
-place.Position = UDim2.fromOffset(18, 168)
-place.Size = UDim2.fromOffset(324, 20)
-place.Visible = false
-place.Parent = panel
+-- One in-flight request per button: a double tap must not place two orders.
+local busy = { order = false, unload = false, place = false }
 
 local function refreshSupplierQuote()
 	if player:GetAttribute("CompanyReady") ~= true then
 		return
 	end
-	local response = remote:InvokeServer({
-		version = 1,
-		requestId = HttpService:GenerateGUID(false),
-		action = "Supplier.RequestQuote",
-		payload = { speciesId = "FrasierFir", sizeId = "Medium" },
-	})
+	local response = invoke("Supplier.RequestQuote", { speciesId = "FrasierFir", sizeId = "Medium" })
 	if response.ok and response.data then
-		detail.Text = string.format("Frasier Fir · Medium · $%d wholesale", response.data.unitCost)
+		detail.Text = localizedFormat("wholesaleQuote", "Frasier Fir", "Medium", response.data.unitCost)
 	end
 end
 
 local function updateReady()
 	local ready = player:GetAttribute("CompanyReady")
-	status.Text = ready and ("Plot: " .. tostring(player:GetAttribute("PlotId")))
-		or ("Unavailable: " .. tostring(player:GetAttribute("CompanyLoadError") or "Loading"))
+	status.Text = if ready
+		then localizedFormat("plotStatus", tostring(player:GetAttribute("PlotId")))
+		else localizedFormat(
+			"unavailable",
+			tostring(player:GetAttribute("CompanyLoadError") or localized("loading"))
+		)
 end
 player:GetAttributeChangedSignal("CompanyReady"):Connect(updateReady)
 player:GetAttributeChangedSignal("CompanyLoadError"):Connect(updateReady)
@@ -130,39 +157,31 @@ local function refreshSummary()
 	if player:GetAttribute("CompanyReady") ~= true then
 		return
 	end
-	local response = remote:InvokeServer({
-		version = 1,
-		requestId = HttpService:GenerateGUID(false),
-		action = "Company.GetSummary",
-		payload = {},
-	})
-	if response.ok and response.data then
-		cash.Text = string.format(
-			"%s: $%d · %s: %d",
-			localized("cash"),
-			response.data.cash,
-			localized("reputation"),
-			response.data.reputation
-		)
-		local plot = response.data.plot
-		if plot then
-			status.Text =
-				string.format("Plot: %s · Parking: %d", tostring(player:GetAttribute("PlotId")), plot.parkingSpaces)
-		end
-		deliveredOrderId = nil
-		for _, delivery in ipairs(response.data.deliveries or {}) do
-			if delivery.status == "Delivered" then
-				deliveredOrderId = delivery.orderId
-				break
-			end
-		end
-		unload.Visible = deliveredOrderId ~= nil
-		unload.Text = deliveredOrderId and "Unload delivered trees" or "No delivery ready"
-		storedFrasierMedium = response.data.stock and (response.data.stock["FrasierFir:Medium"] or 0) or 0
-		placementCount = response.data.placementCount or 0
-		place.Visible = storedFrasierMedium > 0
-		place.Text = string.format("Place Frasier Fir (%d stored)", storedFrasierMedium)
+	local response = invoke("Company.GetSummary", {})
+	if not (response.ok and response.data) then
+		return
 	end
+	local data = response.data
+	cash.Text =
+		string.format("%s: $%d · %s: %d", localized("cash"), data.cash, localized("reputation"), data.reputation)
+	if data.plot then
+		status.Text =
+			localizedFormat("plotParkingStatus", tostring(player:GetAttribute("PlotId")), data.plot.parkingSpaces)
+	end
+	-- The server lists ready deliveries first.
+	deliveredOrderId = nil
+	for _, delivery in ipairs(data.deliveries or {}) do
+		if delivery.status == "Delivered" then
+			deliveredOrderId = delivery.orderId
+			break
+		end
+	end
+	unload.Visible = deliveredOrderId ~= nil
+	unload.Text = localized(if deliveredOrderId then "unloadDelivery" else "noDeliveryReady")
+	storedFrasierMedium = data.stock and (data.stock["FrasierFir:Medium"] or 0) or 0
+	placementCount = data.placementCount or 0
+	place.Visible = storedFrasierMedium > 0
+	place.Text = localizedFormat("placeTree", "Frasier Fir", storedFrasierMedium)
 end
 
 task.spawn(function()
@@ -173,61 +192,52 @@ task.spawn(function()
 end)
 
 place.Activated:Connect(function()
-	if storedFrasierMedium < 1 then
+	if busy.place or storedFrasierMedium < 1 then
 		return
 	end
+	busy.place = true
 	local slot = placementCount % 5
-	local response = remote:InvokeServer({
-		version = 1,
-		requestId = HttpService:GenerateGUID(false),
-		action = "Inventory.Place",
-		payload = {
-			speciesId = "FrasierFir",
-			sizeId = "Medium",
-			transform = { x = -20 + slot * 10, y = 0, z = 8, rotation = 0 },
-		},
+	local response = invoke("Inventory.Place", {
+		speciesId = "FrasierFir",
+		sizeId = "Medium",
+		transform = { x = -20 + slot * 10, y = 0, z = 8, rotation = 0 },
 	})
-	if response.ok then
-		detail.Text = "Tree placed for customers"
-		refreshSummary()
-	end
+	detail.Text = if response.ok then localized("treePlaced") else errorText(response.errorCode)
+	refreshSummary()
+	busy.place = false
 end)
 
 unload.Activated:Connect(function()
-	if not deliveredOrderId then
+	if busy.unload or not deliveredOrderId then
 		return
 	end
-	local response = remote:InvokeServer({
-		version = 1,
-		requestId = HttpService:GenerateGUID(false),
-		action = "Delivery.Unload",
-		payload = { orderId = deliveredOrderId },
-	})
-	if response.ok then
-		detail.Text = "Trees unloaded into storage"
-		refreshSummary()
-	end
+	busy.unload = true
+	local response = invoke("Delivery.Unload", { orderId = deliveredOrderId })
+	detail.Text = if response.ok then localized("treesUnloaded") else errorText(response.errorCode)
+	refreshSummary()
+	busy.unload = false
 end)
 
 order.Activated:Connect(function()
-	order.Active = false
-	order.Text = "Ordering…"
-	local response = remote:InvokeServer({
-		version = 1,
-		requestId = HttpService:GenerateGUID(false),
-		action = "Supplier.PlaceOrder",
-		payload = { speciesId = "FrasierFir", sizeId = "Medium", quantity = 1 },
-	})
+	if busy.order then
+		return
+	end
+	busy.order = true
+	order.AutoButtonColor = false
+	order.Text = localized("ordering")
+	local response = invoke("Supplier.PlaceOrder", { speciesId = "FrasierFir", sizeId = "Medium", quantity = 1 })
 	if response.ok then
-		cash.Text = "Order accepted: $" .. tostring(response.data.cost)
-		detail.Text = "Truck is on the way"
+		cash.Text = localizedFormat("orderAccepted", response.data.cost)
+		detail.Text = localized("truckOnTheWay")
+		order.Text = localized("placeOrder")
 		refreshSummary()
 	else
-		order.Text = "Order unavailable"
-		status.Text = "Error: " .. tostring(response.errorCode)
+		order.Text = localized("orderUnavailable")
+		status.Text = errorText(response.errorCode)
+		task.delay(2, function()
+			order.Text = localized("placeOrder")
+		end)
 	end
-	order.Active = true
-	if response.ok then
-		order.Text = localized("placeOrder")
-	end
+	order.AutoButtonColor = true
+	busy.order = false
 end)
