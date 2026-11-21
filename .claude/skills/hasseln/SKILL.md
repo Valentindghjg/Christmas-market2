@@ -19,7 +19,7 @@ Scope: $ARGUMENTS
 ## Rules for the whole run
 - The main chat writes nothing itself (CLAUDE.md): the `planner` writes the backlog and plans, the `reviewer` commits. Start agents with `subagent_type`, `description` and `prompt` only; never pass `model` or `effort`.
 - One session, one task at a time. Do not start other sessions or worktrees, and do not run tasks in parallel.
-- Never push, merge to a remote, publish, or create or enable paid products.
+- Every commit is pushed right away by whoever commits (owner decision 2026-11-22). Never force-push, merge branches on the remote, publish, or create or enable paid products. A failed push is a blocker (step 5, kind `zugriff`).
 - Never commit `.mcp.json`, secrets or `build.rbxlx`, and never touch uncommitted changes the owner made. If `git status` shows foreign changes in files a task needs, treat that as a blocker (step 5).
 - Do not stop between tasks, at milestone gates or after reports. Do not call `wrap_up` and do not end the turn until a stop condition in step 7 is met.
 - Keep the chat lean: pass file paths and short reports between agents, not file contents. After each task, write at most two lines to the user (task, verdict, commit SHA). The task list (`update_plan`) shows the run: one item per task, plus "Backlog aktualisieren" and "Abschlussbericht".
@@ -49,7 +49,7 @@ Invoke the skill `cm2-task` with the task ID and follow it step by step (planner
 
 ## 5. Secure and record a blocker
 A blocker is anything the run cannot fix itself after one obvious attempt: a missing tool, no access to Studio, Rojo, the network or an API, a check that fails for outside reasons, foreign changes in needed files, or a question only the owner can answer.
-1. **Secure the work.** Start `reviewer`: "Task <ID> stopped because of <reason>. Run the checks. If they and the review pass, commit to `main` as usual and say what is still missing. If not, commit the current state to a new local branch `wip/<ID>` (create it from the current `HEAD`, commit, switch back to `main`), so `main` stays clean. Report the branch and SHA." Nothing unfinished may stay uncommitted, and unfinished code never lands on `main`.
+1. **Secure the work.** Start `reviewer`: "Task <ID> stopped because of <reason>. Run the checks. If they and the review pass, commit to `main` as usual and say what is still missing. If not, commit the current state to a new branch `wip/<ID>` (create it from the current `HEAD`, commit, push it, switch back to `main`), so `main` stays clean. Report the branch and SHA." Nothing unfinished may stay uncommitted, and unfinished code never lands on `main`.
 2. **Record it.** Start `planner`: "Add a blocker to `docs/CLAUDE_BACKLOG.md` for hasseln: <ID>, <reason>, <what was tried>, <WIP branch or commit>. Write it in the section 'Für den Owner am PC' in the exact format of that section, create the follow-up task with goal, dependencies and verifiable acceptance criteria, and place it in the launch order right after the owner fixes it. Change only docs." Then `reviewer`: "Docs-only change by the planner: check and commit."
 3. Continue with step 2. Tasks that need the same missing thing are skipped from now on.
 

@@ -19,7 +19,7 @@ You are the reviewer for "Christmas Tree Village". You receive a plan path in `d
    - `rojo build default.project.json --output build.rbxlx`
 5. You may fix small defects that the plan already decides (a typo, a missing require, a failing format check). For anything else, change nothing, and report "re-plan needed" with the findings.
 6. When everything passes: add a dated entry to `docs/PROGRESS.md` with the real evidence (checks with counts, playtest table or "not run" with the reason). Never claim a Studio test that did not run.
-7. Commit in small logical commits with an English message. End every commit message with the line `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never commit `.mcp.json`, secrets or `build.rbxlx`. Do not push, merge or publish.
+7. Commit in small logical commits with an English message. End every commit message with the line `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never commit `.mcp.json`, secrets or `build.rbxlx`. After committing, push the branch you committed to (`git push origin <branch>`, also `wip/<ID>` branches); never force-push, never merge into another branch and never publish (owner decision 2026-11-22: always push automatically). If the push fails, report it as a blocker with the git error.
 
 ## Report (your final message)
 - Verdict: COMMITTED, or RE-PLAN NEEDED.
