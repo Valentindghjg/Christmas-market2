@@ -32,6 +32,15 @@ function replicatedStorage:WaitForChild(childName: string): Node
 	return result :: Node
 end
 local shared = child(replicatedStorage, "Shared")
+local serverScriptService = { Name = "ServerScriptService" } :: Node
+function serverScriptService:WaitForChild(childName: string): Node
+	local result = self[childName]
+	assert(type(result) == "table", string.format("%s has no child %s", self.Name, childName))
+	return result :: Node
+end
+local server = child(serverScriptService, "Server")
+local services = child(server, "Services")
+child(services, "PersistenceService", "src/server/Services/PersistenceService.lua")
 local sourcePaths = {
 	AssetCatalog = "src/shared/AssetCatalog.lua",
 	BusinessState = "src/shared/BusinessState.lua",
@@ -49,10 +58,18 @@ for name, path in pairs(sourcePaths) do
 	child(shared, name, path)
 end
 
-local game = {}
+local game = { JobId = "headless" }
 function game:GetService(name: string): Node
-	assert(name == "ReplicatedStorage", "headless runner only exposes ReplicatedStorage")
-	return replicatedStorage
+	if name == "ReplicatedStorage" then
+		return replicatedStorage
+	end
+	if name == "ServerScriptService" then
+		return serverScriptService
+	end
+	if name == "DataStoreService" then
+		return { Name = "DataStoreService" } :: Node
+	end
+	error("headless runner does not expose " .. name)
 end
 
 local loaded: { [Node]: unknown } = {}
@@ -107,7 +124,14 @@ local function runCase(name: string)
 	(factory :: (unknown) -> ())(context)
 end
 
-for _, name in ipairs({ "GameConfig_Test", "Economy_Test", "Inventory_Test", "BusinessState_Test", "Localization_Test" }) do
+for _, name in ipairs({
+	"GameConfig_Test",
+	"Economy_Test",
+	"Inventory_Test",
+	"BusinessState_Test",
+	"Localization_Test",
+	"PersistenceService_Test",
+}) do
 	runCase(name)
 end
 print(string.format("[SUMMARY] %d run, %d passed, %d failed", total, total - failures, failures))
