@@ -122,6 +122,17 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - **Limit:** a value excluded through `availableModels`, or not supported in auto mode, is not applied.
 - **Affected files:** CLAUDE.md, .claude/skills/cm2-plan/, .claude/skills/cm2-task/.
 
+## 2026-11-21 - Model-switch fallback and routing hooks (owner)
+- **Fallback (owner):**
+  - If a skill's model switch is not applied, the chat stays on its model at high effort. For this, `cm2-task` now uses effort high.
+  - Exception: planning on Sonnet stops (`cm2-plan`) and asks the user to switch to Opus.
+  - The planner agent stops with WRONG MODEL if it is not on Opus.
+- **Hooks (owner request, engineering design):**
+  - The UserPromptSubmit hook injects the routing rule into every message.
+  - The PreToolUse hook denies main-chat writes to src/, tests/, assets/ and docs/plans/, so the work has to go through the agents.
+  - Hooks cannot set the model or effort (Claude Code hooks documentation). The switch stays in the skills.
+- **Affected files:** CLAUDE.md, .claude/settings.json, .claude/hooks/, .claude/skills/cm2-plan/, .claude/skills/cm2-task/, .claude/agents/planner.md.
+
 ## Change procedure
 1. Identify impacted documents and code/config.
 2. Amend the canonical source (PRODUCT_SPEC for owner decisions, GAME_DESIGN for mechanics, TECHNICAL_ARCHITECTURE for interfaces, TEST_PLAN for verification).

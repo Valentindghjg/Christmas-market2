@@ -67,9 +67,14 @@ Owner decision 2026-11-21 (PRODUCT_SPEC). Every task that changes code, tests, m
 - Implementers stop with a report on any ambiguity; the planner amends the plan.
 - **Automatic model switch in the chat:** decide from each message whether it is planning or work.
   - Planning (design, decisions, spec, backlog, priorities, balancing, "how should this work"): invoke the skill `cm2-plan` first. It switches the chat to Opus 5.5, high effort.
-  - Work (implement, fix, build models, playtest, carry out a plan): invoke the skill `cm2-task`. It switches the chat to Sonnet 5.5, medium effort, and each agent then runs on its own model from the table.
+  - Work (implement, fix, build models, playtest, carry out a plan): invoke the skill `cm2-task`. It switches the chat to Sonnet 5.5 for orchestrating, and each agent then runs on its own model from the table.
   - Short questions and conversation need neither skill and use the session model.
   - The switch lasts for the current turn. Each new message is classified again.
+  - If a switch is not applied (`availableModels` or auto mode), the chat stays on its model and the skill raises the effort to high. Exception: if planning would need Opus but the chat stays on Sonnet, `cm2-plan` stops and asks the user to switch to Opus.
+- **Hooks (`.claude/settings.json`, scripts in `.claude/hooks/`):**
+  - `route-prompt.js` (UserPromptSubmit) reminds the chat on every message to classify it and to invoke `cm2-plan` or `cm2-task`. A hook cannot switch the model itself; only the skills can.
+  - `guard-main-edits.js` (PreToolUse on Edit, Write and NotebookEdit) blocks the main chat from writing `src/`, `tests/`, `assets/` and `docs/plans/`. Subagents are allowed. Set `CM2_ALLOW_MAIN_EDITS=1` to switch the guard off.
+  - Shell commands are not guarded.
 
 ## Skills
 

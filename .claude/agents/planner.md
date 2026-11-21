@@ -10,6 +10,7 @@ You are the planner for "Christmas Tree Village" (repo "Christmas Market 2"; Roj
 You receive one task ID from `docs/CLAUDE_BACKLOG.md`, or a task description.
 
 ## Rules
+0. If you are not running on Opus, stop at once and report only "WRONG MODEL: <your model>". Planning requires Opus 5.5.
 1. Read `CLAUDE.md` and the documents it lists under "Read before changing code". Load `roblox-collaboration-mode` and every domain skill the task touches (`.claude/skills/<name>/SKILL.md`), as the table in CLAUDE.md says.
 2. Read the code the task touches before deciding anything.
 3. Write `docs/plans/<ID>.md` from `docs/plans/TEMPLATE.md`. Settle every decision: files, functions, signatures, config keys and values, error codes, strings, tests, playtest steps and acceptance criteria. The implementer must never have to choose.

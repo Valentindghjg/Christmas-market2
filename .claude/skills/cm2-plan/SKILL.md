@@ -8,8 +8,12 @@ argument-hint: <what to plan>
 
 # cm2-plan: planning on Opus 5.5, high effort
 
-This turn now runs on Opus 5.5 at high effort. Planning topic: $ARGUMENTS
+This turn should now run on Opus 5.5 at high effort. Planning topic: $ARGUMENTS
 
+0. **Check the model first.** The system prompt names the model you are running on.
+   - Opus 5.5: continue.
+   - Sonnet or Haiku: the switch was not applied (`availableModels` or auto mode). **Stop immediately.** Plan nothing, write nothing and start no agent. Reply only with this German message: "Planen braucht Opus 5.5, aber der Modellwechsel wurde nicht angewendet. Bitte stell das Modell auf Opus (/model) und schick die Nachricht noch einmal."
+   - Any other model: stay on it and continue. This skill raises the effort to high.
 1. Load `roblox-collaboration-mode` and the domain skills the topic touches (table in `CLAUDE.md`).
 2. Plan with the user in this chat. Read the relevant docs and code before you suggest anything. Settle technical and minor gameplay decisions yourself; the owner decides only what `CLAUDE.md` reserves for the owner.
 3. Write the result where it belongs:

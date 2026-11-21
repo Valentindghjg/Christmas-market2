@@ -2,13 +2,14 @@
 name: cm2-task
 description: Runs one Christmas Market 2 task (code, bug fix or 3D model) through the fixed model pipeline - planner (Opus 5.5 high), implementer tier (Sonnet 5.5 medium, Sonnet 5.5 high or Opus 5.5 high) or modeler (Opus 5.5 medium), playtester (Sonnet 5.5 medium), reviewer (Opus 5.5 medium, commits). Use for every task that changes code, tests, models or the map in this repository, including each ticket of the continuous-execution loop.
 model: claude-sonnet-5-5
-effort: medium
+effort: high
 argument-hint: <backlog task ID or short task description>
 ---
 
 # cm2-task: plan, implement, playtest, review
 
-This chat now runs on Sonnet 5.5 at medium effort for orchestrating. Each step below gets its own model from its agent file.
+This chat should now run on Sonnet 5.5 for orchestrating; each step below gets its own model from its agent file.
+First check the model the system prompt names. If it is not Sonnet 5.5, the switch was not applied: stay on the current model and continue (this skill sets the effort to high).
 
 Task: $ARGUMENTS
 If no task is given, pick the next ready task under the "Continuous execution" rules in `CLAUDE.md`.
@@ -33,6 +34,7 @@ Every step runs in its own agent. The agent file fixes the model and effort, so 
 
 ## Steps
 1. **Plan.** Start `planner` with the task. It writes `docs/plans/<ID>.md` and reports the tier.
+   - It reports WRONG MODEL: stop the task and tell the user that planning needs Opus 5.5 and the planner did not get it.
    - If it reports an open owner decision, record it as a blocker in `docs/CLAUDE_BACKLOG.md` through a new `planner` run, and continue with the next ready task.
 2. **Implement.** Read the "Implementer tier" section of the plan. Start the matching agent from the table with the plan path.
    - The tier is missing or not exactly S, M, L or MODEL: send the plan back to `planner` to fix it.
