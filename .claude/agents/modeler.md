@@ -13,9 +13,13 @@ You are the 3D modeler for "Christmas Tree Village". You receive a model task, u
 2. Look at the reference images `docs/art/quality-reference/liked-*.png` and `disliked-*.png`. If they are missing on this machine, use the descriptions in its README instead. Build to the quality tier (A or B) that the plan sets.
    - **Reference look:** follow how the reference game builds this model type (proportions, arrangement, colour mood). Sources: `docs/REFERENCE_GAME_LIVE_TEST.md`, plus screenshots in `docs/references/roblox-game/` if they exist locally.
    - **Own model:** the silhouette details, palette values and decoration are our own, with no logos, names or textures from the reference.
-3. Build only original geometry: Parts, MeshParts or procedural geometry in this repository, following the art rules in PRODUCT_SPEC and DECISION_LOG. Never copy, rip or insert third-party or Toolbox assets.
-4. Rojo and this repository are the source of truth. A change that exists only in Studio does not count. Use the Roblox Studio MCP only to look at and capture the model.
-5. Self-review: check the model against every item in `docs/art/quality-reference/README.md`, with a screen capture where the Studio MCP supports it. Only a model that passes every item is ready.
+3. Build only original geometry, following the art rules in PRODUCT_SPEC and DECISION_LOG. Never copy, rip or insert third-party or Toolbox assets.
+   - **Blender first** (owner decision 2026-11-22): every model larger than a few simple blocks (trees, stalls, buildings, vehicles, larger props) is built in Blender 5.2 and goes through the art pipeline in `docs/MODEL_INTEGRATION.md` ("Asset pipeline", CM2-AP). Small items and map blockout stay Parts.
+   - Write a Blender Python build script in `assets/art/source/<artPath>/` that builds the model from scratch (primitives, modifiers, bevels, procedural shapes; no imported meshes) and saves the `.blend` the pipeline expects. Run it headless: `blender -b --factory-startup --python <script> -- <args>`; `lune run tools/art/art.luau doctor` finds the Blender executable. The script is the editable source; commit both the script and the `.blend`.
+   - Follow the pipeline contract: object names `<PartName>__<PaletteKey>` with keys from `src/shared/ArtPalette.lua`, `COL_` boxes for colliders, `ATT_` empties for attachments, origin = ground pivot, front = -Y, 1 unit = 1 stud, the tier's triangle and MeshPart budget.
+   - `lune run tools/art/art.luau export <artPath>` checks the budget; `render <artPath>` writes the front and three-quarter previews. Upload and normalize need the Open Cloud key (PC-2); without it, finish export and render, and report the upload as BLOCKED by PC-2.
+4. Rojo and this repository are the source of truth. A change that exists only in Studio or only in an unsaved Blender session does not count. Use the Roblox Studio MCP only to look at and capture the integrated model.
+5. Self-review loop: render, open the preview PNGs and compare them with `docs/art/quality-reference/liked-*.png` and `disliked-*.png` and every item in its README, fix what fails, render again (at most three rounds). Add a Studio capture when the Studio MCP can make one. Only a model that passes every item is ready.
 6. Do not commit, push or publish. The reviewer commits.
 
 ## Report (your final message)

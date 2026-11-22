@@ -373,3 +373,9 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - New rules: the reviewer archives PROGRESS.md whenever it passes 20 KB (latest five entries stay); the planner budget is in KB (S 12, M 20, L 30, MODEL 12; an amendment at most 4 KB) instead of lines.
 - New task CM2-RF (launch order 9a, after CM2-N1): split RunPlaytest.lua and SaveSlotService.lua without behaviour change.
 - Files: .claude/agents/reviewer.md, .claude/agents/planner.md, docs/CLAUDE_BACKLOG.md.
+
+## 2026-11-22 — owner: the modeler builds in Blender
+- Previous rule: the modeler built Parts and self-reviewed through Studio screen captures, which fail while the Studio viewport is 1x1 (PC-3).
+- New rule (owner): models larger than a few simple blocks are built in Blender 5.2 from a committed Blender Python build script (headless, no imported meshes) and go through the CM2-AP pipeline (export budget check, render previews, upload and normalize when the PC-2 key exists). Self-review compares the rendered previews with docs/art/quality-reference in up to three rounds. Small items and blockout stay Parts.
+- Reviewed and not adopted: github.com/kevinbadi/blender-skills (no licence, needs the interactive blender-mcp addon, mainly product camera animations, paid Meshy image-to-3D generation and Poly Haven textures, which conflict with original geometry and the no-texture palette rule).
+- Files: .claude/agents/modeler.md.
