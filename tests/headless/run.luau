@@ -57,7 +57,11 @@ for name, path in pairs({
 	ProgressionService = "src/server/Services/ProgressionService.lua",
 	QuestService = "src/server/Services/QuestService.lua",
 	SaveLocatorService = "src/server/Services/SaveLocatorService.lua",
+	SaveSlotCrossServer = "src/server/Services/SaveSlotCrossServer.lua",
+	SaveSlotPicker = "src/server/Services/SaveSlotPicker.lua",
 	SaveSlotService = "src/server/Services/SaveSlotService.lua",
+	SaveSlotShared = "src/server/Services/SaveSlotShared.lua",
+	SaveSlotTeam = "src/server/Services/SaveSlotTeam.lua",
 }) do
 	child(services, name, path)
 end
