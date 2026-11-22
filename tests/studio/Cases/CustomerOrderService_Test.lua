@@ -151,7 +151,7 @@ return function(t)
 		end, function()
 			return 0
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		for index = 1, 3 do
 			state.layout.placements["fir_" .. index] = { speciesId = "FrasierFir", sizeId = "Small" }
 			state.layout.placements["noble_" .. index] = { speciesId = "NobleFir", sizeId = "Small" }
@@ -182,7 +182,7 @@ return function(t)
 		service:setCustomerOrdersChangedHandler(function()
 			synced += 1
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		state.layout.placements.fir = { speciesId = "FrasierFir", sizeId = "Small" }
 		service:simulateCustomerVisits()
 		expect.equal(synced, 1)
@@ -211,7 +211,7 @@ return function(t)
 		end, function()
 			return 0
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		state.layout.placements.fir = { speciesId = "FrasierFir", sizeId = "Small" }
 		service:simulateCustomerVisits()
 		expect.truthy(service:handle("personal:42", 42, request("carry_0002", "Order.Carry", { orderNumber = 1 })).ok)
@@ -226,7 +226,7 @@ return function(t)
 		end, function()
 			return 0
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		state.layout.placements.fir = { speciesId = "FrasierFir", sizeId = "Small" }
 		service:simulateCustomerVisits()
 		clock += GameConfig.Customers.PickupPatienceSeconds
@@ -241,7 +241,7 @@ return function(t)
 		end, function()
 			return 0
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		expect.equal(service:getCarriedOrderNumber("personal:42", 42), nil)
 		local order = addOrder(state, "placement:carried", 100)
 		expect.truthy(Orders.carry(state, 42, order.orderNumber))

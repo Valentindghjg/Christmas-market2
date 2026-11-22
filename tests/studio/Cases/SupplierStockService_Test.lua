@@ -103,7 +103,7 @@ return function(t)
 			end,
 		}
 		local service = CompanyStateService.new(persistence, constant(100), constant(0.5))
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		state.stock["NobleFir:Small"] = 2
 		local sell = {
 			version = 1,

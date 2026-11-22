@@ -1,10 +1,16 @@
 --!strict
 -- Session-locked persistence. Financial callers must fail closed when load/save fails.
+--
+-- Keys (CM2-S1): `company:save:<saveId>` holds one company per save. The legacy
+-- `company:personal:<userId>` record is copied into the first save by migrateLegacy and then
+-- only carries `_migratedTo`/`_migratedAt`; it is never deleted or overwritten again.
+-- A deleted save keeps its data and gains a `_deletedAt` tombstone.
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BusinessState = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BusinessState"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
 
 local PersistenceService = {}
 PersistenceService.__index = PersistenceService
@@ -13,19 +19,42 @@ local STORE_NAME = "ChristmasMarket2_CompanyState_v1"
 local LOCK_SECONDS = GameConfig.SessionLockSeconds
 local MAX_RETRIES = 3
 
+PersistenceService.STORE_NAME = STORE_NAME
+
+function PersistenceService.keyFor(companyId: string): string
+	return "company:" .. companyId
+end
+
 local function now(): number
 	return os.time()
+end
+
+-- Resolved lazily: the headless runner (Lune) has no `task` library.
+local function defaultWait(seconds: number)
+	task.wait(seconds)
 end
 
 local function copyState(state)
 	return table.clone(state)
 end
 
-function PersistenceService.new(store, jobId: string?, clock)
+local function deepCopy(value)
+	if type(value) ~= "table" then
+		return value
+	end
+	local copy = {}
+	for key, inner in pairs(value) do
+		copy[deepCopy(key)] = deepCopy(inner)
+	end
+	return copy
+end
+
+function PersistenceService.new(store, jobId: string?, clock, wait)
 	local self = setmetatable({}, PersistenceService)
 	self._store = store or DataStoreService:GetDataStore(STORE_NAME)
 	self._jobId = jobId or game.JobId
 	self._clock = clock or now
+	self._wait = wait or defaultWait
 	self._sessions = {}
 	return self
 end
@@ -39,44 +68,63 @@ function PersistenceService:_retry(operation)
 		end
 		lastError = tostring(result)
 		if attempt < MAX_RETRIES then
-			task.wait(2 ^ (attempt - 1))
+			self._wait(2 ^ (attempt - 1))
 		end
 	end
 	return false, lastError
 end
 
 function PersistenceService:_key(companyId: string): string
-	return "company:" .. companyId
+	return PersistenceService.keyFor(companyId)
+end
+
+-- True when another server holds an unexpired lock on the record.
+function PersistenceService:_lockedByOther(record, currentTime: number): boolean
+	local session = record._session
+	return type(session) == "table" and session.jobId ~= self._jobId and (session.expiresAt or 0) > currentTime
 end
 
 -- Acquires a lock atomically. A lock held by another non-expired server never loads writable state.
-function PersistenceService:load(companyId: string, ownerUserId: number)
+function PersistenceService:load(companyId: string, ownerUserId: number, saveName: string?)
 	if type(companyId) ~= "string" or #companyId == 0 or type(ownerUserId) ~= "number" then
 		return nil, "InvalidIdentity"
 	end
 	local loadedState = nil
 	local lockDenied = false
+	local refusal = nil
 	local success, result = self:_retry(function()
 		return self._store:UpdateAsync(self:_key(companyId), function(previous)
+			-- The transform can run more than once; reset its results first.
+			loadedState = nil
+			lockDenied = false
+			refusal = nil
 			local currentTime = self._clock()
 			if previous == nil then
-				loadedState = BusinessState.new(companyId, ownerUserId)
+				loadedState = BusinessState.new(companyId, ownerUserId, saveName)
 			elseif type(previous) ~= "table" then
 				error("CorruptRecord")
 			else
-				local session = previous._session
-				if
-					type(session) == "table"
-					and session.jobId ~= self._jobId
-					and (session.expiresAt or 0) > currentTime
-				then
+				if previous._deletedAt ~= nil then
+					refusal = "SaveDeleted"
+					return nil
+				end
+				if previous._migratedTo ~= nil then
+					refusal = "SaveMigrated"
+					return nil
+				end
+				if self:_lockedByOther(previous, currentTime) then
 					lockDenied = true
 					return nil
 				end
+				local migratedFrom = previous._migratedFrom
 				local migrated, migrationError = BusinessState.migrate(previous, companyId, ownerUserId)
 				if not migrated then
 					error("MigrationFailed:" .. tostring(migrationError))
 				end
+				if saveName ~= nil then
+					migrated.saveName = saveName
+				end
+				migrated._migratedFrom = migratedFrom
 				loadedState = migrated
 			end
 
@@ -88,6 +136,9 @@ function PersistenceService:load(companyId: string, ownerUserId: number)
 
 	if not success then
 		return nil, "LoadFailed:" .. tostring(result)
+	end
+	if refusal then
+		return nil, refusal
 	end
 	if lockDenied or loadedState == nil then
 		return nil, "SessionLocked"
@@ -104,6 +155,7 @@ function PersistenceService:save(companyId: string, state)
 	local lockLost = false
 	local success, result = self:_retry(function()
 		return self._store:UpdateAsync(self:_key(companyId), function(previous)
+			lockLost = false
 			if type(previous) ~= "table" then
 				lockLost = true
 				return nil
@@ -150,6 +202,201 @@ function PersistenceService:release(companyId: string)
 		return false, "ReleaseFailed:" .. tostring(result)
 	end
 	return true, nil
+end
+
+-- Tombstones a save that no server holds. The data stays; load() refuses it from now on.
+function PersistenceService:markDeleted(companyId: string): (boolean, string?)
+	local refusal = nil
+	local success = self:_retry(function()
+		return self._store:UpdateAsync(self:_key(companyId), function(previous)
+			refusal = nil
+			if previous == nil then
+				return nil
+			end
+			if type(previous) ~= "table" then
+				refusal = "DeleteFailed"
+				return nil
+			end
+			local session = previous._session
+			if type(session) == "table" and session.jobId == self._jobId then
+				refusal = "SaveActive"
+				return nil
+			end
+			if self:_lockedByOther(previous, self._clock()) then
+				refusal = "SaveInUse"
+				return nil
+			end
+			previous._deletedAt = self._clock()
+			return previous
+		end)
+	end)
+	if not success then
+		return false, "DeleteFailed"
+	end
+	if refusal then
+		return false, refusal
+	end
+	return true, nil
+end
+
+-- Clears our own lock on the legacy record after a failed migration step.
+function PersistenceService:_clearLegacyLock(legacyKey: string)
+	self:_retry(function()
+		return self._store:UpdateAsync(legacyKey, function(previous)
+			if
+				type(previous) == "table"
+				and type(previous._session) == "table"
+				and previous._session.jobId == self._jobId
+			then
+				previous._session = nil
+				return previous
+			end
+			return nil
+		end)
+	end)
+end
+
+-- Copies `company:personal:<userId>` into `company:save:<saveId>` without losing data.
+-- Returns ("Migrated", saveId), ("NoLegacy", nil) or (nil, nil, errorCode). Every step is
+-- idempotent, so a crash between steps is repaired by the next call.
+function PersistenceService:migrateLegacy(userId: number, saveId: string, saveName: string)
+	local legacyKey = self:_key("personal:" .. SaveProfile.userIdText(userId))
+
+	-- a. Lock the legacy record and take a copy of its data.
+	local outcome = nil
+	local migratedTo = nil
+	local copy = nil
+	local locked = self:_retry(function()
+		return self._store:UpdateAsync(legacyKey, function(previous)
+			outcome = nil
+			migratedTo = nil
+			copy = nil
+			if previous == nil then
+				outcome = "NoLegacy"
+				return nil
+			end
+			if type(previous) ~= "table" then
+				outcome = "MigrationFailed"
+				return nil
+			end
+			if previous._migratedTo ~= nil then
+				outcome = "Migrated"
+				migratedTo = previous._migratedTo
+				return nil
+			end
+			local currentTime = self._clock()
+			if self:_lockedByOther(previous, currentTime) then
+				outcome = "SessionLocked"
+				return nil
+			end
+			copy = deepCopy(previous)
+			copy._session = nil
+			previous._session = { jobId = self._jobId, expiresAt = currentTime + LOCK_SECONDS }
+			outcome = "Copied"
+			return previous
+		end)
+	end)
+	if not locked then
+		return nil, nil, "LoadFailed"
+	end
+	if outcome == "NoLegacy" then
+		return "NoLegacy", nil
+	end
+	if outcome == "Migrated" then
+		return "Migrated", migratedTo
+	end
+	if outcome ~= "Copied" or copy == nil then
+		return nil, nil, outcome or "MigrationFailed"
+	end
+
+	-- Every failure after step a tries one clear of our legacy lock (Fix round 2, R3). If the
+	-- clear fails too, the lock expires after SessionLockSeconds.
+	local called, finished, finishedId, finishError =
+		pcall(self._finishMigration, self, legacyKey, copy, userId, saveId, saveName)
+	if not called then
+		warn(
+			string.format(
+				"[ChristmasMarket2] migrateLegacy failed for %s: %s",
+				SaveProfile.userIdText(userId),
+				tostring(finished)
+			)
+		)
+		finished, finishError = nil, "MigrationFailed"
+	end
+	if finished == nil then
+		self:_clearLegacyLock(legacyKey)
+		return nil, nil, finishError
+	end
+	return finished, finishedId
+end
+
+-- Steps b-d of migrateLegacy; same return values. Runs while we hold the legacy lock.
+function PersistenceService:_finishMigration(legacyKey: string, copy, userId: number, saveId: string, saveName: string)
+	local targetCompanyId = "save:" .. saveId
+	local targetKey = self:_key(targetCompanyId)
+
+	-- b. Migrate the copy to the current schema under the save's company ID.
+	local migrated = BusinessState.migrate(copy, targetCompanyId, userId)
+	if not migrated then
+		return nil, nil, "MigrationFailed"
+	end
+	migrated.companyId = targetCompanyId
+	migrated.saveName = saveName
+	migrated.saveSize = "Solo"
+	migrated._migratedFrom = legacyKey
+	if not BusinessState.validate(migrated) then
+		return nil, nil, "MigrationFailed"
+	end
+
+	-- c. Write the save record unless this migration already wrote it.
+	local conflict = false
+	local written = self:_retry(function()
+		return self._store:UpdateAsync(targetKey, function(previous)
+			conflict = false
+			if previous == nil then
+				return deepCopy(migrated)
+			end
+			if type(previous) == "table" and previous._migratedFrom == legacyKey then
+				return nil
+			end
+			conflict = true
+			return nil
+		end)
+	end)
+	if not written then
+		return nil, nil, "LoadFailed"
+	end
+	if conflict then
+		return nil, nil, "MigrationConflict"
+	end
+
+	-- d. Mark the legacy record as moved and release our lock; its data stays unchanged.
+	local refusal = nil
+	local marked = self:_retry(function()
+		return self._store:UpdateAsync(legacyKey, function(previous)
+			refusal = nil
+			if type(previous) ~= "table" then
+				refusal = "MigrationFailed"
+				return nil
+			end
+			local session = previous._session
+			if session ~= nil and not (type(session) == "table" and session.jobId == self._jobId) then
+				refusal = "SessionLocked"
+				return nil
+			end
+			previous._migratedTo = saveId
+			previous._migratedAt = self._clock()
+			previous._session = nil
+			return previous
+		end)
+	end)
+	if not marked then
+		return nil, nil, "LoadFailed"
+	end
+	if refusal ~= nil then
+		return nil, nil, refusal
+	end
+	return "Migrated", saveId
 end
 
 return PersistenceService

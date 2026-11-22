@@ -69,15 +69,39 @@ function CompanyStateService:setCustomerOrdersChangedHandler(handler)
 	self._ordersChanged = handler
 end
 
-function CompanyStateService:loadPersonalCompany(userId: number)
-	local companyId = "personal:" .. tostring(userId)
+-- Trusted server code (SaveSlotService wiring in main.server.lua) learns when a live
+-- session stops accepting mutations, so the HUD can show why (CM2-R3).
+function CompanyStateService:setSessionFailedHandler(handler)
+	self._sessionFailed = handler
+end
+
+-- Marks the session failed and reports it once. An unloading session is never reported:
+-- its owner is already leaving it.
+function CompanyStateService:_failSession(companyId: string, session, code: string)
+	session.healthy = false
+	if session.unloading or session.failReported then
+		return
+	end
+	session.failReported = true
+	local handler = self._sessionFailed
+	if handler then
+		local ok, err = pcall(handler, companyId, code)
+		if not ok then
+			warn(
+				string.format("[ChristmasMarket2] session failure handler errored for %s: %s", companyId, tostring(err))
+			)
+		end
+	end
+end
+
+function CompanyStateService:loadCompany(companyId: string, ownerUserId: number, saveName: string?)
 	-- A previous session may still be saving after a fast rejoin to this server.
 	-- Loading now would let that unload release the lock under the new session.
 	if self._sessions[companyId] or self._loading[companyId] then
 		return nil, "SessionBusy"
 	end
 	self._loading[companyId] = true
-	local called, state, errorCode = pcall(self._persistence.load, self._persistence, companyId, userId)
+	local called, state, errorCode = pcall(self._persistence.load, self._persistence, companyId, ownerUserId, saveName)
 	self._loading[companyId] = nil
 	if not called then
 		return nil, "LoadFailed:" .. tostring(state)
@@ -93,6 +117,7 @@ function CompanyStateService:loadPersonalCompany(userId: number)
 		unloading = false,
 		saving = false,
 		dirty = false,
+		failReported = false,
 		lastSavedAt = self._clock(),
 	}
 	return state, nil
@@ -145,6 +170,7 @@ function CompanyStateService:_withSession(companyId: string, session, fn)
 		warn(
 			string.format("[ChristmasMarket2] %s failed closed after an internal error: %s", companyId, tostring(first))
 		)
+		self:_failSession(companyId, session, "InternalError")
 		return false, "InternalError", nil
 	end
 	return true, first, second
@@ -165,8 +191,12 @@ function CompanyStateService:_save(companyId: string, session): (boolean, string
 	end
 	session.dirty = true
 	local reason = if called then tostring(errorCode) else "SaveFailed:" .. tostring(saved)
-	if FAIL_CLOSED_SAVE_ERRORS[reason] or self._clock() - session.lastSavedAt >= GameConfig.SaveFailClosedSeconds then
-		session.healthy = false
+	if reason == "SessionLocked" then
+		self:_failSession(companyId, session, "SessionLocked")
+	elseif
+		FAIL_CLOSED_SAVE_ERRORS[reason] or self._clock() - session.lastSavedAt >= GameConfig.SaveFailClosedSeconds
+	then
+		self:_failSession(companyId, session, "SaveFailed")
 	end
 	return false, reason
 end
@@ -230,6 +260,21 @@ function CompanyStateService:unloadCompany(companyId: string)
 		return false, "ReleaseFailed:" .. tostring(released)
 	end
 	return released, releaseError
+end
+
+-- Copies the profile's save name into the live record (CM2-S1: the profile is the source).
+-- Marks the session dirty without a revision bump.
+function CompanyStateService:setSaveName(companyId: string, name: string): boolean
+	local session = self._sessions[companyId]
+	if not session or type(name) ~= "string" then
+		return false
+	end
+	local entered = self:_withSession(companyId, session, function(state)
+		state.saveName = name
+		session.dirty = true
+		return true
+	end)
+	return entered
 end
 
 function CompanyStateService:forgetUser(userId: number)
@@ -738,6 +783,7 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		return a.orderId < b.orderId
 	end)
 	return {
+		saveName = state.saveName,
 		cash = state.cash,
 		reputation = state.reputation,
 		revision = state.revision,

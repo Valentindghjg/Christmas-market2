@@ -1,6 +1,7 @@
 --!strict
 return function(t)
 	local BusinessState = require(game:GetService("ReplicatedStorage").Shared.BusinessState)
+	local GameConfig = require(game:GetService("ReplicatedStorage").Shared.GameConfig)
 	local Service = require(
 		game:GetService("ServerScriptService")
 			:WaitForChild("Server")
@@ -40,7 +41,7 @@ return function(t)
 		local service = Service.new(fakePersistence(), function()
 			return 100
 		end)
-		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:loadCompany("personal:42", 42))
 		local response = service:handle("personal:42", 42, order("order_1111"))
 		expect.truthy(response.ok)
 		expect.equal(response.data.cost, 64)
@@ -52,7 +53,7 @@ return function(t)
 		local service = Service.new(fakePersistence(), function()
 			return 100
 		end)
-		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:loadCompany("personal:42", 42))
 		expect.truthy(service:handle("personal:42", 42, order("order_2222")).ok)
 		local replay = service:handle("personal:42", 42, order("order_2222"))
 		expect.falsy(replay.ok)
@@ -72,7 +73,7 @@ return function(t)
 		local service = Service.new(persistence, function()
 			return 100
 		end)
-		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:loadCompany("personal:42", 42))
 		expect.truthy(service:autosaveAll())
 		expect.equal(saves, 1)
 	end)
@@ -89,7 +90,7 @@ return function(t)
 		local service = Service.new(persistence, function()
 			return 100
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		state.autoPricing = true
 		state.layout.placements.fir_1 = { speciesId = "FrasierFir", sizeId = "Medium" }
 		local ok, updated = service:applyAutoPricingAll()
@@ -127,7 +128,7 @@ return function(t)
 			expect.equal(next(placements), nil)
 			synced += 1
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		state.layout.placements.fir = { speciesId = "FrasierFir", sizeId = "Small" }
 		local ok, sales = service:simulateCustomerVisits()
 		expect.truthy(ok)
@@ -143,7 +144,7 @@ return function(t)
 		local service = Service.new(persistence, function()
 			return 160
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		state.staff.LotWorker = 1
 		expect.truthy(BusinessState.placeOrder(state, "worker_999", "FrasierFir", "Medium", 1, 100))
 		expect.truthy(BusinessState.reconcileDeliveries(state, 160))
@@ -160,7 +161,7 @@ return function(t)
 		end, function()
 			return 0
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		state.staff.Cashier = 1
 		state.layout.placements.fir_1 = { speciesId = "FrasierFir", sizeId = "Small" }
 		state.layout.placements.fir_2 = { speciesId = "NobleFir", sizeId = "Small" }
@@ -182,7 +183,7 @@ return function(t)
 		local service = Service.new(persistence, function()
 			return 100
 		end)
-		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:loadCompany("personal:42", 42))
 		expect.truthy(service:handle("personal:42", 42, order("batch_0001")).ok)
 		-- The second order is unaffordable but still records its request ID.
 		expect.falsy(service:handle("personal:42", 42, order("batch_0002")).ok)
@@ -195,7 +196,7 @@ return function(t)
 		local service = Service.new(fakePersistence(), function()
 			return 100
 		end)
-		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:loadCompany("personal:42", 42))
 		expect.truthy(service:handle("personal:42", 42, order("retry_0001")).ok)
 		local replay = service:handle("personal:42", 42, order("retry_0001"))
 		expect.equal(replay.errorCode, "DuplicateRequest")
@@ -206,7 +207,7 @@ return function(t)
 		local service = Service.new(fakePersistence(), function()
 			return 100
 		end)
-		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:loadCompany("personal:42", 42))
 		local payloads = {
 			["Company.GetSummary"] = {},
 			["Supplier.RequestQuote"] = { speciesId = "FrasierFir", sizeId = "Medium" },
@@ -247,8 +248,8 @@ return function(t)
 		end, function()
 			return 0
 		end)
-		local broken = service:loadPersonalCompany(42)
-		local healthy = service:loadPersonalCompany(77)
+		local broken = service:loadCompany("personal:42", 42)
+		local healthy = service:loadCompany("personal:77", 77)
 		broken.staff = nil
 		healthy.layout.placements.fir = { speciesId = "FrasierFir", sizeId = "Small" }
 		local ok, sales, failures = service:simulateCustomerVisits()
@@ -276,7 +277,7 @@ return function(t)
 		local service = Service.new(persistence, function()
 			return clock
 		end)
-		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:loadCompany("personal:42", 42))
 		expect.truthy(service:handle("personal:42", 42, order("transient_1")).ok)
 		expect.falsy(service:flushDirty())
 		expect.truthy(service:isAvailable("personal:42"))
@@ -294,7 +295,7 @@ return function(t)
 		local service = Service.new(persistence, function()
 			return 100
 		end)
-		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:loadCompany("personal:42", 42))
 		expect.falsy(service:autosaveAll())
 		expect.falsy(service:isAvailable("personal:42"))
 	end)
@@ -303,8 +304,8 @@ return function(t)
 		local service = Service.new(fakePersistence(), function()
 			return 100
 		end)
-		expect.truthy(service:loadPersonalCompany(42))
-		local state, reason = service:loadPersonalCompany(42)
+		expect.truthy(service:loadCompany("personal:42", 42))
+		local state, reason = service:loadCompany("personal:42", 42)
 		expect.equal(state, nil)
 		expect.equal(reason, "SessionBusy")
 	end)
@@ -324,13 +325,81 @@ return function(t)
 		local service = Service.new(persistence, function()
 			return 100
 		end)
-		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:loadCompany("personal:42", 42))
 		expect.truthy(service:handle("personal:42", 42, order("unload_001")).ok)
 		expect.truthy(service:unloadCompany("personal:42"))
 		expect.truthy(service:unloadCompany("personal:42"))
 		expect.equal(saves, 1)
 		expect.equal(releases, 1)
 		expect.falsy(service:isAvailable("personal:42"))
-		expect.truthy(service:loadPersonalCompany(42))
+		expect.truthy(service:loadCompany("personal:42", 42))
+	end)
+
+	-- CM2-R3: a live session that stops accepting mutations is reported once with a code.
+	local function failureRecorder(service)
+		local calls = {}
+		service:setSessionFailedHandler(function(companyId, code)
+			table.insert(calls, { companyId = companyId, code = code })
+		end)
+		return calls
+	end
+
+	t.test("reports a lost lock once through the failure handler", function()
+		local persistence = fakePersistence()
+		persistence.save = function()
+			return false, "SessionLocked"
+		end
+		local service = Service.new(persistence, function()
+			return 100
+		end)
+		local calls = failureRecorder(service)
+		expect.truthy(service:loadCompany("personal:42", 42))
+		expect.falsy(service:flushDirty(true))
+		service:flushDirty(true)
+		expect.equal(#calls, 1)
+		expect.equal(calls[1].companyId, "personal:42")
+		expect.equal(calls[1].code, "SessionLocked")
+		expect.falsy(service:isAvailable("personal:42"))
+	end)
+
+	t.test("reports an internal error through the failure handler", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end, function()
+			return 0
+		end)
+		local calls = failureRecorder(service)
+		local broken = service:loadCompany("personal:42", 42)
+		broken.staff = nil
+		service:simulateCustomerVisits()
+		service:simulateCustomerVisits()
+		expect.equal(#calls, 1)
+		expect.equal(calls[1].code, "InternalError")
+		-- Unloading never reports again.
+		service:unloadCompany("personal:42")
+		expect.equal(#calls, 1)
+	end)
+
+	t.test("reports a save outage after the fail-closed window", function()
+		local clock = 100
+		local persistence = fakePersistence()
+		persistence.save = function()
+			return false, "SaveFailed:Throttled"
+		end
+		local service = Service.new(persistence, function()
+			return clock
+		end)
+		local calls = failureRecorder(service)
+		expect.truthy(service:loadCompany("personal:42", 42))
+		expect.falsy(service:flushDirty(true))
+		clock += GameConfig.SaveFailClosedSeconds - 1
+		expect.falsy(service:flushDirty())
+		expect.equal(#calls, 0)
+		expect.truthy(service:isAvailable("personal:42"))
+		clock += 1
+		expect.falsy(service:flushDirty())
+		expect.equal(#calls, 1)
+		expect.equal(calls[1].code, "SaveFailed")
+		expect.falsy(service:isAvailable("personal:42"))
 	end)
 end
