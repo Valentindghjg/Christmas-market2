@@ -66,7 +66,7 @@ local function businessRoll(): number
 end
 
 local persistence = PersistenceService.new()
-local companies = CompanyStateService.new(persistence, businessClock, businessRoll)
+local companies = CompanyStateService.new(persistence, businessClock, businessRoll, task.wait)
 local plots = PlotService.new(config.PersonalPlotIds)
 WorldService.build()
 

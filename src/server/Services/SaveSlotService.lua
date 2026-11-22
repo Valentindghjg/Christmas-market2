@@ -154,15 +154,18 @@ end
 -- Shutdown: refuse new save work from now on (BindToClose).
 function SaveSlotService:beginShutdown()
 	self._closing = true
+	-- CM2-R5: caps the retries of final saves from now on.
+	self._companies:beginShutdown()
 end
 
--- Final leaves in progress plus save actions in flight; BindToClose waits for zero.
+-- Final leaves in progress, save actions in flight and retrying final saves (CM2-R5);
+-- BindToClose waits for zero.
 function SaveSlotService:pendingCount(): number
 	local count = self._finalLeaves
 	for _ in pairs(self._busy) do
 		count += 1
 	end
-	return count
+	return count + self._companies:unloadingCount()
 end
 
 function SaveSlotService:setActivationHandlers(onActivated, onDeactivated)
@@ -585,17 +588,46 @@ end
 
 -- Unloads the shared session (Amendment A3). The plot is released only when nobody plays
 -- the save here and no load of it is waiting, so a waiting loader keeps the plot.
-function SaveSlotService:_unloadShared(companyId: string): (boolean, string?, boolean)
+-- CM2-R5: while a failed final save is retried, the unloading thread renews the map entry
+-- for hostUserId before every retry wait. abortOnFailure lets a switch call the unload off
+-- (third result false, nothing released).
+function SaveSlotService:_unloadShared(
+	companyId: string,
+	hostUserId: number?,
+	abortOnFailure: boolean?
+): (boolean, string?, boolean)
 	self._unloading[companyId] = true
-	local ok, unloadError = self._companies:unloadCompany(companyId)
+	local saveId = saveIdOf(companyId)
+	local onRetry = nil
+	if self._locator ~= nil and saveId ~= nil and hostUserId ~= nil then
+		onRetry = function()
+			local outcome = self._locator:claim(saveId, hostUserId)
+			self._locationCache[saveId] = nil
+			if outcome == "HeldElsewhere" then
+				warn(
+					string.format(
+						"[ChristmasMarket2] save %s is located on another server during its final save",
+						saveId
+					)
+				)
+			end
+		end
+	end
+	local ok, unloadError =
+		self._companies:unloadCompany(companyId, { abortOnFailure = abortOnFailure == true, onRetry = onRetry })
+	if unloadError == "UnloadAborted" then
+		self._unloading[companyId] = nil
+		return false, "UnloadAborted", false
+	end
+	-- CM2-S3: the last unload frees the map entry. A failed final save keeps it until it
+	-- expires, like the session lock. CM2-R5: the entry goes before the plot, so no yield
+	-- lies between the plot release and the caller's deactivation handler.
+	if ok and self._members[companyId] == nil and (self._pendingLoads[companyId] or 0) == 0 then
+		self:_releaseLocation(saveId)
+	end
 	local plotReleased = self._members[companyId] == nil
 		and (self._pendingLoads[companyId] or 0) == 0
 		and self._plots:release(companyId)
-	-- CM2-S3: the last unload frees the map entry. A failed final save keeps it until it
-	-- expires, like the session lock.
-	if ok and self._members[companyId] == nil and (self._pendingLoads[companyId] or 0) == 0 then
-		self:_releaseLocation(saveIdOf(companyId))
-	end
 	self._unloading[companyId] = nil
 	return ok, unloadError, plotReleased == true
 end
@@ -604,10 +636,11 @@ end
 function SaveSlotService:_evict(companyId: string)
 	local userIds = self:playersOn(companyId)
 	local plotId = self._plots:getPlot(companyId)
+	local hostUserId = self:_hostOf(companyId)
 	for _, userId in ipairs(userIds) do
 		self:_deregister(userId, companyId)
 	end
-	local _, _, plotReleased = self:_unloadShared(companyId)
+	local _, _, plotReleased = self:_unloadShared(companyId, hostUserId)
 	for index, userId in ipairs(userIds) do
 		self:_deactivated(userId, companyId, plotId, index == #userIds and plotReleased)
 	end
@@ -955,7 +988,10 @@ function SaveSlotService:_leaveTeam(userId: number, profile, payload)
 	end
 	local companyId = companyIdOf(saveId)
 	if self._active[userId] == companyId then
-		self:_leaveActive(userId)
+		local _, leaveError = self:_leaveActive(userId, true)
+		if leaveError == "SwitchSaveFailed" then
+			return failure("SwitchSaveFailed")
+		end
 	end
 	local removed, removeError = self:_changeRecord(saveId, function(state)
 		return BusinessState.removeMember(state, userId)
@@ -1576,7 +1612,11 @@ function SaveSlotService:_play(userId: number, saveId: string, options): (boolea
 			end
 		end
 		preferred = self._plots:getPlot(current)
-		self:_leaveActive(userId)
+		-- CM2-R5: a healthy save that cannot be stored keeps the player on it.
+		local _, leaveError = self:_leaveActive(userId, true)
+		if leaveError == "SwitchSaveFailed" then
+			return false, "SwitchSaveFailed", nil
+		end
 	end
 
 	-- c. A failed shared session is evicted before the save loads again.
@@ -1653,7 +1693,7 @@ function SaveSlotService:_play(userId: number, saveId: string, options): (boolea
 	-- f. The record no longer lists this player.
 	if self._companies:memberRole(companyId, userId) == nil then
 		self:_endLoad(companyId)
-		self:_unloadShared(companyId)
+		self:_unloadShared(companyId, userId)
 		self:_dropMemberEntry(userId, saveId)
 		return false, "NotAMember", nil
 	end
@@ -1663,7 +1703,7 @@ function SaveSlotService:_play(userId: number, saveId: string, options): (boolea
 	if self._leaving[userId] or self._closing then
 		local leaving = self._leaving[userId] == true
 		self:_endLoad(companyId)
-		self:_unloadShared(companyId)
+		self:_unloadShared(companyId, userId)
 		return false, if leaving then "PlayerLeft" else "ServerShuttingDown", nil
 	end
 
@@ -1696,10 +1736,15 @@ end
 
 -- Leaves the active save. The last player on it saves it, releases its lock and frees its
 -- plot (unless a load of it is waiting); other players keep the shared session.
-function SaveSlotService:_leaveActive(userId: number): (boolean, string?)
+-- abortOnFailure (CM2-R5, switch and Save.LeaveTeam): when the last player's final save of
+-- a healthy session fails, the player stays registered on it and the result is
+-- SwitchSaveFailed.
+function SaveSlotService:_leaveActive(userId: number, abortOnFailure: boolean?): (boolean, string?)
 	local ok, leaveError = true, nil
 	local companyId = self._active[userId]
 	if companyId then
+		-- Before deregistering, so the carried-tree sync still reaches this player.
+		self._companies:releaseCarried(companyId, userId)
 		self:_deregister(userId, companyId)
 		-- Computed before any yield, so a member attaching meanwhile cannot be missed.
 		local last = self._members[companyId] == nil
@@ -1707,10 +1752,14 @@ function SaveSlotService:_leaveActive(userId: number): (boolean, string?)
 			self._unloading[companyId] = true
 		end
 		local plotId = self._plots:getPlot(companyId)
-		self._companies:releaseCarried(companyId, userId)
 		local plotReleased = false
 		if last then
-			ok, leaveError, plotReleased = self:_unloadShared(companyId)
+			ok, leaveError, plotReleased = self:_unloadShared(companyId, userId, abortOnFailure)
+			if leaveError == "UnloadAborted" then
+				-- The session is live again; a finder listing removed by _deregister stays removed.
+				self:_register(userId, companyId)
+				return false, "SwitchSaveFailed"
+			end
 		end
 		self:_deactivated(userId, companyId, plotId, plotReleased)
 	end

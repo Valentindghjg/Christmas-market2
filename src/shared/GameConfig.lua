@@ -33,6 +33,13 @@ GameConfig.SaveFlushSeconds = 15
 GameConfig.AutosaveSeconds = 60
 GameConfig.SessionLockSeconds = 120
 GameConfig.SaveFailClosedSeconds = 90
+-- Final save on unload (CM2-R5, PROVISIONAL). A failed final save is retried after each
+-- delay in turn (8 attempts, 78 s of waits), never past SaveFailClosedSeconds after the
+-- unload began, and never past ShutdownSeconds after shutdown began (BindToClose waits 25 s).
+GameConfig.UnloadRetry = {
+	DelaysSeconds = { 2, 4, 8, 16, 16, 16, 16 },
+	ShutdownSeconds = 18,
+}
 GameConfig.CustomerReservationSeconds = 30
 GameConfig.AutoPricingIntervalSeconds = 3
 GameConfig.CustomerVisitIntervalSeconds = 5

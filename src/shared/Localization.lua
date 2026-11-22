@@ -78,6 +78,8 @@ Localization.Strings = {
 		saveErrorNoFreePlot = "There is no free lot on this server. Please try another server.",
 		teleportNoFreePlot = "There is no free lot here, so you are being moved to another server.",
 		saveErrorBusy = "Please wait until the last action has finished.",
+		saveErrorSessionBusy = "This save is still being stored on this server. Please try again in a minute.",
+		saveErrorSwitchSaveFailed = "Your current save could not be stored just now, so you are still playing it. Nothing was lost. Please try again in a moment.",
 		saveErrorRateLimited = "That was too many requests. Please wait a moment.",
 		saveErrorUnavailable = "This save is paused. Open your saves to continue.",
 		saveErrorUnknown = "Something went wrong. Please try again.",
@@ -247,6 +249,8 @@ Localization.Strings = {
 		saveErrorNoFreePlot = "Auf diesem Server ist kein Grundstück frei. Bitte versuche einen anderen Server.",
 		teleportNoFreePlot = "Hier ist kein Grundstück frei, deshalb wirst du auf einen anderen Server gebracht.",
 		saveErrorBusy = "Bitte warte, bis die letzte Aktion abgeschlossen ist.",
+		saveErrorSessionBusy = "Dieser Spielstand wird auf diesem Server noch gespeichert. Bitte versuche es in einer Minute noch einmal.",
+		saveErrorSwitchSaveFailed = "Dein aktueller Spielstand konnte gerade nicht gespeichert werden, deshalb spielst du ihn weiter. Nichts ging verloren. Bitte versuche es gleich noch einmal.",
 		saveErrorRateLimited = "Das waren zu viele Anfragen. Bitte warte einen Moment.",
 		saveErrorUnavailable = "Dieser Spielstand ist angehalten. Öffne deine Spielstände, um weiterzuspielen.",
 		saveErrorUnknown = "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
@@ -396,6 +400,9 @@ Localization.SaveErrorKeys = {
 	SaveNotElsewhere = "saveErrorNotElsewhere",
 	ListingGone = "saveErrorListingGone",
 	OwnListing = "saveErrorOwnListing",
+	-- Final save retries (CM2-R5).
+	SessionBusy = "saveErrorSessionBusy",
+	SwitchSaveFailed = "saveErrorSwitchSaveFailed",
 }
 
 function Localization.saveErrorKey(code: unknown): string

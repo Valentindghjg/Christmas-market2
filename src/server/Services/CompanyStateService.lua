@@ -31,16 +31,25 @@ CompanyStateService.__index = CompanyStateService
 
 -- Persistence results that mean this server no longer owns a valid writable session.
 local FAIL_CLOSED_SAVE_ERRORS = { SessionLocked = true, NotLoaded = true }
+-- A second unload caller polls the first one's retrying unload at this interval (CM2-R5).
+local UNLOAD_POLL_SECONDS = 0.1
 
 local function now(): number
 	return os.time()
 end
 
-function CompanyStateService.new(persistence, clock, randomRoll)
+-- wait (CM2-R5) runs the final-save retry delays; tests inject it. The default is lazy
+-- because Lune has no task library.
+function CompanyStateService.new(persistence, clock, randomRoll, wait)
 	local self = setmetatable({}, CompanyStateService)
 	self._persistence = persistence
 	self._clock = clock or now
 	self._randomRoll = randomRoll or math.random
+	self._wait = wait or function(seconds: number)
+		task.wait(seconds)
+	end
+	-- Service-clock time at which the server began shutting down (CM2-R5).
+	self._shutdownAt = nil
 	self._sessions = {}
 	self._loading = {}
 	self._limiter = Protocol.newRateLimiter(10, 10)
@@ -294,40 +303,164 @@ function CompanyStateService:autosaveAll()
 	return self:flushDirty(true)
 end
 
-function CompanyStateService:unloadCompany(companyId: string)
+-- Shutdown began (BindToClose): retrying final saves are capped at
+-- UnloadRetry.ShutdownSeconds from now, and abortOnFailure no longer calls an unload off.
+function CompanyStateService:beginShutdown()
+	if self._shutdownAt == nil then
+		self._shutdownAt = self._clock()
+	end
+end
+
+-- Sessions whose final save is in progress or being retried (BindToClose waits for them).
+function CompanyStateService:unloadingCount(): number
+	local count = 0
+	for _, session in pairs(self._sessions) do
+		if session.unloading == true then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- The last moment a failed final save may be retried (CM2-R5).
+function CompanyStateService:_unloadDeadline(session): number
+	local deadline = session.unloadStartedAt + GameConfig.SaveFailClosedSeconds
+	if self._shutdownAt ~= nil then
+		deadline = math.min(deadline, self._shutdownAt + GameConfig.UnloadRetry.ShutdownSeconds)
+	end
+	return deadline
+end
+
+-- Saves the session a final time and releases its lock (CM2-R5). A failed final save is
+-- retried after each GameConfig.UnloadRetry delay until it succeeds, the lock is lost, the
+-- delays are used up or the deadline passes. The lock is released only after a successful
+-- save (or for a state that can never be saved); after giving up it expires on its own.
+-- options.abortOnFailure calls the unload off after a first retryable failure of a healthy
+-- session before shutdown: the session stays live and the result is "UnloadAborted".
+-- options.onRetry(attempt) runs before every retry wait.
+function CompanyStateService:unloadCompany(
+	companyId: string,
+	options: { abortOnFailure: boolean?, onRetry: ((attempt: number) -> ())? }?
+): (boolean, string?)
 	local session = self._sessions[companyId]
 	if not session then
 		return true, nil
 	end
 	if session.unloading then
-		-- PlayerRemoving and BindToClose can both unload; the first caller owns it.
-		while self._sessions[companyId] == session do
-			task.wait()
+		-- PlayerRemoving and BindToClose can both unload; the first caller owns it. The
+		-- second caller waits until the first one has stored its results (Amendment R5-A2).
+		while not session.unloadFinished and (self._sessions[companyId] ~= session or session.unloading) do
+			self._wait(UNLOAD_POLL_SECONDS)
 		end
-		return true, nil
+		if session.unloadFinished ~= true then
+			-- The first caller called its unload off; the session is live again.
+			return false, "UnloadAborted"
+		end
+		return session.unloadOk == true, session.unloadError
 	end
+	local abortOnFailure = options ~= nil and options.abortOnFailure == true
+	local onRetry = if options ~= nil then options.onRetry else nil
 	session.unloading = true
+	session.unloadStartedAt = self._clock()
 	-- Wait for an in-flight mutation so the final save sees a complete record.
 	self:_enter(session)
 	self:_leave(session)
-	local saved, saveError = true, nil
-	if not session.corrupt then
-		saved, saveError = self:_save(companyId, session)
+
+	local outcome = nil
+	local lastError = nil
+	local attempt = 0
+	while outcome == nil do
+		attempt += 1
+		if session.corrupt then
+			outcome = "Corrupt"
+		else
+			local saved, saveError = self:_save(companyId, session)
+			if saved then
+				outcome = "Saved"
+			elseif saveError ~= nil and FAIL_CLOSED_SAVE_ERRORS[saveError] then
+				outcome = saveError
+			else
+				lastError = saveError
+				if abortOnFailure and session.healthy and self._shutdownAt == nil then
+					session.unloading = false
+					session.unloadStartedAt = nil
+					warn(
+						string.format(
+							"[ChristmasMarket2] final save of %s failed (%s); the session stays live",
+							companyId,
+							tostring(lastError)
+						)
+					)
+					return false, "UnloadAborted"
+				end
+				local delay = GameConfig.UnloadRetry.DelaysSeconds[attempt]
+				local remaining = self:_unloadDeadline(session) - self._clock()
+				if delay == nil or remaining <= 0 then
+					outcome = "GaveUp"
+				else
+					local waitSeconds = math.min(delay, remaining)
+					warn(
+						string.format(
+							"[ChristmasMarket2] final save of %s failed (attempt %d): %s; retrying in %ds",
+							companyId,
+							attempt,
+							tostring(lastError),
+							waitSeconds
+						)
+					)
+					if onRetry then
+						local hooked, hookError = pcall(onRetry, attempt)
+						if not hooked then
+							warn(
+								string.format(
+									"[ChristmasMarket2] unload retry hook failed for %s: %s",
+									companyId,
+									tostring(hookError)
+								)
+							)
+						end
+					end
+					self._wait(waitSeconds)
+				end
+			end
+		end
 	end
+
 	if self._sessions[companyId] == session then
 		self._sessions[companyId] = nil
 	end
-	local called, released, releaseError = pcall(self._persistence.release, self._persistence, companyId)
-	if not saved then
-		return false, saveError
+	local ok, errorCode = false, nil
+	if outcome == "GaveUp" then
+		warn(
+			string.format(
+				"[ChristmasMarket2] final save of %s abandoned after %d attempts: %s; changes since the last save are lost and the lock expires on its own",
+				companyId,
+				attempt,
+				tostring(lastError)
+			)
+		)
+		ok, errorCode = false, "SaveFailed"
+	else
+		local called, released, releaseError = pcall(self._persistence.release, self._persistence, companyId)
+		if outcome == "Corrupt" then
+			ok, errorCode = false, "InternalError"
+		elseif outcome == "Saved" then
+			if attempt > 1 then
+				print(string.format("[ChristmasMarket2] final save of %s succeeded on attempt %d", companyId, attempt))
+			end
+			if not called then
+				ok, errorCode = false, "ReleaseFailed:" .. tostring(released)
+			else
+				ok, errorCode = released, releaseError
+			end
+		else
+			ok, errorCode = false, outcome
+		end
 	end
-	if session.corrupt then
-		return false, "InternalError"
-	end
-	if not called then
-		return false, "ReleaseFailed:" .. tostring(released)
-	end
-	return released, releaseError
+	session.unloadOk = ok
+	session.unloadError = errorCode
+	session.unloadFinished = true
+	return ok, errorCode
 end
 
 -- Copies the profile's save name into the live record (CM2-S1: the profile is the source).
