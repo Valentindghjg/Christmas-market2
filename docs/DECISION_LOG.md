@@ -523,3 +523,13 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Diagnostics: new script attribute `DeclutterCulled`; `DeclutterHidden` counts overlap losers among in-range labels.
 - Files: `src/shared/LabelDeclutter.lua`, `src/client/WorldLabels.client.lua`, `tests/studio/Cases/LabelDeclutter_Test.lua`, `docs/TEST_PLAN.md`.
 - Headless +5, total 405.
+
+## 2026-11-22 — CM2-13a HQ art (engineering)
+- Branch N: `art.luau doctor` exit 2 (Blender 5.2.2 found, API key and creator missing). Upload and normalize are BLOCKED by PC-2; no `.rbxm`, `verify` shows 0 integrated, 18 pending.
+- Tier IDs = art leaf names: `SalesTent`, `TimberPavilion`, `AlpineHut`, `MountainChalet`. The config tier `ChristmasPavilion` maps to `TimberPavilion` until CM2-G9. KeepClear `Stand` unchanged (per-tier KeepClear and the footprint test: CM2-G9).
+- Footprints (incl. overhangs) x H, triangles / maxTriangles: SalesTent 19.8 x 13.7 x 10.0, 2460 / 2500; TimberPavilion 23.6 x 17.6 x 12.9, 3864 / 4000; AlpineHut 27.8 x 19.9 x 16.0, 3376 / 3600; MountainChalet 31.2 x 23.3 x 20.0, 3928 / 4000. All centred (|min + max| <= 0.3), 9-10 MeshParts.
+- Palette keys added (PROVISIONAL, SmoothPlastic): FabricCreamShade, RoofGreen, RoofGreenShade, RoofSlate, RoofSlateShade; no existing value changed.
+- Final values changed in the render rounds (review latitude +-15 %): Sales Tent deck 8 planks of 1.5, bulbs r 0.22, side lights at x +-9.72, front lights at y -6.82 (in front of the valance); Pavilion beam centre z 8.2 (top meets the roof underside), roof band ridge 12.6 with 0.12 steps, garland at z 7.75 sag 0.7 (visible under the eave), lanterns 1.15 under the beam; Alpine Hut shutter 3.0 long; Chalet balcony garland spacing 0.5 (r 0.3), side upper walls one board face with six battens.
+- Hut and Chalet roofs: `K.gable_roof(snow=False)` plus `hq_common.gable_snow` (snow on the upper 55-60 % with a scalloped edge), so the slate and the red roof stay visible; the kit snow covered 94 % of the slope.
+- Plan Amendment 1 (door and window sizes, accepted): Alpine Hut door 4 x 7.0 (plan 7.5; its top stays under the 8.5 eave on the 1.2 base); Mountain Chalet sales window 12 x 3.5 (plan 12 x 4) and double door 5 x 7.0 (plan 5 x 8), both under the 7.5 balcony with the 3.6 sill.
+- Plan Amendment 1 (Pavilion garland): TimberPavilion maxTriangles 4000 (was 3200); its garland is `K.ball` detail 0 NeedleGreen, r 0.35, spacing 0.65 on the front and both side beams (built 3864 triangles). Reason: ~115 balls at r 0.3 / 0.45 do not fit 3200; the budget is a per-model performance cap, not a growth ranking, and at most 6 HQs exist per server. Octahedra and a front-only garland were rejected.

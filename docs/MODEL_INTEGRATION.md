@@ -56,3 +56,8 @@ Larger models are Blender MeshParts; small items stay Parts. The `.blend` in `as
 - Heights (total incl. leader/topper) and max radius: Small 6.0 / 1.9, Medium 8.0 / 2.5, Large 10.0 / 3.1, special trees 10.4 / 3.3 studs (below `Placement.FootprintRadius`); origin = trunk foot, `ATT_TreeBase` at (0, 0, 0), collider `COL_Tree` 1.1R x 1.1R x H.
 - Budgets (tier A, `asset.json`): maxTriangles Small 800, Medium 1000, Large 1200, special 1600; maxMeshParts 7 (one MeshPart per colour: Trunk, RootFlare, NeedlesCore, Needles, Snow, then Frost/Topper/Berries).
 - The game still uses the primitive trees; wiring through `ArtLibrary.find("Trees/<species>/<size>")` is CM2-12W (needs the PC-2 upload).
+## HQ art (CM2-13a)
+- Paths: `Buildings/{SalesTent,TimberPavilion,AlpineHut,MountainChalet}` (tier A, maxMeshParts 10); sources `assets/art/source/Buildings/<Tier>/` built with the shared `assets/art/source/Buildings/hq_common.py`, previews `assets/art/previews/Buildings/<Tier>.png`.
+- Footprint (incl. overhangs) x H in studs, maxTriangles: SalesTent 19.8 x 13.7 x 10.0, 2500; TimberPavilion 23.6 x 17.6 x 12.9, 4000; AlpineHut 27.8 x 19.9 x 16.0, 3600; MountainChalet 31.2 x 23.3 x 20.0, 4000. Origin = footprint centre at ground, bbox centred.
+- Attachments: `Entrance` at ground on the front floor edge of the counter opening or door, `Computer` on the desk top (under the monitor; desk centre on Hut and Chalet), `Radio` at the radio. Colliders: unrotated `COL_` boxes, one body box on Hut and Chalet.
+- Front = -Z after export, so wiring (CM2-13W) turns the model 180 degrees on plots 1-3 and 0 degrees on plots 4-6 to face the road. The game keeps today's stand until CM2-13W (needs the PC-2 upload).
