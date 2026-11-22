@@ -37,6 +37,20 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
 - WIP-Branch: none
 - Seit: 2026-11-22, hasseln
 
+### PC-3 Studio-Fenster sichtbar lassen (Viewport 1x1, keine Screenshots)
+- Status: offen
+- Art: studio
+- Problem: In jedem Studio-Playtest dieser Sitzung (CM2-G20, CM2-S1, CM2-S2, CM2-S3) war der Client-Viewport 1x1 (`workspace.CurrentCamera.ViewportSize` = 1,1), und die MCP-Aufrufe `screen_capture` und `user_mouse_input` liefen in „Request timeout“ oder zeigten nur die 2D-UI auf Schwarz; echte UI-Taps, Screenshots und Device-Simulator-Prüfungen sind deshalb BLOCKED. Wahrscheinliche Ursache: das Studio-Fenster ist minimiert, verdeckt, zu klein oder der Desktop ist gesperrt bzw. inaktiv.
+- Deine Schritte:
+  1. Roblox Studio mit dem Projekt-Place offen lassen und das Fenster auf dem Hauptmonitor maximieren (nicht minimieren, nicht hinter andere Fenster legen).
+  2. Den PC entsperrt lassen und Ruhezustand, Bildschirmsperre und Bildschirmschoner abschalten, solange `hasseln` läuft (Windows-Einstellungen → System → Bildschirm und Energie → „Nie“).
+  3. Optional: im Chat kurz sagen, dass das Studio-Fenster sichtbar ist.
+- Prüfen: in Play liefert `workspace.CurrentCamera.ViewportSize` mehr als 100x100, und ein MCP-`screen_capture` gibt ein Bild mit der 3D-Welt zurück (nicht nur 2D-UI auf Schwarz).
+- Blockiert: die Screenshot-, Tap- und Device-Simulator-Kriterien von CM2-40 (die Code-Arbeit von CM2-40 läuft weiter), die offenen UI-Punkte von CM2-S1, CM2-S2 und CM2-S3, die Screenshot-Punkte von CM2-G21
+- Danach: CM2-UV (Launch order 5b), danach die Screenshot-Kriterien von CM2-40
+- WIP-Branch: none
+- Seit: 2026-11-22, hasseln
+
 #### Erledigt
 _Noch keine._
 
@@ -167,6 +181,7 @@ Source: [REFERENCE_GAME_LIVE_TEST.md](REFERENCE_GAME_LIVE_TEST.md) §11 (gaps G1
 - [ ] **CM2-G19 HQ upgrade footprints vs lot layout.** Depends on: CM2-G14. The imported upgrade models are much larger than the starter stand (MarketUpgrade3 38 × 40 studs, MarketPavilion 39 × 40, starter 32 × 24), so for upgraded HQ tiers the stand overlaps parking spaces 1–2 (z ≈ 51..91 vs cars at z = 55), the pickup row and the stocking area. Accept: a Studio or headless footprint check of every HQ tier against parking spaces, pickup row, stocking slots and checkout; offsets or the stand position are corrected where they collide.
 - [x] **CM2-G20 Repeatable Studio playtest.** Done 2026-11-22 (plan `docs/plans/CM2-G20.md`; full 22/22 and soak 5/5 PASS in Studio). Depends on: none. The manual MCP sequence of 2026-11-21 (order, advance clock, unload, place, force a customer, carry, wrong car, load, expiry, sell-back, soak) lives in a runnable script under `tests/studio/` that drives the Studio-only `StudioTestHook` and reports PASS/FAIL per step. Accept: one command in a Studio Play Server prints a summary; it never runs outside Studio.
 - [ ] **CM2-G21 Remaining Studio verification for G1/G2.** Depends on: none. Not yet done in Studio: Lot Worker auto-load of a waiting order, a respawn dropping the carried tree back at its pickup spot, plot isolation (a second player cannot carry or load another plot's order), the literal 10-minute soak, and screenshot evidence of cars, pickup trees and labels (the Play viewport captured black through the MCP; Edit mode has no world because it is built at runtime). Accept: each item recorded PASS/FAIL in PROGRESS.md with a screenshot where possible.
+  - Status 2026-11-22: the gameplay items run in CM2-G20's `runPlaytest`; the screenshot item waits for PC-3 and runs in CM2-UV (e).
   - Status 2026-11-22 (CM2-G20 run, PROGRESS.md): Lot Worker auto-load PASS, respawn drop PASS, plot isolation PASS (shadow company in one session; real 2-client run stays with S2), literal 10-minute soak PASS (600 s, 20 samples, 0 mismatches). **Open:** screenshot evidence; `screen_capture` during Play showed only the 2D UI, no 3D world.
 
 ## Launch replanning (2026-11-21)
@@ -208,7 +223,15 @@ Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or ab
    - (d) `pendingCount()` counts a retrying unload, so BindToClose waits for it.
 
    Studio: `runPlaytest {mode="full"}` all PASS, unchanged on the happy path.
-6. [ ] **CM2-40 HUD shell and Lot Manager navigation** (re-scoped: English launch, touch first) · M · Depends: none. HUD with cash, reputation, day and lot status; a Lot Manager with the 6 reference tabs (Supplier, Catalog, Pricing, Employees, Land, Analytics) as an empty-safe shell that later tasks fill; every control reachable by touch with targets ≥ 44 px; safe-area aware on phones. Accept: Studio Device Simulator screenshots for a phone, a tablet and 1080p PC with no clipped or overlapping elements, including the save footer and Team panel (added 2026-11-22 from CM2-S2, Amendment C2: size toggles, join-code row, `TeamButton`, `TeamPanel` with member rows and the owner and member footers); all strings are full-sentence keys.
+5b. [ ] **CM2-UV UI verification in a visible Studio window** (added 2026-11-22 for PC-3) · S · Depends: PC-3 (owner), CM2-S1, CM2-S2, CM2-S3. Runs first in the next `hasseln` once PC-3 is resolved. Goal: run the UI items that S1, S2, S3 and G21 left BLOCKED because the Studio viewport was 1x1, with real MCP clicks and screenshots on the 1080p PC viewport. No source change; every defect found becomes a fix task in the launch order directly after CM2-UV. Accept, each item PASS/FAIL in PROGRESS.md with what the screenshot shows:
+   - (a) Precondition: in Play, `workspace.CurrentCamera.ViewportSize` > 100x100 and `screen_capture` shows the 3D world. If not, CM2-UV stays BLOCKED and PC-3 is set back to `offen`.
+   - (b) CM2-S1: real clicks through create, rename and delete in `SavePickerUI`; `ConfirmDelete` stays inactive until the typed name matches, then becomes active; the picker's `AbsolutePosition.Y` ≥ 0 and the picker lies inside the safe area.
+   - (c) CM2-S2: screenshot and clicks of the save footer (Solo/Duo/Trio/Quad size toggles, join-code row) and of `TeamButton` → `TeamPanel` with member rows and the owner footer (and the member footer with the simulated member).
+   - (d) CM2-S3: screenshot and tap of the picker "Being played by X – Join" row (elsewhere entry set up as in `runPlaytest`) and of the "Looking for teammates" finder panel with its footer.
+   - (e) CM2-G21: screenshots of customer cars, pickup trees and their labels in the 3D world.
+   - (f) If CM2-40 is already committed with its screenshot items BLOCKED, CM2-UV also runs them (phone, tablet and 1080p PC in the Device Simulator).
+   - (g) Standard checks pass and `runPlaytest {mode="full"}` is all PASS on the same build.
+6. [ ] **CM2-40 HUD shell and Lot Manager navigation** (re-scoped: English launch, touch first) · M · Depends: none. While PC-3 is open, the code work proceeds; only the screenshot, tap and Device Simulator criteria wait for PC-3 (then run in CM2-40 itself, or in CM2-UV (f) if CM2-40 is already committed). HUD with cash, reputation, day and lot status; a Lot Manager with the 6 reference tabs (Supplier, Catalog, Pricing, Employees, Land, Analytics) as an empty-safe shell that later tasks fill; every control reachable by touch with targets ≥ 44 px; safe-area aware on phones. Accept: Studio Device Simulator screenshots for a phone, a tablet and 1080p PC with no clipped or overlapping elements, including the save footer and Team panel (added 2026-11-22 from CM2-S2, Amendment C2: size toggles, join-code row, `TeamButton`, `TeamPanel` with member rows and the owner and member footers); all strings are full-sentence keys.
    - Added 2026-11-22 from CM2-S1: include the `SavePickerUI` (Picker, DeleteConfirm, SavesButton) in the phone, tablet and PC screenshots; check that the picker stays inside the safe area (the CM2-S1 playtest read AbsolutePosition y = -16 in a 1x1 capture viewport, unconfirmed), and click through create, rename and delete with the `ConfirmDelete` button inactive until the typed name matches.
 7. [ ] **CM2-G7 Price benchmark and Pricing tab** (covers CM2-21, CM2-41 pricing part) · M · Depends: CM2-G6, CM2-40. Unchanged from above; manual price per species and size with auto-pricing toggle in the Pricing tab. Accept: as above, plus the Pricing tab shows the server values exactly.
 8. [ ] **CM2-G14 Automatic unload and bay-to-display stocking** (covers CM2-17, CM2-18) · L · Depends: CM2-G6. Unchanged from above. Accept: as above, plus Studio: the truck unloads into a free bay after its countdown and a row fill of 5 trees places all 5 or none.
