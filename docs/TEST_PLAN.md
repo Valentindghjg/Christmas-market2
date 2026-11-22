@@ -58,6 +58,9 @@ L. Monetization is active at launch (owner decision 2026-11-21): every product n
 ## 3b. Studio playtest procedure (driven through the Roblox Studio MCP)
 - Start Play (Server + Client). The server unit-test runner is `require(ServerStorage.UnitTest.RunUnitTest)(nil, 10)` in the Server data model.
 - Customers are random and orders expire after 120 s, so use `ServerStorage.StudioTestHook` (Studio only): `Invoke("forceCustomer", n)` makes the next arriving customer profile `n` and converts it (profiles 5, 17, 29, … want a Medium Fraser Fir; profiles 8, 20, 32, … a Medium Douglas Fir); `Invoke("advanceClock", seconds)` fast-forwards deliveries and order expiry; `Invoke("customerOrders", userId)` returns the order summary.
+- **Repeatable run (CM2-G20):** in the Server data model of a running Play session, `return game:GetService("ServerStorage"):WaitForChild("StudioTestHook"):Invoke("runPlaytest", { mode = "full" })` returns `"started"` and runs the whole sequence (22 steps: unit runner, shadow join, order, delivery, unload, place, NPC sale, carry, hands-full, respawn, wrong car, load, plot isolation, expiry, Lot Worker, sell-back, in-session rejoin, accelerated soak, leak check, cleanup). `{ mode = "soak", minutes = 10 }` runs the literal real-time soak (5 steps, no clock advance until its final drain). Progress is printed as `[PLAYTEST] PASS|FAIL|SKIP <id> <name> | <detail>` and a `[PLAYTEST] SUMMARY ...` line; `ServerStorage` attributes `PlaytestStatus` (`running`/`done`), `PlaytestSummary` and `PlaytestReport` (JSON) carry the result. Poll `PlaytestStatus` until `done`. In Edit mode `require(ServerStorage.UnitTest.Playtest.RunPlaytest).run(nil, {mode="full"})` prints `[PLAYTEST] REFUSED NoHook`.
+- **Second player:** the official Studio MCP has no multi-client mode, so a shadow company for the synthetic user ID `999999999001` is loaded and gets its own plot; the real Player acts as attacker next to the shadow's tree and car (plot isolation). Only the shadow company is changed by fixtures (`setStaff`); the real company changes only through normal actions. A real 2-client run stays with S2.
+- The script, the hook module (`src/server/Services/StudioTestService.lua`) and the unit tests live only in the Studio project; the publish build excludes them (section 6).
 - Proximity prompts only appear when the target is on screen: before pressing E, place the character and point the camera at the pickup tree or car.
 - Known limit: the Play viewport captured black in `screen_capture`, so world checks are numeric (instance paths, positions, bounding boxes) rather than visual.
 
@@ -74,6 +77,7 @@ These are targets, not measured achievements.
 Each test run records date, build commit SHA, environment (CLI/Studio, platform), scenario ID, PASS/FAIL/BLOCKED and logs/screenshot link. Never mark Studio tests as passed based only on code inspection. Maintain defects with severity: blocker, critical, major, minor. Fix financial duplication, data loss, permission bypass and exploitable purchases before other polish.
 
 ## 6. Release checklist
+- [ ] Publish from `release.project.json` (`rojo build release.project.json --output release.rbxlx`), never from `default.project.json`: the release build has no `ServerStorage.UnitTest` and no `StudioTestService` (check the built file for instances named `UnitTest`, `RunPlaytest` and `StudioTestService`)
 - [ ] All G0–G5 gates pass with evidence
 - [ ] Save/rejoin and multi-server lock verified
 - [ ] No unapproved paid product enabled
