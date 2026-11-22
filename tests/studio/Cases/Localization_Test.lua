@@ -155,6 +155,42 @@ return function(t)
 		expect.equal(Localization.format("en", "finderSeats", 1, 3), "1 of 3 seats are taken.")
 	end)
 
+	-- CM2-40: the HUD and Lot Manager keys exist in both languages, and the tab list is complete.
+	t.test("has every HUD and Lot Manager key in English and German", function()
+		local UiTheme = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("UiTheme"))
+		local keys = {
+			"tabSupplier",
+			"lotManagerButton",
+			"lotManagerTitle",
+			"lotManagerClose",
+			"lotManagerTabSoon",
+			"lotManagerTabError",
+			"hudCash",
+			"hudReputation",
+			"hudDay",
+			"hudDayUnknown",
+			"hudLotOpen",
+			"hudLotPaused",
+			"hudLotClosed",
+			"orderAcceptedTruck",
+			"finderStartHint",
+		}
+		for _, key in ipairs(keys) do
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+		for _, tab in ipairs(UiTheme.LotManagerTabs) do
+			expect.equal(type(Localization.Strings.en[tab.labelKey]), "string")
+			expect.equal(type(Localization.Strings.de[tab.labelKey]), "string")
+		end
+		local ids = {}
+		for _, tab in ipairs(UiTheme.LotManagerTabs) do
+			table.insert(ids, tab.id)
+		end
+		expect.equal(table.concat(ids, ","), "Supplier,Catalog,Pricing,Employees,Land,Analytics")
+		expect.equal(Localization.format("en", "hudCash", "1,615"), "$1,615")
+	end)
+
 	t.test("formats the supplier species row", function()
 		expect.equal(
 			Localization.format("en", "supplierSpeciesRow", "Douglas Fir", 21, 28, 41),
