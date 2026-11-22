@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Environment/VillageTree",
+	"displayName": "Village Tree",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 4000,
+	"maxMeshParts": 10,
+	"requiredAttachments": ["TreeBase", "Star"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

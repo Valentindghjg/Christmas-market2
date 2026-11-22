@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Buildings/CoveredBridge",
+	"displayName": "Covered Bridge",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 4000,
+	"maxMeshParts": 10,
+	"requiredAttachments": ["PortalFront", "PortalBack"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}
