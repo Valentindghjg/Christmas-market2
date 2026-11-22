@@ -98,7 +98,7 @@ Project-level Roblox skills from `TabooHarmony/roblox-brain` are installed under
   | Save schema, migration or persisted fields | roblox-data, roblox-server-data |
   | New or changed actions/remotes, money, inventory | roblox-networking, roblox-security |
   | NPC customers, cars, pathing | roblox-npc-ai, roblox-performance |
-  | World geometry and models | roblox-building, roblox-lighting |
+  | World geometry and models | cm2-modeling (Blender kit), roblox-building, roblox-lighting |
   | UI | roblox-gui, roblox-input, roblox-localization |
   | Luau code | roblox-luau-core, roblox-luau-patterns, roblox-luau-types |
   | Module/service placement | roblox-architecture |

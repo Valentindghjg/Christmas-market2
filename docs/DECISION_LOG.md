@@ -379,3 +379,9 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - New rule (owner): models larger than a few simple blocks are built in Blender 5.2 from a committed Blender Python build script (headless, no imported meshes) and go through the CM2-AP pipeline (export budget check, render previews, upload and normalize when the PC-2 key exists). Self-review compares the rendered previews with docs/art/quality-reference in up to three rounds. Small items and blockout stay Parts.
 - Reviewed and not adopted: github.com/kevinbadi/blender-skills (no licence, needs the interactive blender-mcp addon, mainly product camera animations, paid Meshy image-to-3D generation and Poly Haven textures, which conflict with original geometry and the no-texture palette rule).
 - Files: .claude/agents/modeler.md.
+
+## 2026-11-22 — owner: cm2-modeling skill and Blender kit
+- New project skill `cm2-modeling` (.claude/skills/cm2-modeling/SKILL.md, about 4.5 KB): build-render-compare workflow, kit interface table, style rules and budgets for Blender models. The modeler loads it for every MODEL task.
+- New kit `tools/art/kit/cm2_kit.py`: low-poly building blocks (box, cylinder, cone, ball, prism, planks, post, gable roof with snow, snow cap, fir with snow, string lights, wheel, awning, collider, attachment) and `K.run`, which joins one MeshPart per palette colour, checks the tier budget and saves model.blend. Agents use the interface table instead of reading the code (token budget).
+- Verified 2026-11-22: the example `tools/art/kit/examples/market_stall.py` builds headless in Blender 5.2 (1392 triangles, 8 MeshParts, tier A), passes `art.luau export` and renders; a first render found an inverted roof and hidden tree snow, both fixed.
+- Files: .claude/skills/cm2-modeling/SKILL.md, tools/art/kit/, .claude/agents/modeler.md, CLAUDE.md.
