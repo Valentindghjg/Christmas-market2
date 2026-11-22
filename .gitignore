@@ -1,5 +1,6 @@
 # Rojo / Studio build outputs (regenerate with `rojo build` / `rojo sourcemap`)
 build.rbxlx
+release.rbxlx
 sourcemap.json
 rojo-serve*.log
 *.rbxl.lock

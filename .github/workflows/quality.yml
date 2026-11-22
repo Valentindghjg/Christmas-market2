@@ -33,3 +33,5 @@ jobs:
         run: lune run tests/headless/run.luau
       - name: Validate Rojo project
         run: rojo build default.project.json --output build.rbxlx
+      - name: Validate release project
+        run: rojo build release.project.json --output release.rbxlx
