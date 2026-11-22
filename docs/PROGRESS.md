@@ -125,3 +125,14 @@ Not verified: Lot Manager open/close by tap, tab placeholders, key M (the MCP ke
 | 6 Screenshots and taps | BLOCKED until PC-3 (viewport 1x1, capture timeout); routed to CM2-UV (h) |
 
 Not verified: the Pricing tab on a real screen (phone, tablet, PC) and real taps. Console: only the expected unit-test warnings and the step-28 `SessionLocked` line. Review note: Noble typical 185 deviates from the observed 184; follow-up CM2-G7a added. Skills used: roblox-collaboration-mode, roblox-networking, roblox-security, roblox-game-design, roblox-gui, roblox-input, roblox-localization, roblox-luau-core, roblox-luau-patterns, roblox-luau-types, roblox-tooling. Backlog launch order line 7 ticked (item 6 routed to CM2-UV (h)); CM2-G7 ticked; CM2-21 status line added.
+
+2026-11-22: CM2-G7a Noble Fir typical price 184 (OBSERVED override) (plan `docs/plans/CM2-G7a.md`, tier L). `GameConfig.Pricing.TypicalMediumOverride = { NobleFir = 184 }`; `GameConfig.typicalMediumFor` returns the override for a known species, else `wholesale.Medium × 5` (OBSERVED for Douglas, Fraser and Blue Spruce, PROVISIONAL for species without an observed card). Noble follows: bounds 92–460, size benchmarks 147/184/239, auto base 184, sentiment, budgets and demand on the same benchmark. `Pricing.SetMediumPrice` code, rate limits and error codes unchanged; no schema change (`SCHEMA_VERSION` 12, `GameConfig.VERSION` 1), no migration, saved Noble prices kept. Decision (override, not exception) in DECISION_LOG; GAME_DESIGN §4 and TEST_PLAN PRC-01 updated. Evidence (local, Windows, pinned Rokit tools, reviewer run): `stylua --check src tests tools` PASS, `selene src tests tools` PASS (0 errors, 0 warnings, 0 parse errors), `lune run tests/headless/run.luau` PASS 309 run / 309 passed / 0 failed (308 + 1 new, matches the plan), `rojo build default.project.json --output build.rbxlx` PASS; `grep -rn "185\|462" src` empty. Implementer also reported `rojo build release.project.json` PASS and art verify 0/0/0. Studio playtest (playtester agent, Studio MCP, Play Server + Client, BUILD `cm2-g7a`, save "Playtest A"; server read-back, `runPlaytest` not required by the plan):
+
+| Step | Result |
+|---|---|
+| 1 BUILD marker | PASS: `cm2-g7a` |
+| 2 Summary Noble | PASS: typical 184, wholesale 37, bounds 92–460 |
+| 3 SetMediumPrice Noble | PASS: 91 and 461 → InvalidPrice; 92 ok; 192 ok with margin 155, 81 %, Fair, S/M/L 154/192/250 |
+| 4 Restore | PASS: Noble back to the snapshot 185, automatic stayed false |
+
+Not verified: the Pricing tab on a real screen (stays with CM2-UV (h)). Console: no ChristmasMarket2 errors or warnings (one error from the playtester's own probe script). Side effect: "Playtest A" became the last-played save ("Tree Lot 1" untouched). Skills used: roblox-collaboration-mode, roblox-game-design, roblox-networking, roblox-security, roblox-luau-core, roblox-luau-types, roblox-tooling. Backlog launch order line 7a ticked.

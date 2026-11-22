@@ -326,3 +326,15 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
   3. `CompanyStateService_Test` "applies automatic pricing through the authoritative save boundary" expects Fraser 155 instead of 78 (the unchanged auto rule on the new 160 base with one tree displayed); the plan's test table did not list this test.
 - Playtest fixture: `RunPlaytest` sets the lowest allowed Douglas price (70) on the player in preflight and on the shadow after its join, because new saves start at 140 and the fixed visit profiles must always afford the playtest tree. Unit runner threshold 293 → 308 (`BUILD cm2-g7`).
 - Reviewer (2026-11-22): derivations 1-3 confirmed (1 is needed so the button works after the first loading render; 3 is the unchanged auto rule on the new base, floor(160 × 0.97 + 0.5) = 155). Noble 185 vs the observed 184 conflicts with the owner fidelity rule; it is kept for now and routed to follow-up CM2-G7a (planner decision: OBSERVED override 184 or a recorded exception).
+
+## 2026-11-22 - Noble Fir typical price 184 (OBSERVED override), CM2-G7a (engineering)
+- Supersedes the CM2-G7 benchmark bullet "Noble is 185, not the observed 184": the Noble Fir typical medium price is the observed $184 (REFERENCE_GAME_LIVE_TEST §4.3).
+- Override, not a recorded exception: the owner Fidelity rule adopts every number of the reference game, so an exception that keeps 185 against the observed 184 is not allowed. Douglas 140, Fraser 160 and Blue Spruce 210 match 5 × medium wholesale exactly, so the rule stays for them; Noble 184 (4.97 ×) is the only observed card that differs.
+- Config: `GameConfig.Pricing.TypicalMediumOverride = { NobleFir = 184 }`; `GameConfig.typicalMediumFor` returns the override for a known species and otherwise `wholesale.Medium × BenchmarkMultiplier`. An override key that is not a species is ignored. Each later observed card that differs from the rule goes into this table.
+- The 5 × rule is the PROVISIONAL extrapolation for species without an observed card (HQ 2–4, CM2-G9).
+- Noble follows: bounds 92–460 (`ceil(184 × 0.5)`, `floor(184 × 2.5)`), size benchmarks 147/184/239, automatic pricing base 184; sentiment, customer budgets and demand read the same benchmark.
+- Saves: no migration. New saves start Noble at 184; saved Noble prices are player settings and are kept, including a 185 written since CM2-G7, and a saved 461 or 462 is left alone under the CM2-G7 rule for out-of-bounds saved prices.
+- Remote: `Pricing.SetMediumPrice` code, rate limits and error codes are unchanged; only the accepted Noble range changes from 93–462 to 92–460.
+- No schema change: `SCHEMA_VERSION` stays 12 and `GameConfig.VERSION` stays 1.
+- Unit runner threshold 308 → 309 (`BUILD cm2-g7a`).
+- Plan: `docs/plans/CM2-G7a.md`.
