@@ -6,7 +6,7 @@
 -- PASS/FAIL/SKIP per step prefixed with [PLAYTEST]. This module is not under Cases, so the
 -- unit-test runners never execute it. It touches no game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-s1-r2"
+RunPlaytest.BUILD = "cm2-s2-r2"
 
 local PREFIX = "[PLAYTEST]"
 local SPECIES = "DouglasFir"
@@ -412,9 +412,10 @@ local function execute(hook: any, mode: string, minutes: number)
 	local SAVE_A, SAVE_B, SAVE_B2, SAVE_C = "Playtest A", "Playtest B", "Playtest B2", "Playtest C"
 	local saveA, saveB, saveC = "", "", ""
 
-	-- One Save.* request for the player; a rate-limited request is retried once after the window.
-	local function saveAct(action: string, payload: any, requestId: string?): any
-		local arg = { userId = R.userId, action = action, payload = payload, requestId = requestId }
+	-- One Save.* request for a user (the player or a synthetic one); a rate-limited request is
+	-- retried once after the window.
+	local function saveActAs(userId: number, action: string, payload: any, requestId: string?): any
+		local arg = { userId = userId, action = action, payload = payload, requestId = requestId }
 		local response = invoke("saveAction", arg)
 		if type(response) == "table" and response.errorCode == "RateLimited" then
 			task.wait(61)
@@ -422,6 +423,10 @@ local function execute(hook: any, mode: string, minutes: number)
 		end
 		task.wait(ACTION_PAUSE)
 		return response
+	end
+
+	local function saveAct(action: string, payload: any, requestId: string?): any
+		return saveActAs(R.userId, action, payload, requestId)
 	end
 
 	local function saveActOk(action: string, payload: any, requestId: string?): any
@@ -476,6 +481,53 @@ local function execute(hook: any, mode: string, minutes: number)
 		call("unlockSave", { userId = R.userId, saveId = entry.saveId })
 		saveActOk("Save.Delete", { saveId = entry.saveId, confirmName = name })
 		return true
+	end
+
+	-- Co-op saves (CM2-S2): the shadow and a second synthetic user act through saveAction/act,
+	-- so they hit the same server paths a real client would.
+	local SAVE_DUO = "Playtest Duo"
+	local S2 = { userId = StudioTestService.SHADOW_2_USER_ID }
+	local saveDuo, duoCode = "", ""
+
+	local function saveActAsOk(userId: number, action: string, payload: any): any
+		local response = saveActAs(userId, action, payload)
+		check(
+			type(response) == "table" and response.ok == true,
+			string.format(
+				"%s for %s failed: %s",
+				action,
+				tostring(userId),
+				tostring(type(response) == "table" and response.errorCode or response)
+			)
+		)
+		return response.data
+	end
+
+	local function saveRefusedAs(userId: number, action: string, payload: any, expected: string)
+		local response = saveActAs(userId, action, payload)
+		local code = type(response) == "table" and response.errorCode or response
+		check(
+			code == expected,
+			string.format("%s for %s returned %s, expected %s", action, tostring(userId), tostring(code), expected)
+		)
+	end
+
+	local function rowOf(userId: number, saveId: string): any
+		for _, entry in call("saves", userId) do
+			if entry.saveId == saveId then
+				return entry
+			end
+		end
+		return nil
+	end
+
+	local function memberOf(team: any, userId: number): any
+		for _, member in team.members do
+			if member.userId == userId then
+				return member
+			end
+		end
+		return nil
 	end
 
 	local function activeSave(): string
@@ -591,6 +643,9 @@ local function execute(hook: any, mode: string, minutes: number)
 		attempt("shadowLeave", function()
 			call("shadowLeave", nil)
 		end)
+		attempt("shadow2Leave", function()
+			call("shadow2Leave", nil)
+		end)
 		attempt("S DisplayedTrees", function()
 			check(S.plotId == nil or displayedCount(S.plotId) == 0, "S plot still shows trees")
 		end)
@@ -604,7 +659,7 @@ local function execute(hook: any, mode: string, minutes: number)
 				playSave(entry.saveId)
 			end
 		end)
-		for _, name in { SAVE_B, SAVE_B2, SAVE_C } do
+		for _, name in { SAVE_B, SAVE_B2, SAVE_C, SAVE_DUO } do
 			attempt("delete " .. name, function()
 				deleteLeftover(name)
 			end)
@@ -618,7 +673,7 @@ local function execute(hook: any, mode: string, minutes: number)
 			local runner = require(ServerStorage:WaitForChild("UnitTest"):WaitForChild("RunUnitTest")) :: any
 			local totals = runner(nil, 10)
 			check(totals.failed == 0, totals.failed .. " unit test(s) failed")
-			check(totals.run >= 205, "only " .. totals.run .. " unit tests ran (expected >= 205)")
+			check(totals.run >= 245, "only " .. totals.run .. " unit tests ran (expected >= 245)")
 			return string.format("%d run, %d passed", totals.run, totals.passed)
 		end)
 
@@ -1169,6 +1224,162 @@ local function execute(hook: any, mode: string, minutes: number)
 			playSave(saveA)
 			saveActOk("Save.Delete", { saveId = saveC, confirmName = SAVE_C })
 			return "SessionLocked shown, order refused, back on " .. SAVE_A
+		end)
+
+		-- Co-op saves (CM2-S2): the shadow is the second member, shadow 2 the third.
+		addStep("29", "COOP_JOIN", { "02", "02a" }, function()
+			local removed = deleteLeftover(SAVE_DUO)
+			saveDuo = saveActOk("Save.Create", { name = SAVE_DUO, size = "Duo" }).saveId
+			playSave(saveDuo)
+			local current = realPlayer()
+			check(
+				current:GetAttribute("ActiveSaveRole") == "Owner",
+				"ActiveSaveRole " .. tostring(current:GetAttribute("ActiveSaveRole"))
+			)
+			check(
+				current:GetAttribute("ActiveSaveSize") == "Duo",
+				"ActiveSaveSize " .. tostring(current:GetAttribute("ActiveSaveSize"))
+			)
+			local team = saveActOk("Save.Team", {})
+			check(
+				type(team.inviteCode) == "string" and string.match(team.inviteCode, "^[1-9]%d%d%d%d$") ~= nil,
+				"invite code " .. tostring(team.inviteCode)
+			)
+			check(team.seats == 2, "seats " .. tostring(team.seats))
+			duoCode = team.inviteCode
+			local joined = saveActAsOk(S.userId, "Save.Join", { code = duoCode })
+			check(joined.saveId == saveDuo, "joined " .. tostring(joined.saveId))
+			local played = saveActAsOk(S.userId, "Save.Play", { saveId = saveDuo })
+			check(
+				played.plotId == R.plotId,
+				string.format("shadow plot %s, owner plot %s", tostring(played.plotId), tostring(R.plotId))
+			)
+			team = saveActOk("Save.Team", {})
+			check(#team.members == 2, #team.members .. " team members")
+			local shadowMember = memberOf(team, S.userId)
+			check(
+				shadowMember ~= nil and shadowMember.role == "Member" and shadowMember.online == true,
+				"shadow is not an online Member"
+			)
+			local row = rowOf(S.userId, saveDuo)
+			check(row ~= nil and row.role == "Member" and row.name == nil, "shadow row is not a nameless Member row")
+			return string.format(
+				"code %s, shadow on plot %s%s",
+				duoCode,
+				tostring(R.plotId),
+				if removed then ", leftover removed" else ""
+			)
+		end)
+
+		addStep("30", "COOP_SHARED_CASH", { "29" }, function()
+			local rStart, sStart = snap(R.userId), snap(S.userId)
+			check(
+				rStart.cash == sStart.cash and rStart.revision == sStart.revision,
+				string.format("snapshots differ: cash %d vs %d", rStart.cash, sStart.cash)
+			)
+			local start = rStart.cash
+			check(start >= 3 * UNIT_PRICE, string.format("Duo cash %d below three orders", start))
+			orderTrees(S.userId, 1)
+			local afterShadow = snap(R.userId).cash
+			check(
+				afterShadow == start - UNIT_PRICE,
+				string.format("owner cash %d after the shadow's order", afterShadow)
+			)
+			local payload = { speciesId = SPECIES, sizeId = SIZE, quantity = 1 }
+			local requestId = "playtest_shared_" .. HttpService:GenerateGUID(false)
+			local first = act(R.userId, "Supplier.PlaceOrder", payload, requestId)
+			if type(first) == "table" and first.errorCode == "SupplierOutOfStock" then
+				advance(240)
+				requestId = "playtest_shared_" .. HttpService:GenerateGUID(false)
+				first = act(R.userId, "Supplier.PlaceOrder", payload, requestId)
+			end
+			check(
+				type(first) == "table" and first.ok == true,
+				"owner order failed: " .. tostring(type(first) == "table" and first.errorCode or first)
+			)
+			local rAfter, sAfter = snap(R.userId), snap(S.userId)
+			check(
+				rAfter.cash == start - 2 * UNIT_PRICE and sAfter.cash == rAfter.cash,
+				string.format("cash owner %d, shadow %d, expected %d", rAfter.cash, sAfter.cash, start - 2 * UNIT_PRICE)
+			)
+			local second = act(S.userId, "Supplier.PlaceOrder", payload, requestId)
+			check(
+				type(second) == "table" and second.errorCode == "DuplicateRequest",
+				"same request ID returned " .. tostring(type(second) == "table" and second.errorCode or second)
+			)
+			local cash = snap(R.userId).cash
+			check(
+				cash == start - 2 * UNIT_PRICE,
+				string.format("cash %d, expected one debit to %d", cash, start - 2 * UNIT_PRICE)
+			)
+			check(snap(S.userId).cash == cash, "shadow sees another cash balance")
+			return string.format("shared cash %d -> %d, duplicate refused", start, cash)
+		end)
+
+		addStep("31", "COOP_RULES", { "29" }, function()
+			for _, refused in
+				{
+					{ "Save.RegenerateCode", {} },
+					{ "Save.RemoveMember", { userId = R.userId } },
+					{ "Save.SetSize", { size = "Quad" } },
+					{ "Save.Rename", { saveId = saveDuo, name = "Shadow Lot" } },
+					{ "Save.Delete", { saveId = saveDuo, confirmName = "Shared lot" } },
+				}
+			do
+				saveRefusedAs(S.userId, refused[1], refused[2], "OwnerOnly")
+			end
+			saveRefusedAs(S2.userId, "Save.Join", { code = duoCode }, "SaveFull")
+			saveRefused("Save.SetSize", { size = "Solo" }, "SizeTooSmall")
+			local old = duoCode
+			local renewed = saveActOk("Save.RegenerateCode", {})
+			check(type(renewed.inviteCode) == "string" and renewed.inviteCode ~= old, "the new code equals the old one")
+			duoCode = renewed.inviteCode
+			saveRefusedAs(S2.userId, "Save.Join", { code = old }, "InviteCodeInvalid")
+			saveActOk("Save.SetSize", { size = "Trio" })
+			saveActAsOk(S2.userId, "Save.Join", { code = duoCode })
+			saveRefused("Save.SetSize", { size = "Duo" }, "SizeTooSmall")
+			saveActOk("Save.RemoveMember", { userId = S2.userId })
+			saveActOk("Save.SetSize", { size = "Duo" })
+			return "member actions OwnerOnly, seat limit, old code refused, resize and remove ok"
+		end)
+
+		addStep("32", "COOP_REMOVE", { "29" }, function()
+			saveActOk("Save.RemoveMember", { userId = S.userId })
+			local gone = invoke("snapshot", S.userId)
+			check(
+				type(gone) == "table" and gone.errorCode == "NoActiveSave",
+				"removed shadow snapshot " .. tostring(type(gone) == "table" and gone.errorCode or gone)
+			)
+			check(rowOf(S.userId, saveDuo) == nil, "removed shadow still lists the Duo")
+			saveRefusedAs(S.userId, "Save.Play", { saveId = saveDuo }, "SaveNotFound")
+			saveActAsOk(S.userId, "Save.Join", { code = duoCode })
+			saveActAsOk(S.userId, "Save.Play", { saveId = saveDuo })
+			-- The owner goes elsewhere; the member keeps playing.
+			playSave(saveA)
+			local memberCashBefore = snap(S.userId).cash
+			check(memberCashBefore >= UNIT_PRICE, string.format("Duo cash %d below one order", memberCashBefore))
+			orderTrees(S.userId, 1)
+			check(
+				snap(S.userId).cash == memberCashBefore - UNIT_PRICE,
+				"member order with the owner away did not debit once"
+			)
+			local team = saveActAsOk(S.userId, "Save.Team", {})
+			local owner = memberOf(team, R.userId)
+			check(owner ~= nil and owner.online == false, "owner not listed as offline")
+			saveRefused("Save.Delete", { saveId = saveDuo, confirmName = SAVE_DUO }, "SaveInUse")
+			local own = nil
+			for _, entry in call("saves", S.userId) do
+				if entry.role == "Owner" then
+					own = entry
+					break
+				end
+			end
+			check(own ~= nil, "shadow has no own save")
+			local played = saveActAsOk(S.userId, "Save.Play", { saveId = own.saveId })
+			S.plotId = played.plotId
+			saveActOk("Save.Delete", { saveId = saveDuo, confirmName = SAVE_DUO })
+			check(rowOf(S.userId, saveDuo) == nil, "shadow still lists the deleted Duo")
+			return string.format("removed and re-joined, Duo deleted, shadow back on %s", tostring(S.plotId))
 		end)
 
 		addStep("22", "LEAK_CHECK", { "02" }, leakCheck)
