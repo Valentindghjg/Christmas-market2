@@ -30,6 +30,12 @@ local ArtPalette: { [string]: PaletteEntry } = {
 	StoneGrayShade = { rgb = { 96, 102, 112 }, material = "SmoothPlastic" },
 	MetalDark = { rgb = { 52, 58, 64 }, material = "SmoothPlastic" },
 	FabricCream = { rgb = { 232, 220, 196 }, material = "SmoothPlastic" },
+	-- HQ tiers (CM2-13a, PROVISIONAL)
+	FabricCreamShade = { rgb = { 200, 186, 160 }, material = "SmoothPlastic" },
+	RoofGreen = { rgb = { 58, 104, 88 }, material = "SmoothPlastic" },
+	RoofGreenShade = { rgb = { 40, 76, 64 }, material = "SmoothPlastic" },
+	RoofSlate = { rgb = { 86, 94, 108 }, material = "SmoothPlastic" },
+	RoofSlateShade = { rgb = { 62, 68, 82 }, material = "SmoothPlastic" },
 	GoldAccent = { rgb = { 214, 170, 72 }, material = "SmoothPlastic" },
 	LightWarm = { rgb = { 255, 214, 140 }, material = "Neon" },
 }

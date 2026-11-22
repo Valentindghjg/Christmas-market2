@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Buildings/TimberPavilion",
+	"displayName": "Timber Pavilion",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 4000,
+	"maxMeshParts": 10,
+	"requiredAttachments": ["Entrance", "Computer", "Radio"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

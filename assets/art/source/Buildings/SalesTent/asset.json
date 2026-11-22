@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Buildings/SalesTent",
+	"displayName": "Sales Tent",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 2500,
+	"maxMeshParts": 10,
+	"requiredAttachments": ["Entrance", "Computer", "Radio"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}
