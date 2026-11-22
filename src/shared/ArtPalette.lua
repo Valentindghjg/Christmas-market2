@@ -38,6 +38,11 @@ local ArtPalette: { [string]: PaletteEntry } = {
 	RoofSlateShade = { rgb = { 62, 68, 82 }, material = "SmoothPlastic" },
 	GoldAccent = { rgb = { 214, 170, 72 }, material = "SmoothPlastic" },
 	LightWarm = { rgb = { 255, 214, 140 }, material = "Neon" },
+	-- Vehicles (CM2-14, PROVISIONAL)
+	CarPaint = { rgb = { 176, 52, 48 }, material = "SmoothPlastic" },
+	GlassBlue = { rgb = { 150, 186, 204 }, material = "SmoothPlastic" },
+	TruckGreen = { rgb = { 66, 124, 72 }, material = "SmoothPlastic" },
+	TruckGreenShade = { rgb = { 44, 90, 52 }, material = "SmoothPlastic" },
 }
 
 return ArtPalette

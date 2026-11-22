@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Vehicles/CustomerWagon",
+	"displayName": "Customer Wagon",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 1500,
+	"maxMeshParts": 7,
+	"requiredAttachments": ["CargoAnchor"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}
