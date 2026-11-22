@@ -490,7 +490,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - D2: the list is a visible, clipping area (`Colors.ListWell`, opaque, `ClipsDescendants`, sand scrollbar), so a cut row ends visibly above the footer.
 - D3: list gap is the token `UiTheme.SaveRow.listGap` (8).
 - Files: `src/shared/UiTheme.lua`, `src/client/SavePicker.client.lua`, `tests/studio/Cases/UiTheme_Test.lua`, `docs/TEST_PLAN.md`.
-- Headless total 399. Result of playtest step 1 (Play click at play start): pending the Studio batch run (queue "Studio-Test ausstehend"); the reviewer fills it in here from PROGRESS after that run.
+- Headless total 399. Result of playtest step 1 (Play click at play start, batch run 2026-11-22, viewport 1564x730): PASS. Row Play centres lie inside the list rect, `GetGuiObjectsAtPosition` returns `SaveRow_1.Play`, and one real click loads the save (`CompanyReady`, matching `ActiveSaveId`, picker closed). The UVF2 Play-click observation is resolved: the click works with GUI-space coordinates; the earlier miss was not reproduced.
 
 ## 2026-11-22 — CM2-UVF6 New code hidden on Solo (engineering)
 - Defect (uv-f9): the Team panel of a Solo save showed `NewCode` next to "Solo saves have no invite code.", a button that can only fail.
