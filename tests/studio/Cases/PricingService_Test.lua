@@ -28,7 +28,7 @@ return function(t)
 		expect.truthy(ok)
 		expect.equal(updated.FrasierFir, 150)
 		expect.equal(updated.NobleFir, nil)
-		expect.equal(state.mediumPrices.NobleFir, 185)
+		expect.equal(state.mediumPrices.NobleFir, 184)
 	end)
 
 	-- An idle scheduler tick reports no change, so it does not trigger a save.
@@ -59,7 +59,7 @@ return function(t)
 		end
 		expectBounds("DouglasFir", 70, 350)
 		expectBounds("FrasierFir", 80, 400)
-		expectBounds("NobleFir", 93, 462)
+		expectBounds("NobleFir", 92, 460)
 		expectBounds("BlueSpruce", 105, 525)
 		expect.equal(PricingService.bounds("Pine"), nil)
 		local state = BusinessState.new("personal:42", 42)
@@ -73,6 +73,17 @@ return function(t)
 		expect.equal(state.mediumPrices.DouglasFir, 70)
 		expect.truthy(PricingService.setMediumPrice(state, "DouglasFir", 350))
 		expect.equal(state.mediumPrices.DouglasFir, 350)
+		local nobleState = BusinessState.new("personal:42", 42)
+		ok, errorCode = PricingService.setMediumPrice(nobleState, "NobleFir", 91)
+		expect.equal(ok, false)
+		expect.equal(errorCode, "InvalidPrice")
+		ok, errorCode = PricingService.setMediumPrice(nobleState, "NobleFir", 461)
+		expect.equal(ok, false)
+		expect.equal(errorCode, "InvalidPrice")
+		expect.truthy(PricingService.setMediumPrice(nobleState, "NobleFir", 92))
+		expect.equal(nobleState.mediumPrices.NobleFir, 92)
+		expect.truthy(PricingService.setMediumPrice(nobleState, "NobleFir", 460))
+		expect.equal(nobleState.mediumPrices.NobleFir, 460)
 	end)
 
 	t.test("names the price sentiment by the benchmark", function()
@@ -97,7 +108,7 @@ return function(t)
 		local expected = {
 			{ "DouglasFir", 146, 140, 118, 81, 117, 96, 190, 149 },
 			{ "FrasierFir", 164, 160, 132, 80, 131, 107, 213, 167 },
-			{ "NobleFir", 192, 185, 155, 81, 154, 126, 250, 196 },
+			{ "NobleFir", 192, 184, 155, 81, 154, 126, 250, 196 },
 			{ "BlueSpruce", 210, 210, 168, 80, 168, 136, 273, 212 },
 		}
 		for index, row in ipairs(expected) do

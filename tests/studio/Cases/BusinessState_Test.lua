@@ -105,7 +105,7 @@ return function(t)
 		local migrated = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
 		expect.equal(migrated.mediumPrices.FrasierFir, 90)
-		expect.equal(migrated.mediumPrices.NobleFir, 185)
+		expect.equal(migrated.mediumPrices.NobleFir, 184)
 	end)
 
 	t.test("prunes completed orders when loading the current schema", function()

@@ -84,7 +84,7 @@ return function(t)
 		expect.equal(Pricing.BenchmarkMultiplier, 5)
 		expect.equal(GameConfig.typicalMediumFor("DouglasFir"), 140)
 		expect.equal(GameConfig.typicalMediumFor("FrasierFir"), 160)
-		expect.equal(GameConfig.typicalMediumFor("NobleFir"), 185)
+		expect.equal(GameConfig.typicalMediumFor("NobleFir"), 184)
 		expect.equal(GameConfig.typicalMediumFor("BlueSpruce"), 210)
 		expect.equal(GameConfig.typicalMediumFor("Pine"), nil)
 		expect.equal(GameConfig.typicalMediumFor(5), nil)
@@ -100,6 +100,24 @@ return function(t)
 		expect.truthy(Pricing.SentimentPercent.Pricey == 130)
 		expect.equal(Pricing.BudgetPercent.Min, 85)
 		expect.equal(Pricing.BudgetPercent.Max, 155)
+	end)
+
+	-- CM2-G7a: an OBSERVED typical card that differs from the 5 x rule overrides it (Noble 184).
+	t.test("takes observed typical prices over the 5x rule", function()
+		local Pricing = GameConfig.Pricing
+		expect.equal(Pricing.TypicalMediumOverride.NobleFir, 184)
+		local keyCount = 0
+		for speciesId, value in pairs(Pricing.TypicalMediumOverride) do
+			keyCount += 1
+			expect.truthy(GameConfig.Trees[speciesId])
+			expect.truthy(type(value) == "number" and value == math.floor(value) and value > 0)
+		end
+		expect.equal(keyCount, 1)
+		local expected = { 140, 160, 184, 210 }
+		for index, speciesId in ipairs(GameConfig.SpeciesOrder) do
+			expect.equal(GameConfig.typicalMediumFor(speciesId), expected[index])
+		end
+		expect.equal(GameConfig.Trees.NobleFir.wholesale.Medium * Pricing.BenchmarkMultiplier, 185)
 	end)
 
 	-- CM2-R5: main's BindToClose waits SHUTDOWN_WAIT_SECONDS = 25.

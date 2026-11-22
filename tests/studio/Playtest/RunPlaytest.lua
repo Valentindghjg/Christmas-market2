@@ -6,7 +6,7 @@
 -- PASS/FAIL/SKIP per step prefixed with [PLAYTEST]. This module is not under Cases, so the
 -- unit-test runners never execute it. It touches no game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-g7"
+RunPlaytest.BUILD = "cm2-g7a"
 
 local PREFIX = "[PLAYTEST]"
 local SPECIES = "DouglasFir"
@@ -747,7 +747,7 @@ local function execute(hook: any, mode: string, minutes: number)
 			local runner = require(ServerStorage:WaitForChild("UnitTest"):WaitForChild("RunUnitTest")) :: any
 			local totals = runner(nil, 10)
 			check(totals.failed == 0, totals.failed .. " unit test(s) failed")
-			check(totals.run >= 308, "only " .. totals.run .. " unit tests ran (expected >= 308)")
+			check(totals.run >= 309, "only " .. totals.run .. " unit tests ran (expected >= 309)")
 			return string.format("%d run, %d passed", totals.run, totals.passed)
 		end)
 
