@@ -264,7 +264,8 @@ render = function(data)
 		button.Visible = owner
 		button.BackgroundColor3 = if size == data.size then GOLD else SAND
 	end
-	newCode.Visible = owner
+	-- Solo saves have no invite code, so the owner gets no New code button (CM2-UVF6).
+	newCode.Visible = owner and not solo
 	leaveTeam.Visible = not owner
 	leaveTeam.Text = localized(if leaveArmed then "teamLeaveConfirm" else "teamLeave")
 end
