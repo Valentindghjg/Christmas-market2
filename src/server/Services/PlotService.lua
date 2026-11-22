@@ -68,6 +68,18 @@ function PlotService:getPlot(holderId: string): string?
 	return self._byHolder[holderId]
 end
 
+-- The holder (company ID) that claimed this plot; nil for a free, unknown or non-string plot.
+function PlotService:holderOf(plotId: unknown): string?
+	if type(plotId) ~= "string" then
+		return nil
+	end
+	local holder = self._plots[plotId]
+	if type(holder) == "string" then
+		return holder
+	end
+	return nil
+end
+
 function PlotService:freeCount(): number
 	local count = 0
 	for _, plotId in ipairs(self._order) do

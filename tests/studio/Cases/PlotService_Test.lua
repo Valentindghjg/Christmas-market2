@@ -46,4 +46,17 @@ return function(t)
 		expect.equal(plots:claim("save:3_c", "PlotX"), "PlotC")
 		expect.equal(plots:freeCount(), 0)
 	end)
+
+	-- CM2-G15: the liked lot's save comes from the plot claim.
+	t.test("holderOf names the claimant", function()
+		local plots = PlotService.new({ "PlotA", "PlotB" })
+		expect.equal(plots:claim("save:42_a"), "PlotA")
+		expect.equal(plots:holderOf("PlotA"), "save:42_a")
+		expect.equal(plots:holderOf("PlotB"), nil)
+		expect.equal(plots:holderOf("PlotZ"), nil)
+		expect.equal(plots:holderOf(1), nil)
+		expect.equal(plots:holderOf(nil), nil)
+		expect.truthy(plots:release("save:42_a"))
+		expect.equal(plots:holderOf("PlotA"), nil)
+	end)
 end

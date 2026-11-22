@@ -15,6 +15,7 @@ local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
 local Receiving = require(Shared:WaitForChild("Receiving"))
+local Reviews = require(Shared:WaitForChild("Reviews"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
@@ -57,6 +58,8 @@ function CompanyStateService.new(persistence, clock, randomRoll, wait)
 	self._limiter = Protocol.newRateLimiter(10, 10)
 	-- Caps a player's total request volume across all actions.
 	self._globalLimiter = Protocol.newRateLimiter(40, 10)
+	-- Lot.Like has its own tighter per-player limit (CM2-G15).
+	self._likeLimiter = Protocol.newRateLimiter(GameConfig.Reviews.LikeLimit.limit, GameConfig.Reviews.LikeLimit.window)
 	self._customerSequence = 0
 	-- Each loaded session gets a fresh token (CM2-N1): a walking customer from an earlier
 	-- session of the same company never acts on a reloaded one.
@@ -64,6 +67,7 @@ function CompanyStateService.new(persistence, clock, randomRoll, wait)
 	self._placementsChanged = nil
 	self._ordersChanged = nil
 	self._receivingChanged = nil
+	self._reviewsChanged = nil
 	return self
 end
 
@@ -88,6 +92,11 @@ end
 -- Trusted server code (bays, bundles, truck, countdown; CM2-G14) follows the receiving bays.
 function CompanyStateService:setReceivingChangedHandler(handler)
 	self._receivingChanged = handler
+end
+
+-- Trusted server code (review toasts, lot sign; CM2-G15) learns of new customer reviews.
+function CompanyStateService:setReviewsHandler(handler: (companyId: string, reviews: { any }) -> ())
+	self._reviewsChanged = handler
 end
 
 -- Trusted server code (SaveSlotService wiring in main.server.lua) learns when a live
@@ -498,6 +507,7 @@ end
 function CompanyStateService:forgetUser(userId: number)
 	Protocol.forgetUser(self._limiter, userId)
 	Protocol.forgetUser(self._globalLimiter, userId)
+	Protocol.forgetUser(self._likeLimiter, userId)
 end
 
 function CompanyStateService:_notifyPlacements(companyId: string, session)
@@ -539,6 +549,16 @@ function CompanyStateService:_notifyOrders(companyId: string, session, loadedNum
 	end
 end
 
+function CompanyStateService:_notifyReviews(companyId: string, session, reviews: { any })
+	local handler = self._reviewsChanged
+	if handler and self._sessions[companyId] == session and #reviews > 0 then
+		local ok, err = pcall(handler, companyId, reviews)
+		if not ok then
+			warn(string.format("[ChristmasMarket2] review notify failed for %s: %s", companyId, tostring(err)))
+		end
+	end
+end
+
 -- Runs one server-owned pass over every available session under its critical section.
 -- step(state, session) returns the number of changes, whether displayed trees changed, whether
 -- customer orders changed and (optionally) whether the receiving bays should be re-synced.
@@ -568,6 +588,10 @@ function CompanyStateService:_runPass(filter, step)
 				end
 				if flags.orders then
 					self:_notifyOrders(companyId, session, type(flags.orders) == "table" and flags.orders.loaded or nil)
+					local reviews = if type(flags.orders) == "table" then flags.orders.reviews else nil
+					if type(reviews) == "table" and #reviews > 0 then
+						self:_notifyReviews(companyId, session, reviews)
+					end
 				end
 				if flags.receiving then
 					self:_notifyReceiving(companyId, session)
@@ -625,10 +649,11 @@ function CompanyStateService:serviceCustomerOrdersAll()
 	return self:_runPass(function(state)
 		return next(state.customerOrders) ~= nil
 	end, function(state)
-		local expired = CustomerOrderService.expire(state, self._clock())
-		local loadedCount, loadedNumbers = CustomerOrderService.autoLoad(state, self._clock())
+		local reviews = {}
+		local expired = CustomerOrderService.expire(state, self._clock(), reviews)
+		local loadedCount, loadedNumbers = CustomerOrderService.autoLoad(state, self._clock(), reviews)
 		local changed = expired + loadedCount
-		return changed, false, if changed > 0 then { loaded = loadedNumbers } else false
+		return changed, false, if changed > 0 then { loaded = loadedNumbers, reviews = reviews } else false
 	end)
 end
 
@@ -933,6 +958,9 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 			else nil
 		self:_notifyOrders(companyId, session, loaded)
 	end
+	if request.action == Protocol.Actions.OrderLoad and type(response.data) == "table" then
+		self:_notifyReviews(companyId, session, { response.data })
+	end
 	if response.receivingChanged then
 		self:_notifyReceiving(companyId, session)
 	end
@@ -940,6 +968,45 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 	response.ordersChanged = nil
 	response.receivingChanged = nil
 	return response
+end
+
+-- Shared request limits plus the Lot.Like limit (CM2-G15); same clock as handle.
+function CompanyStateService:allowLike(userId: number): boolean
+	local action = Protocol.Actions.LotLike
+	return Protocol.allowRequest(self._globalLimiter, userId, "*", self._clock())
+		and Protocol.allowRequest(self._limiter, userId, action, self._clock())
+		and Protocol.allowRequest(self._likeLimiter, userId, action, self._clock())
+end
+
+-- A player of another save likes this lot (CM2-G15). The liked save's record changes; the
+-- per-day liker set makes a replay return AlreadyLikedToday, so nothing changes twice.
+function CompanyStateService:likeLot(companyId: string, likerUserId: number)
+	local session = self._sessions[companyId]
+	if not session or not session.healthy or session.unloading then
+		return { ok = false, errorCode = "LotUnavailable" }
+	end
+	local entered, response = self:_withSession(companyId, session, function(state)
+		local liked, result = Reviews.like(state, likerUserId, Reviews.utcDay(self._clock()))
+		if not liked then
+			return { ok = false, errorCode = result, revision = state.revision }
+		end
+		state.revision += 1
+		session.dirty = true
+		return { ok = true, revision = state.revision, data = { likes = result } }
+	end)
+	if not entered then
+		return { ok = false, errorCode = response }
+	end
+	return response
+end
+
+-- Server-only lot sign view (CM2-G15); nil without a healthy session.
+function CompanyStateService:getLotSignView(companyId: string)
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return nil
+	end
+	return Reviews.signView(session.state)
 end
 
 -- Server-only projection for world visuals. It deliberately exposes no mutable
@@ -1110,7 +1177,13 @@ end
 -- The customer pays at the counter: the reservation settles exactly once and the order waits
 -- in the visit's parking space. onSold(sale) runs after the section and before the orders
 -- notification (it adopts the visit car). A failed settle counts the visit as abandoned.
-function CompanyStateService:npcSettle(companyId: string, visitId: string, placementId: string, onSold)
+function CompanyStateService:npcSettle(
+	companyId: string,
+	visitId: string,
+	placementId: string,
+	onSold,
+	queueSeconds: number?
+)
 	local session = self._sessions[companyId]
 	if not session then
 		return false, "CompanyUnavailable"
@@ -1122,7 +1195,8 @@ function CompanyStateService:npcSettle(companyId: string, visitId: string, place
 			{ placementId = placementId, customerId = visitId },
 			self._clock(),
 			space,
-			session.npcClaims
+			session.npcClaims,
+			queueSeconds
 		)
 		state.revision += 1
 		session.dirty = true
@@ -1303,6 +1377,20 @@ function CompanyStateService:setStaffForTest(companyId: string, employeeId: stri
 	return entered
 end
 
+-- Clears today's likers so a playtest can like the lot again.
+function CompanyStateService:resetLikesForTest(companyId: string): boolean
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return false
+	end
+	local entered = self:_withSession(companyId, session, function(state)
+		state.likes.today = {}
+		session.dirty = true
+		return true
+	end)
+	return entered
+end
+
 -- Detached copy of the figures a playtest compares; nil without a healthy session.
 function CompanyStateService:snapshotForTest(companyId: string): {}?
 	local session = self._sessions[companyId]
@@ -1351,6 +1439,10 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		customerVisits = state.customerVisits,
 		abandonedCustomers = state.abandonedCustomers,
 		walkedOutCustomers = state.walkedOutCustomers,
+		reviewCount = state.reviews.count,
+		ratingTenths = Reviews.ratingTenths(state),
+		reviewsRecent = table.clone(state.reviews.recent), -- CM2-G15 A2: step 42 checks the window
+		likes = state.likes.total,
 		placementCount = placementCount(state),
 		receiving = BusinessState.receivingSummary(state, clock),
 		pendingOrders = pending,

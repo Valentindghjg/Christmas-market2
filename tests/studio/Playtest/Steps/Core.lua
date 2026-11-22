@@ -44,6 +44,8 @@ return function(ctx: any)
 	local snap = ctx.snap
 	local teleport = ctx.teleport
 	local visit = ctx.visit
+	local Reviews = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Reviews")) :: any
+	local ReputationByStars = ctx.GameConfig.Reviews.ReputationByStars
 
 	local orderA, orderB, orderC = 0, 0, 0
 	local pickupHome: Vector3 = Vector3.zero
@@ -235,18 +237,26 @@ return function(ctx: any)
 		local first = snap(R.userId)
 		local soldAt = findOrder(first, orderA).expiresAt - Customers.PickupPatienceSeconds
 		local clockNow = call("clock", nil)
-		local gain = if clockNow - soldAt <= Customers.FastLoadSeconds
-			then Customers.FastLoadReputation
-			else Customers.SlowLoadReputation
+		-- CM2-G15: the review's stars set the gain; a load that crosses a star boundary while
+		-- this step runs may land one bracket lower (+2 s tolerance).
+		local gain = ReputationByStars[Reviews.starsFor(clockNow - soldAt)]
+		local lateGain = ReputationByStars[Reviews.starsFor(clockNow - soldAt + 2)]
 		teleport(orderPart(R.plotId, "CustomerCar_" .. orderA))
 		prompt("load", orderA)
 		local after = snap(R.userId)
 		check(findOrder(after, orderA) == nil, "order " .. orderA .. " still open")
 		check(after.loadedOrders == first.loadedOrders + 1, "loadedOrders did not grow by one")
 		check(
-			after.reputation == first.reputation + gain,
-			string.format("reputation %d -> %d, expected +%d", first.reputation, after.reputation, gain)
+			after.reputation == first.reputation + gain or after.reputation == first.reputation + lateGain,
+			string.format(
+				"reputation %d -> %d, expected +%d or +%d",
+				first.reputation,
+				after.reputation,
+				gain,
+				lateGain
+			)
 		)
+		gain = after.reputation - first.reputation
 		check(carriedTree() == nil, "CarriedTree left after loading")
 		local ok = poll(function()
 			return not hasObject(R.plotId, "CustomerCar_" .. orderA) and countOrderObjects(R.plotId, "LeavingCar") == 0

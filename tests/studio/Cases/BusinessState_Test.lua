@@ -181,8 +181,8 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(BusinessState.SCHEMA_VERSION, 14)
-		expect.equal(migrated.schemaVersion, 14)
+		expect.equal(BusinessState.SCHEMA_VERSION, 15)
+		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(migrated.cash, 777)
 		expect.equal(migrated.reputation, 120)
 		expect.equal(migrated.bays[1].speciesId, "NobleFir")
@@ -414,7 +414,7 @@ return function(t)
 		expect.equal(last.amount, 434)
 		expect.equal(next(migrated.pendingOrders), nil)
 		expect.equal(migrated.stock, nil)
-		expect.equal(migrated.schemaVersion, 14)
+		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.truthy(BusinessState.validate(migrated))
 	end)
 
@@ -428,7 +428,7 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(migrated.schemaVersion, 14)
+		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(migrated.walkedOutCustomers, 0)
 		expect.equal(migrated.cash, 777)
 		expect.equal(migrated.abandonedCustomers, 3)
@@ -444,5 +444,78 @@ return function(t)
 		local missing = BusinessState.new("save:42_x", 42)
 		missing.walkedOutCustomers = nil
 		expect.falsy(BusinessState.validate(missing))
+	end)
+
+	-- CM2-G15: schema 15 adds reviews, likes and the queue time of open orders.
+	local function openOrder(queueSeconds: number?)
+		return {
+			orderNumber = 1,
+			speciesId = "FrasierFir",
+			sizeId = "Small",
+			heightTenths = 55,
+			salePrice = 66,
+			soldAt = 100,
+			expiresAt = 220,
+			parkingSpace = 1,
+			queueSeconds = queueSeconds,
+		}
+	end
+
+	t.test("migrates v14 to v15 with reviews, likes and queue time", function()
+		local legacy = BusinessState.new("save:42_x", 42)
+		legacy.schemaVersion = 14
+		legacy.reviews = nil
+		legacy.likes = nil
+		legacy.cash = 777
+		legacy.customerOrders["1"] = openOrder(nil)
+		legacy.nextOrderNumber = 2
+		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(migrated.schemaVersion, 15)
+		expect.equal(migrated.reviews.count, 0)
+		expect.equal(#migrated.reviews.recent, 0)
+		expect.equal(migrated.likes.total, 0)
+		expect.equal(migrated.likes.day, 0)
+		expect.equal(next(migrated.likes.today), nil)
+		expect.equal(migrated.customerOrders["1"].queueSeconds, 0)
+		expect.equal(migrated.cash, 777)
+		expect.truthy(BusinessState.validate(migrated))
+	end)
+
+	t.test("rejects invalid reviews and likes", function()
+		local mutations = {
+			function(state)
+				state.reviews.recent = { 6 }
+				state.reviews.count = 1
+			end,
+			function(state)
+				local recent = {}
+				for index = 1, GameConfig.Reviews.RatingWindow + 1 do
+					recent[index] = 5
+				end
+				state.reviews.recent = recent
+				state.reviews.count = #recent
+			end,
+			function(state)
+				state.likes.total = -1
+			end,
+			function(state)
+				state.likes.today = { abc = true }
+			end,
+			function(state)
+				state.customerOrders["1"] = openOrder(-1)
+				state.nextOrderNumber = 2
+			end,
+		}
+		local valid = BusinessState.new("save:42_x", 42)
+		valid.customerOrders["1"] = openOrder(0)
+		valid.nextOrderNumber = 2
+		expect.truthy(BusinessState.validate(valid))
+		for _, mutate in ipairs(mutations) do
+			local state = BusinessState.new("save:42_x", 42)
+			mutate(state)
+			expect.falsy(BusinessState.validate(state))
+		end
 	end)
 end

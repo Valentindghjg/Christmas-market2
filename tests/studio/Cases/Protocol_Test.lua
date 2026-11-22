@@ -347,4 +347,26 @@ return function(t)
 		expect.falsy(fraserOk)
 		expect.equal(reason, "UnknownSpecies")
 	end)
+
+	-- CM2-G15: Lot.Like names only a configured plot.
+	t.test("Lot.Like accepts only a known plot", function()
+		local function like(payload)
+			return Protocol.validateRequest({
+				version = 1,
+				requestId = "like_0001",
+				action = Protocol.Actions.LotLike,
+				payload = payload,
+			})
+		end
+		expect.truthy(like({ plotId = "Plot_03" }))
+		local unknown, unknownReason = like({ plotId = "Plot_07" })
+		expect.falsy(unknown)
+		expect.equal(unknownReason, "InvalidPlotId")
+		local numeric, numericReason = like({ plotId = 3 })
+		expect.falsy(numeric)
+		expect.equal(numericReason, "InvalidPlotId")
+		local extra, extraReason = like({ plotId = "Plot_03", companyId = "save:1_x" })
+		expect.falsy(extra)
+		expect.equal(extraReason, "UnexpectedField")
+	end)
 end

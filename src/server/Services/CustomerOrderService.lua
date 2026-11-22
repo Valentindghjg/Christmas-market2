@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Reviews = require(Shared:WaitForChild("Reviews"))
 local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
 
 local CustomerOrderService = {}
@@ -86,8 +87,16 @@ function CustomerOrderService.freeParkingSpace(state, claims): number
 end
 
 -- Turns a settled sale into an order waiting at the customer's car. parkingSpace (CM2-N1) is
--- the walking customer's own space; it is used when valid and free of orders.
-function CustomerOrderService.createFromSale(state, sale, timestamp: number, parkingSpace: number?, claims)
+-- the walking customer's own space; it is used when valid and free of orders. queueSeconds
+-- (CM2-G15) is the walking customer's wait in the checkout queue; it counts toward the review.
+function CustomerOrderService.createFromSale(
+	state,
+	sale,
+	timestamp: number,
+	parkingSpace: number?,
+	claims,
+	queueSeconds: number?
+)
 	if type(sale) ~= "table" or type(sale.placementId) ~= "string" then
 		return false, "InvalidSale"
 	end
@@ -102,6 +111,15 @@ function CustomerOrderService.createFromSale(state, sale, timestamp: number, par
 	then
 		space = parkingSpace :: number
 	end
+	local queued = 0
+	if
+		type(queueSeconds) == "number"
+		and queueSeconds == queueSeconds
+		and queueSeconds ~= math.huge
+		and queueSeconds ~= -math.huge
+	then
+		queued = math.clamp(math.floor(queueSeconds), 0, GameConfig.Reviews.MaxQueueSeconds)
+	end
 	local orderNumber = state.nextOrderNumber
 	local order = {
 		orderNumber = orderNumber,
@@ -112,6 +130,7 @@ function CustomerOrderService.createFromSale(state, sale, timestamp: number, par
 		soldAt = timestamp,
 		expiresAt = timestamp + GameConfig.Customers.PickupPatienceSeconds,
 		parkingSpace = space,
+		queueSeconds = queued,
 	}
 	state.nextOrderNumber += 1
 	state.customerOrders[tostring(orderNumber)] = order
@@ -181,14 +200,22 @@ function CustomerOrderService.releaseCarriedBy(state, userId: number): number
 	return released
 end
 
+-- The customer reviews the service (CM2-G15): queue time plus the wait at the car.
 local function complete(state, order, timestamp: number)
-	local fast = timestamp - order.soldAt <= GameConfig.Customers.FastLoadSeconds
-	local gain = if fast then GameConfig.Customers.FastLoadReputation else GameConfig.Customers.SlowLoadReputation
+	local pickup = math.max(0, timestamp - order.soldAt)
+	local stars = Reviews.starsFor(order.queueSeconds + pickup)
+	local gain = GameConfig.Reviews.ReputationByStars[stars]
 	state.customerOrders[tostring(order.orderNumber)] = nil
 	state.reputation += gain
 	state.loadedOrders += 1
+	Reviews.record(state, stars)
 	BusinessState.record(state, "OrderLoaded", 0)
-	return { orderNumber = order.orderNumber, reputationGain = gain, fast = fast }
+	return {
+		orderNumber = order.orderNumber,
+		reputationGain = gain,
+		stars = stars,
+		textKey = Reviews.textKeyFor(stars, order.queueSeconds, pickup),
+	}
 end
 
 -- Completes an order only for the carrying player at the car with the same number.
@@ -206,30 +233,45 @@ function CustomerOrderService.load(state, userId: number, orderNumber: number, c
 	return true, complete(state, order, timestamp)
 end
 
--- Customers whose patience ran out drive off unhappy; the paid sale stays booked.
-function CustomerOrderService.expire(state, timestamp: number): number
+-- Customers whose patience ran out drive off unhappy; the paid sale stays booked. Each leaves
+-- a one-star review (CM2-G15), appended to reviews when the caller passes a list.
+function CustomerOrderService.expire(state, timestamp: number, reviews: { any }?): number
 	local expired = 0
 	for _, order in ipairs(sortedOrders(state)) do
 		if order.expiresAt <= timestamp then
 			state.customerOrders[tostring(order.orderNumber)] = nil
+			local before = state.reputation
 			state.reputation = math.max(0, state.reputation - GameConfig.Customers.MissedPickupReputationPenalty)
 			state.missedPickups += 1
+			Reviews.record(state, 1)
 			BusinessState.record(state, "PickupMissed", 0)
+			if reviews ~= nil then
+				table.insert(reviews, {
+					orderNumber = order.orderNumber,
+					stars = 1,
+					textKey = "reviewNoTree",
+					reputationGain = -(before - state.reputation),
+				})
+			end
 			expired += 1
 		end
 	end
 	return expired
 end
 
--- A hired Lot Worker loads uncarried orders once the walk to the car is done.
-function CustomerOrderService.autoLoad(state, timestamp: number): number
+-- A hired Lot Worker loads uncarried orders once the walk to the car is done. Each review is
+-- appended to reviews when the caller passes a list (CM2-G15).
+function CustomerOrderService.autoLoad(state, timestamp: number, reviews: { any }?): number
 	if state.staff.LotWorker < 1 then
 		return 0, {}
 	end
 	local loaded = {}
 	for _, order in ipairs(sortedOrders(state)) do
 		if order.carriedBy == nil and timestamp - order.soldAt >= GameConfig.Customers.WorkerLoadSeconds then
-			complete(state, order, timestamp)
+			local review = complete(state, order, timestamp)
+			if reviews ~= nil then
+				table.insert(reviews, review)
+			end
 			table.insert(loaded, order.orderNumber)
 		end
 	end

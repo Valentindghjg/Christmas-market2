@@ -83,6 +83,7 @@ local sourcePaths = {
 	NpcPath = "src/shared/NpcPath.lua",
 	PricingView = "src/shared/PricingView.lua",
 	Protocol = "src/shared/Protocol.lua",
+	Reviews = "src/shared/Reviews.lua",
 	Receiving = "src/shared/Receiving.lua",
 	SaveProfile = "src/shared/SaveProfile.lua",
 	Stocking = "src/shared/Stocking.lua",

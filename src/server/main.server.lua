@@ -222,6 +222,66 @@ local function companyIdFor(userId: number): string?
 	return saveSlots:activeCompanyId(userId)
 end
 
+-- Lot sign names (CM2-G15): the broadcast-filtered save name while its author (the owner) is
+-- on this server, else the owner's username, else a default. Never the raw name. The
+-- filtered text is cached per company and raw name.
+local signNames: { [string]: { raw: string, text: string } } = {}
+
+local function signName(companyId: string, view): (string, string, string?)
+	local cached = signNames[companyId]
+	if cached and cached.raw == view.saveName then
+		return cached.text, "Filtered", nil
+	end
+	local ok, filtered = filterName(view.ownerUserId, view.saveName)
+	if ok and type(filtered) == "string" and filtered ~= "" then
+		signNames[companyId] = { raw = view.saveName, text = filtered }
+		return filtered, "Filtered", nil
+	end
+	local name = userName(view.ownerUserId)
+	if name then
+		return string.format("%s's Tree Lot", name), "Owner", name
+	end
+	return "Tree Lot", "Default", nil
+end
+
+-- Refreshes the company's lot sign. The name may yield (text filter, username lookup), so the
+-- plot and the view are read again afterwards and written without a yield in between.
+local function refreshLotSign(companyId: string)
+	task.spawn(function()
+		local view = companies:getLotSignView(companyId)
+		if view == nil then
+			return
+		end
+		local nameText, nameSource, ownerName = signName(companyId, view)
+		local plotId = plots:getPlot(companyId)
+		local current = companies:getLotSignView(companyId)
+		if plotId == nil or current == nil then
+			return
+		end
+		WorldService.setLotSign(plotId, {
+			nameText = nameText,
+			nameSource = nameSource,
+			ownerName = ownerName,
+			ratingTenths = current.ratingTenths,
+			reviewCount = current.reviewCount,
+			likes = current.likes,
+		})
+	end)
+end
+
+-- Customer reviews (CM2-G15): every player of the save sees the review toast; the sign updates.
+companies:setReviewsHandler(function(companyId: string, reviews: { any })
+	for _, userId in saveSlots:playersOn(companyId) do
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			for _, review in ipairs(reviews) do
+				tell(player, review.textKey, review.stars, review.orderNumber)
+			end
+		end
+	end
+	refreshLotSign(companyId)
+end)
+
 local function effectiveParking(spaces: number): number
 	return math.max(config.Customers.BaseParkingSpaces, spaces)
 end
@@ -345,10 +405,8 @@ local function afterOrderAction(player: Player, action: string, response, payloa
 	if action == Protocol.Actions.OrderCarry and character and type(response.data) == "number" then
 		WorldService.attachCarriedTree(character, response.data)
 	elseif action == Protocol.Actions.OrderLoad or action == Protocol.Actions.OrderRelease then
+		-- The review toast (CM2-G15, reviews handler) replaces the old orderComplete toast.
 		WorldService.detachCarriedTree(character)
-		if action == Protocol.Actions.OrderLoad and type(response.data) == "table" then
-			tell(player, "orderComplete", response.data.orderNumber)
-		end
 	end
 end
 
@@ -507,6 +565,7 @@ local function clearPlotVisuals(plotId: string)
 	WorldService.syncDisplayedTrees(plotId, {})
 	WorldService.syncCustomerOrders(plotId, nil, nil)
 	WorldService.syncReceiving(plotId, nil)
+	WorldService.setLotSign(plotId, nil)
 end
 
 -- A played save mirrors into its plot and marks the player ready. A player joining a live
@@ -515,6 +574,8 @@ saveSlots:setActivationHandlers(function(userId: number, companyId: string, plot
 	if state then
 		syncPlotWorld(plotId, companyId, state)
 	end
+	-- Every activation refreshes the sign, so a later owner join retries the name filter.
+	refreshLotSign(companyId)
 	local player = Players:GetPlayerByUserId(userId)
 	if player then
 		player:SetAttribute("PlotId", plotId)
@@ -530,7 +591,10 @@ saveSlots:setActivationHandlers(function(userId: number, companyId: string, plot
 			task.spawn(spawnAtClaimedPlot, player, player.Character)
 		end
 	end
-end, function(userId: number, _companyId: string, plotId: string?, plotReleased: boolean)
+end, function(userId: number, companyId: string, plotId: string?, plotReleased: boolean)
+	if plotReleased then
+		signNames[companyId] = nil
+	end
 	if plotReleased and plotId then
 		-- The next claimant must not inherit the previous owner's stand, lot, trees or customers.
 		npc:clearPlot(plotId)
@@ -576,6 +640,7 @@ local function handleSaveAction(player: Player, request)
 		if response.data.saveId == player:GetAttribute("ActiveSaveId") then
 			player:SetAttribute("ActiveSaveName", response.data.name)
 		end
+		refreshLotSign("save:" .. response.data.saveId)
 	elseif not response.ok and action == Protocol.SaveActions.Play then
 		if saveSlots:activeCompanyId(player.UserId) == nil then
 			player:SetAttribute("CompanyError", response.errorCode)
@@ -711,9 +776,37 @@ local ORDER_REACH_ACTIONS = {
 	[Protocol.Actions.OrderLoad] = true,
 }
 
+-- Lot.Like (CM2-G15): validated, rate-limited, within reach of the target's sign; the liked
+-- company comes from the plot claim, never from the client. Own and co-op saves are refused.
+local function likeLot(player: Player, request)
+	local valid, validationError = Protocol.validateRequest(request)
+	if not valid then
+		return { ok = false, errorCode = validationError }
+	end
+	if not companies:allowLike(player.UserId) then
+		return { ok = false, errorCode = "RateLimited" }
+	end
+	local plotId = request.payload.plotId
+	local target = plots:holderOf(plotId)
+	if target == nil then
+		return { ok = false, errorCode = "LotUnavailable" }
+	end
+	if not withinReach(player, WorldService.lotSignTarget(plotId)) then
+		return { ok = false, errorCode = "OutOfReach" }
+	end
+	local response = companies:likeLot(target, player.UserId)
+	if response.ok then
+		refreshLotSign(target)
+	end
+	return response
+end
+
 local function handleBusinessAction(player: Player, request)
 	if player:GetAttribute("CompanyReady") ~= true then
 		return { ok = false, errorCode = "CompanyUnavailable" }
+	end
+	if type(request) == "table" and request.action == Protocol.Actions.LotLike then
+		return likeLot(player, request)
 	end
 	-- Order interactions need the player next to the tree or car, whichever channel is used.
 	local action = type(request) == "table" and request.action

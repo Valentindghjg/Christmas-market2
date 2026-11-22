@@ -115,12 +115,12 @@ function CustomerService.completeReservedSale(state, placementId: string, custom
 	state.cash += salePrice
 	state.revenue += salePrice
 	state.sales += 1
-	state.reputation += 1
+	state.reputation += GameConfig.Customers.SaleReputation
 	BusinessState.record(state, "Sale", salePrice)
 	return true,
 		{
 			salePrice = salePrice,
-			reputationGain = 1,
+			reputationGain = GameConfig.Customers.SaleReputation,
 			placementId = placementId,
 			speciesId = placement.speciesId,
 			sizeId = placement.sizeId,

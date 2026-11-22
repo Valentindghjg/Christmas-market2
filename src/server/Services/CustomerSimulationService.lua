@@ -55,8 +55,16 @@ end
 
 -- Settles the sale, then leaves the customer waiting at the car for the tree.
 -- parkingSpace and claims (CM2-N1): the walking customer's car keeps its space, and runtime
--- parking claims are skipped when the order needs a free one.
-function CustomerSimulationService.completeVisit(state, visit, timestamp: number, parkingSpace: number?, claims)
+-- parking claims are skipped when the order needs a free one. queueSeconds (CM2-G15) is the
+-- walking customer's queue time for the review.
+function CustomerSimulationService.completeVisit(
+	state,
+	visit,
+	timestamp: number,
+	parkingSpace: number?,
+	claims,
+	queueSeconds: number?
+)
 	if type(visit) ~= "table" or type(visit.placementId) ~= "string" or type(visit.customerId) ~= "string" then
 		return false, "InvalidVisit"
 	end
@@ -64,7 +72,7 @@ function CustomerSimulationService.completeVisit(state, visit, timestamp: number
 	if not sold then
 		return false, sale
 	end
-	local _, order = CustomerOrderService.createFromSale(state, sale, timestamp, parkingSpace, claims)
+	local _, order = CustomerOrderService.createFromSale(state, sale, timestamp, parkingSpace, claims, queueSeconds)
 	sale.order = order
 	return true, sale
 end

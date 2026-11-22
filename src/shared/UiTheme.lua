@@ -154,6 +154,16 @@ UiTheme.WorldLabels = {
 	},
 } :: { [string]: WorldLabelLayout }
 
+-- The lot sign's SurfaceGuis (CM2-G15, PROVISIONAL): sizes in px, maxDistance in studs.
+UiTheme.LotSign = {
+	pixelsPerStud = 40,
+	nameMaxTextSize = 34,
+	nameMinTextSize = 14,
+	lineTextSize = 28,
+	padding = 8,
+	maxDistance = 120,
+}
+
 -- The six Lot Manager tabs in the OBSERVED order (REFERENCE_GAME_LIVE_TEST section 4).
 UiTheme.LotManagerTabs = {
 	{ id = "Supplier", labelKey = "tabSupplier", module = "SupplierTab" },

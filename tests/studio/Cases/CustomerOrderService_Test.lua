@@ -4,6 +4,7 @@ return function(t)
 	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 	local BusinessState = require(Shared:WaitForChild("BusinessState"))
 	local GameConfig = require(Shared:WaitForChild("GameConfig"))
+	local Reviews = require(Shared:WaitForChild("Reviews"))
 	local Services = game:GetService("ServerScriptService"):WaitForChild("Server"):WaitForChild("Services")
 	local Orders = require(Services:WaitForChild("CustomerOrderService"))
 	local Simulation = require(Services:WaitForChild("CustomerSimulationService"))
@@ -64,29 +65,83 @@ return function(t)
 		expect.truthy(BusinessState.validate(state))
 	end)
 
+	-- CM2-G15: the customer's review sets the reputation gain.
 	t.test("loads exactly once and rewards fast service", function()
 		local state, order = stateWithSale()
 		local reputation = state.reputation
+		local gain = GameConfig.Reviews.ReputationByStars[5]
 		expect.truthy(Orders.carry(state, 42, order.orderNumber))
-		local loaded, result = Orders.load(state, 42, order.orderNumber, order.orderNumber, 110)
+		local loaded, result = Orders.load(state, 42, order.orderNumber, order.orderNumber, order.soldAt + 10)
 		expect.truthy(loaded)
-		expect.equal(result.reputationGain, GameConfig.Customers.FastLoadReputation)
-		expect.equal(state.reputation, reputation + GameConfig.Customers.FastLoadReputation)
+		expect.equal(result.stars, 5)
+		expect.equal(result.reputationGain, gain)
+		expect.equal(state.reputation, reputation + gain)
+		expect.equal(state.reviews.count, 1)
 		expect.equal(state.loadedOrders, 1)
-		local again, reason = Orders.load(state, 42, order.orderNumber, order.orderNumber, 111)
+		local again, reason = Orders.load(state, 42, order.orderNumber, order.orderNumber, order.soldAt + 11)
 		expect.falsy(again)
 		expect.equal(reason, "UnknownOrder")
 		expect.equal(state.loadedOrders, 1)
+		expect.equal(state.reviews.count, 1)
 	end)
 
 	t.test("slow loading earns less reputation", function()
 		local state, order = stateWithSale()
 		local reputation = state.reputation
+		local stars = GameConfig.Reviews.ReputationByStars
 		expect.truthy(Orders.carry(state, 42, order.orderNumber))
-		local timestamp = 100 + GameConfig.Customers.FastLoadSeconds + 1
-		local _, result = Orders.load(state, 42, order.orderNumber, order.orderNumber, timestamp)
-		expect.equal(result.reputationGain, GameConfig.Customers.SlowLoadReputation)
-		expect.equal(state.reputation, reputation + GameConfig.Customers.SlowLoadReputation)
+		local _, result = Orders.load(state, 42, order.orderNumber, order.orderNumber, order.soldAt + 90)
+		expect.equal(result.stars, 2)
+		expect.equal(result.reputationGain, stars[2])
+		expect.truthy(stars[2] < stars[5])
+		expect.equal(state.reputation, reputation + stars[2])
+		expect.equal(Reviews.ratingTenths(state), 20)
+	end)
+
+	t.test("queue time counts toward the review", function()
+		local state = BusinessState.new("personal:42", 42)
+		local sale = { placementId = "placement:q", speciesId = "FrasierFir", sizeId = "Medium", salePrice = 82 }
+		local created, order = Orders.createFromSale(state, sale, 100, nil, nil, 40)
+		expect.truthy(created)
+		expect.equal(order.queueSeconds, 40)
+		expect.truthy(BusinessState.validate(state))
+		expect.truthy(Orders.carry(state, 42, order.orderNumber))
+		local _, result = Orders.load(state, 42, order.orderNumber, order.orderNumber, order.soldAt + 15)
+		expect.equal(result.stars, 3)
+		expect.equal(result.textKey, "reviewSlowService")
+		expect.equal(result.reputationGain, GameConfig.Reviews.ReputationByStars[3])
+	end)
+
+	t.test("a missed pickup leaves a one-star review", function()
+		local state, order = stateWithSale()
+		local reputation = state.reputation
+		local reviews = {}
+		expect.equal(Orders.expire(state, order.expiresAt, reviews), 1)
+		expect.equal(#reviews, 1)
+		expect.equal(reviews[1].orderNumber, order.orderNumber)
+		expect.equal(reviews[1].stars, 1)
+		expect.equal(reviews[1].textKey, "reviewNoTree")
+		expect.equal(reviews[1].reputationGain, -1)
+		expect.equal(state.reviews.recent[#state.reviews.recent], 1)
+		expect.equal(state.reviews.count, 1)
+		expect.equal(state.reputation, reputation - 1)
+	end)
+
+	t.test("Lot Worker loads leave reviews", function()
+		local state, first = stateWithSale()
+		local second = addOrder(state, "placement:second", 100)
+		state.staff.LotWorker = 1
+		local reviews = {}
+		local timestamp = first.soldAt + GameConfig.Customers.WorkerLoadSeconds
+		local count = Orders.autoLoad(state, timestamp, reviews)
+		expect.equal(count, 2)
+		expect.equal(#reviews, 2)
+		local stars = Reviews.starsFor(timestamp - first.soldAt)
+		expect.equal(reviews[1].orderNumber, first.orderNumber)
+		expect.equal(reviews[2].orderNumber, second.orderNumber)
+		expect.equal(reviews[1].stars, stars)
+		expect.equal(reviews[2].stars, stars)
+		expect.equal(state.reviews.count, 2)
 	end)
 
 	t.test("rejects the wrong car without completing", function()
@@ -294,6 +349,7 @@ return function(t)
 				soldAt = 100,
 				expiresAt = 200,
 				parkingSpace = 1,
+				queueSeconds = 0,
 			}
 		end
 		state.nextOrderNumber = GameConfig.Customers.MaxOpenCustomerOrders + 3

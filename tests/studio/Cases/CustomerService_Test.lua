@@ -53,4 +53,17 @@ return function(t)
 		expect.truthy(state.layout.placements["placement_expire"])
 		expect.falsy(state.reservations["placement_expire"])
 	end)
+
+	-- CM2-G15: reputation comes from the review after loading, never from the checkout.
+	t.test("checkout earns no reputation", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.layout.placements["placement_rep"] =
+			{ speciesId = "FrasierFir", sizeId = "Medium", transform = { x = 0, y = 0, z = 0, rotation = 0 } }
+		expect.truthy(CustomerService.reserve(state, "placement_rep", "customer:1", 100))
+		local reputation = state.reputation
+		local ok, sale = CustomerService.completeReservedSale(state, "placement_rep", "customer:1", 101)
+		expect.truthy(ok)
+		expect.equal(sale.reputationGain, 0)
+		expect.equal(state.reputation, reputation)
+	end)
 end

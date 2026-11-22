@@ -2,10 +2,11 @@
 local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 local Receiving = require(script.Parent.Receiving)
+local Reviews = require(script.Parent.Reviews)
 local SaveProfile = require(script.Parent.SaveProfile)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 14
+BusinessState.SCHEMA_VERSION = 15
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -154,6 +155,8 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		missedPickups = 0,
 		drivePastCustomers = 0,
 		supplier = BusinessState.newSupplier(),
+		reviews = Reviews.newReviews(),
+		likes = Reviews.newLikes(),
 	}
 end
 
@@ -275,6 +278,19 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.schemaVersion = 14
 		state.walkedOutCustomers = 0
 	end
+	if state.schemaVersion == 14 then
+		state.schemaVersion = 15
+		-- Schema 15 (CM2-G15): customer reviews, lot likes and the queue time of open orders.
+		state.reviews = Reviews.newReviews()
+		state.likes = Reviews.newLikes()
+		if type(state.customerOrders) == "table" then
+			for _, order in pairs(state.customerOrders) do
+				if type(order) == "table" then
+					order.queueSeconds = 0
+				end
+			end
+		end
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -283,6 +299,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		BusinessState.clearCarried(state)
 		BusinessState.clearReservations(state)
 		normalizeSchema10(state)
+		Reviews.normalize(state)
 		return validated(state)
 	end
 	if not isValidLegacyV1(state) then
@@ -309,6 +326,8 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.walkedOutCustomers = 0
 	state.questClaims = {}
 	addSchema10Fields(state)
+	state.reviews = Reviews.newReviews()
+	state.likes = Reviews.newLikes()
 	backfillMediumPrices(state)
 	applyStockMigration(state)
 	return validated(state)
@@ -367,6 +386,9 @@ local function validCustomerOrders(state): boolean
 			or not isFiniteInteger(order.parkingSpace)
 			or order.parkingSpace < 1
 			or (order.carriedBy ~= nil and not isFiniteInteger(order.carriedBy))
+			or not isFiniteInteger(order.queueSeconds)
+			or order.queueSeconds < 0
+			or order.queueSeconds > GameConfig.Reviews.MaxQueueSeconds
 		then
 			return false
 		end
@@ -658,6 +680,9 @@ function BusinessState.validate(state)
 		return false
 	end
 	if not isFiniteInteger(state.spent) or state.spent < 0 then
+		return false
+	end
+	if not Reviews.isValid(state) then
 		return false
 	end
 	for placementId, reservation in pairs(state.reservations) do

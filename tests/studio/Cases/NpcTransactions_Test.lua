@@ -219,4 +219,17 @@ return function(t)
 		expect.equal(code, "CompanyUnavailable")
 		expect.equal(service:sessionToken(COMPANY), nil)
 	end)
+
+	-- CM2-G15 Amendment 2: playtest step 42 compares the review window from the snapshot.
+	t.test("snapshotForTest copies the recent reviews", function()
+		local service, state = setup(0)
+		state.reviews.recent = { 4, 5 }
+		state.reviews.count = 2
+		local snapshot = service:snapshotForTest(COMPANY) :: any
+		expect.equal(#snapshot.reviewsRecent, 2)
+		expect.equal(snapshot.reviewsRecent[1], 4)
+		expect.equal(snapshot.reviewsRecent[2], 5)
+		snapshot.reviewsRecent[1] = 1
+		expect.equal(state.reviews.recent[1], 4)
+	end)
 end

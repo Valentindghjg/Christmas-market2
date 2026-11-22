@@ -323,12 +323,15 @@ function CustomerNpcService:_decide(visit)
 end
 
 function CustomerNpcService:_settle(visit): (boolean, any)
+	-- Queue time counts toward the customer's review (CM2-G15).
+	local now = self._now()
+	local queueSeconds = math.max(0, math.floor(now - (visit.queuedAt or now)))
 	local ok, result = self._companies:npcSettle(visit.companyId, visit.id, visit.placementId :: string, function(sale)
 		if sale.order then
 			self:_call("adoptCar", visit.plotId, visit.id, sale.order.orderNumber)
 			visit.orderNumber = sale.order.orderNumber
 		end
-	end)
+	end, queueSeconds)
 	if ok then
 		visit.sold = true
 		if visit.orderNumber ~= nil then

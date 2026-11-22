@@ -117,6 +117,18 @@ function StudioTestService.install(context)
 		return success(snapshot)
 	end
 
+	-- Clears today's likers of a shadow user's lot so a playtest can like it again (CM2-G15).
+	function commands.resetLikes(arg)
+		if not isShadow(arg) then
+			return failure("BadArgument")
+		end
+		local companyId = companyIdFor(arg)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		return success(companies:resetLikesForTest(companyId))
+	end
+
 	function commands.act(arg)
 		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
 			return failure("BadArgument")

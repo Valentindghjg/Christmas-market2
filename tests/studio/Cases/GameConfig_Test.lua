@@ -201,4 +201,56 @@ return function(t)
 		expect.equal(GameConfig.UnloadRetry.ShutdownSeconds, 18)
 		expect.truthy(GameConfig.UnloadRetry.ShutdownSeconds + 5 <= 25)
 	end)
+
+	-- CM2-G15: star thresholds, reputation per star and the lot sign's keep-clear box.
+	t.test("review thresholds and sign spot", function()
+		local Reviews = GameConfig.Reviews
+		expect.equal(#Reviews.StarMaxSeconds, 4)
+		for index = 2, #Reviews.StarMaxSeconds do
+			expect.truthy(Reviews.StarMaxSeconds[index] > Reviews.StarMaxSeconds[index - 1])
+		end
+		expect.equal(#Reviews.ReputationByStars, 5)
+		local Placement = GameConfig.Placement
+		local sign
+		for _, box in ipairs(Placement.KeepClear) do
+			if box.id == "Sign" then
+				sign = box
+			end
+		end
+		expect.truthy(sign ~= nil)
+		expect.truthy(sign.minX >= -Placement.LotHalfWidth and sign.maxX <= Placement.LotHalfWidth)
+		expect.truthy(sign.minZ >= -Placement.LotHalfDepth and sign.maxZ <= Placement.LotHalfDepth)
+		for _, box in ipairs(Placement.KeepClear) do
+			if box ~= sign then
+				local overlaps = sign.minX < box.maxX
+					and box.minX < sign.maxX
+					and sign.minZ < box.maxZ
+					and box.minZ < sign.maxZ
+				expect.falsy(overlaps)
+			end
+		end
+		expect.truthy(sign.minX <= Reviews.SignX - 4 and sign.maxX >= Reviews.SignX + 4)
+		expect.truthy(sign.minZ <= Reviews.SignZ - 0.4 and sign.maxZ >= Reviews.SignZ + 0.4)
+	end)
+
+	-- CM2-G15 Amendment 1: the decorative fences stay clear of the lot sign's box.
+	t.test("lot sign clears the decorative fences", function()
+		local Placement = GameConfig.Placement
+		local sign
+		for _, box in ipairs(Placement.KeepClear) do
+			if box.id == "Sign" then
+				sign = box
+			end
+		end
+		expect.truthy(sign ~= nil)
+		expect.equal(#Placement.DecorFences, 2)
+		for _, fence in ipairs(Placement.DecorFences) do
+			expect.truthy(math.abs(fence.x) <= Placement.LotHalfWidth)
+			expect.truthy(math.abs(fence.z) <= Placement.LotHalfDepth)
+			local closestX = math.clamp(fence.x, sign.minX, sign.maxX)
+			local closestZ = math.clamp(fence.z, sign.minZ, sign.maxZ)
+			local distance = math.sqrt((fence.x - closestX) ^ 2 + (fence.z - closestZ) ^ 2)
+			expect.truthy(distance > Placement.DecorFenceRadius)
+		end
+	end)
 end

@@ -214,11 +214,8 @@ GameConfig.Customers = {
 	BaseParkingSpaces = 2,
 	-- PROVISIONAL: how long a paid customer waits at the car for the tree.
 	PickupPatienceSeconds = 120,
-	-- PROVISIONAL: loading within this many seconds counts as fast service.
-	FastLoadSeconds = 30,
-	-- OBSERVED shape (+6 slow / +9 fast); scaled to this game's reputation curve.
-	SlowLoadReputation = 1,
-	FastLoadReputation = 2,
+	-- OBSERVED by arithmetic (REFERENCE header table)
+	SaleReputation = 0,
 	MissedPickupReputationPenalty = 1,
 	-- PROVISIONAL: a hired Lot Worker needs this long to carry a tree to the car.
 	WorkerLoadSeconds = 15,
@@ -292,6 +289,21 @@ GameConfig.Customers = {
 	},
 }
 
+-- Customer reviews, rating and likes (CM2-G15, docs/REFERENCE_GAME_LIVE_TEST.md §3.7).
+GameConfig.Reviews = {
+	-- PROVISIONAL: service seconds (queue + pickup) for 5, 4, 3 and 2 stars; slower is 1 star.
+	StarMaxSeconds = { 30, 50, 75, 105 },
+	-- Reputation by stars (index = stars): 3 stars = 6 OBSERVED, 5 stars = 9 INFERRED, rest PROVISIONAL.
+	ReputationByStars = { 2, 4, 6, 8, 9 },
+	RatingWindow = 50, -- PROVISIONAL
+	MaxQueueSeconds = 3600, -- technical bound
+	MaxLikesPerDay = 100, -- PROVISIONAL: distinct likers per lot per day
+	LikeLimit = { limit = 5, window = 60 }, -- PROVISIONAL, per player
+	-- PROVISIONAL: lot sign position in the lot frame.
+	SignX = 23,
+	SignZ = 23,
+}
+
 -- Receiving bays hold delivered stock until it is stocked onto the lot.
 GameConfig.Receiving = {
 	BayCount = 4, -- OBSERVED
@@ -341,7 +353,10 @@ GameConfig.Placement = {
 		{ id = "Pickup", minX = 20, maxX = 39, minZ = 10, maxZ = 16 }, -- G1 pickup row
 		{ id = "Spawn", minX = -31, maxX = -25, minZ = 11, maxZ = 17 },
 		{ id = "Bays", minX = 30, maxX = 40, minZ = -26, maxZ = 0 },
+		{ id = "Sign", minX = 18, maxX = 28, minZ = 21, maxZ = 25 }, -- lot sign (CM2-G15)
 	},
+	DecorFences = { { x = -34, z = 24 }, { x = 34, z = 24 } }, -- decorative FenceWooden clones, lot frame (WorldService)
+	DecorFenceRadius = 5.5, -- covers the FenceWooden footprint (10.28 x 0.34) from its centre at any yaw
 }
 
 return GameConfig

@@ -201,6 +201,7 @@ return function(t)
 			expiresAt = 220,
 			parkingSpace = 1,
 			carriedBy = 42,
+			queueSeconds = 0,
 		}
 		state.nextOrderNumber = 2
 		expect.truthy(BusinessState.validate(state))
@@ -930,5 +931,65 @@ return function(t)
 		expect.equal(secondResult[2], true)
 		expect.equal(secondResult[3], nil)
 		expect.equal(countOf(env.persistence.log, "release"), 1)
+	end)
+
+	-- CM2-G15: a like changes the liked save once per UTC day and never through handle().
+	t.test("likeLot changes the liked save once per day", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end)
+		local state = service:loadCompany("personal:42", 42)
+		local revision = state.revision
+		expect.falsy(service:isDirty("personal:42"))
+		local liked = service:likeLot("personal:42", 77)
+		expect.truthy(liked.ok)
+		expect.equal(liked.data.likes, 1)
+		expect.equal(liked.revision, revision + 1)
+		expect.equal(state.revision, revision + 1)
+		expect.truthy(service:isDirty("personal:42"))
+		local again = service:likeLot("personal:42", 77)
+		expect.falsy(again.ok)
+		expect.equal(again.errorCode, "AlreadyLikedToday")
+		expect.equal(again.revision, revision + 1)
+		expect.equal(state.likes.total, 1)
+		local viaHandle = service:handle(
+			"personal:42",
+			42,
+			{ version = 1, requestId = "like_000001", action = "Lot.Like", payload = { plotId = "Plot_01" } }
+		)
+		expect.equal(viaHandle.errorCode, "Forbidden")
+		expect.equal(state.likes.total, 1)
+		for _ = 1, GameConfig.Reviews.LikeLimit.limit do
+			expect.truthy(service:allowLike(88))
+		end
+		expect.falsy(service:allowLike(88))
+	end)
+
+	t.test("loading notifies one review", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end, function()
+			return 0
+		end)
+		local notified = {}
+		service:setReviewsHandler(function(companyId, reviews)
+			table.insert(notified, { companyId = companyId, reviews = reviews })
+		end)
+		local state = service:loadCompany("personal:42", 42)
+		state.layout.placements.fir = { speciesId = "FrasierFir", sizeId = "Small" }
+		service:simulateCustomerVisits()
+		local function request(id: string, action: string, payload)
+			return { version = 1, requestId = id, action = action, payload = payload }
+		end
+		expect.truthy(service:handle("personal:42", 42, request("carry_0001", "Order.Carry", { orderNumber = 1 })).ok)
+		expect.equal(#notified, 0)
+		local load =
+			service:handle("personal:42", 42, request("load_00001", "Order.Load", { orderNumber = 1, carNumber = 1 }))
+		expect.truthy(load.ok)
+		expect.equal(#notified, 1)
+		expect.equal(notified[1].companyId, "personal:42")
+		expect.equal(#notified[1].reviews, 1)
+		expect.equal(notified[1].reviews[1].stars, 5)
+		expect.equal(notified[1].reviews[1].textKey, "reviewGreat")
 	end)
 end

@@ -23,6 +23,8 @@ Protocol.Actions = {
 	OrderLoad = "Order.Load",
 	OrderRelease = "Order.Release",
 	SupplierSellBack = "Supplier.SellBack",
+	-- CM2-G15: like another save's lot at its sign (main.server.lua, never companies:handle).
+	LotLike = "Lot.Like",
 }
 
 local actionSet = {
@@ -42,6 +44,7 @@ local actionSet = {
 	[Protocol.Actions.ProgressionBuyHQ] = true,
 	[Protocol.Actions.CompanyGetSummary] = true,
 	[Protocol.Actions.QuestClaim] = true,
+	[Protocol.Actions.LotLike] = true,
 }
 
 -- Save-slot actions travel through their own remote (Remotes.SaveAction).
@@ -326,6 +329,15 @@ function Protocol.validateRequest(request)
 			or not GameConfig.Quests[request.payload.questId]
 		then
 			return false, "InvalidQuest"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.LotLike then
+		if not hasOnlyKeys(request.payload, { plotId = true }) then
+			return false, "UnexpectedField"
+		end
+		if table.find(GameConfig.PersonalPlotIds, request.payload.plotId) == nil then
+			return false, "InvalidPlotId"
 		end
 		return true, nil
 	end

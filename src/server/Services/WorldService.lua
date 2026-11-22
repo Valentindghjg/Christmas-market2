@@ -4,6 +4,7 @@ local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArtLibrary = require(Shared:WaitForChild("ArtLibrary"))
+local ArtPalette = require(Shared:WaitForChild("ArtPalette"))
 local AssetCatalog = require(Shared:WaitForChild("AssetCatalog"))
 local Economy = require(Shared:WaitForChild("Economy"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
@@ -406,6 +407,105 @@ local function buildReceiving(plot: Model)
 	setCollisionGroup(folder, STRUCTURE_GROUP)
 end
 
+local function paletteColor(key: string): Color3
+	return Color3.fromRGB(table.unpack(ArtPalette[key].rgb))
+end
+
+local function uiColor(key: string): Color3
+	return Color3.fromRGB(table.unpack(UiTheme.Colors[key]))
+end
+
+-- One line of the lot sign: a transparent TextLabel between scale heights top and bottom.
+local function signLine(parent: Instance, name: string, top: number, bottom: number, color: string): TextLabel
+	local padding = UiTheme.LotSign.padding
+	local label = Instance.new("TextLabel")
+	label.Name = name
+	label.BackgroundTransparency = 1
+	label.Position = UDim2.new(0, padding, top, 0)
+	label.Size = UDim2.new(1, -2 * padding, bottom - top, 0)
+	label.Font = Enum.Font[UiTheme.Fonts.Bold]
+	label.TextColor3 = uiColor(color)
+	label.Text = ""
+	label.Parent = parent
+	return label
+end
+
+-- One face of the lot sign board: name, rating and likes (CM2-G15).
+local function signFace(board: BasePart, name: string, face: Enum.NormalId)
+	local tokens = UiTheme.LotSign
+	local gui = Instance.new("SurfaceGui")
+	gui.Name = name
+	gui.Face = face
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = tokens.pixelsPerStud
+	gui.LightInfluence = 0
+	gui.MaxDistance = tokens.maxDistance
+	gui.Adornee = board
+	gui.Parent = board
+	local frame = Instance.new("Frame")
+	frame.Name = "Frame"
+	frame.Size = UDim2.fromScale(1, 1)
+	frame.BackgroundColor3 = uiColor("Panel")
+	frame.BorderSizePixel = 0
+	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, UiTheme.CornerRadius.Panel)
+	frame.Parent = gui
+	local nameLabel = signLine(frame, "Name", 0.04, 0.44, "Gold")
+	nameLabel.TextScaled = true
+	nameLabel.TextWrapped = false
+	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+	nameLabel.AutoLocalize = false
+	nameLabel:SetAttribute("LabelKind", "LotSignName")
+	local constraint = Instance.new("UITextSizeConstraint")
+	constraint.MaxTextSize = tokens.nameMaxTextSize
+	constraint.MinTextSize = tokens.nameMinTextSize
+	constraint.Parent = nameLabel
+	local rating = signLine(frame, "Rating", 0.46, 0.72, "Cream")
+	rating.TextSize = tokens.lineTextSize
+	rating:SetAttribute("LabelKind", "LotSignRating")
+	local likes = signLine(frame, "Likes", 0.72, 0.98, "Cream")
+	likes.TextSize = tokens.lineTextSize
+	likes:SetAttribute("LabelKind", "LotSignLikes")
+end
+
+-- The Part-built lot sign at the front of the lot (CM2-G15): two posts, a board with the
+-- company name, the rating and the likes on both faces, a snow cap and the Like prompt.
+local function lotSign(plot: Model)
+	local model = Instance.new("Model")
+	model.Name = "LotSign"
+	model.Parent = plot
+	local facing = plotFacing(plot)
+	local function at(x: number, y: number): Vector3
+		return lotPosition(plot, GameConfig.Reviews.SignX + x, GameConfig.Reviews.SignZ, y)
+	end
+	local smooth = Enum.Material.SmoothPlastic
+	part(model, "Post_L", Vector3.new(0.6, 6.6, 0.6), at(-3.5, 3.85), paletteColor("WoodWarmShade"), smooth)
+	part(model, "Post_R", Vector3.new(0.6, 6.6, 0.6), at(3.5, 3.85), paletteColor("WoodWarmShade"), smooth)
+	local boardCenter = at(0, 5.1)
+	local board = part(model, "Board", Vector3.new(8, 4, 0.4), boardCenter, paletteColor("WoodWarm"), smooth)
+	board.CFrame = CFrame.lookAt(boardCenter, boardCenter + Vector3.new(0, 0, facing))
+	local capCenter = at(0, 7.25)
+	local cap = part(model, "Cap", Vector3.new(8.6, 0.3, 0.8), capCenter, paletteColor("SnowWhite"), smooth)
+	cap.CFrame = CFrame.lookAt(capCenter, capCenter + Vector3.new(0, 0, facing))
+	cap.CanCollide = false
+	signFace(board, "SignFront", Enum.NormalId.Front)
+	signFace(board, "SignBack", Enum.NormalId.Back)
+	local likePrompt = Instance.new("ProximityPrompt")
+	likePrompt.Name = "LikePrompt"
+	likePrompt.ActionText = "Like"
+	likePrompt.ObjectText = "Lot sign"
+	likePrompt.KeyboardKeyCode = Enum.KeyCode.E
+	likePrompt.HoldDuration = 0
+	likePrompt.RequiresLineOfSight = false
+	likePrompt.MaxActivationDistance = GameConfig.Customers.InteractDistance - 2
+	likePrompt.Enabled = false
+	likePrompt:SetAttribute("PromptKind", "LikeLot")
+	likePrompt:SetAttribute("PlotId", plot.Name)
+	likePrompt.Parent = board
+	model.PrimaryPart = board
+	setCollisionGroup(model, STRUCTURE_GROUP)
+	WorldService.setLotSign(plot.Name, nil)
+end
+
 function WorldService.build()
 	local existing = workspace:FindFirstChild("ChristmasMarketWorld")
 	if existing then
@@ -474,9 +574,16 @@ function WorldService.build()
 		spawn.Transparency = 0.35
 		faceRoad(salesStand(plot, lotPosition(plot, -8, -4, 0.6)), facing)
 		faceRoad(checkout(plot, lotPosition(plot, 16, -14, 0.6)), facing)
-		cloneArt(plot, "Environment", AssetCatalog.Environment.FenceWooden, lotPosition(plot, -34, 24, 0.6))
-		cloneArt(plot, "Environment", AssetCatalog.Environment.FenceWooden, lotPosition(plot, 34, 24, 0.6))
+		for _, fence in GameConfig.Placement.DecorFences do
+			cloneArt(
+				plot,
+				"Environment",
+				AssetCatalog.Environment.FenceWooden,
+				lotPosition(plot, fence.x, fence.z, 0.6)
+			)
+		end
 		buildReceiving(plot)
+		lotSign(plot)
 	end
 
 	local assets = Instance.new("Folder")
@@ -1185,6 +1292,84 @@ function WorldService.setCheckoutPrompt(plotId: string, info): boolean
 		value:SetAttribute("Price", nil)
 	end
 	return true
+end
+
+export type LotSignView = {
+	nameText: string,
+	nameSource: string,
+	ownerName: string?,
+	ratingTenths: number?,
+	reviewCount: number,
+	likes: number,
+}
+
+local function lotSignBoard(plotId: string): BasePart?
+	local plot = findPlot(plotId)
+	local sign = plot and plot:FindFirstChild("LotSign")
+	local board = sign and sign:FindFirstChild("Board")
+	if board and board:IsA("BasePart") then
+		return board
+	end
+	return nil
+end
+
+-- Writes a view (or the free-lot text for nil) to both faces of the plot's lot sign
+-- (CM2-G15). Attributes are set before Text, so the client re-localizes from fresh values.
+-- False when the plot or its sign is missing.
+function WorldService.setLotSign(plotId: string, view: LotSignView?): boolean
+	local board = lotSignBoard(plotId)
+	if not board then
+		return false
+	end
+	for _, faceName in ipairs({ "SignFront", "SignBack" }) do
+		local gui = board:FindFirstChild(faceName)
+		local frame = gui and gui:FindFirstChild("Frame")
+		local nameLabel = frame and frame:FindFirstChild("Name")
+		local rating = frame and frame:FindFirstChild("Rating")
+		local likes = frame and frame:FindFirstChild("Likes")
+		if
+			not (nameLabel and nameLabel:IsA("TextLabel"))
+			or not (rating and rating:IsA("TextLabel"))
+			or not (likes and likes:IsA("TextLabel"))
+		then
+			return false
+		end
+		if view == nil then
+			nameLabel:SetAttribute("NameSource", "Free")
+			nameLabel:SetAttribute("OwnerName", nil)
+			nameLabel.Text = "Lot available"
+			rating:SetAttribute("Active", false)
+			rating:SetAttribute("RatingTenths", nil)
+			rating:SetAttribute("ReviewCount", nil)
+			rating.Text = ""
+			likes:SetAttribute("Active", false)
+			likes:SetAttribute("Likes", nil)
+			likes.Text = ""
+		else
+			nameLabel:SetAttribute("NameSource", view.nameSource)
+			nameLabel:SetAttribute("OwnerName", view.ownerName)
+			nameLabel.Text = view.nameText
+			rating:SetAttribute("Active", true)
+			rating:SetAttribute("RatingTenths", view.ratingTenths)
+			rating:SetAttribute("ReviewCount", view.reviewCount)
+			rating.Text = if view.reviewCount == 0 or view.ratingTenths == nil
+				then "No reviews yet"
+				else string.format("★ %.1f", (view.ratingTenths :: number) / 10)
+			likes:SetAttribute("Active", true)
+			likes:SetAttribute("Likes", view.likes)
+			likes.Text = string.format("Likes: %d", view.likes)
+		end
+	end
+	local likePrompt = board:FindFirstChild("LikePrompt")
+	if likePrompt and likePrompt:IsA("ProximityPrompt") then
+		likePrompt.Enabled = view ~= nil
+	end
+	return true
+end
+
+-- The part a player must stand near to like the lot (server reach check, CM2-G15).
+function WorldService.lotSignTarget(plotId: string): BasePart?
+	return lotSignBoard(plotId)
 end
 
 -- `<plot>.Customers`, where the walking customers' avatars live; nil without the plot.
