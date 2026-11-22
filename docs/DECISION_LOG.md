@@ -483,3 +483,11 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - UVF4-D1: a stale `saveLoading` status survived closing the picker after Play on the running save; `close` now clears the status.
 - Files: `src/shared/UiTheme.lua`, `src/client/UiKit.lua`, `src/client/SavePicker.client.lua`, `src/client/TeamPanel.client.lua`, `src/client/TeammateFinder.client.lua`, `tests/studio/Cases/UiTheme_Test.lua`, `docs/TEST_PLAN.md`.
 - Headless +1, total 398.
+
+## 2026-11-22 — CM2-UVF5 picker list edge (engineering)
+- Defect: the picker list was 285 px at 672 px safe height with a transparent footer; since the 136 px rows (UVF4) row 3 was invisible and nothing hinted at more content.
+- D1: `UiTheme.Dialogs.Picker.heightScale` 0.86 to 0.92: list 308 px, two whole rows plus 20 px of row 3 (compact layout unchanged).
+- D2: the list is a visible, clipping area (`Colors.ListWell`, opaque, `ClipsDescendants`, sand scrollbar), so a cut row ends visibly above the footer.
+- D3: list gap is the token `UiTheme.SaveRow.listGap` (8).
+- Files: `src/shared/UiTheme.lua`, `src/client/SavePicker.client.lua`, `tests/studio/Cases/UiTheme_Test.lua`, `docs/TEST_PLAN.md`.
+- Headless total 399. Result of playtest step 1 (Play click at play start): pending the Studio batch run (queue "Studio-Test ausstehend"); the reviewer fills it in here from PROGRESS after that run.
