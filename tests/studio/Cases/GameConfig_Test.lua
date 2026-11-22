@@ -78,4 +78,17 @@ return function(t)
 			expect.truthy(#tree.displayName > 0)
 		end
 	end)
+
+	-- CM2-R5: main's BindToClose waits SHUTDOWN_WAIT_SECONDS = 25.
+	t.test("unload retries fit the fail-closed window and the shutdown budget", function()
+		local sum = 0
+		for _, delay in ipairs(GameConfig.UnloadRetry.DelaysSeconds) do
+			expect.truthy(type(delay) == "number" and delay == math.floor(delay) and delay > 0)
+			sum += delay
+		end
+		expect.equal(sum, 78)
+		expect.truthy(sum <= GameConfig.SaveFailClosedSeconds)
+		expect.equal(GameConfig.UnloadRetry.ShutdownSeconds, 18)
+		expect.truthy(GameConfig.UnloadRetry.ShutdownSeconds + 5 <= 25)
+	end)
 end

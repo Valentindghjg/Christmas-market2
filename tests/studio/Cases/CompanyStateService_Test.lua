@@ -576,4 +576,252 @@ return function(t)
 		expect.falsy(missing)
 		expect.equal(missingReason, "CompanyUnavailable")
 	end)
+
+	-- CM2-R5: final-save retries. save logs every call and fails while failures > 0;
+	-- release logs every call. The injected wait records its values, then runs env.onWait.
+	local RETRY_ID = "save:42_" .. string.rep("0d", 8)
+
+	local function retryPersistence()
+		local persistence: any = { records = {}, log = {}, failures = 0 }
+		function persistence.load(_, companyId, ownerUserId)
+			local stored = persistence.records[companyId]
+			if stored then
+				return deepCopy(stored), nil
+			end
+			return BusinessState.new(companyId, ownerUserId), nil
+		end
+		function persistence.save(_, companyId, state)
+			table.insert(persistence.log, "save")
+			if persistence.failures > 0 then
+				persistence.failures -= 1
+				return false, "SaveFailed:Throttled"
+			end
+			persistence.records[companyId] = deepCopy(state)
+			return true, nil
+		end
+		function persistence.release()
+			table.insert(persistence.log, "release")
+			return true, nil
+		end
+		return persistence
+	end
+
+	local function retrySetup()
+		local env: any = { now = 100, waits = {}, onWait = nil }
+		env.persistence = retryPersistence()
+		env.service = Service.new(
+			env.persistence,
+			function()
+				return env.now
+			end,
+			nil,
+			function(seconds: number)
+				table.insert(env.waits, seconds)
+				if env.onWait then
+					env.onWait(seconds)
+				end
+			end
+		)
+		env.state = env.service:loadCompany(RETRY_ID, 42)
+		expect.truthy(env.state)
+		return env
+	end
+
+	local function countOf(list, value): number
+		local found = 0
+		for _, item in ipairs(list) do
+			if item == value then
+				found += 1
+			end
+		end
+		return found
+	end
+
+	local function keyCount(map): number
+		local found = 0
+		for _ in pairs(map) do
+			found += 1
+		end
+		return found
+	end
+
+	t.test("a final save that fails twice is retried and releases once after success", function()
+		local env = retrySetup()
+		expect.truthy(env.service:handle(RETRY_ID, 42, order("retry_a_1")).ok)
+		local cash, revision, pending = env.state.cash, env.state.revision, keyCount(env.state.pendingOrders)
+		expect.equal(pending, 1)
+		env.persistence.failures = 2
+		local retries = {}
+		local ok, reason = env.service:unloadCompany(RETRY_ID, {
+			onRetry = function(attempt: number)
+				table.insert(retries, attempt)
+			end,
+		})
+		expect.truthy(ok)
+		expect.equal(reason, nil)
+		expect.equal(table.concat(env.persistence.log, ","), "save,save,save,release")
+		expect.equal(table.concat(env.waits, ","), "2,4")
+		expect.equal(table.concat(retries, ","), "1,2")
+		local stored = env.persistence.records[RETRY_ID]
+		expect.equal(stored.cash, cash)
+		expect.equal(stored.revision, revision)
+		expect.equal(keyCount(stored.pendingOrders), pending)
+	end)
+
+	t.test("a final save that always fails keeps the lock and gives up", function()
+		local env = retrySetup()
+		env.persistence.failures = math.huge
+		local ok, reason = env.service:unloadCompany(RETRY_ID)
+		expect.falsy(ok)
+		expect.equal(reason, "SaveFailed")
+		expect.equal(countOf(env.persistence.log, "save"), 8)
+		expect.equal(countOf(env.persistence.log, "release"), 0)
+		expect.equal(table.concat(env.waits, ","), "2,4,8,16,16,16,16")
+		expect.falsy(env.service:hasSession(RETRY_ID))
+	end)
+
+	t.test("a lost lock ends the final save at once", function()
+		local env = retrySetup()
+		env.persistence.save = function()
+			table.insert(env.persistence.log, "save")
+			return false, "SessionLocked"
+		end
+		local ok, reason = env.service:unloadCompany(RETRY_ID)
+		expect.falsy(ok)
+		expect.equal(reason, "SessionLocked")
+		expect.equal(countOf(env.persistence.log, "save"), 1)
+		expect.equal(#env.waits, 0)
+		expect.equal(countOf(env.persistence.log, "release"), 1)
+	end)
+
+	t.test("a shutdown caps the final save retries", function()
+		local env = retrySetup()
+		env.onWait = function(seconds: number)
+			env.now += seconds
+		end
+		expect.equal(env.now, 100)
+		env.service:beginShutdown()
+		env.persistence.failures = math.huge
+		local ok, reason = env.service:unloadCompany(RETRY_ID)
+		expect.falsy(ok)
+		expect.equal(reason, "SaveFailed")
+		expect.equal(table.concat(env.waits, ","), "2,4,8,4")
+		expect.equal(countOf(env.persistence.log, "save"), 5)
+		expect.equal(countOf(env.persistence.log, "release"), 0)
+	end)
+
+	t.test("a retrying unload refuses loads and counts as unloading", function()
+		local env = retrySetup()
+		env.onWait = function()
+			coroutine.yield()
+		end
+		expect.truthy(env.service:handle(RETRY_ID, 42, order("retry_c_1")).ok)
+		local cash = env.state.cash
+		env.persistence.failures = 1
+		local unload = coroutine.create(function()
+			return env.service:unloadCompany(RETRY_ID)
+		end)
+		expect.truthy(coroutine.resume(unload))
+		expect.equal(coroutine.status(unload), "suspended")
+		local state, reason = env.service:loadCompany(RETRY_ID, 42)
+		expect.equal(state, nil)
+		expect.equal(reason, "SessionBusy")
+		expect.equal(env.service:unloadingCount(), 1)
+		expect.falsy(env.service:isAvailable(RETRY_ID))
+		expect.equal(env.service:handle(RETRY_ID, 42, order("retry_c_2")).errorCode, "CompanyUnavailable")
+		local result = nil
+		while coroutine.status(unload) ~= "dead" do
+			result = table.pack(coroutine.resume(unload))
+		end
+		expect.truthy(result)
+		expect.truthy(result[1])
+		expect.truthy(result[2])
+		expect.equal(env.service:unloadingCount(), 0)
+		local reloaded = env.service:loadCompany(RETRY_ID, 42)
+		expect.truthy(reloaded)
+		expect.equal(reloaded.cash, cash)
+	end)
+
+	t.test("abortOnFailure keeps a healthy session live", function()
+		local env = retrySetup()
+		expect.truthy(env.service:handle(RETRY_ID, 42, order("retry_abort_1")).ok)
+		env.persistence.failures = 1
+		local ok, reason = env.service:unloadCompany(RETRY_ID, { abortOnFailure = true })
+		expect.falsy(ok)
+		expect.equal(reason, "UnloadAborted")
+		expect.truthy(env.service:isAvailable(RETRY_ID))
+		expect.truthy(env.service:isDirty(RETRY_ID))
+		expect.equal(env.service:unloadingCount(), 0)
+		expect.equal(countOf(env.persistence.log, "release"), 0)
+		expect.equal(#env.waits, 0)
+		expect.truthy(env.service:flushDirty())
+		expect.truthy(env.service:unloadCompany(RETRY_ID))
+		expect.equal(countOf(env.persistence.log, "release"), 1)
+	end)
+
+	t.test("abortOnFailure waits for a failed session and during shutdown", function()
+		-- (i) A session that already failed closed is not called off.
+		local env = retrySetup()
+		env.persistence.failures = 1
+		env.now += GameConfig.SaveFailClosedSeconds
+		expect.falsy(env.service:flushDirty())
+		expect.truthy(env.service:isFailed(RETRY_ID))
+		env.persistence.failures = 1
+		expect.truthy(env.service:unloadCompany(RETRY_ID, { abortOnFailure = true }))
+		expect.equal(table.concat(env.waits, ","), "2")
+		expect.equal(countOf(env.persistence.log, "release"), 1)
+
+		-- (ii) Once shutdown began, a switch no longer calls the unload off.
+		local closing = retrySetup()
+		closing.service:beginShutdown()
+		closing.persistence.failures = 1
+		expect.truthy(closing.service:unloadCompany(RETRY_ID, { abortOnFailure = true }))
+		expect.equal(countOf(closing.persistence.log, "release"), 1)
+	end)
+
+	t.test("a second unload caller gets the result after the lock release", function()
+		local env = retrySetup()
+		env.onWait = function()
+			coroutine.yield()
+		end
+		env.persistence.release = function()
+			table.insert(env.persistence.log, "release")
+			coroutine.yield()
+			return true
+		end
+		env.persistence.failures = 1
+		local first = coroutine.create(function()
+			return env.service:unloadCompany(RETRY_ID)
+		end)
+		local second = coroutine.create(function()
+			return env.service:unloadCompany(RETRY_ID)
+		end)
+		expect.truthy(coroutine.resume(first))
+		expect.equal(coroutine.status(first), "suspended")
+		expect.equal(table.concat(env.waits, ","), "2")
+		expect.truthy(coroutine.resume(second))
+		expect.equal(coroutine.status(second), "suspended")
+		expect.equal(#env.waits, 2)
+		expect.equal(env.waits[1], 2)
+		expect.equal(env.waits[2], 0.1)
+		-- The first caller is suspended inside the lock release.
+		expect.truthy(coroutine.resume(first))
+		expect.equal(coroutine.status(first), "suspended")
+		expect.falsy(env.service:hasSession(RETRY_ID))
+		expect.equal(table.concat(env.persistence.log, ","), "save,save,release")
+		-- The second caller does not wake before the first one stored its results.
+		expect.truthy(coroutine.resume(second))
+		expect.equal(coroutine.status(second), "suspended")
+		local firstResult = table.pack(coroutine.resume(first))
+		expect.equal(coroutine.status(first), "dead")
+		expect.truthy(firstResult[1])
+		expect.equal(firstResult[2], true)
+		expect.equal(firstResult[3], nil)
+		local secondResult = table.pack(coroutine.resume(second))
+		expect.equal(coroutine.status(second), "dead")
+		expect.truthy(secondResult[1])
+		expect.equal(secondResult[2], true)
+		expect.equal(secondResult[3], nil)
+		expect.equal(countOf(env.persistence.log, "release"), 1)
+	end)
 end

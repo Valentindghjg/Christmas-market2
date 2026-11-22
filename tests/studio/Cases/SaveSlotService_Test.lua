@@ -64,6 +64,7 @@ return function(t)
 			filterCalls = 0,
 			activated = {},
 			deactivated = {},
+			companyWait = noWait,
 		}
 		local function clock(): number
 			return env.now
@@ -74,7 +75,9 @@ return function(t)
 		env.companyStore = fakeStore()
 		env.profileStore = fakeStore()
 		env.persistence = PersistenceService.new(env.companyStore, "job-a", clock, noWait)
-		env.companies = CompanyStateService.new(env.persistence, clock)
+		env.companies = CompanyStateService.new(env.persistence, clock, nil, function(seconds: number)
+			env.companyWait(seconds)
+		end)
 		env.plots = PlotService.new(plotIds or { "Plot_01", "Plot_02" })
 		local counter = 0
 		env.service = SaveSlotService.new({
@@ -541,7 +544,8 @@ return function(t)
 		expect.truthy(env.service:leave(USER, true))
 		expect.truthy(seen)
 		expect.equal(#seen.activeUserIds, 0)
-		expect.equal(seen.pendingCount, 1)
+		-- CM2-R5: the final leave plus its unloading session.
+		expect.equal(seen.pendingCount, 2)
 		expect.equal(env.service:pendingCount(), 0)
 		expect.equal(recordOf(env, saveId)._session, nil)
 	end)
@@ -616,5 +620,109 @@ return function(t)
 		expect.equal(SaveSlotService.profileKey(MAX_USER_ID), "profile:9223372036854774784")
 		expect.truthy(env.profileStore.records["profile:9223372036854774784"])
 		expect.equal(env.companyStore.records[PersistenceService.keyFor("save:" .. migratedId)].cash, 777)
+	end)
+
+	-- CM2-R5: a failed final save keeps the lock and is retried.
+	local function order(env, saveId: string, requestId: string)
+		local response = env.companies:handle("save:" .. saveId, USER, {
+			version = 1,
+			requestId = requestId,
+			action = "Supplier.PlaceOrder",
+			payload = { speciesId = "DouglasFir", sizeId = "Medium", quantity = 1 },
+		})
+		expect.truthy(response.ok)
+		return response
+	end
+
+	local function liveCash(): number
+		return GameConfig.StartingCash - (GameConfig.wholesaleFor("DouglasFir", "Medium") :: number)
+	end
+
+	t.test("a final leave whose save keeps failing keeps the lock", function()
+		local env = setup()
+		local saveId = starter(env)
+		expect.truthy(play(env, saveId))
+		order(env, saveId, "r5_leave_order_1")
+		local expiresAt = recordOf(env, saveId)._session.expiresAt
+		env.companyStore.failCount = 1000
+		local ok, reason = env.service:leave(USER, true)
+		expect.falsy(ok)
+		expect.equal(reason, "SaveFailed")
+		-- 8 attempts of 3 UpdateAsync calls each, and no release call.
+		expect.equal(env.companyStore.failCount, 976)
+		local record = recordOf(env, saveId)
+		expect.equal(record._session.jobId, "job-a")
+		expect.equal(record._session.expiresAt, expiresAt)
+		expect.equal(record.cash, GameConfig.StartingCash)
+		expect.equal(env.plots:freeCount(), 2)
+		expect.equal(#env.deactivated, 1)
+		expect.equal(env.deactivated[1][4], true)
+	end)
+
+	t.test("a switch whose final save fails keeps the player on the old save", function()
+		local env = setup()
+		local saveA = starter(env)
+		expect.truthy(play(env, saveA))
+		order(env, saveA, "r5_switch_order_1")
+		local saveB = create(env, "Lot B")
+		env.companyStore.failCount = 3
+		local ok, reason = play(env, saveB)
+		expect.falsy(ok)
+		expect.equal(reason, "SwitchSaveFailed")
+		expect.equal(env.service:activeCompanyId(USER), "save:" .. saveA)
+		expect.truthy(env.companies:isAvailable("save:" .. saveA))
+		expect.truthy(env.companies:isDirty("save:" .. saveA))
+		expect.equal(recordOf(env, saveA).cash, GameConfig.StartingCash)
+		expect.equal(recordOf(env, saveB), nil)
+		expect.equal(#env.deactivated, 0)
+		expect.equal(env.plots:getPlot("save:" .. saveA), "Plot_01")
+		expect.truthy(env.companies:flushDirty())
+		expect.equal(recordOf(env, saveA).cash, liveCash())
+		local played, playError, data = play(env, saveB)
+		expect.equal(playError, nil)
+		expect.truthy(played)
+		expect.equal(data.plotId, "Plot_01")
+		expect.equal(recordOf(env, saveA)._session, nil)
+	end)
+
+	t.test("a switch away from a failed save waits for its final save", function()
+		local env = setup()
+		local saveA = starter(env)
+		expect.truthy(play(env, saveA))
+		order(env, saveA, "r5_failed_order_1")
+		local saveB = create(env, "Lot B")
+		env.companyStore.failCount = 1000
+		env.now += GameConfig.SaveFailClosedSeconds
+		expect.falsy(env.companies:flushDirty(true))
+		expect.truthy(env.companies:isFailed("save:" .. saveA))
+		env.companyStore.failCount = 3
+		local played, playError = play(env, saveB)
+		expect.equal(playError, nil)
+		expect.truthy(played)
+		expect.equal(recordOf(env, saveA).cash, liveCash())
+		expect.equal(recordOf(env, saveA)._session, nil)
+	end)
+
+	t.test("pendingCount counts a retrying unload", function()
+		local env = setup()
+		local saveA = starter(env)
+		expect.truthy(play(env, saveA))
+		env.companyWait = coroutine.yield
+		env.companyStore.failCount = 3
+		local unload = coroutine.create(function()
+			return env.companies:unloadCompany("save:" .. saveA)
+		end)
+		expect.truthy(coroutine.resume(unload))
+		expect.equal(coroutine.status(unload), "suspended")
+		expect.equal(env.service:pendingCount(), 1)
+		expect.equal(env.companies:unloadingCount(), 1)
+		local result = nil
+		while coroutine.status(unload) ~= "dead" do
+			result = table.pack(coroutine.resume(unload))
+		end
+		expect.truthy(result)
+		expect.truthy(result[1])
+		expect.equal(result[2], true)
+		expect.equal(env.service:pendingCount(), 0)
 	end)
 end

@@ -69,7 +69,7 @@ return function(t)
 			return env.now
 		end
 		env.persistence = PersistenceService.new(env.companyStore, "job-a", clock, noWait)
-		env.companies = CompanyStateService.new(env.persistence, clock)
+		env.companies = CompanyStateService.new(env.persistence, clock, nil, function() end)
 		env.plots = PlotService.new({ "Plot_01", "Plot_02", "Plot_03" })
 		env.invites = InviteCodeService.new(env.inviteStore, clock, noWait, function(): number
 			env.nextCode += 1

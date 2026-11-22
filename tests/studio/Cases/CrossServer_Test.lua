@@ -141,7 +141,9 @@ return function(t)
 			stack.loads += 1
 			return originalLoad(...)
 		end
-		stack.companies = CompanyStateService.new(stack.persistence, clock)
+		stack.companies = CompanyStateService.new(stack.persistence, clock, nil, function(seconds: number)
+			env.companyWait(seconds)
+		end)
 		stack.plots = PlotService.new({ "Plot_01", "Plot_02", "Plot_03" })
 		stack.invites = InviteCodeService.new(env.inviteStore, clock, noWait, function(): number
 			return env.randomCode()
@@ -194,6 +196,7 @@ return function(t)
 			saveCounter = 0,
 			teleports = {},
 			names = { [OWNER] = "OwnerName", [FRIEND] = "FriendName", [THIRD] = "ThirdName", [FOURTH] = "FourthName" },
+			companyWait = noWait,
 		}
 		env.randomCode = function(): number
 			env.nextCode += 1
@@ -482,12 +485,34 @@ return function(t)
 		local env = setup()
 		local save = coopSave(env)
 		env.companyStore.failKeys[PersistenceService.keyFor(save.companyId)] = true
-		local ok = env.a.service:leave(OWNER, true)
+		local ok, reason = env.a.service:leave(OWNER, true)
 		expect.falsy(ok)
+		expect.equal(reason, "SaveFailed")
 		local held = mapValue(env, save.saveId)
 		expect.equal(held.jobId, "job-a")
 		expect.equal(held.releasedAt, nil)
 		expect.equal(held.hostUserId, OWNER)
+	end)
+
+	-- CM2-R5: the unloading thread renews the map entry before every retry wait.
+	t.test("a retrying final save renews the map entry", function()
+		local env = setup()
+		local save = coopSave(env)
+		env.companyWait = function(seconds: number)
+			env.now += seconds
+		end
+		env.now += 60
+		env.companyStore.failKeys[PersistenceService.keyFor(save.companyId)] = true
+		local ok, reason = env.a.service:leave(OWNER, true)
+		expect.falsy(ok)
+		expect.equal(reason, "SaveFailed")
+		expect.equal(env.now, 1138)
+		local held = mapValue(env, save.saveId)
+		expect.truthy(held)
+		expect.equal(held.jobId, "job-a")
+		expect.equal(held.hostUserId, OWNER)
+		expect.equal(held.releasedAt, nil)
+		expect.equal(held.renewedAt, 1122)
 	end)
 
 	t.test("renewal survives a store outage", function()

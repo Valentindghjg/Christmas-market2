@@ -74,7 +74,9 @@ return function(t)
 			stack.loads += 1
 			return originalLoad(...)
 		end
-		stack.companies = CompanyStateService.new(stack.persistence, clock)
+		stack.companies = CompanyStateService.new(stack.persistence, clock, nil, function(seconds: number)
+			env.companyWait(seconds)
+		end)
 		stack.plots = PlotService.new({ "Plot_01", "Plot_02", "Plot_03" })
 		stack.invites = InviteCodeService.new(env.inviteStore, clock, noWait, function(): number
 			return env.randomCode()
@@ -127,6 +129,7 @@ return function(t)
 			saveCounter = 0,
 			names = { [OWNER] = "OwnerName", [FRIEND] = "FriendName", [THIRD] = "ThirdName" },
 			wait = noWait,
+			companyWait = noWait,
 		}
 		-- Queued codes first, then 12345, 12346, ...
 		env.randomCode = function(): number
@@ -794,5 +797,47 @@ return function(t)
 		expect.equal(inviteOf(env, new).saveId, save.saveId)
 		expect.truthy(env.a.companies:isDirty(save.companyId))
 		expect.truthy(env.a.companies:isAvailable(save.companyId))
+	end)
+
+	-- CM2-R5: a Play during the last leaver's retrying final save never loads under it.
+	t.test("a member's play waits for the last leaver's retrying final save", function()
+		local env = setup()
+		local save = coopSave(env)
+		expect.truthy(join(env.a, FRIEND, save.code).ok)
+		expect.truthy(order(env.a, save.companyId, OWNER).ok)
+		local saveKey = PersistenceService.keyFor(save.companyId)
+		env.companyStore.failKeys[saveKey] = true
+		env.companyWait = coroutine.yield
+		local loads = env.a.loads
+		local leaver = coroutine.create(function()
+			return env.a.service:leave(OWNER, true)
+		end)
+		expect.truthy(coroutine.resume(leaver))
+		expect.equal(coroutine.status(leaver), "suspended")
+		local played, playError = env.a.service:play(FRIEND, save.saveId)
+		expect.falsy(played)
+		expect.equal(playError, "SessionBusy")
+		expect.equal(env.a.loads, loads)
+		local record = recordOf(env, save.saveId)
+		expect.equal(record.cash, GameConfig.StartingCash)
+		expect.equal(record._session.jobId, "job-a")
+		expect.equal(env.a.plots:getPlot(save.companyId), save.plotId)
+		-- CM2-R5 (Amendment R5-A1): the final leave plus its unloading session.
+		expect.equal(env.a.service:pendingCount(), 2)
+		env.companyStore.failKeys[saveKey] = nil
+		local result = nil
+		while coroutine.status(leaver) ~= "dead" do
+			result = table.pack(coroutine.resume(leaver))
+		end
+		expect.truthy(result)
+		expect.truthy(result[1])
+		expect.equal(result[2], true)
+		record = recordOf(env, save.saveId)
+		expect.equal(record.cash, GameConfig.StartingCash - (GameConfig.wholesaleFor("DouglasFir", "Medium") :: number))
+		expect.equal(record._session, nil)
+		local again, againError = env.a.service:play(FRIEND, save.saveId)
+		expect.equal(againError, nil)
+		expect.truthy(again)
+		expect.equal(env.a.companies:snapshotForTest(save.companyId).cash, recordOf(env, save.saveId).cash)
 	end)
 end
