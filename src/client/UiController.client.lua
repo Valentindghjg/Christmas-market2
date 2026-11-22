@@ -105,6 +105,8 @@ local cash = label(
 	UDim2.fromOffset(240, 26),
 	20
 )
+-- Named so playtests can compare the HUD cash with the server cash (CM2-S2).
+cash.Name = "CashLabel"
 local status = label(hud, "Christmas Market 2", UDim2.fromOffset(16, 44), UDim2.fromOffset(240, 22), 14)
 
 local panel = Instance.new("Frame")
@@ -194,7 +196,16 @@ local busy = { order = false, unload = false, place = false, sellBack = false }
 local function updateReady()
 	local ready = player:GetAttribute("CompanyReady") == true
 	local errorCode = player:GetAttribute("CompanyError")
-	if ready then
+	-- The ready lines carry a save name or a username and must not be auto-translated.
+	status.AutoLocalize = not ready
+	if ready and player:GetAttribute("ActiveSaveRole") == "Member" then
+		-- Members never receive the save name; the owner's username stands in for it.
+		local ownerName = player:GetAttribute("ActiveSaveOwnerName")
+		local plotId = tostring(player:GetAttribute("PlotId"))
+		status.Text = if type(ownerName) == "string"
+			then localizedFormat("hudSharedSaveStatus", ownerName, plotId)
+			else localizedFormat("hudSharedSaveStatusUnknown", plotId)
+	elseif ready then
 		status.Text = localizedFormat(
 			"hudSaveStatus",
 			tostring(player:GetAttribute("ActiveSaveName") or ""),
@@ -214,6 +225,8 @@ player:GetAttributeChangedSignal("CompanyReady"):Connect(updateReady)
 player:GetAttributeChangedSignal("CompanyError"):Connect(updateReady)
 player:GetAttributeChangedSignal("ActiveSaveId"):Connect(updateReady)
 player:GetAttributeChangedSignal("ActiveSaveName"):Connect(updateReady)
+player:GetAttributeChangedSignal("ActiveSaveRole"):Connect(updateReady)
+player:GetAttributeChangedSignal("ActiveSaveOwnerName"):Connect(updateReady)
 player:GetAttributeChangedSignal("PlotId"):Connect(updateReady)
 updateReady()
 

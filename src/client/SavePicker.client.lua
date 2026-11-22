@@ -1,7 +1,9 @@
 --!strict
 -- Save picker (CM2-S1): choose, create, rename and delete saves, and switch saves through
--- the "Saves" button. Mobile first; every button is at least 44 px tall. The UI only sends
--- Save.* requests; the server validates, filters names and owns every result.
+-- the "Saves" button. CM2-S2 adds the save size, joining by invite code and shared (Member)
+-- rows, which show the owner's username instead of the save name and can only be left.
+-- Mobile first; every button is at least 44 px tall. The UI only sends Save.* requests; the
+-- server validates, filters names and owns every result.
 local HttpService = game:GetService("HttpService")
 local LocalizationService = game:GetService("LocalizationService")
 local Players = game:GetService("Players")
@@ -26,7 +28,7 @@ local function localizedFormat(key: string, ...: any): string
 end
 
 local BUTTON_HEIGHT = 44
-local ROW_HEIGHT = 96
+local ROW_HEIGHT = 120
 local CREAM = Color3.fromRGB(255, 244, 217)
 local DARK_TEXT = Color3.fromRGB(30, 48, 35)
 local PANEL = Color3.fromRGB(20, 68, 48)
@@ -133,7 +135,9 @@ hint.Size = UDim2.new(1, 0, 0, 22)
 hint.TextWrapped = true
 hint.TextTruncate = Enum.TextTruncate.AtEnd
 
-local FOOTER_HEIGHT = BUTTON_HEIGHT * 2 + 8
+-- Four footer rows: size toggles, new save, join by code, status and back.
+local FOOTER_HEIGHT = BUTTON_HEIGHT * 4 + 24
+local FOOTER_ROW = BUTTON_HEIGHT + 8
 local list = Instance.new("ScrollingFrame")
 list.Name = "SaveList"
 list.BackgroundTransparency = 1
@@ -155,15 +159,52 @@ empty.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
 empty.TextWrapped = true
 empty.Visible = false
 
+-- Footer row 1: the size of the next new save (default Solo).
+local SIZES = { "Solo", "Duo", "Trio", "Quad" }
+local selectedSize = "Solo"
+local sizeButtons: { [string]: TextButton } = {}
+for index, size in ipairs(SIZES) do
+	local button = textButton(picker, "Size_" .. size, localized("saveSize" .. size), SAND)
+	button.AnchorPoint = Vector2.new(0, 1)
+	button.Position = UDim2.new((index - 1) * 0.25, (index - 1) * 2, 1, -(FOOTER_ROW * 3))
+	button.Size = UDim2.new(0.25, -6, 0, BUTTON_HEIGHT)
+	sizeButtons[size] = button
+end
+
+local function updateSizeButtons()
+	for size, button in pairs(sizeButtons) do
+		button.BackgroundColor3 = if size == selectedSize then GOLD else SAND
+	end
+end
+updateSizeButtons()
+for size, button in pairs(sizeButtons) do
+	button.Activated:Connect(function()
+		selectedSize = size
+		updateSizeButtons()
+	end)
+end
+
+-- Footer row 2: new save.
 local newName = textBox(picker, "NewSaveName", localized("saveNamePlaceholder"))
 newName.AnchorPoint = Vector2.new(0, 1)
-newName.Position = UDim2.new(0, 0, 1, -(BUTTON_HEIGHT + 8))
+newName.Position = UDim2.new(0, 0, 1, -(FOOTER_ROW * 2))
 newName.Size = UDim2.new(0.6, -4, 0, BUTTON_HEIGHT)
 
 local createSave = textButton(picker, "CreateSave", localized("saveNew"), GOLD)
 createSave.AnchorPoint = Vector2.new(1, 1)
-createSave.Position = UDim2.new(1, 0, 1, -(BUTTON_HEIGHT + 8))
+createSave.Position = UDim2.new(1, 0, 1, -(FOOTER_ROW * 2))
 createSave.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
+
+-- Footer row 3: join a friend's save by invite code.
+local joinCode = textBox(picker, "JoinCode", localized("joinCodePlaceholder"))
+joinCode.AnchorPoint = Vector2.new(0, 1)
+joinCode.Position = UDim2.new(0, 0, 1, -FOOTER_ROW)
+joinCode.Size = UDim2.new(0.6, -4, 0, BUTTON_HEIGHT)
+
+local joinSave = textButton(picker, "JoinSave", localized("joinButton"), GOLD)
+joinSave.AnchorPoint = Vector2.new(1, 1)
+joinSave.Position = UDim2.new(1, 0, 1, -FOOTER_ROW)
+joinSave.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
 
 local status = textLabel(picker, "PickerStatus", "", 14)
 status.AnchorPoint = Vector2.new(0, 1)
@@ -304,6 +345,22 @@ local function rename(entry, box: TextBox)
 	refreshList()
 end
 
+-- A shared save whose Leave button was tapped once.
+local leaveArmedSaveId: string? = nil
+
+local function leaveTeam(entry)
+	local response = request("Save.LeaveTeam", { saveId = entry.saveId })
+	if response == nil then
+		return
+	end
+	if not response.ok then
+		showError(response.errorCode)
+	else
+		status.Text = ""
+	end
+	refreshList()
+end
+
 local function buildRow(index: number, entry)
 	local row = Instance.new("Frame")
 	row.Name = "SaveRow_" .. index
@@ -319,7 +376,8 @@ local function buildRow(index: number, entry)
 	padding.PaddingRight = UDim.new(0, 8)
 	padding.Parent = row
 
-	local renaming = renamingSaveId == entry.saveId
+	local member = entry.role == "Member"
+	local renaming = not member and renamingSaveId == entry.saveId
 	local nameBox: TextBox? = nil
 	if renaming then
 		local box = textBox(row, "NameBox", localized("saveNamePlaceholder"))
@@ -327,7 +385,12 @@ local function buildRow(index: number, entry)
 		box.Size = UDim2.new(1, 0, 0, 34)
 		nameBox = box
 	else
-		local nameLabel = textLabel(row, "SaveName", entry.name, 18)
+		-- A member never receives the save name; the owner's username stands in for it.
+		local shownName = if not member
+			then entry.name
+			elseif type(entry.ownerName) == "string" then localizedFormat("sharedSaveName", entry.ownerName)
+			else localized("sharedSaveNameUnknown")
+		local nameLabel = textLabel(row, "SaveName", shownName, 18)
 		nameLabel.Size = UDim2.new(0.6, 0, 0, 34)
 		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 		-- Player-chosen names are never auto-translated.
@@ -341,6 +404,17 @@ local function buildRow(index: number, entry)
 		sub.TextTruncate = Enum.TextTruncate.AtEnd
 	end
 
+	-- Solo, or a co-op save with its seat count.
+	local seats = if type(entry.seats) == "number" then entry.seats else 1
+	local kindText = if entry.size == "Solo" or seats <= 1
+		then localized("saveRowSolo")
+		elseif member then localizedFormat("saveRowCoopMember", seats)
+		else localizedFormat("saveRowCoopOwner", seats)
+	local kind = textLabel(row, "SaveKind", kindText, 13)
+	kind.Position = UDim2.fromOffset(0, 34)
+	kind.Size = UDim2.new(1, 0, 0, 22)
+	kind.TextTruncate = Enum.TextTruncate.AtEnd
+
 	local function rowButton(name: string, text: string, color: Color3, column: number): TextButton
 		local value = textButton(row, name, text, color)
 		value.AnchorPoint = Vector2.new(0, 1)
@@ -350,12 +424,30 @@ local function buildRow(index: number, entry)
 	end
 
 	local playButton = rowButton("Play", localized("savePlay"), GOLD, 0)
-	local renameButton = rowButton("Rename", localized(if renaming then "saveRenameConfirm" else "saveRename"), SAND, 1)
-	local deleteButton = rowButton("Delete", localized(if renaming then "saveCancel" else "saveDelete"), SAND, 2)
-
 	playButton.Activated:Connect(function()
 		play(entry)
 	end)
+
+	if member then
+		-- Members cannot rename; they leave instead of deleting (two taps).
+		local armed = leaveArmedSaveId == entry.saveId
+		local leaveButton = rowButton("Leave", localized(if armed then "teamLeaveConfirm" else "saveLeave"), SAND, 2)
+		leaveButton.Activated:Connect(function()
+			if leaveArmedSaveId ~= entry.saveId then
+				leaveArmedSaveId = entry.saveId
+				redrawRows()
+				return
+			end
+			leaveArmedSaveId = nil
+			leaveTeam(entry)
+		end)
+		row.Parent = list
+		return
+	end
+
+	local renameButton = rowButton("Rename", localized(if renaming then "saveRenameConfirm" else "saveRename"), SAND, 1)
+	local deleteButton = rowButton("Delete", localized(if renaming then "saveCancel" else "saveDelete"), SAND, 2)
+
 	renameButton.Activated:Connect(function()
 		if renaming and nameBox then
 			rename(entry, nameBox)
@@ -426,11 +518,12 @@ close = function()
 	picker.Visible = false
 	closeDeleteConfirm()
 	renamingSaveId = nil
+	leaveArmedSaveId = nil
 	savesButton.Visible = true
 end
 
 createSave.Activated:Connect(function()
-	local response = request("Save.Create", { name = newName.Text })
+	local response = request("Save.Create", { name = newName.Text, size = selectedSize })
 	if response == nil then
 		return
 	end
@@ -440,6 +533,25 @@ createSave.Activated:Connect(function()
 	end
 	newName.Text = ""
 	status.Text = ""
+	selectedSize = "Solo"
+	updateSizeButtons()
+	refreshList()
+end)
+
+-- Joins by code, then plays the joined save at once.
+joinSave.Activated:Connect(function()
+	local code = string.gsub(joinCode.Text, "%s", "")
+	local response = request("Save.Join", { code = code })
+	if response == nil then
+		return
+	end
+	if not response.ok or type(response.data) ~= "table" then
+		showError(response.errorCode)
+		return
+	end
+	joinCode.Text = ""
+	status.Text = ""
+	play({ saveId = response.data.saveId })
 	refreshList()
 end)
 
