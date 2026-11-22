@@ -1,6 +1,6 @@
 # Claude Code — 50-task development backlog
-Updated: 2026-11-22 (planner update after the batch run UVF5/UVF6/CM2-12: PC-3 reopened, PC-5 added, PC-2 extended; follow-ups CM2-ART1, CM2-UVF7, CM2-12W)
-Status: the binding order is "Launch order" below. Gate A orders 1–9, 5b CM2-UV and 5c–5e are done (PC size); CM2-UVF5 and CM2-UVF6 are committed and wait in "Studio-Test ausstehend" for PC-3; CM2-12 is modelled (branch N) and waits for PC-2 and PC-5; CM2-13a (HQ tiers) is modelled (branch N) and waits for PC-2 (its Studio steps 3–4 passed in the CM2-RF run); CM2-RF is done; CM2-13b is the next MODEL task; the phone, tablet and 1080p checks wait for PC-4 (CM2-UV2). The next run starts with the block "Next hasseln starts here" at the top of the launch order. GitHub issues stay open until the owner closes them.
+Updated: 2026-11-22 (planner refresh at the start of the resumed hasseln: PC-3 and PC-5 resolved, CM2-RF done, CM2-13b next)
+Status: the binding order is "Launch order" below. Gate A orders 1–9 and 5b–5g, 5i (CM2-UV, CM2-UVF1–UVF7) and 9a CM2-RF (bf88786, 3dea485, docs 536f9b3) are done; "Studio-Test ausstehend" is empty. CM2-12 (trees) and CM2-13a (HQ tiers) are modelled on branch N and wait only for the PC-2 import (CM2-12 playtest step 1 and CM2-13a playtest steps 3–4 PASS). Next task: **CM2-13b** (MODEL), then CM2-N2. The phone, tablet and 1080p checks wait for PC-4 (CM2-UV2). Open PC entries: PC-1, PC-2, PC-4. The next run starts with the block "Next hasseln starts here" at the top of the launch order. GitHub issues stay open until the owner closes them.
 
 ## Für den Owner am PC
 Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisions). Written by the `planner` during `hasseln` in the fixed format from `.claude/skills/hasseln/SKILL.md`; the next run checks each entry's `Prüfen` field first and starts with its `Danach` task.
@@ -15,7 +15,7 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
   3. Nicht committen; der Ordner bleibt lokal (öffentliches Repo).
 - Prüfen: `docs/references/roblox-game/` enthält mindestens 5 Bilddateien.
 - Blockiert: keine (der Modeler nutzt bis dahin die Beschreibungen in `docs/REFERENCE_GAME_LIVE_TEST.md`)
-- Danach: CM2-13 (nächster offener MODEL-Task; CM2-12 wurde nach den Textbeschreibungen modelliert)
+- Danach: der nächste offene MODEL-Task (CM2-13b, dann CM2-14; CM2-12 und CM2-13a wurden nach den Textbeschreibungen und `docs/art/quality-reference/` modelliert)
 - WIP-Branch: none
 - Seit: 2026-11-22, Owner-Gespräch
 
@@ -31,35 +31,19 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
      - Expiration: 2027-02-01.
   3. In PowerShell: `setx ROBLOX_OPEN_CLOUD_API_KEY "<key>"` und `setx CM2_ART_CREATOR "user:<deine User-ID>"` (oder `"group:<Gruppen-ID>"`). Danach Claude Code neu starten. Den Key nie in den Chat oder ins Repo kopieren.
   4. Alternative ohne Key: jedes Modell eines MODEL-Tasks per Studio-Import einbinden, wie in `assets/art/README.md` beschrieben.
+  5. Nebenbei (kleine Aufräumarbeit aus dem erledigten PC-5, blockiert nichts): den Ordner `C:\assets` löschen. Darin liegen nur Baum-Vorschaubilder, die ein inzwischen behobener Tool-Fehler (CM2-ART1) außerhalb des Repos geschrieben hat.
 - Prüfen: `lune run tools/art/art.luau doctor` endet mit Exit-Code 0.
-- Blockiert: CM2-12 Plan-Schritte 1, 6 und 7 Branch I (Probe, Upload/Normalize, die 14 `.rbxm`-Dateien) und Playtest-Schritte 2–3; CM2-12W (braucht die 14 `.rbxm`); das Einbinden der Meshes für CM2-13, CM2-14, CM2-10, CM2-44 (Modellieren und Blender-Renders laufen weiter)
-- Danach: CM2-12 Branch I: zuerst der Art-Probe-Lauf (`lune run tools/art/art.luau doctor`, dann `probe`; `docs/plans/CM2-AP.md`, „After PC-2“), dann Upload/Normalize der 14 Bäume und die Playtest-Schritte 1–3 (Schritt 1 braucht auch PC-5). CM2-12 wird erst nach diesem Import und einem bestandenen Playtest abgehakt; danach CM2-12W.
-- WIP-Branch: none (CM2-12 Branch N liegt auf `main`: b36748b, 7673dea)
+- Blockiert: CM2-12 Plan-Schritte 1, 6 und 7 Branch I (Probe, Upload/Normalize, die 14 `.rbxm`-Dateien) und Playtest-Schritte 2–3; CM2-12W (braucht die 14 `.rbxm`); CM2-13a Plan-Schritt 5 Branch I (Upload/Normalize, die 4 `.rbxm`) und Playtest-Schritt 2; CM2-13W; das Einbinden der Meshes für CM2-13b, CM2-14, CM2-10, CM2-44 (Modellieren und Blender-Renders laufen weiter)
+- Danach: CM2-12 Branch I: zuerst der Art-Probe-Lauf (`lune run tools/art/art.luau doctor`, dann `probe`; `docs/plans/CM2-AP.md`, „After PC-2“), dann Upload/Normalize der 14 Bäume und die Playtest-Schritte 2–3 (Schritt 1 ist seit PC-5 bestanden). CM2-12 wird erst nach diesem Import und einem bestandenen Playtest abgehakt; danach der CM2-13a-Import (Plan-Schritt 5 Branch I, Playtest-Schritt 2), dann CM2-12W.
+- WIP-Branch: none (CM2-12 Branch N liegt auf `main`: b36748b, 7673dea; CM2-13a Branch N: 67aaad4)
 - Seit: 2026-11-22, hasseln
-
-### PC-3 Studio-Fenster im Vordergrund lassen (Screenshots und Taps scheitern)
-- Status: offen
-- Art: studio
-- Problem: PC-3 galt seit CM2-UV (a) als erledigt, kam aber am selben Tag wieder: in 3 von 5 Studio-Läufen war der Play-Client-Viewport 1x1 und `screen_capture` lief in „Request timeout“ (Batch UVF1/UVF2/UVF4 klappte erst im zweiten Versuch; Batch UVF5/UVF6/CM2-12 scheiterte auch im zweiten Versuch), wahrscheinlich wie zuvor, weil Studio nicht im Vordergrund oder verdeckt war oder der Bildschirm gesperrt war.
-- Deine Schritte:
-  1. Roblox Studio mit dem Projekt-Place auf dem Hauptmonitor öffnen und maximieren.
-  2. Claude Code und das Terminal auf einen zweiten Monitor legen. Ohne zweiten Monitor: Claude Code während des Laufs nicht über Studio holen.
-  3. Studio während des Laufs nicht minimieren, nicht verdecken und nicht anklicken.
-  4. Bildschirmsperre, Bildschirmschoner und Ruhezustand abschalten: Windows-Einstellungen → System → Bildschirm und Energie → „Bildschirm ausschalten“ und „Energiesparmodus“ auf „Nie“; Personalisierung → Sperrbildschirm → Bildschirmschoner „(Kein)“.
-  5. Im Chat kurz schreiben: „PC-3: Studio vorn“.
-- Prüfen: der nächste Lauf startet mit dem (a)-Gate aus CM2-UV (Launch order 5b (a)): in Play liefert `workspace.CurrentCamera.ViewportSize` mehr als 100x100 und ein `screen_capture` zeigt die 3D-Welt, beides im selben Lauf. Läuft danach ein Capture zweimal in Folge in den Timeout, geht PC-3 wieder auf offen, mit dem Schritt, an dem es stoppte. Verlauf: früher CM2-G20, S1, S2, S3, CM2-40, G7, G14, N1 fix-2; erledigt 2026-11-22 mit CM2-UV (a) (1564x730); wieder offen nach den Batch-Läufen vom 2026-11-22 (PROGRESS, Batch CM2-12/UVF5/UVF6).
-- Blockiert: CM2-UVF5 Playtest-Schritte 1–5 und CM2-UVF6 Schritte 1–6 (Queue „Studio-Test ausstehend“), der Studio-Teil von CM2-UVF7 und jedes weitere Screenshot- oder Tap-Kriterium (auch CM2-UV2, zusammen mit PC-4). `runPlaytest {mode="full"}` und andere nicht-visuelle Studio-Prüfungen laufen auch mit 1x1 weiter.
-- Danach: der Studio-Queue-Batch (CM2-UVF5, CM2-UVF6 und was bis dahin in der Queue steht)
-- WIP-Branch: none
-- Seit: 2026-11-22, hasseln (wieder geöffnet 2026-11-22)
-- Nachweis 2026-11-22 (Batch CM2-UVF5/UVF6/UVF7, HEAD 88d88d6 plus Arbeitsstand): das (a)-Gate ist bestanden: Viewport 1564x730, `screen_capture` zeigt die 3D-Welt, keine Timeouts, kein Play-Neustart (PROGRESS). Statusänderung überlässt der Reviewer der Planner-Aktualisierung am Laufende.
 
 ### PC-4 Geräte-Emulator in einem begleiteten Lauf umschalten (Telefon, Tablet, 1080p)
 - Status: offen
 - Art: studio
 - Problem: Der Studio-MCP hat keine Steuerung für den Device Emulator; in CM2-UV liefen deshalb alle Punkte nur in der PC-Größe 1564x730, und Telefon (667x375), Tablet (1024x768) und genau 1920x1080 sind BLOCKED.
 - Deine Schritte:
-  1. Wie bei PC-3: Studio mit dem Projekt-Place maximiert im Vordergrund, Bildschirm an und entsperrt.
+  1. Wie beim erledigten PC-3: Studio mit dem Projekt-Place maximiert im Vordergrund, Bildschirm an und entsperrt, Claude Code nicht über Studio.
   2. Für einen Lauf am PC bleiben und zu Beginn im Chat schreiben: „PC-4: ich bin da“.
   3. Wenn der Lauf schreibt „Bitte Gerät <Name> wählen“: in Studio im Reiter „Test“ den „Device“-Emulator einschalten, oben im Viewport das genannte Gerät wählen (Telefon: iPhone 8 bzw. ein Gerät mit 667x375; Tablet: iPad mit 1024x768; PC: „1080p“ mit 1920x1080), Querformat einstellen und im Chat „fertig“ schreiben. Danach Studio nicht mehr anklicken.
   4. Am Ende, wenn der Lauf es sagt, den Emulator wieder ausschalten.
@@ -69,23 +53,32 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
 - WIP-Branch: none
 - Seit: 2026-11-22, hasseln
 
-### PC-5 Rojo neu starten: ArtAssets.Trees fehlt im Live-Place
-- Status: offen
-- Art: rojo
-- Problem: Der Live-Place in Studio hat kein `ReplicatedStorage.ArtAssets.Trees`, obwohl beide Builds es enthalten (`assets/art/rbxm/Trees/init.meta.json`, Commit 1c63be8); es liefen zwei `rojo.exe`-Prozesse, und der Studio-MCP kann `rojo serve` weder neu starten noch das Rojo-Plugin neu verbinden.
+#### Erledigt
+
+### PC-3 Studio-Fenster im Vordergrund lassen (Screenshots und Taps scheitern)
+- Status: erledigt 2026-11-22
+- Art: studio
+- Problem: In 3 von 5 Studio-Läufen am 2026-11-22 war der Play-Client-Viewport 1x1 und `screen_capture` lief in „Request timeout“ (Studio nicht im Vordergrund, verdeckt oder Bildschirm gesperrt).
 - Deine Schritte:
-  1. Beide Rojo-Prozesse beenden: in PowerShell `Get-Process rojo | Stop-Process` (oder im Task-Manager beide „rojo.exe“ beenden).
-  2. Im Projektordner `rojo serve default.project.json` starten und das Fenster offen lassen.
-  3. In Studio im Rojo-Plugin auf „Connect“ klicken (Standard `localhost:34872`) und warten, bis es verbunden ist.
-  4. Den Ordner `C:\assets` löschen. Darin liegen nur Baum-Vorschaubilder, die ein Tool-Fehler außerhalb des Repos geschrieben hat (CM2-ART1 behebt den Fehler); sonst nichts.
-- Prüfen: im Edit-DataModel zeigt der Studio-MCP `ReplicatedStorage.ArtAssets.Trees`, und `C:\assets` existiert nicht mehr.
-- Blockiert: CM2-12 Playtest-Schritt 1
-- Danach: CM2-12 Studio-Nachprüfung (zusammen mit PC-2, siehe dort)
+  1. Roblox Studio mit dem Projekt-Place auf dem Hauptmonitor maximiert lassen; Claude Code und das Terminal auf einen zweiten Monitor oder jedenfalls nicht über Studio.
+  2. Studio während des Laufs nicht minimieren, verdecken oder anklicken; Bildschirmsperre, Bildschirmschoner und Ruhezustand bleiben aus.
+- Prüfen: (a)-Gate aus CM2-UV (Launch order 5b (a)): in Play `workspace.CurrentCamera.ViewportSize` > 100x100 und ein `screen_capture` zeigt die 3D-Welt, beides im selben Lauf. Läuft später ein Capture zweimal in Folge in den Timeout, legt der Planner einen neuen PC-Eintrag mit diesen Schritten an und nennt den Schritt, an dem es stoppte.
+- Blockiert: none
+- Danach: der Studio-Queue-Batch CM2-UVF5/UVF6/UVF7 (erledigt 2026-11-22, alle Schritte PASS)
+- WIP-Branch: none
+- Seit: 2026-11-22, hasseln (erledigt mit CM2-UV (a), am selben Tag wieder geöffnet, erneut erledigt 2026-11-22)
+- Erledigt-Grund: das Prüfen-Feld ist erfüllt: im Batch CM2-UVF5/UVF6/UVF7 (HEAD 88d88d6) bestand das (a)-Gate (Viewport 1564x730, Capture zeigt die 3D-Welt, keine Timeouts, kein Play-Neustart), und die beiden folgenden Studio-Läufe (CM2-13a, CM2-RF full 41/41 und soak 7/7) liefen ohne Capture-Timeout (PROGRESS).
+
+### PC-5 Rojo neu starten: ArtAssets.Trees fehlt im Live-Place
+- Status: erledigt 2026-11-22
+- Art: rojo
+- Problem: Der Live-Place hatte kein `ReplicatedStorage.ArtAssets.Trees`, obwohl beide Builds es enthalten; es liefen zwei `rojo.exe`-Prozesse, und der Studio-MCP kann `rojo serve` weder neu starten noch das Plugin neu verbinden.
+- Deine Schritte: erledigt (Rojo neu gestartet, `rojo serve default.project.json` hört auf `localhost:34872`, Plugin verbunden). Offen ist nur das Löschen von `C:\assets`; das steht jetzt als Schritt 5 in PC-2 und blockiert nichts.
+- Prüfen: im Edit-DataModel zeigt der Studio-MCP `ReplicatedStorage.ArtAssets` mit Buildings, Environment, Props, NPCs, Vehicles und Trees (geprüft 2026-11-22 zu Beginn des fortgesetzten Laufs).
+- Blockiert: none (CM2-12 Playtest-Schritt 1 ist damit PASS)
+- Danach: CM2-12 Studio-Nachprüfung Schritte 2–3, die nur noch PC-2 brauchen (siehe dort)
 - WIP-Branch: none
 - Seit: 2026-11-22, hasseln
-
-#### Erledigt
-- none (PC-3 was resolved on 2026-11-22 and reopened the same day; see the open PC-3 entry)
 
 ## Studio-Test ausstehend
 Queue of tasks whose Studio playtest is deferred to the next batch run (skill `cm2-task`, step 3). The reviewer adds entries and removes each one after its batch steps pass.
@@ -264,16 +257,15 @@ If Gate A slips, the friends test moves to 2026-11-27 and Gate B keeps its date 
 ### Launch order
 Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or absorbs; their GitHub issues are closed when this line is done.
 
-**Next hasseln starts here** (planner update 2026-11-22 after the batch run UVF5/UVF6/CM2-12; open: PC-1, PC-2, PC-3 reopened, PC-4, PC-5). Lines 5c–5e are done; 5f/5g (CM2-UVF5, CM2-UVF6) are committed and wait only for their Studio steps. Then the numbered order continues with its first open line.
+**Next hasseln starts here** (planner refresh 2026-11-22 at the start of the resumed run; open: PC-1, PC-2, PC-4; PC-3 and PC-5 resolved). Lines 5b–5g, 5i and 9a are done and "Studio-Test ausstehend" is empty. Head of the order: **CM2-13b**.
 1. **PC follow-ups first**, each only once its PC entry checks out (hasseln step 1):
-   - (a) **Studio queue batch** CM2-UVF5 (steps 1–5) and CM2-UVF6 (steps 1–6), plus CM2-UVF7's Studio part if queued: Danach of PC-3; the batch starts with the CM2-UV (a) gate. Tick 5f/5g when their steps pass.
-   - (b) **CM2-12 import and Studio re-check** (MODEL section): Danach of PC-2 and PC-5 (probe, upload/normalize, 14 `.rbxm`, playtest steps 1–3; step 1 needs only PC-5). Tick CM2-12 after the import and a passing playtest, then **CM2-12W** (MODEL section).
-   - (c) **CM2-UV2** (line 5h; Danach of PC-4) in the first run where the owner is at the PC; until then hasseln skips it.
-2. **CM2-ART1** (MODEL section, tooling; ready now), then **CM2-UVF7** (line 5i; ready now, its Studio overlap check goes to the queue while PC-3 is open).
-3. **CM2-RF** (line 9a), then **CM2-N2** (line 10), then **CM2-UVF3** (line 10a), then lines 11–15 in order.
-4. MODEL rule from here on (planner reading of "they enter right after the current task"): after each committed MODEL task, the next MODEL task in the list (CM2-13, CM2-14, CM2-10, CM2-44) runs right after the launch-order task that is current at that moment. So one MODEL task alternates with one feature task, and Gate A (2026-11-26) does not wait for all the art. CM2-12 is committed (branch N), so under this rule **CM2-13** (models and renders; import BLOCKED by PC-2) runs right after CM2-UVF7, with CM2-ART1 done first so its renders land in the repo.
+   - (a) **CM2-12 import and Studio re-check** (MODEL section): Danach of PC-2 (probe, upload/normalize, 14 `.rbxm`, playtest steps 2–3; step 1 PASS since PC-5). Tick CM2-12 after the import and a passing playtest, then the **CM2-13a import** (plan step 5 branch I, playtest step 2), then **CM2-12W** (MODEL section).
+   - (b) **CM2-UV2** (line 5h; Danach of PC-4) in the first run where the owner is at the PC; until then hasseln skips it.
+2. **CM2-13b** fence, bays, bundles and checkout counter (MODEL section, plan `docs/plans/CM2-13b.md`; import BLOCKED by PC-2, modelling and renders run). It runs now under rule 4: CM2-13a was the last committed MODEL task and CM2-RF, the task current at that moment, is done.
+3. **CM2-N2** (line 10), then **CM2-14** (next MODEL task under rule 4, right after N2), then **CM2-UVF3** (line 10a), then lines 11–15 in order, with CM2-10 and CM2-44 slotted in by rule 4.
+4. MODEL rule from here on (planner reading of "they enter right after the current task"): after each committed MODEL task, the next MODEL task in the list (CM2-13b, CM2-14, CM2-10, CM2-44) runs right after the launch-order task that is current at that moment. So one MODEL task alternates with one feature task, and Gate A (2026-11-26) does not wait for all the art. A MODEL task counts as committed once its branch N commit is in (the import waits for PC-2). CM2-12W and CM2-13W wait for PC-2.
 
-**Current run (2026-11-22, owner not at the PC):** hasseln skips 1 (a)–(c) and continues with the ready tasks that need no owner: CM2-ART1, CM2-UVF7, CM2-13, CM2-RF, CM2-N2, CM2-UVF3, … `runPlaytest {mode="full"}` still works with a 1x1 viewport, so non-visual Studio checks run as usual; screenshot, tap and on-screen overlap criteria go to "Studio-Test ausstehend".
+**Current run (2026-11-22, resumed; owner not at the PC for PC-4):** Studio is in the foreground and Rojo is connected, so Studio steps, including screenshot and tap criteria, run as `cm2-task` step 3 says. hasseln skips 1 (a)–(b) and continues with CM2-13b, CM2-N2, CM2-14, CM2-UVF3, …
 
 **Gate A — core loop and friends test (target 2026-11-26)**
 1. [x] **CM2-G6 Observed wholesale table and Douglas Fir starter species** · S · Depends: none. Unchanged from above, plus: the 4 starter species are Douglas Fir (Common), Fraser Fir (Uncommon, spelling fixed from "Frasier"), Noble Fir (Rare), Blue Spruce (Uncommon) with the wholesale prices of REFERENCE_GAME_LIVE_TEST §4.1 (OBSERVED); existing saves keep their stock (the species ID stays stable, only the display name changes). Accept: config test asserts all 12 wholesale values; GAME_DESIGN evidence note updated; the Supplier panel lists 4 species in Studio.
@@ -344,8 +336,7 @@ Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or ab
    - Status 2026-11-22: done (plan `docs/plans/CM2-N1.md` incl. Amendment 1 and fix rounds 1-2); headless 380/380; runPlaytest full 41/41 twice on BUILD cm2-n1-fix2 (37 three customers walked, paid and left, sales +3, nothing left; 38-40 PASS); soak 10 min 7/7 (24 NPCs, min 59.4 FPS, 0 snaps). Soak runs must use `minutes >= 10`: soak 03's fixed `sales >= 10` failed at 5 min (6 sales). V1 top-down capture BLOCKED (screen_capture timeout), routed to CM2-UV (j). The Cashier no longer adds arrivals until CM2-N2.
    - CM2-UV (j) PASS on PC 2026-11-22: varied avatars, RESERVED, carried tree, queue, "Thanks so much!", "#N HERE"; V1 top-down PASS (stall lot-aligned, no overlap with parking or counter, open front faces the road); queue interpenetration and the hunched counter pose go to CM2-UVF3, label overlap to CM2-UVF2; phone and tablet go to CM2-UV2.
 9a. [x] **CM2-RF Split oversized modules, no behaviour change** (added 2026-11-22, owner) · L (touches save code) · Depends: CM2-N1. Every agent that touches saves or playtests reads these files whole, which costs tokens on every task and makes changes error-prone. (1) `tests/studio/Playtest/RunPlaytest.lua` (2726 lines after CM2-N1) becomes a short runner plus one module per step or step group under `tests/studio/Playtest/Steps/`; new steps go into new modules. (2) `src/server/Services/SaveSlotService.lua` (1803 lines) is split along its existing parts: save slots and picker, co-op members and invite codes, save-to-server map with teleport and teammate finder. Public `Save.*` actions, error codes, DataStore keys and the save schema stay exactly as they are. Accept: runner ≤ 400 lines and every new module ≤ 800 lines; headless run with the same test count, all passing; `runPlaytest` full mode with the same step count, all passing; `rojo build` of both projects; a diff review shows only moved code, requires and wiring. Out of scope: CompanyStateService (1342) and WorldService (1197 after CM2-N1), which get their own ticket only if they pass 1500 lines.
-   - Done 2026-11-22: commits bf88786 and 3dea485; diff review shows only moved code, requires and wiring; headless 405/405, release build clean, runner 189 lines, largest module 612; Studio full 41/41 and soak 7/7 (PROGRESS).
-   - Status 2026-11-22: ready (CM2-N1 done); runs after the CM2-UVF fixes and CM2-12 ("Next hasseln starts here"), before CM2-N2, so N2 adds its steps as new step modules.
+   - Done 2026-11-22: commits bf88786 and 3dea485, docs 536f9b3; diff review shows only moved code, requires and wiring; headless 405/405, release build clean, runner 189 lines, largest module 612; Studio full 41/41 and soak 7/7 (PROGRESS). CM2-N2 adds its steps as new modules under `tests/studio/Playtest/Steps/`.
 10. [ ] **CM2-N2 Manual checkout and queue** (covers CM2-24) · L · Depends: CM2-N1 (done); runs after CM2-RF in the order, but is not blocked if CM2-RF is blocked. The player checks out the first queued customer at the counter (ProximityPrompt, server reach check) until a Cashier is hired; the prompt shows species, size, height and price (G3); the sale settles exactly once; customers who wait too long walk out and count as "walked out"; the automatic sale without a player or Cashier is removed. Accept: headless tests for exactly-once settlement under double prompt triggers, queue order, walk-out releases the tree, a member of another save cannot check out on this plot; Studio: queue of 2, player checks out both, cash and sales count rise by the server price.
     - Note 2026-11-22 from CM2-N1 (`docs/plans/CM2-N1.md`, Out of scope): N2 replaces N1's interim auto checkout (3 s at the counter) and owns the walk-out accounting; a hired Cashier no longer adds arrivals since N1 (`simulateCustomerVisits` is a test path only), so the N2 plan settles how a hired Cashier checks out the queue until CM2-25/26 makes it a visible avatar.
     - Note 2026-11-22 from CM2-UV: CM2-UVF3 (line 10a, queue spacing and upright counter pose) follows N2, and the N2 plan may absorb it (then both close together). `H("prompt")` returns ok when the character is out of reach and nothing happens (by design, see line 5b); N2 steps that use it move the character within `Customers.InteractDistance` first and assert the effect.
@@ -393,12 +384,13 @@ Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or ab
 31. [ ] **CM2-50 Final integration and regression** · S · Depends: everything done before. Accept: full Studio script PASS on the release commit, recorded in PROGRESS.md.
 
 **MODEL tasks — ready since 2026-11-22** (reference images supplied). They enter the order right after the current task, in this order, one at a time ("Next hasseln starts here", point 4). The modeler builds in Blender (DECISION_LOG 2026-11-22) and loads the skill `cm2-modeling`; the mesh import needs PC-2.
-- [x] **CM2-R2 → CM2-AP Asset pipeline for Blender MeshParts** (re-scoped: the CC0 art is being removed, so R2 versions the new art instead) · M · Depends: reference images. `.rbxm`/`.fbx` sources under `assets/`, mapped in `default.project.json`, so `rojo build` contains the models; registry IDs and pivots unchanged. Status 2026-11-22: done per `docs/plans/CM2-AP.md` (tooling, 20 pipeline tests, probe fixture; no art), reviewed and committed. Open: the Open Cloud endpoints are only fake-HTTP-tested until PC-2 (first `probe` run in the next MODEL task); the live Studio sync showed no `ArtAssets/Trees` folder (both builds contain it; re-check after a fresh `rojo serve` and plugin reconnect, now PC-5).
+- [x] **CM2-R2 → CM2-AP Asset pipeline for Blender MeshParts** (re-scoped: the CC0 art is being removed, so R2 versions the new art instead) · M · Depends: reference images. `.rbxm`/`.fbx` sources under `assets/`, mapped in `default.project.json`, so `rojo build` contains the models; registry IDs and pivots unchanged. Status 2026-11-22: done per `docs/plans/CM2-AP.md` (tooling, 20 pipeline tests, probe fixture; no art), reviewed and committed. Open: the Open Cloud endpoints are only fake-HTTP-tested until PC-2 (first `probe` run in the next MODEL task); the live Studio sync showed no `ArtAssets/Trees` folder (both builds contain it; re-check after a fresh `rojo serve` and plugin reconnect, now PC-5); resolved 2026-11-22 with PC-5: the live place shows `ArtAssets.Trees`.
 - [x] **CM2-ART1 Art render writes inside the repo** (added 2026-11-22 from CM2-12) · S · Depends: CM2-AP (done). Ready now; runs before the next MODEL render. Defect: `lune run tools/art/art.luau render <artPath>` with the default relative `--root` (`assets/art`) passes the relative `Paths.buildDir` as `--out-dir` to Blender, and Blender resolved it outside the repo, so the CM2-12 previews were written under `C:\assets` (PC-5 removes that folder). `exportArt` passes relative `--fbx` and `--report` paths the same way. Goal: every path the pipeline hands to Blender is absolute and inside the repo; the plan settles where (in `tools/art/art.luau` `renderArt`/`exportArt` against `process.cwd`, or `os.path.abspath` in `tools/art/blender_render.py` and `blender_export.py`) and keeps `--root` semantics unchanged. Accept: with the default `--root`, `render Trees/DouglasFir/Medium` writes `preview_front.png` and `preview_34.png` under `<repo>/assets/art/_build/Trees/DouglasFir/Medium/` and creates nothing outside the repo (no `C:\assets`); `export` of the same path writes `model.fbx` and `report.json` there; a case in `tests/tools/art_pipeline.luau` asserts that the paths passed to Blender for a relative root are absolute and lie under the working directory, if the existing Blender runner can be faked there (otherwise the plan records why not); standard checks and the pipeline tests pass. No `.blend`, preview or asset change.
 - [ ] **CM2-12 Trees** (4 starter species × 3 sizes, special trees) · MODEL · Depends: CM2-AP (done); PC-2 for the mesh import only. Runs first among the MODEL tasks (Danach of PC-1 and PC-2).
   - First step (from `docs/plans/CM2-AP.md`, "After PC-2"): `lune run tools/art/art.luau doctor` exits 0, then `art.luau probe` prints `[ART] probe OK yaw <θ> scale <k> asset <id>` (an HTTP 4xx/404 stops the task with status and body, and the planner amends `tools/art/lib/Config.luau`); if the yaw is not 0, `IMPORT_YAW_DEGREES` is set to it; one probe MeshPart is inserted in Studio Edit mode and its `PreloadAsync` status checked, then deleted; the probe fixture's `version` bump and `upload` fields go into the task's first commit, with the asset ID in PROGRESS.md. Also re-check after a fresh `rojo serve` and plugin reconnect that the live place shows `ReplicatedStorage.ArtAssets.Trees` (missing in the CM2-AP sync). If `doctor` fails (PC-2 still open), the tree modelling and Blender renders go on and only the import and these checks are BLOCKED.
   - Status 2026-11-22: modelled on branch N per `docs/plans/CM2-12.md` (doctor exit 2, PC-2 open): 14 Blender trees with sources, `.blend` and previews committed, all within the height, radius and triangle budgets; `verify` 0 integrated, 14 pending. Open before the tick: probe, upload/normalize and `.rbxm` (plan steps 1, 6, 7 branch I) and playtest steps 2–3, all BLOCKED by PC-2; playtest step 1 FAIL/BLOCKED: the live place showed no `ArtAssets/Trees` and the MCP could not restart `rojo serve` or reconnect the plugin (CM2-AP follow-up). Wiring into the game: CM2-12W.
-  - Status 2026-11-22 (planner): committed b36748b (art) and 7673dea (docs) on branch N, not ticked. Remaining: plan steps 1, 6, 7 branch I and playtest steps 2–3 (PC-2), playtest step 1 (PC-5). Tick only after the PC-2 import and a passing playtest; then CM2-12W.
+  - Status 2026-11-22 (planner): committed b36748b (art) and 7673dea (docs) on branch N, not ticked. Remaining: plan steps 1, 6, 7 branch I and playtest steps 2–3 (PC-2). Tick only after the PC-2 import and a passing playtest; then CM2-12W.
+  - Playtest step 1 PASS 2026-11-22 (start of the resumed run, PC-5 resolved): with `rojo serve default.project.json` on `localhost:34872` and the plugin connected, the Edit DataModel shows `ReplicatedStorage.ArtAssets` with Buildings, Environment, Props, NPCs, Vehicles and Trees.
 - [ ] **CM2-12W Tree art in the world** (added 2026-11-22 from the CM2-12 plan, "Out of scope") · M (estimate) · Depends: CM2-12 ticked (its 14 `.rbxm`, so PC-2). Goal: `WorldService` builds display, pickup, carried, roof and forest trees from `ArtLibrary.find("Trees/<species>/<size>")` and falls back to today's primitive tree when the art is missing; the label height follows the model's height. No server rule, save field or remote changes. Accept: headless tests with a fake `ArtLibrary`: the art model is used when present and the primitive when absent, for each tree role; each label sits above the model top for every size; Studio: display, pickup, carried, roof and forest trees show the Blender meshes for the 4 starter species × 3 sizes, no tree floats or sinks into the ground, and a fresh checkout without `.rbxm` still shows primitive trees; `runPlaytest {mode="full"}` all PASS and a 10-minute soak keeps the server heartbeat ≥ 55 FPS; captures in PROGRESS.md (need PC-3).
 - [ ] **CM2-13 HQ tiers, fence, bays, checkout** (Sales Tent, Timber Pavilion, Alpine Hut, Mountain Chalet) · MODEL.
   - Status 2026-11-22: split into **CM2-13a** HQ tiers (`docs/plans/CM2-13a.md`) and **CM2-13b** fence, bays, bundles and checkout counter (`docs/plans/CM2-13b.md`, the next MODEL task). CM2-13a is modelled on branch N (doctor exit 2, PC-2 open): 4 Blender HQs with sources, `.blend`, previews and 5 PROVISIONAL palette keys committed, all within footprint, height and triangle budgets (Pavilion 4000 per plan Amendment 1); `verify` 0 integrated, 18 pending. Not ticked. Open before the tick: upload/normalize and the 4 `.rbxm` (plan step 5 branch I) and playtest step 2 (PC-2); playtest steps 3–4 PASS on 2026-11-22 in the CM2-RF Studio run (full 41/41, `ART_ASSETS` branch N, no `[ART]` warning). CM2-13 is ticked after CM2-13a and CM2-13b are both done.
@@ -421,8 +413,8 @@ Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or ab
 - Model reference images in `docs/art/quality-reference/` → all MODEL tasks (supplied 2026-11-22).
 - Open Cloud API key (PC-2) → the mesh import of all MODEL tasks.
 - Reference-game screenshots (PC-1) → the look of the MODEL tasks (not blocking).
-- Studio in the foreground during runs (PC-3, resolved 2026-11-22, reopened the same day) → the Studio queue (CM2-UVF5, CM2-UVF6), CM2-UVF7's Studio part and every screenshot or tap criterion.
-- Rojo restarted and the plugin reconnected, stray `C:\assets` deleted (PC-5) → CM2-12 playtest step 1.
+- Studio in the foreground during runs (PC-3, resolved again 2026-11-22) → every screenshot or tap criterion; if captures time out twice in a row, the planner opens a new PC entry.
+- Rojo restarted and the plugin reconnected (PC-5, resolved 2026-11-22) → CM2-12 playtest step 1 PASS; only deleting the stray `C:\assets` is left (PC-2 step 5, blocks nothing).
 - The owner at the PC to switch the Device Emulator (PC-4) → CM2-UV2, the phone criterion of CM2-49 and CM2-UI (e).
 - Friends-test players → order 15.
 - UI screenshots you like and dislike (or a mockup) in `docs/art/ui-reference/`, and the UI graphics set you choose (an AI generator such as ForgeGUI, or a bought kit with a written licence) → order 22a CM2-UI. Without them CM2-UI uses a CC0 set.
