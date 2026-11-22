@@ -16,6 +16,7 @@ return function(ctx: any)
 	local call = ctx.call
 	local carriedTreeOnAnyCharacter = ctx.carriedTreeOnAnyCharacter
 	local check = ctx.check
+	local checkoutPrompt = ctx.checkoutPrompt
 	local deleteFar = ctx.deleteFar
 	local deleteFinderSave = ctx.deleteFinderSave
 	local deleteLeftover = ctx.deleteLeftover
@@ -173,6 +174,10 @@ return function(ctx: any)
 		check(npcLeft == nil, tostring(npcLeft))
 		local stray = strayHumanoids()
 		check(stray == 0, stray .. " Humanoid(s) outside player characters")
+		-- CM2-N2: no counter prompt stays enabled without a customer at the counter.
+		for _, plotId in { R.plotId, S.plotId } do
+			check(not checkoutPrompt(plotId).Enabled, "checkout prompt still enabled on " .. tostring(plotId))
+		end
 		return "plots clean, no NPC left, no stray Humanoid"
 	end
 
@@ -189,6 +194,7 @@ return function(ctx: any)
 		if shadowJoined then
 			attempt("setStaff", function()
 				call("setStaff", { employeeId = "LotWorker", count = 0 })
+				call("setStaff", { employeeId = "Cashier", count = 0 })
 			end)
 		end
 		-- CM2-S3: the finder save needs the shadow's live profile, so it goes before shadowLeave.

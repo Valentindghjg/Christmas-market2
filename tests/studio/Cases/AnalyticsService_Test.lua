@@ -9,11 +9,13 @@ return function(t)
 		local state = BusinessState.new("personal:42", 42)
 		state.customerVisits = 4
 		state.abandonedCustomers = 3
+		state.walkedOutCustomers = 2
 		state.sales = 1
 		state.revenue = 66
 		local summary = AnalyticsService.summary(state)
 		expect.equal(summary.conversionRate, 0.25)
 		expect.equal(summary.averageSale, 66)
 		expect.equal(summary.abandonedCustomers, 3)
+		expect.equal(summary.walkedOutCustomers, 2)
 	end)
 end

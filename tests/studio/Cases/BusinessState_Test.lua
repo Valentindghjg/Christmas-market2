@@ -181,8 +181,8 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(BusinessState.SCHEMA_VERSION, 13)
-		expect.equal(migrated.schemaVersion, 13)
+		expect.equal(BusinessState.SCHEMA_VERSION, 14)
+		expect.equal(migrated.schemaVersion, 14)
 		expect.equal(migrated.cash, 777)
 		expect.equal(migrated.reputation, 120)
 		expect.equal(migrated.bays[1].speciesId, "NobleFir")
@@ -414,7 +414,35 @@ return function(t)
 		expect.equal(last.amount, 434)
 		expect.equal(next(migrated.pendingOrders), nil)
 		expect.equal(migrated.stock, nil)
-		expect.equal(migrated.schemaVersion, 13)
+		expect.equal(migrated.schemaVersion, 14)
 		expect.truthy(BusinessState.validate(migrated))
+	end)
+
+	-- CM2-N2: schema 14 adds the walk-out counter without touching balances.
+	t.test("migrates v13 to v14 with a walk-out counter", function()
+		local legacy = BusinessState.new("save:42_x", 42)
+		legacy.schemaVersion = 13
+		legacy.walkedOutCustomers = nil
+		legacy.cash = 777
+		legacy.abandonedCustomers = 3
+		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(migrated.schemaVersion, 14)
+		expect.equal(migrated.walkedOutCustomers, 0)
+		expect.equal(migrated.cash, 777)
+		expect.equal(migrated.abandonedCustomers, 3)
+		expect.truthy(BusinessState.validate(migrated))
+	end)
+
+	t.test("rejects an invalid walk-out counter", function()
+		for _, value in ipairs({ -1, 1.5 }) do
+			local state = BusinessState.new("save:42_x", 42)
+			state.walkedOutCustomers = value
+			expect.falsy(BusinessState.validate(state))
+		end
+		local missing = BusinessState.new("save:42_x", 42)
+		missing.walkedOutCustomers = nil
+		expect.falsy(BusinessState.validate(missing))
 	end)
 end

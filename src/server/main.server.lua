@@ -392,6 +392,43 @@ orderCallbacks = {
 	end,
 }
 
+-- Manual checkout (CM2-N2): the counter prompt serves the customer at the counter. The
+-- player is validated here (ready, plays this plot, interval, reach, empty hands); the price
+-- comes from the reservation and company and plot from the server. No remote, no action.
+local checkoutLast: { [number]: number } = {}
+
+local function checkoutAt(player: Player, plotId: string)
+	if player:GetAttribute("CompanyReady") ~= true then
+		return
+	end
+	local companyId = companyIdFor(player.UserId)
+	if
+		companyId == nil
+		or type(plotId) ~= "string"
+		or plots:getPlot(companyId) ~= plotId
+		or player:GetAttribute("PlotId") ~= plotId
+	then
+		return
+	end
+	local now = os.clock()
+	local last = checkoutLast[player.UserId]
+	if last ~= nil and now - last < config.Customers.Npc.CheckoutMinIntervalSeconds then
+		return
+	end
+	checkoutLast[player.UserId] = now
+	if not withinReach(player, WorldService.checkoutTarget(plotId)) then
+		tell(player, "outOfReach")
+		return
+	end
+	if companies:getCarriedOrderNumber(companyId, player.UserId) ~= nil then
+		tell(player, "handsFull")
+		return
+	end
+	-- The result is not shown here: the HUD and "Thanks so much!" show the sale.
+	npc:checkout(companyId, plotId)
+end
+WorldService.setCheckoutHandler(checkoutAt)
+
 local function spawnAtClaimedPlot(player: Player, character: Model)
 	local plotId = player:GetAttribute("PlotId")
 	if type(plotId) ~= "string" then
@@ -661,6 +698,7 @@ end)
 Players.PlayerAdded:Connect(onPlayerAdded)
 Players.PlayerRemoving:Connect(function(player)
 	joinTeleports[player.UserId] = nil
+	checkoutLast[player.UserId] = nil
 	local ok, errorCode = saveSlots:leave(player.UserId, true)
 	if not ok then
 		warn(string.format("[ChristmasMarket2] save unload failed for %d: %s", player.UserId, tostring(errorCode)))
@@ -723,6 +761,7 @@ if RunService:IsStudio() then
 			npc = npc,
 			saveSlots = saveSlots,
 			orderCallbacks = orderCallbacks,
+			checkoutAt = checkoutAt,
 			companyIdFor = companyIdFor,
 			handleBusinessAction = handleBusinessAction,
 			handleSaveAction = handleSaveAction,

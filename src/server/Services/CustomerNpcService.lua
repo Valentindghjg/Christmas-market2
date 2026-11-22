@@ -23,8 +23,9 @@ local QUEUE_TAIL = 4
 local CustomerNpcService = {}
 CustomerNpcService.__index = CustomerNpcService
 
--- Every state has a positive timeout. onTimeout holds the success exit (Amendment 1, row 5);
--- the other exits (failed pick, failed settle, give-up, order gone) live in code.
+-- Every state has a positive timeout. onTimeout holds the success exit (Amendment 1, row 5),
+-- except Queued and CheckingOut, whose timeout is the walk-out (CM2-N2); the other exits
+-- (failed pick, failed settle, give-up, order gone, the served checkout) live in code.
 CustomerNpcService.Fsm = {
 	Arriving = { timeout = Npc.CarArriveSeconds, onTimeout = "WalkingIn" },
 	WalkingIn = { timeout = Npc.LegTimeoutSeconds, onTimeout = "Browsing" },
@@ -33,7 +34,7 @@ CustomerNpcService.Fsm = {
 	PickingUp = { timeout = Npc.PickUpSeconds, onTimeout = "WalkingToQueue" },
 	WalkingToQueue = { timeout = Npc.LegTimeoutSeconds, onTimeout = "Queued" },
 	Queued = { timeout = Npc.QueuePatienceSeconds, onTimeout = "WalkingOut" },
-	CheckingOut = { timeout = Npc.AutoCheckoutSeconds, onTimeout = "WalkingToCar" },
+	CheckingOut = { timeout = Npc.QueuePatienceSeconds, onTimeout = "WalkingOut" },
 	WalkingToCar = { timeout = Npc.LegTimeoutSeconds, onTimeout = "WaitingAtCar" },
 	WaitingAtCar = {
 		timeout = GameConfig.Customers.PickupPatienceSeconds + Npc.WaitAtCarExtraSeconds,
@@ -79,7 +80,7 @@ local function elapsed(now: number, since: number, seconds: number): boolean
 end
 
 -- deps = {companies, plotOf(companyId) -> plotId?, world, now() -> seconds}
--- options = {maxPerServer?, maxPerPlot?, autoCheckout? (default true), maxVisitSeconds?}
+-- options = {maxPerServer?, maxPerPlot?, maxVisitSeconds?}
 function CustomerNpcService.new(deps, options)
 	local self = setmetatable({}, CustomerNpcService)
 	local opts = if type(options) == "table" then options else {}
@@ -89,7 +90,6 @@ function CustomerNpcService.new(deps, options)
 	self._now = deps.now
 	self._maxPerServer = if type(opts.maxPerServer) == "number" then opts.maxPerServer else Npc.MaxPerServer
 	self._maxPerPlot = if type(opts.maxPerPlot) == "number" then opts.maxPerPlot else Npc.MaxPerPlot
-	self._autoCheckout = opts.autoCheckout ~= false
 	self._maxVisitSeconds = if type(opts.maxVisitSeconds) == "number" then opts.maxVisitSeconds else Npc.MaxVisitSeconds
 	self._visits = {}
 	self._queues = {}
@@ -270,7 +270,7 @@ function CustomerNpcService:_releaseIfHeld(visit)
 	local notified = false
 	if visit.reserved and not visit.sold and visit.placementId ~= nil then
 		visit.reserved = false
-		notified = self._companies:npcCancel(visit.companyId, visit.id, visit.placementId)
+		notified = self._companies:npcCancel(visit.companyId, visit.id, visit.placementId, visit.walkedOut)
 	end
 	if wasCarrying and not notified then
 		-- The hidden tree shows again even when no cancel re-synced the displayed trees.
@@ -282,6 +282,9 @@ end
 -- No transaction: avatar, car and queue place go, the runtime claim is dropped. A
 -- reservation stays until npcSweep or the reload clear. Load visits: despawn and delete.
 function CustomerNpcService:_hardRemove(visit)
+	if visit.state == "CheckingOut" then
+		self:_call("showCheckout", visit.plotId, nil)
+	end
 	self:_call("despawn", visit.id)
 	if not visit.loadTest then
 		self:_call("destroyCar", visit.plotId, visit.id)
@@ -308,6 +311,8 @@ function CustomerNpcService:_decide(visit)
 	if ok and type(result) == "table" then
 		visit.placementId = result.placementId
 		visit.sizeId = result.sizeId
+		visit.speciesId = result.speciesId
+		visit.salePrice = result.salePrice
 		visit.treeX = result.x
 		visit.treeZ = result.z
 		visit.reserved = true
@@ -317,8 +322,8 @@ function CustomerNpcService:_decide(visit)
 	end
 end
 
-function CustomerNpcService:_settle(visit)
-	local ok = self._companies:npcSettle(visit.companyId, visit.id, visit.placementId :: string, function(sale)
+function CustomerNpcService:_settle(visit): (boolean, any)
+	local ok, result = self._companies:npcSettle(visit.companyId, visit.id, visit.placementId :: string, function(sale)
 		if sale.order then
 			self:_call("adoptCar", visit.plotId, visit.id, sale.order.orderNumber)
 			visit.orderNumber = sale.order.orderNumber
@@ -336,6 +341,41 @@ function CustomerNpcService:_settle(visit)
 		visit.reserved = false
 		self:_enter(visit, "WalkingOut")
 	end
+	return ok, result
+end
+
+-- Serves the customer at the counter once (CM2-N2): `settling` blocks re-entry while
+-- npcSettle runs; a raised error warns and returns InternalError.
+function CustomerNpcService:_serve(visit): (boolean, any)
+	visit.settling = true
+	local called, ok, result = pcall(self._settle, self, visit)
+	visit.settling = false
+	if not called then
+		warn(string.format("[ChristmasMarket2] NpcCheckoutFailed %s: %s", visit.id, tostring(ok)))
+		return false, "InternalError"
+	end
+	return ok, result
+end
+
+-- Queue patience runs from entering Queued and covers Queued and CheckingOut (CM2-N2).
+function CustomerNpcService:_patienceOut(visit, now: number): boolean
+	return elapsed(now, visit.queuedAt or visit.enteredAt, Npc.QueuePatienceSeconds)
+end
+
+-- The customer's patience ran out: it walks out and counts as walked out (CM2-N2).
+function CustomerNpcService:_walkOut(visit)
+	visit.walkedOut = true
+	self:_enter(visit, "WalkingOut")
+end
+
+-- The customer visit at the counter of this plot (state CheckingOut), or nil.
+function CustomerNpcService:_atCounter(plotId: string)
+	for _, visit in ipairs(self:_ordered()) do
+		if not visit.loadTest and visit.plotId == plotId and visit.state == "CheckingOut" then
+			return visit
+		end
+	end
+	return nil
 end
 
 -- States ------------------------------------------------------------------------------------
@@ -387,6 +427,21 @@ function ENTRY.WalkingToQueue(self, visit, now: number)
 	self:_startRoute(visit, NpcPath.queueSlot(index), now)
 end
 
+function ENTRY.Queued(_self, visit, now: number)
+	visit.queuedAt = now
+end
+
+-- The customer stands upright facing the staff side; the counter prompt shows its tree.
+function ENTRY.CheckingOut(self, visit, _now: number)
+	self:_call("face", visit.id, NpcPath.staffPoint())
+	self:_call("showCheckout", visit.plotId, {
+		placementId = visit.placementId,
+		speciesId = visit.speciesId,
+		sizeId = visit.sizeId,
+		price = visit.salePrice,
+	})
+end
+
 function ENTRY.WalkingToCar(self, visit, now: number)
 	self:_leaveQueue(visit)
 	visit.carrying = false
@@ -420,6 +475,9 @@ function ENTRY.LoadLoop(self, visit, now: number)
 end
 
 function CustomerNpcService:_enter(visit, state: string)
+	if visit.state == "CheckingOut" and state ~= "CheckingOut" then
+		self:_call("showCheckout", visit.plotId, nil)
+	end
 	if state == "Done" then
 		self:_finish(visit)
 		return
@@ -482,16 +540,25 @@ function STEP.Queued(self, visit, now: number)
 		self:_startRoute(visit, NpcPath.queueSlot(index), now)
 	end
 	local arrived = self:_advance(visit, now)
-	if arrived and index == 1 and self._autoCheckout then
+	if arrived and index == 1 then
 		self:_enter(visit, "CheckingOut")
-	elseif timedOut(visit, now) then
-		self:_enter(visit, Fsm.Queued.onTimeout)
+	elseif self:_patienceOut(visit, now) then
+		self:_walkOut(visit)
 	end
 end
 
+-- The counter waits for the player's prompt (checkout) or a hired Cashier; without a
+-- Cashier the customer walks out once its patience ran out.
 function STEP.CheckingOut(self, visit, now: number)
-	if self._autoCheckout and timedOut(visit, now) then
-		self:_settle(visit)
+	if visit.settling then
+		return
+	end
+	if self._companies:hasCashier(visit.companyId) then
+		if elapsed(now, visit.enteredAt, Npc.CashierCheckoutSeconds) then
+			self:_serve(visit)
+		end
+	elseif self:_patienceOut(visit, now) then
+		self:_walkOut(visit)
 	end
 end
 
@@ -524,6 +591,9 @@ function STEP.LoadLoop(self, visit, now: number)
 end
 
 function CustomerNpcService:_step(visit, now: number)
+	if visit.settling then
+		return
+	end
 	if not visit.loadTest then
 		-- 1. A lost session (unload, reload, save switch) or plot: hard remove.
 		if
@@ -580,12 +650,17 @@ local function newVisit(id: string, seq: number, plotId: string, space: number, 
 		queueSlot = nil :: number?,
 		placementId = nil :: string?,
 		sizeId = nil :: string?,
+		speciesId = nil :: string?,
+		salePrice = nil :: number?,
 		treeX = nil :: number?,
 		treeZ = nil :: number?,
 		reserved = false,
 		sold = false,
 		carrying = false,
 		orderNumber = nil :: number?,
+		queuedAt = nil :: number?,
+		settling = false,
+		walkedOut = false,
 	}
 end
 
@@ -733,6 +808,28 @@ function CustomerNpcService:queue(plotId: string): { string }
 	return if queue then table.clone(queue) else {}
 end
 
+-- A player at the counter serves the customer there (CM2-N2). Server-trusted callers only;
+-- main.server validates the player first. Returns true plus the sale, or false plus a code.
+function CustomerNpcService:checkout(companyId: string, plotId: string): (boolean, any)
+	if self._stopped then
+		return false, "NoCustomer"
+	end
+	if type(companyId) ~= "string" or type(plotId) ~= "string" or self._plotOf(companyId) ~= plotId then
+		return false, "Forbidden"
+	end
+	local visit = self:_atCounter(plotId)
+	if visit == nil then
+		return false, "NoCustomer"
+	end
+	if visit.companyId ~= companyId then
+		return false, "Forbidden"
+	end
+	if visit.settling then
+		return false, "CheckoutBusy"
+	end
+	return self:_serve(visit)
+end
+
 function CustomerNpcService:snapshot()
 	local visits = {}
 	for _, visit in ipairs(self:_ordered()) do
@@ -744,6 +841,8 @@ function CustomerNpcService:snapshot()
 			snaps = visit.snaps,
 			space = visit.space,
 			placementId = visit.placementId,
+			speciesId = visit.speciesId,
+			salePrice = visit.salePrice,
 			orderNumber = visit.orderNumber,
 			carrying = visit.carrying,
 			loadTest = visit.loadTest,

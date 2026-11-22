@@ -22,6 +22,10 @@ local TRUCK_START_DEPTH = 66
 local MAX_BUNDLES = 9
 local STRUCTURE_GROUP = GameConfig.Customers.Npc.CollisionGroups.Structure
 
+-- The counter prompt's handler (CM2-N2): main.server validates the player and serves the
+-- customer at the counter.
+local checkoutHandler: ((Player, string) -> ())? = nil
+
 local CAR_DRIVE_SECONDS = 2
 local CAR_COLORS = {
 	Color3.fromRGB(176, 52, 48),
@@ -231,6 +235,24 @@ local function checkout(parent: Instance, position: Vector3): Model
 		Color3.fromRGB(40, 48, 51),
 		Enum.Material.Metal
 	)
+	-- CM2-N2: the player checks out the customer at the counter; enabled only while one waits.
+	local checkoutPrompt = Instance.new("ProximityPrompt")
+	checkoutPrompt.Name = "CheckoutPrompt"
+	checkoutPrompt.ActionText = "Check Out"
+	checkoutPrompt.ObjectText = ""
+	checkoutPrompt.KeyboardKeyCode = Enum.KeyCode.E
+	checkoutPrompt.HoldDuration = 0
+	checkoutPrompt.MaxActivationDistance = GameConfig.Customers.InteractDistance - 2
+	checkoutPrompt.RequiresLineOfSight = false
+	checkoutPrompt.Enabled = false
+	checkoutPrompt:SetAttribute("PromptKind", "Checkout")
+	checkoutPrompt.Parent = base
+	local plotId = parent:GetAttribute("PlotId")
+	checkoutPrompt.Triggered:Connect(function(player: Player)
+		if checkoutHandler and type(plotId) == "string" then
+			checkoutHandler(player, plotId)
+		end
+	end)
 	model.PrimaryPart = base
 	setCollisionGroup(model, STRUCTURE_GROUP)
 	return model
@@ -1110,6 +1132,59 @@ function WorldService.plotCenter(plotId: string): Vector3?
 	end
 	local ground = plot.PrimaryPart :: BasePart
 	return ground.Position + Vector3.new(0, ground.Size.Y / 2, 0)
+end
+
+-- Manual checkout (CM2-N2) ------------------------------------------------------------------
+
+function WorldService.setCheckoutHandler(handler: ((Player, string) -> ())?)
+	checkoutHandler = handler
+end
+
+local function checkoutBase(plotId: string): BasePart?
+	local plot = findPlot(plotId)
+	local counter = plot and plot:FindFirstChild("CheckoutCounter")
+	local base = counter and counter:FindFirstChild("CounterBase")
+	if base and base:IsA("BasePart") then
+		return base
+	end
+	return nil
+end
+
+-- The part a player must stand near to check out (server reach check).
+function WorldService.checkoutTarget(plotId: string): BasePart?
+	return checkoutBase(plotId)
+end
+
+-- Shows the tree of the customer at the counter on the plot's CheckoutPrompt, or hides the
+-- prompt (info nil). info = {speciesId, sizeId, heightTenths, price}. False without a prompt.
+function WorldService.setCheckoutPrompt(plotId: string, info): boolean
+	local base = checkoutBase(plotId)
+	local value = base and base:FindFirstChild("CheckoutPrompt")
+	if not (value and value:IsA("ProximityPrompt")) then
+		return false
+	end
+	if info ~= nil then
+		value:SetAttribute("SpeciesId", info.speciesId)
+		value:SetAttribute("SizeId", info.sizeId)
+		value:SetAttribute("HeightTenths", info.heightTenths)
+		value:SetAttribute("Price", info.price)
+		value.ObjectText = string.format(
+			"%s · %s · %s ft · $%d",
+			speciesName(info.speciesId),
+			info.sizeId,
+			TreeHeight.feetText(info.heightTenths),
+			info.price
+		)
+		value.Enabled = true
+	else
+		value.Enabled = false
+		value.ObjectText = ""
+		value:SetAttribute("SpeciesId", nil)
+		value:SetAttribute("SizeId", nil)
+		value:SetAttribute("HeightTenths", nil)
+		value:SetAttribute("Price", nil)
+	end
+	return true
 end
 
 -- `<plot>.Customers`, where the walking customers' avatars live; nil without the plot.

@@ -164,11 +164,20 @@ function StudioTestService.install(context)
 		if not player then
 			return failure("NoPlayer")
 		end
-		if arg.kind ~= "carry" and arg.kind ~= "load" then
+		if arg.kind ~= "carry" and arg.kind ~= "load" and arg.kind ~= "checkout" then
 			return failure("BadKind")
 		end
 		-- The same call the ProximityPrompt Triggered handlers make.
-		context.orderCallbacks[arg.kind](player, arg.number)
+		if arg.kind == "checkout" then
+			-- CM2-N2: the counter prompt of the player's plot.
+			local plotId = player:GetAttribute("PlotId")
+			if type(plotId) ~= "string" then
+				return failure("NoPlot")
+			end
+			context.checkoutAt(player, plotId)
+		else
+			context.orderCallbacks[arg.kind](player, arg.number)
+		end
 		return success()
 	end
 

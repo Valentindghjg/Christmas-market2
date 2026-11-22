@@ -365,6 +365,47 @@ return function(ctx: any)
 		task.wait(ACTION_PAUSE)
 	end
 
+	-- Manual checkout (CM2-N2) -------------------------------------------------------------------
+	local function counterPart(plotId: string?): BasePart
+		local id = plotId or R.plotId
+		local plot = plotFolder(id)
+		local counter = plot and plot:FindFirstChild("CheckoutCounter")
+		local base = counter and counter:FindFirstChild("CounterBase")
+		check(base ~= nil and base:IsA("BasePart"), "CheckoutCounter.CounterBase missing on " .. tostring(id))
+		return base :: BasePart
+	end
+
+	local function checkoutPrompt(plotId: string?): ProximityPrompt
+		local id = plotId or R.plotId
+		local value = counterPart(id):FindFirstChild("CheckoutPrompt")
+		check(value ~= nil and value:IsA("ProximityPrompt"), "CheckoutPrompt missing on " .. tostring(id))
+		return value :: ProximityPrompt
+	end
+
+	-- The player checks out the customer at R's counter, if one waits there. Returns "none"
+	-- without a customer at the counter, "served" when R's sales rose, else "handsFull" while
+	-- the player carried a customer's tree, else "refused" (CM2-N2 Amendment 1).
+	local function serveCounter(): string
+		for _, entry in npcSnapshot().visits do
+			if entry.plotId == R.plotId and entry.state == "CheckingOut" then
+				local before = snap(R.userId)
+				local held = 0
+				for _, order in before.customerOrders do
+					if order.carried then
+						held += 1
+					end
+				end
+				teleport(counterPart())
+				prompt("checkout", 0)
+				if snap(R.userId).sales > before.sales then
+					return "served"
+				end
+				return if held > 0 then "handsFull" else "refused"
+			end
+		end
+		return "none"
+	end
+
 	local function carriedTree(): Instance?
 		local character = realPlayer().Character
 		return character and character:FindFirstChild("CarriedTree")
@@ -394,10 +435,9 @@ return function(ctx: any)
 			table.insert(SLOTS, { x = x, z = z })
 		end
 	end
-	for _, z in { -1, 6 } do
-		for _, x in { 11.5, 18.5, 25.5 } do
-			table.insert(SLOTS, { x = x, z = z })
-		end
+	-- CM2-N2: clear of the grown Checkout box (queue to z 1).
+	for _, xz in { { 25.5, -1 }, { 11.5, 6 }, { 18.5, 6 }, { 25.5, 6 }, { 25.5, -8 }, { 25.5, -15 } } do
+		table.insert(SLOTS, { x = xz[1], z = xz[2] })
 	end
 	local SLOT_SPACING = 5.6
 
@@ -593,6 +633,9 @@ return function(ctx: any)
 	ctx.teleport = teleport
 	ctx.assertOutOfOwnReach = assertOutOfOwnReach
 	ctx.prompt = prompt
+	ctx.counterPart = counterPart
+	ctx.checkoutPrompt = checkoutPrompt
+	ctx.serveCounter = serveCounter
 	ctx.carriedTree = carriedTree
 	ctx.findOrder = findOrder
 	ctx.pendingQuantity = pendingQuantity

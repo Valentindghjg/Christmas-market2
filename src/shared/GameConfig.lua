@@ -242,12 +242,13 @@ GameConfig.Customers = {
 		LegTimeoutSeconds = 20,
 		BrowseSeconds = 6,
 		PickUpSeconds = 1,
-		QueuePatienceSeconds = 60,
-		AutoCheckoutSeconds = 3,
+		QueuePatienceSeconds = 90, -- from entering Queued (CM2-N2); reference walk-out time not measured
+		CashierCheckoutSeconds = 3, -- a hired Cashier serves the counter after this long (CM2-N2)
+		CheckoutMinIntervalSeconds = 0.25, -- per-player checkout prompt interval (CM2-N2)
 		WaitAtCarExtraSeconds = 10,
 		DepartSeconds = 2.5,
 		MaxVisitSeconds = 360,
-		ReservationSeconds = 120,
+		ReservationSeconds = 150, -- >= 20 + 1 + 20 + 90 + 3 = 134 (CM2-N2)
 		ThanksSeconds = 3, -- the "Thanks so much!" text is OBSERVED
 		LoadSeconds = 60, -- default length of a load-test run (Amendment 1)
 		Path = {
@@ -258,7 +259,7 @@ GameConfig.Customers = {
 			AisleDepth = 12, -- Fix round 1: the inflated Stand box ends at z 11
 			QueueX = 16,
 			QueueFirstDepth = -11,
-			QueueSpacing = 2.2,
+			QueueSpacing = 3.5, -- slots z -11, -7.5, -4, -0.5 (CM2-N2, CM2-UVF3)
 			StaffDepth = -16.5,
 			ApproachGap = 0.8,
 			Counter = { minX = 13.5, maxX = 18.5, minZ = -15, maxZ = -13 }, -- counter body 5 x 2 at (16, -14)
@@ -335,7 +336,7 @@ GameConfig.Placement = {
 	CoordinateLimit = 200, -- protocol sanity bound
 	KeepClear = { -- PROVISIONAL, lot frame {minX, maxX, minZ, maxZ}
 		{ id = "Stand", minX = -24, maxX = 8, minZ = -16, maxZ = 8 }, -- starter stand box (G3)
-		{ id = "Checkout", minX = 11, maxX = 21, minZ = -18, maxZ = -4 }, -- counter, staff side, queue
+		{ id = "Checkout", minX = 11, maxX = 21, minZ = -18, maxZ = 1 }, -- counter, staff side, queue to slot 4 (CM2-N2)
 		{ id = "Parking", minX = -29, maxX = 17, minZ = 13, maxZ = 27 }, -- 4 spaces
 		{ id = "Pickup", minX = 20, maxX = 39, minZ = 10, maxZ = 16 }, -- G1 pickup row
 		{ id = "Spawn", minX = -31, maxX = -25, minZ = 11, maxZ = 17 },

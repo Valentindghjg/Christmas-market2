@@ -1062,6 +1062,7 @@ function CompanyStateService:npcDecide(companyId: string, visitId: string, custo
 				placementId = visit.placementId,
 				salePrice = visit.salePrice,
 				sizeId = if type(placement) == "table" then placement.sizeId else nil,
+				speciesId = if type(placement) == "table" then placement.speciesId else nil,
 				x = transform.x,
 				z = transform.z,
 			}
@@ -1075,8 +1076,14 @@ function CompanyStateService:npcDecide(companyId: string, visitId: string, custo
 	return ok, result
 end
 
--- A customer gives up: its reservation is released and the visit counts as abandoned.
-function CompanyStateService:npcCancel(companyId: string, visitId: string, placementId: string): boolean
+-- A customer gives up: its reservation is released and the visit counts as abandoned. A
+-- customer whose queue patience ran out (walkedOut, CM2-N2) also counts as walked out.
+function CompanyStateService:npcCancel(
+	companyId: string,
+	visitId: string,
+	placementId: string,
+	walkedOut: boolean?
+): boolean
 	local session = self._sessions[companyId]
 	if not session then
 		return false
@@ -1085,6 +1092,9 @@ function CompanyStateService:npcCancel(companyId: string, visitId: string, place
 		local released = CustomerService.cancelReservation(state, placementId, visitId)
 		if released then
 			state.abandonedCustomers += 1
+			if walkedOut == true then
+				state.walkedOutCustomers += 1
+			end
 			state.revision += 1
 			session.dirty = true
 		end
@@ -1205,6 +1215,15 @@ function CompanyStateService:refreshPlacements(companyId: string)
 	if session then
 		self:_notifyPlacements(companyId, session)
 	end
+end
+
+-- Whether the company has a Cashier hired (CM2-N2: it serves the counter); read-only.
+function CompanyStateService:hasCashier(companyId: string): boolean
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return false
+	end
+	return session.state.staff.Cashier >= 1
 end
 
 -- Studio test instruments only (StudioTestService); never called by gameplay code.
@@ -1331,6 +1350,7 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		drivePastCustomers = state.drivePastCustomers,
 		customerVisits = state.customerVisits,
 		abandonedCustomers = state.abandonedCustomers,
+		walkedOutCustomers = state.walkedOutCustomers,
 		placementCount = placementCount(state),
 		receiving = BusinessState.receivingSummary(state, clock),
 		pendingOrders = pending,

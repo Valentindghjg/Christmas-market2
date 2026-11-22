@@ -73,6 +73,22 @@ local function localizePrompt(prompt: ProximityPrompt)
 			number(prompt, "CountLarge")
 		)
 		return
+	elseif kind == "Checkout" then
+		-- CM2-N2: the counter prompt shows the tree of the customer at the counter.
+		prompt.ActionText = UiKit.localized("promptCheckout")
+		local speciesId = prompt:GetAttribute("SpeciesId")
+		if type(speciesId) == "string" then
+			prompt.ObjectText = UiKit.localizedFormat(
+				"treeLabel",
+				speciesName(speciesId),
+				UiKit.localized("size" .. tostring(prompt:GetAttribute("SizeId"))),
+				TreeHeight.feetText(number(prompt, "HeightTenths")),
+				number(prompt, "Price")
+			)
+		else
+			prompt.ObjectText = ""
+		end
+		return
 	elseif kind == "CarryOrder" then
 		prompt.ActionText = UiKit.localized("promptCarry")
 	elseif kind == "LoadOrder" then
@@ -83,8 +99,8 @@ local function localizePrompt(prompt: ProximityPrompt)
 	prompt.ObjectText = UiKit.localizedFormat("promptObject", orderNumber)
 end
 
--- Bay labels and stocking prompts change in place (CM2-G14), so they re-localize on every
--- attribute change; the connection is made once per instance.
+-- Bay labels, stocking prompts (CM2-G14) and the checkout prompt (CM2-N2) change in place,
+-- so they re-localize on every attribute change; the connection is made once per instance.
 local watched: { [Instance]: boolean } = setmetatable({}, { __mode = "k" }) :: any
 
 local function isBayLabel(label: TextLabel): boolean
@@ -116,7 +132,8 @@ local function visit(instance: Instance)
 		end
 	elseif instance:IsA("ProximityPrompt") and instance:GetAttribute("PromptKind") ~= nil then
 		localizePrompt(instance)
-		if instance:GetAttribute("PromptKind") == "StockBay" and not watched[instance] then
+		local kind = instance:GetAttribute("PromptKind")
+		if (kind == "StockBay" or kind == "Checkout") and not watched[instance] then
 			watched[instance] = true
 			instance.AttributeChanged:Connect(function()
 				localizePrompt(instance)

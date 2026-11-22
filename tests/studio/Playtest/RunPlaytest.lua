@@ -2,12 +2,14 @@
 -- Repeatable Studio playtest (CM2-G20). Run in the Server data model of a Play session:
 --   game.ServerStorage.StudioTestHook:Invoke("runPlaytest", { mode = "full" })
 --   game.ServerStorage.StudioTestHook:Invoke("runPlaytest", { mode = "soak", minutes = 10 })
+--   game.ServerStorage.StudioTestHook:Invoke("runPlaytest", { mode = "full", holdSeconds = 20 })
+-- holdSeconds (0..60, default 0) pauses step 41 at the checkout queue for screen captures.
 -- It drives the real player and a shadow company through StudioTestHook and prints
 -- PASS/FAIL/SKIP per step prefixed with [PLAYTEST]. The runner installs helpers from
 -- Playtest/Support and steps from Playtest/Steps (CM2-RF); none of them is under Cases, so the
 -- unit-test runners never execute them. Nothing touches a game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-rf"
+RunPlaytest.BUILD = "cm2-n2"
 
 local PREFIX = "[PLAYTEST]"
 
@@ -33,21 +35,33 @@ function RunPlaytest.guard(
 	return true, nil
 end
 
-local function validOptions(options: any): (string?, number?)
+local function validOptions(options: any): (string?, number?, number?)
 	if type(options) ~= "table" then
-		return nil, nil
+		return nil, nil, nil
 	end
 	if options.mode ~= "full" and options.mode ~= "soak" then
-		return nil, nil
+		return nil, nil, nil
 	end
 	local minutes = options.minutes
 	if minutes == nil then
 		minutes = 10
 	end
 	if type(minutes) ~= "number" or minutes ~= math.floor(minutes) or minutes < 1 or minutes > 30 then
-		return nil, nil
+		return nil, nil, nil
 	end
-	return options.mode, minutes
+	local holdSeconds = options.holdSeconds
+	if holdSeconds == nil then
+		holdSeconds = 0
+	end
+	if
+		type(holdSeconds) ~= "number"
+		or holdSeconds ~= math.floor(holdSeconds)
+		or holdSeconds < 0
+		or holdSeconds > 60
+	then
+		return nil, nil, nil
+	end
+	return options.mode, minutes, holdSeconds
 end
 
 -- Requires one installer from Playtest/Support or Playtest/Steps (CM2-RF).
@@ -58,7 +72,7 @@ local function installer(group: string, name: string): (any) -> ()
 	return require(module :: ModuleScript) :: any
 end
 
-local function execute(hook: any, mode: string, minutes: number)
+local function execute(hook: any, mode: string, minutes: number, holdSeconds: number)
 	local HttpService = game:GetService("HttpService")
 	local ServerStorage = game:GetService("ServerStorage")
 
@@ -81,6 +95,7 @@ local function execute(hook: any, mode: string, minutes: number)
 	ctx.PREFIX = PREFIX
 	ctx.hook = hook
 	ctx.minutes = minutes
+	ctx.holdSeconds = holdSeconds
 	ctx.results = results
 	ctx.outcome = outcome
 	ctx.addStep = addStep
@@ -88,7 +103,7 @@ local function execute(hook: any, mode: string, minutes: number)
 		installer("Support", name)(ctx)
 	end
 	if mode == "full" then
-		for _, name in { "Core", "Saves", "RowFill", "Npc" } do
+		for _, name in { "Core", "Saves", "RowFill", "Npc", "Checkout" } do
 			installer("Steps", name)(ctx)
 		end
 		addStep("22", "LEAK_CHECK", { "02" }, ctx.leakCheck)
@@ -170,15 +185,15 @@ function RunPlaytest.run(hook: any, options: any)
 		print(string.format("%s REFUSED %s", PREFIX, tostring(reason)))
 		return
 	end
-	local mode, minutes = validOptions(options)
-	if mode == nil or minutes == nil then
+	local mode, minutes, holdSeconds = validOptions(options)
+	if mode == nil or minutes == nil or holdSeconds == nil then
 		print(string.format("%s REFUSED BadOptions", PREFIX))
 		return
 	end
 	ServerStorage:SetAttribute("PlaytestStatus", "running")
 	ServerStorage:SetAttribute("PlaytestSummary", nil)
 	ServerStorage:SetAttribute("PlaytestReport", nil)
-	local ok, message = pcall(execute, hook, mode, minutes)
+	local ok, message = pcall(execute, hook, mode, minutes, holdSeconds)
 	if not ok then
 		warn(string.format("%s runner error: %s", PREFIX, tostring(message)))
 		ServerStorage:SetAttribute("PlaytestSummary", "SUMMARY runner error: " .. tostring(message))

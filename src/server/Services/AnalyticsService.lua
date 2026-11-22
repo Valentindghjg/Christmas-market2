@@ -14,6 +14,7 @@ function AnalyticsService.summary(state)
 		visits = visits,
 		sales = sales,
 		abandonedCustomers = state.abandonedCustomers,
+		walkedOutCustomers = state.walkedOutCustomers,
 		revenue = state.revenue,
 		spent = state.spent,
 		conversionRate = visits == 0 and 0 or sales / visits,

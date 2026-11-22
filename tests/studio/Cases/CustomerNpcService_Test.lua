@@ -110,6 +110,12 @@ return function(t)
 			log("despawn", visitId)
 			self.positions[visitId] = nil
 		end
+		function world:showCheckout(plotId, info)
+			log("showCheckout", plotId, info)
+		end
+		function world:face(visitId, p)
+			log("face", visitId, copy(p))
+		end
 		return world
 	end
 
@@ -142,6 +148,8 @@ return function(t)
 	local function addCompany(h, companyId: string, plotId: string, trees: number)
 		local state = h.service:loadCompany(companyId, 42)
 		state.progression.parkingSpaces = 4
+		-- CM2-N2: a hired Cashier serves the counter after 3 s.
+		state.staff.Cashier = 1
 		for index = 1, trees do
 			state.layout.placements["douglas_" .. index] = {
 				speciesId = "DouglasFir",
@@ -270,19 +278,23 @@ return function(t)
 	end)
 
 	t.test("queue patience runs out and releases the tree", function()
-		local h = harness({ autoCheckout = false })
+		local h = harness()
 		local state = addCompany(h, A, PLOT_1, 1)
+		state.staff.Cashier = 0
 		local visitId = spawn(h, A, 8)
 		runUntil(h, visitId, "Queued", 100)
 		expect.truthy(state.reservations.douglas_1)
 		local abandoned = state.abandonedCustomers
-		run(h, 59.8)
-		expect.equal(stateOf(h, visitId), "Queued")
+		local walkedOut = state.walkedOutCustomers
+		run(h, 89.8)
+		expect.equal(stateOf(h, visitId), "CheckingOut")
 		run(h, 0.4)
 		local visit = visitOf(h, visitId)
-		expect.equal(visit.history[8], "WalkingOut")
+		expect.equal(visit.history[8], "CheckingOut")
+		expect.equal(visit.history[9], "WalkingOut")
 		expect.equal(state.reservations.douglas_1, nil)
 		expect.equal(state.abandonedCustomers, abandoned + 1)
+		expect.equal(state.walkedOutCustomers, walkedOut + 1)
 		expect.equal(next(h.npc:carriedPlacements(A)), nil)
 	end)
 
@@ -583,6 +595,7 @@ return function(t)
 		run(h, 10)
 		expect.equal(visitOf(h, visitId), nil)
 		expect.equal(state.abandonedCustomers, abandoned + 1)
+		expect.equal(state.walkedOutCustomers, 0)
 		expect.equal(state.sales, 0)
 	end)
 

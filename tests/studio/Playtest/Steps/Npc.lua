@@ -1,5 +1,6 @@
 --!strict
--- Playtest steps 37-40 (full mode) and their helpers: walking customers (CM2-N1).
+-- Playtest steps 37-40 (full mode) and their helpers: walking customers (CM2-N1). Since
+-- CM2-N2 the player checks out the customer at the counter by prompt (serveCounter).
 -- Installed by RunPlaytest.execute (CM2-RF).
 return function(ctx: any)
 	local ArtLibrary = ctx.ArtLibrary
@@ -33,6 +34,7 @@ return function(ctx: any)
 	local poll = ctx.poll
 	local prompt = ctx.prompt
 	local realPlayer = ctx.realPlayer
+	local serveCounter = ctx.serveCounter
 	local snap = ctx.snap
 	local snapLogOf = ctx.snapLogOf
 	local strayHumanoids = ctx.strayHumanoids
@@ -109,6 +111,8 @@ return function(ctx: any)
 		local waiting: { [string]: any } = {}
 		local deadline = os.clock() + 150
 		while true do
+			-- CM2-N2: the player checks out the customer at the counter.
+			serveCounter()
 			local npcs = npcSnapshot()
 			local rSnap = snap(R.userId)
 			local all = true
@@ -435,6 +439,8 @@ return function(ctx: any)
 		local id = visitId :: string
 		local customer: any = nil
 		local waiting = poll(function()
+			-- CM2-N2: the player checks out the customer at the counter.
+			serveCounter()
 			customer = findNpc(npcSnapshot(), id)
 			check(customer ~= nil, id .. " vanished before WaitingAtCar")
 			return customer.state == "WaitingAtCar"
@@ -457,4 +463,8 @@ return function(ctx: any)
 		return "live arrival bought order #" .. tostring(number)
 	end
 	addStep("40", "NPC_REAL_ARRIVAL", { "03" }, withNpcCleanup(npcRealArrivalStep))
+
+	-- CM2-N2: step 41 (Steps/Checkout.lua) uses these.
+	ctx.npcVisit = npcVisit
+	ctx.ensureDouglas = ensureDouglas
 end

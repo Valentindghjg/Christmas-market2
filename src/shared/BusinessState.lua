@@ -5,7 +5,7 @@ local Receiving = require(script.Parent.Receiving)
 local SaveProfile = require(script.Parent.SaveProfile)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 13
+BusinessState.SCHEMA_VERSION = 14
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -135,6 +135,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		sales = 0,
 		customerVisits = 0,
 		abandonedCustomers = 0,
+		walkedOutCustomers = 0,
 		revenue = 0,
 		spent = 0,
 		history = {},
@@ -270,6 +271,10 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.schemaVersion = 13
 		applyStockMigration(state)
 	end
+	if state.schemaVersion == 13 then
+		state.schemaVersion = 14
+		state.walkedOutCustomers = 0
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -301,6 +306,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil }
 	state.customerVisits = sales(state)
 	state.abandonedCustomers = 0
+	state.walkedOutCustomers = 0
 	state.questClaims = {}
 	addSchema10Fields(state)
 	backfillMediumPrices(state)
@@ -635,6 +641,9 @@ function BusinessState.validate(state)
 		or not isFiniteInteger(state.abandonedCustomers)
 		or state.abandonedCustomers < 0
 	then
+		return false
+	end
+	if not isFiniteInteger(state.walkedOutCustomers) or state.walkedOutCustomers < 0 then
 		return false
 	end
 	if not isFiniteInteger(state.revenue) or state.revenue < 0 then

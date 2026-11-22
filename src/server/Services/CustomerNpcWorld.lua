@@ -10,6 +10,7 @@ local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Localization = require(Shared:WaitForChild("Localization"))
 local NpcLook = require(Shared:WaitForChild("NpcLook"))
 local NpcPath = require(Shared:WaitForChild("NpcPath"))
+local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
 local NpcAvatar = require(script.Parent:WaitForChild("NpcAvatar"))
 local WorldService = require(script.Parent:WaitForChild("WorldService"))
 
@@ -211,6 +212,38 @@ function CustomerNpcWorld:say(visitId: string)
 	if head and head:IsA("BasePart") then
 		WorldService.speech(head, "NpcThanks", Localization.get("en", "npcThanks"), Npc.ThanksSeconds)
 	end
+end
+
+-- The counter prompt of the plot shows the tree of the customer at the counter; nil hides
+-- it (CM2-N2). The height is the displayed tree's stable height (TreeHeight).
+function CustomerNpcWorld:showCheckout(plotId: string, info)
+	if info == nil then
+		WorldService.setCheckoutPrompt(plotId, nil)
+		return
+	end
+	WorldService.setCheckoutPrompt(plotId, {
+		speciesId = info.speciesId,
+		sizeId = info.sizeId,
+		heightTenths = TreeHeight.tenthsFor(info.placementId, info.sizeId) or 0,
+		price = info.price,
+	})
+end
+
+-- Turns the avatar upright toward a lot-frame point (CM2-N2, CM2-UVF3).
+function CustomerNpcWorld:face(visitId: string, p: Point)
+	local model = self:_avatar(visitId)
+	local target = self:_world(visitId, p)
+	local root = model and model:FindFirstChild("HumanoidRootPart")
+	if target == nil or not (root and root:IsA("BasePart")) then
+		return
+	end
+	local position = root.Position
+	local dx, dz = target.X - position.X, target.Z - position.Z
+	if math.sqrt(dx * dx + dz * dz) < 0.1 then
+		return
+	end
+	root.AssemblyAngularVelocity = Vector3.zero
+	root.CFrame = CFrame.lookAt(position, Vector3.new(target.X, position.Y, target.Z))
 end
 
 function CustomerNpcWorld:despawn(visitId: string)

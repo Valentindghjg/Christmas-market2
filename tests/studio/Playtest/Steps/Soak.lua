@@ -30,6 +30,7 @@ return function(ctx: any)
 	local preflight = ctx.preflight
 	local prompt = ctx.prompt
 	local resetCustomers = ctx.resetCustomers
+	local serveCounter = ctx.serveCounter
 	local shadowJoin = ctx.shadowJoin
 	local snap = ctx.snap
 	local snapEntryText = ctx.snapEntryText
@@ -40,6 +41,8 @@ return function(ctx: any)
 
 	addStep("01", "SHADOW_JOIN", {}, function()
 		shadowJoin(1)
+		-- CM2-N2: the shadow's hired Cashier serves its counter; the player serves R's by prompt.
+		call("setStaff", { employeeId = "Cashier", count = 1 })
 		call("pauseCustomers", false)
 		return string.format("shadow plot %s, player plot %s", tostring(S.plotId), tostring(R.plotId))
 	end)
@@ -62,6 +65,11 @@ return function(ctx: any)
 		local firstMismatch = ""
 		local maxActive, maxSpaces = 0, 0
 		local visitCounter = 0
+		-- CM2-N2 Amendment 1: per-plot diagnostics of the counter and the forced visits.
+		local seen: { [string]: { [string]: boolean } } = {}
+		local served, refused = 0, 0
+		local firstRefusal = "-"
+		local forced, tries = 0, 0
 
 		local function summaryOf(userId: number): any
 			return invoke("customerOrders", userId)
@@ -191,11 +199,31 @@ return function(ctx: any)
 					then
 						local profile = 8 + 24 * (visitCounter % 9)
 						visitCounter += 1
-						invoke("visit", { userId = userId, profile = profile })
+						local response = invoke("visit", { userId = userId, profile = profile })
+						tries += 1
+						if type(response) == "table" and response.ok == true then
+							forced += 1
+						end
 					end
 				end
 			end
 			servePlayerOrders()
+			local result = serveCounter()
+			if result == "served" then
+				served += 1
+			elseif result == "handsFull" or result == "refused" then
+				refused += 1
+				if firstRefusal == "-" then
+					firstRefusal = result
+				end
+			end
+			for _, entry in npcSnapshot().visits do
+				if not entry.loadTest and entry.state == "CheckingOut" and type(entry.plotId) == "string" then
+					local plotSeen = seen[entry.plotId] or {}
+					seen[entry.plotId] = plotSeen
+					plotSeen[entry.visitId] = true
+				end
+			end
 			for _, userId in companies do
 				trackActive(userId)
 			end
@@ -241,6 +269,38 @@ return function(ctx: any)
 			math.floor(Stats:GetTotalMemoryUsageMb()),
 			npcSnaps
 		)
+		local function seenOn(plotId: string?): number
+			local plotSeen = if plotId then seen[plotId] else nil
+			local count = 0
+			if plotSeen then
+				for _ in plotSeen do
+					count += 1
+				end
+			end
+			return count
+		end
+		detail ..= string.format(
+			" | R sales %d visits %d abandoned %d walked out %d drive-pasts %d at counter %d served %d refused %d (%s) | S sales %d visits %d abandoned %d walked out %d drive-pasts %d at counter %d cashier %d | forced %d/%d",
+			endR.sales - startR.sales,
+			endR.customerVisits - startR.customerVisits,
+			endR.abandonedCustomers - startR.abandonedCustomers,
+			endR.walkedOutCustomers - startR.walkedOutCustomers,
+			endR.drivePastCustomers - startR.drivePastCustomers,
+			seenOn(R.plotId),
+			served,
+			refused,
+			firstRefusal,
+			endS.sales - startS.sales,
+			endS.customerVisits - startS.customerVisits,
+			endS.abandonedCustomers - startS.abandonedCustomers,
+			endS.walkedOutCustomers - startS.walkedOutCustomers,
+			endS.drivePastCustomers - startS.drivePastCustomers,
+			seenOn(S.plotId),
+			endS.staff.Cashier,
+			forced,
+			tries
+		)
+		ctx.emit("DETAIL 03 " .. detail)
 		if npcSnaps > 0 then
 			local log = if type(endNpc.snapLog) == "table" then endNpc.snapLog else {}
 			local firstNew = log[math.max(1, #log - npcSnaps + 1)]
@@ -248,6 +308,12 @@ return function(ctx: any)
 			error("walking customers snapped (" .. entry .. ") | " .. detail, 0)
 		end
 		check(mismatches == 0, firstMismatch .. " | " .. detail)
+		check(endS.staff.Cashier == 1, "shadow lost its Cashier | " .. detail)
+		check(
+			endS.walkedOutCustomers - startS.walkedOutCustomers == 0,
+			"S customers walked out despite the Cashier | " .. detail
+		)
+		check(refused == 0, "R checkout refused (" .. firstRefusal .. ") | " .. detail)
 		check(sales >= 10, "sales below 10 | " .. detail)
 		check(playerLoads >= 1, "no player load | " .. detail)
 		check(workerLoads >= 1, "no Lot Worker load | " .. detail)

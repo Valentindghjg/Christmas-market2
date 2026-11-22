@@ -2,6 +2,7 @@
 -- CM2-N1: lot-frame points, obstacles and routes of walking customers.
 return function(t)
 	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+	local GameConfig = require(Shared:WaitForChild("GameConfig"))
 	local NpcPath = require(Shared:WaitForChild("NpcPath"))
 	local expect = t.expect
 
@@ -23,8 +24,28 @@ return function(t)
 			near(NpcPath.aisle(space).x, NpcPath.door(space).x)
 		end
 		samePoint(NpcPath.queueSlot(1), 16, -11)
-		samePoint(NpcPath.queueSlot(4), 16, -4.4)
+		samePoint(NpcPath.queueSlot(4), 16, -0.5)
 		samePoint(NpcPath.staffPoint(), 16, -16.5)
+	end)
+
+	-- CM2-UVF3: queued customers carry their tree in front, so the spots keep a clear gap,
+	-- and every spot stays inside the Checkout keep-clear box (no tree is stocked there).
+	t.test("queue spots keep a 3-stud gap", function()
+		local checkout
+		for _, box in ipairs(GameConfig.Placement.KeepClear) do
+			if box.id == "Checkout" then
+				checkout = box
+			end
+		end
+		expect.truthy(checkout ~= nil)
+		for index = 1, 3 do
+			expect.truthy(NpcPath.distance(NpcPath.queueSlot(index), NpcPath.queueSlot(index + 1)) >= 3)
+		end
+		for index = 1, 4 do
+			local slot = NpcPath.queueSlot(index)
+			expect.truthy(slot.x - 1 >= checkout.minX and slot.x + 1 <= checkout.maxX)
+			expect.truthy(slot.z - 1 >= checkout.minZ and slot.z + 1 <= checkout.maxZ)
+		end
 	end)
 
 	t.test("route is direct when nothing is in the way", function()

@@ -52,7 +52,7 @@ return function(ctx: any)
 		local runner = require(ServerStorage:WaitForChild("UnitTest"):WaitForChild("RunUnitTest")) :: any
 		local totals = runner(nil, 10)
 		check(totals.failed == 0, totals.failed .. " unit test(s) failed")
-		check(totals.run >= 380, "only " .. totals.run .. " unit tests ran (expected >= 380)")
+		check(totals.run >= 418, "only " .. totals.run .. " unit tests ran (expected >= 418)")
 		return string.format("%d run, %d passed", totals.run, totals.passed)
 	end)
 

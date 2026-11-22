@@ -148,7 +148,19 @@ return function(t)
 				>= 2 * Npc.LegTimeoutSeconds
 					+ Npc.PickUpSeconds
 					+ Npc.QueuePatienceSeconds
-					+ Npc.AutoCheckoutSeconds
+					+ Npc.CashierCheckoutSeconds
+		)
+		-- CM2-N2: the visit cap outlasts the longest regular visit (312.5 <= 360).
+		expect.truthy(
+			Npc.MaxVisitSeconds
+				>= Npc.CarArriveSeconds
+					+ 4 * Npc.LegTimeoutSeconds
+					+ Npc.BrowseSeconds
+					+ Npc.PickUpSeconds
+					+ Npc.QueuePatienceSeconds
+					+ Npc.CashierCheckoutSeconds
+					+ GameConfig.Customers.PickupPatienceSeconds
+					+ Npc.WaitAtCarExtraSeconds
 		)
 		expect.truthy(Npc.LoadSeconds >= 10 and Npc.LoadSeconds <= 120)
 		-- Fix round 1: the aisle and queue clear the inflated boxes, and corners keep a margin.
