@@ -37,6 +37,7 @@ Nothing under `src/`, `tests/`, `assets/`; never save the place.
 - **H2 aim(lx, lz)** (Client): world = `Vector3.new(c.X + lx, c.Y, c.Z + Stocking.facing(c.Z) * lz)` (`Shared.Stocking`); move the mouse to `cam:WorldToViewportPoint(world)`.
 - **H3 cam(target, offset)** (Client): Scriptable, `CFrame.lookAt(target + offset, target)`, offset (14, 12, 14); `Custom` after each world item.
 - **H4 probe(guis)** (Client) lists violations; PASS when empty. Per shown GuiObject: > 1 px outside its ScreenGui's `AbsoluteSize` (skip inside ScrollingFrames); GuiButton/TextBox < 44 px; `TextFits == false` with `TextTruncate == None`; any overlap among shown `ChristmasMarketUI.Hud`, `HudRailUI.Rail`, `ChristmasMarketNotifications.Toast`, `StockingUI.StockingBar`.
+  - **H4b (amendment CM2-UVF4, 2026-11-22):** the text rule becomes: any shown TextLabel, TextButton or TextBox with non-empty text and `TextFits == false`, whatever its `TextTruncate` (report path, `Text`, `AbsoluteSize`, `TextBounds`). CM2-UV2 and later probes use H4 with this rule.
 - Capture ids `uv-<item><n>`, each with one sentence of what it shows.
 
 ## Playtest (Studio, via playtester), in this order

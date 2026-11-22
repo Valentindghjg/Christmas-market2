@@ -471,3 +471,14 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - CM2-UI restyles the labels via `UiTheme.WorldLabels`.
 - Files: `src/shared/UiTheme.lua`, `src/shared/LabelDeclutter.lua` (new), `src/server/Services/WorldService.lua`, `src/client/WorldLabels.client.lua`, `src/shared/Localization.lua`, `tests/studio/Cases/LabelDeclutter_Test.lua` (new), `tests/studio/Cases/UiTheme_Test.lua`, `tests/headless/run.luau`, `docs/TEST_PLAN.md`.
 - Headless +8, total 397.
+
+## 2026-11-22 — CM2-UVF4 dialog text fit (engineering)
+- Defect (CM2-UV (d), uv-d1): the save row state text (0.4 of the row, about 169 px) and the footer status lines were truncated; server messages are up to 118 chars.
+- D1: save row: name, kind and state each get a full-width line; name and kind may wrap to 2 lines; row 120 to 136 px (`UiTheme.SaveRow`).
+- D2: status lines (`PickerStatus`, `TeamStatus`, `FinderStatus`) are the first entry of their dialog's list (`UiKit.listStatus`): full width, auto height, wrapped, hidden while empty, list scrolls to the top on a new message.
+- D3: Team footer 140 to 96 px, finder footer 236 to 198 px; the picker footer stays 200 (CM2-UVF5).
+- D4: header fixes: picker hint 13 px in 2 lines, finder hint and own listing 13 px, Team `CodeLine` wraps (38 px), Team `listTop` 110 to 120.
+- D5: Studio probe H4b flags any shown text with `TextFits == false`, whatever its `TextTruncate` (CM2-UV2 uses it).
+- UVF4-D1: a stale `saveLoading` status survived closing the picker after Play on the running save; `close` now clears the status.
+- Files: `src/shared/UiTheme.lua`, `src/client/UiKit.lua`, `src/client/SavePicker.client.lua`, `src/client/TeamPanel.client.lua`, `src/client/TeammateFinder.client.lua`, `tests/studio/Cases/UiTheme_Test.lua`, `docs/TEST_PLAN.md`.
+- Headless +1, total 398.
