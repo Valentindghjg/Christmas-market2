@@ -267,4 +267,19 @@ return function(t)
 		expect.equal(r.nameHeight + r.kindHeight + r.stateHeight + UiTheme.MinTouch, r.height - 2 * r.padding)
 		expect.equal(r.textSize, UiTheme.TextSize.Small)
 	end)
+
+	t.test("picker list shows two whole save rows and part of a third", function()
+		local sizes = { { 1564, 672 }, { 1024, 710 }, { 1920, 1022 } }
+		for _, size in sizes do
+			local m = UiTheme.metrics(size[1], size[2])
+			local d = UiTheme.dialogLayout(m, UiTheme.Dialogs.Picker)
+			local r = UiTheme.SaveRow
+			expect.equal(m.compact, false)
+			expect.truthy(d.list ~= nil)
+			expect.truthy(d.footer ~= nil)
+			expect.truthy(d.list.y + d.list.h <= d.footer.y)
+			expect.truthy(d.list.h >= 2 * r.height + 2 * r.listGap + 16)
+			expect.truthy(d.list.h < 3 * r.height + 2 * r.listGap)
+		end
+	end)
 end

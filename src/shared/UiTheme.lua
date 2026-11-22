@@ -88,6 +88,7 @@ export type StockingBarLayout = {
 UiTheme.Colors = {
 	Panel = { 20, 68, 48 },
 	Row = { 38, 89, 63 },
+	ListWell = { 13, 50, 35 },
 	Gold = { 201, 153, 53 },
 	Sand = { 237, 212, 142 },
 	Cream = { 255, 244, 217 },
@@ -163,6 +164,7 @@ UiTheme.LotManagerTabs = {
 	{ id = "Analytics", labelKey = "analytics", module = "AnalyticsTab" },
 } :: { TabDef }
 
+-- Picker heightScale 0.92 (CM2-UVF5): at 672 px safe height and above the list shows two whole save rows and part of a third.
 UiTheme.Dialogs = {
 	Picker = {
 		listTop = 60,
@@ -171,7 +173,7 @@ UiTheme.Dialogs = {
 		maxWidth = 480,
 		maxHeight = 600,
 		widthScale = 0.92,
-		heightScale = 0.86,
+		heightScale = 0.92,
 	},
 	DeleteConfirm = {
 		listTop = 0,
@@ -203,7 +205,7 @@ UiTheme.Dialogs = {
 	},
 } :: { [string]: DialogSpec }
 
--- Save picker row (CM2-UVF4): name, kind and state on their own lines above the buttons.
+-- Save picker row (CM2-UVF4): name, kind and state on their own lines above the buttons. listGap is the space between list entries.
 export type SaveRowLayout = {
 	height: number,
 	padding: number,
@@ -212,6 +214,7 @@ export type SaveRowLayout = {
 	textSize: number,
 	kindHeight: number,
 	stateHeight: number,
+	listGap: number,
 }
 UiTheme.SaveRow = {
 	height = 136,
@@ -221,6 +224,7 @@ UiTheme.SaveRow = {
 	textSize = UiTheme.TextSize.Small,
 	kindHeight = 28,
 	stateHeight = 16,
+	listGap = 8,
 } :: SaveRowLayout
 
 -- Layout constants.
