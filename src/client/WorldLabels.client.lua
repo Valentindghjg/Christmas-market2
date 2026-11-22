@@ -100,6 +100,11 @@ local function visit(instance: Instance)
 		local parent = instance.Parent
 		if parent and parent:IsA("BillboardGui") then
 			labelGuis[parent] = true
+			-- CM2-UVF7: the client owns the draw distance; the engine's MaxDistance is not measured from the camera position.
+			if type(parent:GetAttribute("LabelRange")) ~= "number" then
+				parent:SetAttribute("LabelRange", parent.MaxDistance)
+				parent.MaxDistance = math.huge
+			end
 			parent.Enabled = false
 		end
 		localizeLabel(instance)
@@ -126,8 +131,7 @@ for _, descendant in workspace:GetDescendants() do
 end
 workspace.DescendantAdded:Connect(visit)
 
--- Declutter pass at 10 Hz: hides a label whose screen box overlaps a better one. No Instances
--- are created; labels out of range or behind the camera are left enabled (the engine culls them).
+-- Declutter pass at 10 Hz (CM2-UVF2, CM2-UVF7): hides labels beyond their LabelRange (camera distance) or behind the camera, then hides a label whose screen box overlaps a better one. No Instances are created.
 local passClock = 0
 RunService.RenderStepped:Connect(function(dt: number)
 	passClock += dt
@@ -140,7 +144,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 		return
 	end
 	local guis: { BillboardGui } = {}
-	local entries: { LabelDeclutter.Entry } = {}
+	local candidates: { LabelDeclutter.Candidate } = {}
 	local tracked = 0
 	for gui in pairs(labelGuis) do
 		if not gui:IsDescendantOf(workspace) then
@@ -155,13 +159,10 @@ RunService.RenderStepped:Connect(function(dt: number)
 		end
 		local point = adornee.Position + gui.StudsOffsetWorldSpace
 		local viewport = camera:WorldToViewportPoint(point)
-		if (point - camera.CFrame.Position).Magnitude > gui.MaxDistance or viewport.Z <= 0 then
-			gui.Enabled = true
-			continue
-		end
+		local rangeAttribute = gui:GetAttribute("LabelRange")
 		local width, height = gui.Size.X.Offset, gui.Size.Y.Offset
 		table.insert(guis, gui)
-		table.insert(entries, {
+		table.insert(candidates, {
 			box = { x = viewport.X - width / 2, y = viewport.Y - height / 2, w = width, h = height },
 			priority = LabelDeclutter.priorityFor(
 				label:GetAttribute("LabelKind"),
@@ -169,18 +170,26 @@ RunService.RenderStepped:Connect(function(dt: number)
 			),
 			depth = viewport.Z,
 			shown = gui.Enabled,
+			distance = (point - camera.CFrame.Position).Magnitude,
+			range = if type(rangeAttribute) == "number" then rangeAttribute else gui.MaxDistance,
 		})
 	end
-	local result = LabelDeclutter.resolve(entries)
-	local hidden = 0
+	local result = LabelDeclutter.decide(candidates)
+	local hidden, culled = 0, 0
 	for index, gui in ipairs(guis) do
-		gui.Enabled = result[index]
-		if not result[index] then
+		local candidate = candidates[index]
+		if not LabelDeclutter.inRange(candidate.distance, candidate.range, candidate.depth) then
+			culled += 1
+		elseif not result[index] then
 			hidden += 1
+		end
+		if gui.Enabled ~= result[index] then
+			gui.Enabled = result[index]
 		end
 	end
 	script:SetAttribute("DeclutterTracked", tracked)
 	script:SetAttribute("DeclutterHidden", hidden)
+	script:SetAttribute("DeclutterCulled", culled)
 end)
 
 -- Toast for server notifications { key = string, args = { number } }.

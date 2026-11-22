@@ -1,12 +1,21 @@
 --!strict
 -- Pure priority and overlap resolution for world billboards (CM2-UVF2). The client builds one
--- Entry per label in range and hides every label whose screen box overlaps a better one.
+-- Candidate per label; `decide` hides labels that are out of range or behind the camera, then
+-- resolves overlaps: every label whose screen box overlaps a better one is hidden (CM2-UVF7).
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UiTheme = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UiTheme"))
 
 local LabelDeclutter = {}
 
 export type Entry = { box: UiTheme.Box, priority: number, depth: number, shown: boolean }
+export type Candidate = {
+	box: UiTheme.Box,
+	priority: number,
+	depth: number,
+	shown: boolean,
+	distance: number,
+	range: number,
+}
 
 LabelDeclutter.IntervalSeconds = 0.1
 LabelDeclutter.ShownBias = 2
@@ -71,6 +80,35 @@ function LabelDeclutter.resolve(entries: { Entry }): { boolean }
 			table.insert(accepted, box)
 			result[index] = true
 		end
+	end
+	return result
+end
+
+function LabelDeclutter.inRange(distance: number, range: number, depth: number): boolean
+	return depth > 0 and distance <= range
+end
+
+function LabelDeclutter.decide(candidates: { Candidate }): { boolean }
+	local entries: { Entry } = {}
+	local origin: { number } = {}
+	for index, candidate in ipairs(candidates) do
+		if LabelDeclutter.inRange(candidate.distance, candidate.range, candidate.depth) then
+			table.insert(entries, {
+				box = candidate.box,
+				priority = candidate.priority,
+				depth = candidate.depth,
+				shown = candidate.shown,
+			})
+			table.insert(origin, index)
+		end
+	end
+	local resolved = LabelDeclutter.resolve(entries)
+	local result: { boolean } = {}
+	for index = 1, #candidates do
+		result[index] = false
+	end
+	for position, index in ipairs(origin) do
+		result[index] = resolved[position]
 	end
 	return result
 end

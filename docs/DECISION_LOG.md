@@ -514,3 +514,12 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - `--root` semantics unchanged (relative to the working directory).
 - Files: `tools/art/lib/Paths.luau`, `tools/art/lib/Blender.luau`, `tools/art/art.luau`, `tools/art/blender_render.py`, `tools/art/blender_export.py`, `tools/art/make_probe.py`, `tests/tools/art_pipeline.luau`, `docs/MODEL_INTEGRATION.md`.
 - Art pipeline tests 22 (local), 21 passed + 1 skipped on CI. No Studio test (tooling only).
+
+## 2026-11-22 — CM2-UVF7 far world labels (engineering)
+- Defect: at the uvf2-5b view, 4 bay labels 65-77 studs away were drawn and overlapped although their `MaxDistance` is 60.
+- D1 (hypothesis, the fix does not depend on it): the engine does not measure `BillboardGui.MaxDistance` from `Camera.CFrame.Position`; the likely measuring point is `Camera.Focus`.
+- D2: the client is the only distance rule. It copies the server's `MaxDistance` into the client-local gui attribute `LabelRange`, sets `gui.MaxDistance = math.huge` locally, and each pass hides labels beyond `LabelRange` (camera distance) or behind the camera (`LabelDeclutter.decide`).
+- D3: rejected: resolving out-of-range labels (they stay drawn), measuring from `Camera.Focus` (unverified), a server change (not needed).
+- Diagnostics: new script attribute `DeclutterCulled`; `DeclutterHidden` counts overlap losers among in-range labels.
+- Files: `src/shared/LabelDeclutter.lua`, `src/client/WorldLabels.client.lua`, `tests/studio/Cases/LabelDeclutter_Test.lua`, `docs/TEST_PLAN.md`.
+- Headless +5, total 405.

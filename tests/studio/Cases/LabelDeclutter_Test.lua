@@ -78,4 +78,50 @@ return function(t)
 		expect.equal(LabelDeclutter.priorityFor("Nope", false), 0)
 		expect.equal(LabelDeclutter.priorityFor(nil, false), 0)
 	end)
+
+	local function cand(x: number, priority: number, depth: number, distance: number, range: number, shown: boolean?)
+		return {
+			box = { x = x, y = 0, w = 100, h = 30 },
+			priority = priority,
+			depth = depth,
+			shown = shown == true,
+			distance = distance,
+			range = range,
+		}
+	end
+
+	t.test("inRange boundaries", function()
+		expect.equal(LabelDeclutter.inRange(60, 60, 1), true)
+		expect.equal(LabelDeclutter.inRange(60.01, 60, 1), false)
+		expect.equal(LabelDeclutter.inRange(10, 60, 0), false)
+		expect.equal(LabelDeclutter.inRange(10, math.huge, 1), true)
+	end)
+
+	t.test("a label beyond its range is hidden, never re-enabled", function()
+		local result = LabelDeclutter.decide({ cand(0, 1, 70, 77, 60, true) })
+		expect.equal(#result, 1)
+		expect.equal(result[1], false)
+	end)
+
+	t.test("a far label does not block a near one", function()
+		local result = LabelDeclutter.decide({
+			cand(0, LabelDeclutter.Priority.DisplayTree, 10, 30, 40),
+			cand(50, LabelDeclutter.Priority.PickupOrder, 60, 65, 60, true),
+		})
+		expect.equal(result[1], true)
+		expect.equal(result[2], false)
+	end)
+
+	t.test("a label behind the camera is hidden", function()
+		local result = LabelDeclutter.decide({ cand(0, 1, -5, 10, 60) })
+		expect.equal(result[1], false)
+	end)
+
+	t.test("in-range labels resolve as before", function()
+		local result = LabelDeclutter.decide({ cand(0, 1, 1, 20, 60), cand(80, 1, 2, 20, 60), cand(160, 1, 3, 20, 60) })
+		expect.equal(#result, 3)
+		expect.equal(result[1], true)
+		expect.equal(result[2], false)
+		expect.equal(result[3], true)
+	end)
 end
