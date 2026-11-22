@@ -33,10 +33,12 @@ local function tell(player: Player, key: string, ...: number)
 	notify:FireClient(player, { key = key, args = { ... } })
 end
 
--- Studio playtests can force customer conversions and fast-forward the business clock
--- through StudioTestHook (below). Outside Studio both stay at their neutral values.
+-- Studio playtests can force customer conversions, fast-forward the business clock and
+-- pause random customers through StudioTestHook (below). Outside Studio all three stay
+-- at their neutral values.
 local clockOffset = 0
 local forcedRolls = 0
+local customersPaused = false
 
 local function businessClock(): number
 	return os.time() + clockOffset
@@ -230,6 +232,9 @@ every(config.SaveFlushSeconds, "save flush", function()
 	return companies:flushDirty()
 end)
 every(config.CustomerVisitIntervalSeconds, "customer visits", function()
+	if customersPaused then
+		return true, 0, 0
+	end
 	return companies:simulateCustomerVisits()
 end)
 every(config.CustomerVisitIntervalSeconds, "customer orders", function()
@@ -250,6 +255,15 @@ end)
 
 local function isInGame(player: Player): boolean
 	return player.Parent == Players
+end
+
+-- Mirrors a loaded company into its plot: stand, lot, parking, displayed trees and orders.
+local function syncPlotWorld(plotId: string, companyId: string, state)
+	WorldService.applyHQVisual(plotId, state.progression.hqTier)
+	WorldService.applyLotExpansionVisual(plotId, state.progression.lotExpansion)
+	WorldService.applyParkingVisual(plotId, effectiveParking(state.progression.parkingSpaces))
+	WorldService.syncDisplayedTrees(plotId, state.layout.placements, state.mediumPrices)
+	WorldService.syncCustomerOrders(plotId, companies:getCustomerOrders(companyId), orderCallbacks)
 end
 
 local function loadPlayer(player: Player)
@@ -283,11 +297,7 @@ local function loadPlayer(player: Player)
 		player:SetAttribute("CompanyLoadError", plotError)
 		return
 	end
-	WorldService.applyHQVisual(plotId, state.progression.hqTier)
-	WorldService.applyLotExpansionVisual(plotId, state.progression.lotExpansion)
-	WorldService.applyParkingVisual(plotId, effectiveParking(state.progression.parkingSpaces))
-	WorldService.syncDisplayedTrees(plotId, state.layout.placements, state.mediumPrices)
-	WorldService.syncCustomerOrders(plotId, companies:getCustomerOrders(companyId), orderCallbacks)
+	syncPlotWorld(plotId, companyId, state)
 	player:SetAttribute("CompanyReady", true)
 	player:SetAttribute("CompanyLoadError", nil)
 	player:SetAttribute("PlotId", plotId)
@@ -329,7 +339,7 @@ local ORDER_REACH_ACTIONS = {
 	[Protocol.Actions.OrderLoad] = true,
 }
 
-businessAction.OnServerInvoke = function(player, request)
+local function handleBusinessAction(player: Player, request)
 	if player:GetAttribute("CompanyReady") ~= true then
 		return { ok = false, errorCode = "CompanyUnavailable" }
 	end
@@ -361,27 +371,43 @@ businessAction.OnServerInvoke = function(player, request)
 	end
 	return response
 end
+businessAction.OnServerInvoke = handleBusinessAction
 
--- Studio-only test instrument for reproducible playtests (docs/TEST_PLAN.md). It is
--- never created on live servers, and clients cannot reach a ServerStorage BindableFunction.
+-- Synthetic playtest companies (StudioTestService shadow players) that must also be
+-- saved on shutdown. Stays empty outside Studio.
+local studioShadowUsers: { [number]: boolean } = {}
+
+-- Studio-only test instrument for reproducible playtests (docs/TEST_PLAN.md). The hook is
+-- never created on live servers (the release build omits StudioTestService), and clients
+-- cannot reach a ServerStorage BindableFunction.
 if RunService:IsStudio() then
-	local hook = Instance.new("BindableFunction")
-	hook.Name = "StudioTestHook"
-	hook.OnInvoke = function(command: string, value: number?)
-		if command == "forceCustomer" and type(value) == "number" and value >= 1 then
-			-- The next arriving customer has profile `value` and always converts.
-			companies:setCustomerSequence(math.floor(value) - 1)
-			forcedRolls = 1
-			return true
-		elseif command == "advanceClock" and type(value) == "number" and value > 0 and value <= 3600 then
-			clockOffset += value
-			return clockOffset
-		elseif command == "customerOrders" and type(value) == "number" then
-			return companies:getCustomerOrders(companyIdFor(value))
-		end
-		return nil
+	local module = script.Parent.Services:FindFirstChild("StudioTestService")
+	if module then
+		require(module).install({
+			companies = companies,
+			plots = plots,
+			orderCallbacks = orderCallbacks,
+			companyIdFor = companyIdFor,
+			handleBusinessAction = handleBusinessAction,
+			syncPlotWorld = syncPlotWorld,
+			clearPlotVisuals = clearPlotVisuals,
+			businessClock = businessClock,
+			advanceClock = function(seconds: number): number
+				clockOffset += seconds
+				return clockOffset
+			end,
+			setForcedRolls = function(count: number)
+				forcedRolls = count
+			end,
+			setCustomersPaused = function(paused: boolean)
+				customersPaused = paused
+			end,
+			shadowUsers = studioShadowUsers,
+			loadAttempts = LOAD_ATTEMPTS,
+		})
+	else
+		warn("[ChristmasMarket2] StudioTestService missing; StudioTestHook not installed")
 	end
-	hook.Parent = game:GetService("ServerStorage")
 end
 
 for _, player in Players:GetPlayers() do
@@ -391,10 +417,17 @@ end
 game:BindToClose(function()
 	-- Unload in parallel: sequential saves with retry backoff can exceed the shutdown budget.
 	local pending = 0
+	local userIds = {}
 	for _, player in Players:GetPlayers() do
+		table.insert(userIds, player.UserId)
+	end
+	for userId in pairs(studioShadowUsers) do
+		table.insert(userIds, userId)
+	end
+	for _, userId in userIds do
 		pending += 1
 		task.spawn(function()
-			pcall(companies.unloadCompany, companies, companyIdFor(player.UserId))
+			pcall(companies.unloadCompany, companies, companyIdFor(userId))
 			pending -= 1
 		end)
 	end

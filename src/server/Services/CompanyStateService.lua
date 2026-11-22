@@ -655,4 +655,105 @@ function CompanyStateService:getPlacements(companyId: string)
 	return session.state.layout.placements
 end
 
+-- Studio test instruments only (StudioTestService); never called by gameplay code.
+
+-- One forced, converting customer visit (roll 0) for the given profile number.
+-- Returns true plus the new order number, or false plus the reason.
+function CompanyStateService:visitForTest(companyId: string, customerNumber: number): (boolean, number | string)
+	if type(customerNumber) ~= "number" or customerNumber < 1 or customerNumber ~= math.floor(customerNumber) then
+		return false, "InvalidCustomer"
+	end
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return false, "CompanyUnavailable"
+	end
+	local entered, success, result = self:_withSession(companyId, session, function(state)
+		if CustomerOrderService.freeParking(state) < 1 then
+			return false, "NoParking"
+		end
+		local timestamp = self._clock()
+		local started, visit = CustomerSimulationService.beginVisit(state, customerNumber, timestamp, 0)
+		-- beginVisit counted the visit (and an abandonment) in the record.
+		state.revision += 1
+		session.dirty = true
+		if not started then
+			return false, visit
+		end
+		local sold, sale = CustomerSimulationService.completeVisit(state, visit, timestamp)
+		if not sold then
+			return false, sale
+		end
+		if type(sale.order) ~= "table" then
+			return false, "NoOrderCreated"
+		end
+		return true, sale.order.orderNumber
+	end)
+	if not entered then
+		return false, success
+	end
+	if success then
+		self:_notifyPlacements(companyId, session)
+		self:_notifyOrders(companyId, session)
+	end
+	return success, result
+end
+
+-- Sets the hired count of one employee type without touching cash.
+function CompanyStateService:setStaffForTest(companyId: string, employeeId: string, count: number): boolean
+	local employee = GameConfig.Employees[employeeId]
+	if
+		not employee
+		or type(count) ~= "number"
+		or count ~= math.floor(count)
+		or count < 0
+		or count > employee.maxCount
+	then
+		return false
+	end
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return false
+	end
+	local entered = self:_withSession(companyId, session, function(state)
+		state.staff[employeeId] = count
+		state.revision += 1
+		session.dirty = true
+		return true
+	end)
+	return entered
+end
+
+-- Detached copy of the figures a playtest compares; nil without a healthy session.
+function CompanyStateService:snapshotForTest(companyId: string): {}?
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return nil
+	end
+	local state = session.state
+	local pending = {}
+	for orderId, order in pairs(state.pendingOrders) do
+		table.insert(pending, { orderId = orderId, status = order.status, quantity = order.quantity })
+	end
+	table.sort(pending, function(a, b)
+		return a.orderId < b.orderId
+	end)
+	return {
+		cash = state.cash,
+		reputation = state.reputation,
+		revision = state.revision,
+		revenue = state.revenue,
+		sales = state.sales,
+		stock = table.clone(state.stock),
+		mediumPrices = table.clone(state.mediumPrices),
+		staff = table.clone(state.staff),
+		loadedOrders = state.loadedOrders,
+		missedPickups = state.missedPickups,
+		drivePastCustomers = state.drivePastCustomers,
+		placementCount = placementCount(state),
+		receiving = BusinessState.receivingSummary(state),
+		pendingOrders = pending,
+		customerOrders = CustomerOrderService.summary(state).orders,
+	}
+end
+
 return CompanyStateService
