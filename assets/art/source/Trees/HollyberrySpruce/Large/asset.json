@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Trees/HollyberrySpruce/Large",
+	"displayName": "Hollyberry Spruce Large",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 1600,
+	"maxMeshParts": 7,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

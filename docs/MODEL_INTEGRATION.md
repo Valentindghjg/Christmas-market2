@@ -49,3 +49,9 @@ Larger models are Blender MeshParts; small items stay Parts. The `.blend` in `as
 - Attributes on every normalized model: `ArtAssetId`, `ArtPath`, `ArtSource = "blender"`, `ArtVersion`, `ArtTier`. Budgets: tier A 4000 triangles / 10 MeshParts, tier B 1000 / 4.
 - `ArtLibrary.find/prepareClone` (`src/shared/ArtLibrary.lua`) look art up and clone it; a missing or broken path logs `[ART] <MissingArtAsset|InvalidArtAsset|InvalidArtPath> <path>` once per path and the primitive fallback stays.
 - Checks: `tests/tools/art_pipeline.luau`, `art.luau verify <place>` (CI), playtest step `ART_ASSETS`.
+
+## Tree art (CM2-12)
+- Paths: `Trees/{DouglasFir,FrasierFir,NobleFir,BlueSpruce}/{Small,Medium,Large}` plus `Trees/FrostcrownFir/Large` and `Trees/HollyberrySpruce/Large`; sources `assets/art/source/Trees/<Species>/<Size>/` built by the shared `assets/art/source/Trees/tree_common.py`, previews `assets/art/previews/Trees/<Species>/<Size>.png`.
+- Heights (total incl. leader/topper) and max radius: Small 6.0 / 1.9, Medium 8.0 / 2.5, Large 10.0 / 3.1, special trees 10.4 / 3.3 studs (below `Placement.FootprintRadius`); origin = trunk foot, `ATT_TreeBase` at (0, 0, 0), collider `COL_Tree` 1.1R x 1.1R x H.
+- Budgets (tier A, `asset.json`): maxTriangles Small 800, Medium 1000, Large 1200, special 1600; maxMeshParts 7 (one MeshPart per colour: Trunk, RootFlare, NeedlesCore, Needles, Snow, then Frost/Topper/Berries).
+- The game still uses the primitive trees; wiring through `ArtLibrary.find("Trees/<species>/<size>")` is CM2-12W (needs the PC-2 upload).

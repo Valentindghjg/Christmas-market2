@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Trees/NobleFir/Small",
+	"displayName": "Noble Fir Small",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 800,
+	"maxMeshParts": 7,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

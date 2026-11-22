@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Trees/NobleFir/Large",
+	"displayName": "Noble Fir Large",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 1200,
+	"maxMeshParts": 7,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

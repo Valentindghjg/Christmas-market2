@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Trees/BlueSpruce/Medium",
+	"displayName": "Blue Spruce Medium",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 1000,
+	"maxMeshParts": 7,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

@@ -499,3 +499,11 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - D2: footer layout unchanged (left half empty on a Solo owner view, `Close` keeps its place); no new string keys.
 - Files: `src/client/TeamPanel.client.lua`, `tests/studio/Cases/CoopSave_Test.lua`, `docs/TEST_PLAN.md`.
 - Headless total 400. Studio playtest: pending the batch run (queue "Studio-Test ausstehend", position 2).
+
+## 2026-11-22 — CM2-12 tree art (engineering)
+- Branch N: `art.luau doctor` exit 2 (Blender 5.2.2 found, API key and creator missing). Probe, upload and normalize are BLOCKED by PC-2; no `.rbxm`, `verify` shows 0 integrated, 14 pending.
+- Special trees (PROVISIONAL, single size Large): `FrostcrownFir` "Frostcrown Fir" (silver needles, frost undersides, gold 5-point topper star) and `HollyberrySpruce` "Hollyberry Spruce" (deep green, 10 red berry clusters). Prices and shop: CM2-45 and the Robux shop task.
+- Heights / max radius: Small 6.0 / 1.9, Medium 8.0 / 2.5, Large 10.0 / 3.1, special 10.4 / 3.3 studs. Budgets maxTriangles 800 / 1000 / 1200 / 1600, maxMeshParts 7. Built: 284-876 triangles for sale trees, 882 Frostcrown, 1476 Hollyberry; 5-7 MeshParts.
+- Palette keys added (PROVISIONAL, SmoothPlastic): NeedleDeep, NeedleSage, NeedleBlue, NeedleSilver and their Shade keys; no existing value changed.
+- Final `SPECIES` values after the render rounds (review latitude ±15%; others as planned): DouglasFir t 0.138, overlap 1.15, inner 0.88, droop 0.102, snow 0.40; FrasierFir overlap 1.19, snow 0.345; BlueSpruce overlap 1.11, snow 0.2875; FrostcrownFir overlap 1.15, snow 0.5175; HollyberrySpruce overlap 1.11, snow 0.345; NobleFir unchanged. Reason: at the planned overlap the next tier hid the snow band.
+- Modeler details: tiers are spaced so the top tier ends at the leader base (leader sunk 15%); snow sits 0.06 studs above the tier and has no bottom cap (hidden inside the tier); the frost underside is the tier rim mirrored downwards, 0.12 of the tier height deep, narrowing to 0.88 R, so it shows as a silver edge from the side; the topper star sits on a thin gold stem from the leader tip; berry clusters sit on the bottom six tiers 2/2/2/2/1/1; the collider uses the species radius (Fraser 0.85 x class R).
