@@ -75,10 +75,23 @@ for name, path in pairs(sourcePaths) do
 	child(shared, name, path)
 end
 
+local serverStorage = { Name = "ServerStorage" } :: Node
+function serverStorage:WaitForChild(childName: string): Node
+	local result = self[childName]
+	assert(type(result) == "table", string.format("%s has no child %s", self.Name, childName))
+	return result :: Node
+end
+local unitTest = child(serverStorage, "UnitTest")
+local playtest = child(unitTest, "Playtest")
+child(playtest, "RunPlaytest", "tests/studio/Playtest/RunPlaytest.lua")
+
 local game = { JobId = "headless" }
 function game:GetService(name: string): Node
 	if name == "ReplicatedStorage" then
 		return replicatedStorage
+	end
+	if name == "ServerStorage" then
+		return serverStorage
 	end
 	if name == "ServerScriptService" then
 		return serverScriptService
