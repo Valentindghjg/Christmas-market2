@@ -5,7 +5,8 @@
 -- CM2-S3 adds "Being played by X" rows with Join (Save.Teleport), the teleport after a code
 -- join of a save played elsewhere and the "Find teammates" button. Mobile first; every
 -- button is at least 44 px tall. The UI only sends Save.* requests; the server validates,
--- filters names and owns every result.
+-- filters names and owns every result. CM2-UVF1: the picker is the modal base layer
+-- (UiKit.setBaseLayer).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -197,8 +198,8 @@ confirmCancel.AnchorPoint = Vector2.new(1, 0)
 confirmCancel.Position = UDim2.new(1, 0, 0, 202)
 confirmCancel.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 
--- Both dialogs are placed by UiKit.bindDialog; the picker is the base layer and never claims a
--- modal, so the finder still opens over it.
+-- Both dialogs are placed by UiKit.bindDialog. The picker is the base layer: opening the Lot
+-- Manager, Team or the stocking bar closes it; the finder opens over it.
 UiKit.bindDialog(gui, {
 	frame = picker,
 	list = list,
@@ -484,6 +485,7 @@ end
 
 local function open()
 	UiKit.closeModals()
+	UiKit.setBaseLayer(close)
 	picker.Visible = true
 	savesButton.Visible = false
 	updateBackButton()
@@ -491,6 +493,7 @@ local function open()
 end
 
 close = function()
+	UiKit.setBaseLayer(nil)
 	picker.Visible = false
 	closeDeleteConfirm()
 	renamingSaveId = nil

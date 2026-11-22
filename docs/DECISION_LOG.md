@@ -453,3 +453,10 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Placement (planner): CM2-UI is launch order 22a, after the last Gate B feature task (CM2-43) and before CM2-47 QA, so QA, the release candidate and the Go/No-Go regression run on the new UI. Gate C screens (Analytics, decor catalog, event shops) are built after it in the new style.
 - Graphics source (owner to choose before CM2-UI starts): an AI UI generator (for example ForgeGUI), a CC0 set (for example Kenney UI packs) or a bought kit with a written licence for commercial use in Roblox. Fallback if nothing is supplied: a CC0 set. Licence and source go to `assets/third_party/<set>/` and this log (CC0 precedent 2026-11-21).
 - Files: docs/PRODUCT_SPEC.md (UI look), docs/CLAUDE_BACKLOG.md (rules for the order, order 22a, owner inputs).
+
+## 2026-11-22 — CM2-UVF1 modal base layer (engineering)
+- Defect (CM2-UV (f), capture `uv-f2-pre`): the save picker and the Lot Manager opened together because the picker never registered with the modal coordinator.
+- Rule: the picker is the base layer via `UiKit.setBaseLayer`. Any `claimModal` closes it except ids in `ModalCoordinator.OverBase` (= `Finder`, so the teammate finder still opens over it). `closeModals()` keeps the base. Claimed dialogs stay gated on `CompanyReady`, so a forced picker is never closed.
+- Amends the CM2-40 "Modal rules" bullet. CM2-UI adds only a dim layer on this stack (picker DisplayOrder 20 under finder 25).
+- Files: `src/shared/ModalCoordinator.lua` (new), `src/client/UiKit.lua`, `src/client/SavePicker.client.lua`, `tests/studio/Cases/ModalCoordinator_Test.lua` (new), `tests/headless/run.luau`, `docs/TEST_PLAN.md`.
+- Headless +9, total 389.

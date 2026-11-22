@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Localization = require(Shared:WaitForChild("Localization"))
+local ModalCoordinator = require(Shared:WaitForChild("ModalCoordinator"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
 
 local UiKit = {}
@@ -217,37 +218,25 @@ end
 
 -- Modals ------------------------------------------------------------------------------------
 
--- Lot Manager, Team panel and teammate finder: one of them at a time. The save picker is the
--- base layer; it never claims, so the finder still opens over it.
-local modalHolders: { [string]: () -> () } = {}
+-- Lot Manager, Team panel, stocking bar and teammate finder: one of them at a time. The save
+-- picker is the base layer (`setBaseLayer`): any claim closes it, except the finder, which opens
+-- over it (ModalCoordinator.OverBase).
+local modals = ModalCoordinator.new()
 
 function UiKit.claimModal(id: string, close: () -> ())
-	local others: { () -> () } = {}
-	for otherId, otherClose in pairs(modalHolders) do
-		if otherId ~= id then
-			table.insert(others, otherClose)
-			modalHolders[otherId] = nil
-		end
-	end
-	modalHolders[id] = close
-	for _, otherClose in ipairs(others) do
-		otherClose()
-	end
+	modals.claim(id, close)
 end
 
 function UiKit.releaseModal(id: string)
-	modalHolders[id] = nil
+	modals.release(id)
 end
 
 function UiKit.closeModals()
-	local all: { () -> () } = {}
-	for id, close in pairs(modalHolders) do
-		table.insert(all, close)
-		modalHolders[id] = nil
-	end
-	for _, close in ipairs(all) do
-		close()
-	end
+	modals.closeAll()
+end
+
+function UiKit.setBaseLayer(close: (() -> ())?)
+	modals.setBase(close)
 end
 
 -- Rail --------------------------------------------------------------------------------------
