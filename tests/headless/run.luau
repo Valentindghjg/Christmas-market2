@@ -58,6 +58,8 @@ for name, path in pairs({
 	child(services, name, path)
 end
 local sourcePaths = {
+	ArtLibrary = "src/shared/ArtLibrary.lua",
+	ArtPalette = "src/shared/ArtPalette.lua",
 	AssetCatalog = "src/shared/AssetCatalog.lua",
 	BusinessState = "src/shared/BusinessState.lua",
 	CustomerProfile = "src/shared/CustomerProfile.lua",

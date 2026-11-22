@@ -2,6 +2,7 @@
 -- Original low-poly winter graybox built from Roblox primitives; no external assets.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local ArtLibrary = require(Shared:WaitForChild("ArtLibrary"))
 local AssetCatalog = require(Shared:WaitForChild("AssetCatalog"))
 local Economy = require(Shared:WaitForChild("Economy"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
@@ -110,53 +111,49 @@ local function tent(parent: Instance, position: Vector3): Model
 	return model
 end
 
--- Uses the approved imported market model when Studio has it, while retaining a
--- primitive fallback for source-only and automated test environments.
+-- Missing or broken art is reported once per path and server; the primitive fallback follows.
+local reportedArt: { [string]: boolean } = {}
+local function reportMissing(artPath: string, code: string)
+	if reportedArt[artPath] then
+		return
+	end
+	reportedArt[artPath] = true
+	warn(string.format("[ART] %s %s", code, artPath))
+end
+
+-- Uses the approved art model when ArtAssets has it, while retaining a primitive
+-- fallback for source-only and automated test environments.
 local function salesStand(parent: Instance, position: Vector3, assetId: string?): Model
-	local art = ReplicatedStorage:FindFirstChild("ArtAssets")
-	local buildings = art and art:FindFirstChild("Buildings")
 	assetId = assetId or AssetCatalog.Buildings.MarketStarter
-	local template = buildings and buildings:FindFirstChild(assetId)
-	if not (template and template:IsA("Model")) then
+	local artPath = "Buildings/" .. assetId
+	local template, code = ArtLibrary.find(ReplicatedStorage:FindFirstChild("ArtAssets"), artPath)
+	if not template then
+		reportMissing(artPath, code or "MissingArtAsset")
 		return tent(parent, position)
 	end
 
-	local model = template:Clone()
+	local model = ArtLibrary.prepareClone(template)
 	model.Name = "StarterSalesTent"
 	model.Parent = parent
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			descendant.Anchored = true
-			descendant.CanCollide = true
-		end
-	end
 	local box, size = model:GetBoundingBox()
 	local targetCenter = position + Vector3.new(0, size.Y / 2, 0)
 	model:PivotTo(model:GetPivot() + (targetCenter - box.Position))
-	model:SetAttribute("ArtAssetId", assetId)
 	return model
 end
 
 local function cloneArt(parent: Instance, category: string, assetId: string, groundPosition: Vector3): Model?
-	local art = ReplicatedStorage:FindFirstChild("ArtAssets")
-	local folder = art and art:FindFirstChild(category)
-	local template = folder and folder:FindFirstChild(assetId)
-	if not (template and template:IsA("Model")) then
+	local artPath = category .. "/" .. assetId
+	local template, code = ArtLibrary.find(ReplicatedStorage:FindFirstChild("ArtAssets"), artPath)
+	if not template then
+		reportMissing(artPath, code or "MissingArtAsset")
 		return nil
 	end
 
-	local model = template:Clone()
+	local model = ArtLibrary.prepareClone(template)
 	model.Name = assetId
 	model.Parent = parent
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			descendant.Anchored = true
-			descendant.CanCollide = true
-		end
-	end
 	local box, size = model:GetBoundingBox()
 	model:PivotTo(model:GetPivot() + (groundPosition + Vector3.new(0, size.Y / 2, 0) - box.Position))
-	model:SetAttribute("ArtAssetId", assetId)
 	return model
 end
 
