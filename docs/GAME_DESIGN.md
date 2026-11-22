@@ -15,7 +15,7 @@ Christmas-tree retail tycoon: buy stock from supplier, wait for truck, unload, p
 1. Player claims an unoccupied plot; personal company data loads.
 2. Supplier UI shows unlocked species, sizes, unit wholesale price, stock, available delivery slots.
 3. Server validates order against funds, stock unlock, capacity and request ID; debits cash exactly once; creates PendingOrder.
-4. Truck arrives after configured delay. Items move from PendingOrder to Delivered; owner or worker unloads to Stored. No duplication across reconnect.
+4. Each order gets its own receiving bay (4 bays, 9 trees each). A countdown runs over the bay and a truck pulls in near its end; when it reaches zero (OBSERVED 25–31 s, `GameConfig.DeliverySeconds = 30`) the trees land in the bay by themselves (OBSERVED: the player does not unload). No duplication across reconnect (CM2-G14).
 5. Player places trees from Stored into Displayed via bounded plot placement. Items have stable unique IDs. Pickup moves back to Stored.
 6. Customer selects eligible displayed tree; server reserves item; customer navigates to checkout, pays, then item is consumed exactly once. On timeout, reservation is released.
 7. Sale credits company cash, increments counters and reputation based on outcome; unlock progression is re-evaluated.
@@ -39,7 +39,7 @@ NPC FSM: Spawn -> WalkToPlot -> Browse -> Choose -> ReserveTree -> Queue -> Chec
 Each customer has a seeded preference for species and size, budget, patience, and optional time urgency. Server owns decisions and sale completion. Customer never buys unavailable, unreserved stock. Queue capacity is tied to checkout stations; cashier employee increases automated throughput. Bound NPC count per server and per plot; abort stalled pathfinding and release reservations. Track visits, conversion, abandoned queues, average spend and satisfaction.
 
 ## 6. Deliveries and staff
-Delivery has request ID, order ID, dueAt, quantities and status. Arrival is a server-time transition, not dependent on client countdown. Unloading requires authorized player or hired lot worker; disconnected sessions restore outstanding orders. Hiring cashier or lot worker is a one-time in-game cash debit; no salaries or maintenance costs. Staff jobs use atomic claims and can be canceled/reassigned safely; upgrades affect capacity, not paychecks.
+Delivery has request ID, order ID, dueAt, quantities, status and its receiving bay. Arrival is a server-time transition, not dependent on client countdown: at dueAt the server pass moves the trees into the bay (no unload step). Stocking from a bay onto the lot (single tree or a row, all or none) and store mode back into receiving need empty hands; a hired Lot Worker will stock from the bays through the same server functions (CM2-25/26). Disconnected sessions restore outstanding orders and bay contents. Hiring cashier or lot worker is a one-time in-game cash debit; no salaries or maintenance costs. Staff jobs use atomic claims and can be canceled/reassigned safely; upgrades affect capacity, not paychecks.
 
 ## 7. Progression
 Cash + reputation + explicit prerequisites gate land, parking and HQ. Observed Pavilion upgrade: $2,500, 250 reputation, expansion level >=1, parking >=4. Observed benefits: 4 new tree types, 2 checkout stations, employee capacity 3, customer patience +12%; validate exact unlock IDs when reference content is available. Later HQ names in screenshot plan include Christmas Market Chalet and Christmas Lodge, but numeric requirements are UNKNOWN and must be configured provisionally.
