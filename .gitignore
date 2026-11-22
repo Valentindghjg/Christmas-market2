@@ -15,3 +15,11 @@ assets/**/source.zip
 docs/art/quality-reference/*.png
 docs/art/quality-reference/*.jpg
 docs/art/quality-reference/*.webp
+
+# Art pipeline (CM2-AP): generated builds, probe output and Blender backups. The art
+# .blend files under assets/art/source are committed; the generated probe .blend is not.
+assets/art/_build/
+tests/fixtures/art/_build/
+tests/fixtures/art/rbxm/
+tests/fixtures/art/source/**/*.blend
+*.blend1

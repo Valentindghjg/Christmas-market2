@@ -3,6 +3,7 @@
 *.glb binary
 *.obj -text -diff
 *.mtl -text -diff
+*.blend binary
 *.rbxm binary
 *.rbxl binary
 *.png binary

@@ -7,6 +7,9 @@
       "$className": "ReplicatedStorage",
       "Shared": {
         "$path": "src/shared"
+      },
+      "ArtAssets": {
+        "$path": "assets/art/rbxm"
       }
     },
     "ServerScriptService": {
