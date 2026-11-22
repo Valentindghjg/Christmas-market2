@@ -522,7 +522,7 @@ local function execute(hook: any, mode: string, minutes: number)
 			local runner = require(ServerStorage:WaitForChild("UnitTest"):WaitForChild("RunUnitTest")) :: any
 			local totals = runner(nil, 10)
 			check(totals.failed == 0, totals.failed .. " unit test(s) failed")
-			check(totals.run >= 142, "only " .. totals.run .. " unit tests ran (expected >= 142)")
+			check(totals.run >= 147, "only " .. totals.run .. " unit tests ran (expected >= 147)")
 			return string.format("%d run, %d passed", totals.run, totals.passed)
 		end)
 
@@ -929,8 +929,50 @@ local function execute(hook: any, mode: string, minutes: number)
 			return string.format("6 cycles, %d worker loads, %d expiries, 0 leaks", workerLoads, expiries)
 		end)
 
-		addStep("21", "LEAK_CHECK", { "02" }, leakCheck)
-		addStep("22", "CLEANUP", {}, cleanup)
+		addStep("21", "ART_ASSETS", {}, function()
+			local art = ReplicatedStorage:FindFirstChild("ArtAssets")
+			check(art ~= nil, "ReplicatedStorage.ArtAssets is missing")
+			local container = art :: Instance
+			local duplicates: { string } = {}
+			local function scanNames(folder: Instance)
+				local seen: { [string]: boolean } = {}
+				for _, child in folder:GetChildren() do
+					if seen[child.Name] then
+						table.insert(duplicates, folder:GetFullName() .. "/" .. child.Name)
+					end
+					seen[child.Name] = true
+				end
+			end
+			scanNames(container)
+			local meshParts: { Instance } = {}
+			local models = 0
+			for _, descendant in container:GetDescendants() do
+				if descendant:IsA("Folder") then
+					scanNames(descendant)
+				elseif descendant:IsA("Model") and descendant:GetAttribute("ArtSource") == "blender" then
+					models += 1
+					for _, inner in descendant:GetDescendants() do
+						if inner:IsA("MeshPart") then
+							table.insert(meshParts, inner)
+						end
+					end
+				end
+			end
+			check(#duplicates == 0, "duplicate ArtAssets names: " .. table.concat(duplicates, ", "))
+			local failed: { string } = {}
+			if #meshParts > 0 then
+				game:GetService("ContentProvider"):PreloadAsync(meshParts, function(contentId: string, status)
+					if status ~= Enum.AssetFetchStatus.Success then
+						table.insert(failed, string.format("%s %s", contentId, tostring(status)))
+					end
+				end)
+			end
+			check(#failed == 0, "meshes failed to load: " .. table.concat(failed, ", "))
+			return string.format("%d blender models, %d meshes, 0 failed, 0 duplicates", models, #meshParts)
+		end)
+
+		addStep("22", "LEAK_CHECK", { "02" }, leakCheck)
+		addStep("23", "CLEANUP", {}, cleanup)
 	else
 		addStep("01", "SHADOW_JOIN", {}, function()
 			shadowJoin(1)
