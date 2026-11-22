@@ -155,8 +155,8 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(BusinessState.SCHEMA_VERSION, 11)
-		expect.equal(migrated.schemaVersion, 11)
+		expect.equal(BusinessState.SCHEMA_VERSION, 12)
+		expect.equal(migrated.schemaVersion, 12)
 		expect.equal(migrated.cash, 777)
 		expect.equal(migrated.reputation, 120)
 		expect.equal(migrated.stock["NobleFir:Small"], 4)
@@ -182,6 +182,141 @@ return function(t)
 		local state = BusinessState.new("personal:42", 42)
 		state.customerOrders["5"] = { orderNumber = 5 }
 		expect.falsy(BusinessState.validate(state))
+	end)
+
+	-- CM2-S2: schema 12 member map and invite codes.
+	t.test("migrates v11 to v12 with an owner-only member map", function()
+		local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
+		local legacy = BusinessState.new("save:42_x", 42)
+		legacy.schemaVersion = 11
+		legacy.members = { ["42"] = "Owner", ["7"] = "Manager" }
+		legacy.inviteCode = "12345"
+		legacy.cash = 555
+		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(migrated.schemaVersion, 12)
+		expect.equal(migrated.members["42"], "Owner")
+		expect.equal(migrated.members["7"], nil)
+		expect.equal(BusinessState.memberCount(migrated), 1)
+		expect.equal(migrated.inviteCode, nil)
+		expect.equal(migrated.cash, 555)
+		local bigOwner = 9223372036854774784
+		local big = BusinessState.new("save:big", bigOwner)
+		big.schemaVersion = 11
+		big.members = { [tostring(bigOwner)] = "Owner" }
+		local bigMigrated = BusinessState.migrate(big, "save:big", bigOwner)
+		expect.truthy(bigMigrated)
+		expect.equal(bigMigrated.members[SaveProfile.userIdText(bigOwner)], "Owner")
+		expect.equal(SaveProfile.userIdText(bigOwner), "9223372036854774784")
+	end)
+
+	t.test("validates members, seats and invite codes", function()
+		local function duo()
+			local state = BusinessState.new("save:42_x", 42)
+			state.saveSize = "Duo"
+			return state
+		end
+		local two = duo()
+		two.members["43"] = "Member"
+		expect.truthy(BusinessState.validate(two))
+		local three = duo()
+		three.members["43"] = "Member"
+		three.members["44"] = "Member"
+		expect.falsy(BusinessState.validate(three))
+		local twoOwners = duo()
+		twoOwners.members["43"] = "Owner"
+		expect.falsy(BusinessState.validate(twoOwners))
+		local visitor = duo()
+		visitor.members["43"] = "Visitor"
+		expect.falsy(BusinessState.validate(visitor))
+		local badKey = duo()
+		badKey.members["x1"] = "Member"
+		expect.falsy(BusinessState.validate(badKey))
+		local soloCode = BusinessState.new("save:42_x", 42)
+		soloCode.inviteCode = "12345"
+		expect.falsy(BusinessState.validate(soloCode))
+		for _, code in { "01234", "1234", "123456" } do
+			local bad = duo()
+			bad.inviteCode = code
+			expect.falsy(BusinessState.validate(bad))
+		end
+		local good = duo()
+		good.inviteCode = "12345"
+		expect.truthy(BusinessState.validate(good))
+		expect.truthy(BusinessState.isInviteCode("12345"))
+		expect.falsy(BusinessState.isInviteCode(12345))
+	end)
+
+	t.test("adds members only with the current code and a free seat", function()
+		local solo = BusinessState.new("save:42_x", 42)
+		local soloOk, soloReason = BusinessState.addMember(solo, 43, "12345")
+		expect.falsy(soloOk)
+		expect.equal(soloReason, "InviteCodeInvalid")
+		local state = BusinessState.new("save:42_x", 42)
+		state.saveSize = "Duo"
+		state.inviteCode = "12345"
+		local wrongOk, wrongReason = BusinessState.addMember(state, 43, "54321")
+		expect.falsy(wrongOk)
+		expect.equal(wrongReason, "InviteCodeInvalid")
+		local joined, joinResult = BusinessState.addMember(state, 43, "12345")
+		expect.truthy(joined)
+		expect.equal(joinResult.outcome, "Joined")
+		expect.equal(joinResult.size, "Duo")
+		expect.equal(state.members["43"], "Member")
+		local again, againResult = BusinessState.addMember(state, 43, "12345")
+		expect.truthy(again)
+		expect.equal(againResult.outcome, "AlreadyMember")
+		local full, fullReason = BusinessState.addMember(state, 44, "12345")
+		expect.falsy(full)
+		expect.equal(fullReason, "SaveFull")
+		expect.equal(state.members["44"], nil)
+		local trusted = BusinessState.new("save:42_y", 42)
+		trusted.saveSize = "Trio"
+		local trustedOk, trustedResult = BusinessState.addMember(trusted, 44, nil)
+		expect.truthy(trustedOk)
+		expect.equal(trustedResult.outcome, "Joined")
+		expect.truthy(BusinessState.validate(trusted))
+	end)
+
+	t.test("removes members and resizes within the member count", function()
+		local state = BusinessState.new("save:42_x", 42)
+		state.saveSize = "Duo"
+		state.inviteCode = "12345"
+		state.members["43"] = "Member"
+		local ownerOk, ownerReason = BusinessState.removeMember(state, 42)
+		expect.falsy(ownerOk)
+		expect.equal(ownerReason, "OwnerCannotLeave")
+		local strangerOk, strangerReason = BusinessState.removeMember(state, 99)
+		expect.falsy(strangerOk)
+		expect.equal(strangerReason, "NotAMember")
+		local tooSmall, tooSmallReason = BusinessState.setSaveSize(state, "Solo")
+		expect.falsy(tooSmall)
+		expect.equal(tooSmallReason, "SizeTooSmall")
+		expect.equal(state.inviteCode, "12345")
+		expect.truthy(BusinessState.removeMember(state, 43))
+		expect.equal(state.members["43"], nil)
+		local same, sameCode = BusinessState.setSaveSize(state, "Duo")
+		expect.truthy(same)
+		expect.equal(sameCode, nil)
+		local solo, oldCode = BusinessState.setSaveSize(state, "Solo")
+		expect.truthy(solo)
+		expect.equal(oldCode, "12345")
+		expect.equal(state.inviteCode, nil)
+		expect.equal(state.saveSize, "Solo")
+		expect.truthy(BusinessState.validate(state))
+		local huge, hugeReason = BusinessState.setSaveSize(state, "Huge")
+		expect.falsy(huge)
+		expect.equal(hugeReason, "InvalidSize")
+		local soloCode, soloCodeReason = BusinessState.setInviteCode(state, "12345", nil)
+		expect.falsy(soloCode)
+		expect.equal(soloCodeReason, "SoloHasNoCode")
+		state.saveSize = "Duo"
+		local changed, changedReason = BusinessState.setInviteCode(state, "12345", "99999")
+		expect.falsy(changed)
+		expect.equal(changedReason, "CodeChanged")
+		expect.truthy(BusinessState.setInviteCode(state, "12345", nil))
+		expect.equal(state.inviteCode, "12345")
 	end)
 
 	t.test("a new company prices and stocks Douglas Fir", function()

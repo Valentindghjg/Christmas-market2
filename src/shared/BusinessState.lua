@@ -1,11 +1,13 @@
 --!strict
 local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
+local SaveProfile = require(script.Parent.SaveProfile)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 11
+BusinessState.SCHEMA_VERSION = 12
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
+local MEMBER_ROLES = { Owner = true, Member = true }
 
 local function defaultSaveName(): string
 	return string.format(GameConfig.Saves.DefaultNameFormat, 1)
@@ -26,6 +28,15 @@ local function isFiniteInteger(value: unknown): boolean
 		and value ~= math.huge
 		and value ~= -math.huge
 		and value == math.floor(value)
+end
+
+-- Schema 12 member map with only the owner. A record without a valid owner ID gets an empty
+-- map, which validate() then rejects.
+local function ownerOnlyMembers(ownerUserId: unknown): { [string]: string }
+	if not isFiniteInteger(ownerUserId) then
+		return {}
+	end
+	return { [SaveProfile.userIdText(ownerUserId :: number)] = "Owner" }
 end
 
 -- Supplier stock starts at the configured base so a fresh company can order at once;
@@ -106,7 +117,8 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		saveName = saveName or defaultSaveName(),
 		saveSize = "Solo",
 		mode = "personal",
-		members = { [tostring(resolvedOwnerUserId)] = "Owner" },
+		members = { [SaveProfile.userIdText(resolvedOwnerUserId)] = "Owner" },
+		inviteCode = nil,
 		revision = 0,
 		cash = GameConfig.StartingCash,
 		reputation = GameConfig.StartingReputation,
@@ -230,6 +242,12 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		end
 		state.saveSize = "Solo"
 	end
+	if state.schemaVersion == 11 then
+		state.schemaVersion = 12
+		-- Other roles were never writable in production, so only the owner is kept.
+		state.members = ownerOnlyMembers(state.ownerUserId)
+		state.inviteCode = nil
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -247,7 +265,8 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.saveName = defaultSaveName()
 	state.saveSize = "Solo"
 	state.mode = "personal"
-	state.members = { [tostring(state.ownerUserId)] = "Owner" }
+	state.members = ownerOnlyMembers(state.ownerUserId)
+	state.inviteCode = nil
 	state.revision = 0
 	state.autoPricing = false
 	state.recentRequests = {}
@@ -324,6 +343,126 @@ local function validCustomerOrders(state): boolean
 	return count <= GameConfig.Customers.MaxOpenCustomerOrders
 end
 
+-- Co-op saves (schema 12, CM2-S2) ------------------------------------------------------------
+
+-- A 5-digit invite code without a leading zero.
+function BusinessState.isInviteCode(value: unknown): boolean
+	return type(value) == "string" and string.match(value, "^[1-9]%d%d%d%d$") ~= nil
+end
+
+function BusinessState.seatsFor(size: unknown): number?
+	if type(size) ~= "string" then
+		return nil
+	end
+	return GameConfig.Saves.Seats[size]
+end
+
+function BusinessState.memberCount(state): number
+	local count = 0
+	for _ in pairs(state.members) do
+		count += 1
+	end
+	return count
+end
+
+-- code == nil is for trusted server callers only; Save.Join always passes the typed code.
+function BusinessState.addMember(state, userId: number, code: string?)
+	local key = SaveProfile.userIdText(userId)
+	if state.members[key] ~= nil then
+		return true, { outcome = "AlreadyMember", size = state.saveSize }
+	end
+	if code ~= nil and (state.saveSize == "Solo" or state.inviteCode ~= code) then
+		return false, "InviteCodeInvalid"
+	end
+	local seats = BusinessState.seatsFor(state.saveSize) or 0
+	if BusinessState.memberCount(state) >= seats then
+		return false, "SaveFull"
+	end
+	state.members[key] = "Member"
+	return true, { outcome = "Joined", size = state.saveSize }
+end
+
+function BusinessState.removeMember(state, userId: number)
+	local key = SaveProfile.userIdText(userId)
+	local role = state.members[key]
+	if role == "Owner" then
+		return false, "OwnerCannotLeave"
+	end
+	if role == nil then
+		return false, "NotAMember"
+	end
+	state.members[key] = nil
+	return true
+end
+
+-- expected is the code the caller saw; a different current code means someone changed it.
+function BusinessState.setInviteCode(state, code: string?, expected: string?)
+	if code ~= nil and state.saveSize == "Solo" then
+		return false, "SoloHasNoCode"
+	end
+	if state.inviteCode ~= expected then
+		return false, "CodeChanged"
+	end
+	state.inviteCode = code
+	return true
+end
+
+-- Returns the cleared code when the save becomes Solo, so the caller can release it.
+function BusinessState.setSaveSize(state, size: unknown)
+	local seats = BusinessState.seatsFor(size)
+	if seats == nil then
+		return false, "InvalidSize"
+	end
+	if size == state.saveSize then
+		return true, nil
+	end
+	if BusinessState.memberCount(state) > seats then
+		return false, "SizeTooSmall"
+	end
+	state.saveSize = size
+	if size == "Solo" then
+		local previousCode = state.inviteCode
+		state.inviteCode = nil
+		return true, previousCode
+	end
+	return true, nil
+end
+
+-- Exactly one Owner at the owner's ID, only Owner/Member roles, decimal user-ID keys, at most
+-- the seats of the save size; an invite code only on Duo or larger saves.
+local function validMembers(state): boolean
+	if type(state.members) ~= "table" then
+		return false
+	end
+	local owners = 0
+	local count = 0
+	for key, role in pairs(state.members) do
+		if type(key) ~= "string" or #key < 1 or #key > 19 or string.match(key, "^%d+$") == nil then
+			return false
+		end
+		if not MEMBER_ROLES[role] then
+			return false
+		end
+		if role == "Owner" then
+			owners += 1
+		end
+		count += 1
+	end
+	if owners ~= 1 or state.members[SaveProfile.userIdText(state.ownerUserId)] ~= "Owner" then
+		return false
+	end
+	local seats = BusinessState.seatsFor(state.saveSize)
+	if seats == nil or count > seats then
+		return false
+	end
+	if state.inviteCode ~= nil then
+		if state.saveSize == "Solo" or not BusinessState.isInviteCode(state.inviteCode) then
+			return false
+		end
+	end
+	return true
+end
+
 function BusinessState.validate(state)
 	if type(state) ~= "table" or state.schemaVersion ~= BusinessState.SCHEMA_VERSION then
 		return false
@@ -340,7 +479,7 @@ function BusinessState.validate(state)
 	if state.mode ~= "personal" and state.mode ~= "shared" then
 		return false
 	end
-	if type(state.members) ~= "table" or state.members[tostring(state.ownerUserId)] ~= "Owner" then
+	if not validMembers(state) then
 		return false
 	end
 	if not isFiniteInteger(state.revision) or state.revision < 0 then

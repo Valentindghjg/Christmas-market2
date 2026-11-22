@@ -58,12 +58,27 @@ GameConfig.Saves = {
 	MaxPlotTeleports = 3,
 	LoadAttempts = 5,
 	RecentCreates = 10,
+	-- Co-op saves (CM2-S2): seats per save size are OWNER DECIDED (PRODUCT_SPEC).
+	Seats = { Solo = 1, Duo = 2, Trio = 3, Quad = 4 },
+	-- 5-digit invite codes are OWNER DECIDED; no leading zero is PROVISIONAL.
+	InviteCodeMin = 10000,
+	InviteCodeMax = 99999,
+	InviteClaimAttempts = 8, -- PROVISIONAL
+	SharedEntryName = "Shared lot", -- PROVISIONAL
+	JoinFailureLimit = { limit = 10, window = 3600 }, -- wrong codes per player
+	JoinServerFailureLimit = { limit = 60, window = 60 }, -- wrong codes per server
 	RateLimits = {
 		["Save.List"] = { limit = 20, window = 10 },
 		["Save.Create"] = { limit = 5, window = 60 },
 		["Save.Rename"] = { limit = 5, window = 60 },
 		["Save.Delete"] = { limit = 5, window = 60 },
 		["Save.Play"] = { limit = 10, window = 60 },
+		["Save.Join"] = { limit = 5, window = 60 },
+		["Save.LeaveTeam"] = { limit = 5, window = 60 },
+		["Save.Team"] = { limit = 20, window = 10 },
+		["Save.RemoveMember"] = { limit = 10, window = 60 },
+		["Save.RegenerateCode"] = { limit = 3, window = 60 },
+		["Save.SetSize"] = { limit = 5, window = 60 },
 	},
 }
 

@@ -68,6 +68,15 @@ function SaveProfile.isSaveId(value: unknown): boolean
 		and string.find(hex, "%u") == nil
 end
 
+-- The owner's user ID from the digits before the underscore of a save ID (CM2-S2).
+function SaveProfile.ownerUserIdOf(saveId: unknown): number?
+	if not SaveProfile.isSaveId(saveId) then
+		return nil
+	end
+	local digits = string.match(saveId :: string, "^(%d+)_")
+	return tonumber(digits)
+end
+
 -- Returns the trimmed name with single spaces, or nil plus "NameInvalid".
 function SaveProfile.normalizeName(raw: unknown): (string?, string?)
 	if type(raw) ~= "string" or #raw > SAVES.NamePayloadMaxBytes or utf8.len(raw) == nil then
@@ -103,11 +112,17 @@ function SaveProfile.find(profile, saveId: unknown)
 	return nil, nil
 end
 
--- Case-insensitive; exceptSaveId skips the save that is being renamed.
+-- Case-insensitive; exceptSaveId skips the save that is being renamed. Only the player's own
+-- saves count: Member entries all carry the shared placeholder name (CM2-S2).
 function SaveProfile.nameTaken(profile, name: string, exceptSaveId: string?): boolean
 	local lowered = string.lower(name)
 	for _, entry in ipairs(profile.saves) do
-		if entry.saveId ~= exceptSaveId and type(entry.name) == "string" and string.lower(entry.name) == lowered then
+		if
+			entry.role == "Owner"
+			and entry.saveId ~= exceptSaveId
+			and type(entry.name) == "string"
+			and string.lower(entry.name) == lowered
+		then
 			return true
 		end
 	end

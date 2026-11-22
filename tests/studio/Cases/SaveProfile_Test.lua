@@ -123,4 +123,30 @@ return function(t)
 		local tooMany = profileWith(GameConfig.Saves.MaxSavesPerPlayer + 1)
 		expect.falsy(SaveProfile.validate(tooMany))
 	end)
+
+	-- CM2-S2: co-op saves read the owner from the save ID; shared entries never block names.
+	t.test("reads the owner from a save ID and ignores shared names", function()
+		expect.equal(SaveProfile.ownerUserIdOf(saveId(1)), 42)
+		local bigId = SaveProfile.newSaveId(MAX_USER_ID, "0F8FAD5B-D9CB-469F-A165-70867728950E")
+		expect.equal(SaveProfile.ownerUserIdOf(bigId), MAX_USER_ID)
+		expect.equal(SaveProfile.ownerUserIdOf(nil), nil)
+		for _, bad in { "nope", "42_" .. string.rep("AB", 8), 42, "_" .. string.rep("ab", 8) } do
+			expect.equal(SaveProfile.ownerUserIdOf(bad), nil)
+		end
+		local profile = profileWith(1)
+		table.insert(profile.saves, {
+			saveId = string.format("43_%016x", 9),
+			name = GameConfig.Saves.SharedEntryName,
+			role = "Member",
+			size = "Duo",
+			createdAt = 5,
+			lastPlayedAt = 0,
+		})
+		expect.truthy(SaveProfile.validate(profile))
+		expect.falsy(SaveProfile.nameTaken(profile, "Shared lot"))
+		expect.falsy(SaveProfile.nameTaken(profile, "shared LOT"))
+		table.insert(profile.saves, entry(2, "Shared lot"))
+		expect.truthy(SaveProfile.validate(profile))
+		expect.truthy(SaveProfile.nameTaken(profile, "shared lot"))
+	end)
 end

@@ -52,6 +52,13 @@ Protocol.SaveActions = {
 	Rename = "Save.Rename",
 	Delete = "Save.Delete",
 	Play = "Save.Play",
+	-- Co-op saves (CM2-S2).
+	Join = "Save.Join",
+	LeaveTeam = "Save.LeaveTeam",
+	Team = "Save.Team",
+	RemoveMember = "Save.RemoveMember",
+	RegenerateCode = "Save.RegenerateCode",
+	SetSize = "Save.SetSize",
 }
 
 local saveActionSet = {}
@@ -295,12 +302,30 @@ local function isNameText(value: unknown): boolean
 	return type(value) == "string" and #value <= GameConfig.Saves.NamePayloadMaxBytes
 end
 
+local function isSaveSize(value: unknown): boolean
+	return type(value) == "string" and GameConfig.Saves.Seats[value] ~= nil
+end
+
+local function isInviteCode(value: unknown): boolean
+	return type(value) == "string" and string.match(value, "^[1-9]%d%d%d%d$") ~= nil
+end
+
+local function isUserId(value: unknown): boolean
+	return isFiniteInteger(value) and (value :: number) >= 1 and (value :: number) <= 2 ^ 53
+end
+
 local SAVE_PAYLOAD_KEYS = {
 	[Protocol.SaveActions.List] = {},
-	[Protocol.SaveActions.Create] = { name = true },
+	[Protocol.SaveActions.Create] = { name = true, size = true },
 	[Protocol.SaveActions.Rename] = { saveId = true, name = true },
 	[Protocol.SaveActions.Delete] = { saveId = true, confirmName = true },
 	[Protocol.SaveActions.Play] = { saveId = true },
+	[Protocol.SaveActions.Join] = { code = true },
+	[Protocol.SaveActions.LeaveTeam] = { saveId = true },
+	[Protocol.SaveActions.Team] = {},
+	[Protocol.SaveActions.RemoveMember] = { userId = true },
+	[Protocol.SaveActions.RegenerateCode] = {},
+	[Protocol.SaveActions.SetSize] = { size = true },
 }
 
 -- Save-slot requests (CM2-S1) use the same envelope as business requests.
@@ -320,6 +345,22 @@ function Protocol.validateSaveRequest(request)
 	if action == Protocol.SaveActions.Create then
 		if payload.name ~= nil and not isNameText(payload.name) then
 			return false, "InvalidName"
+		end
+		-- An absent size creates a Solo save.
+		if payload.size ~= nil and not isSaveSize(payload.size) then
+			return false, "InvalidSize"
+		end
+	elseif action == Protocol.SaveActions.Join then
+		if not isInviteCode(payload.code) then
+			return false, "InvalidInviteCode"
+		end
+	elseif action == Protocol.SaveActions.RemoveMember then
+		if not isUserId(payload.userId) then
+			return false, "InvalidUserId"
+		end
+	elseif action == Protocol.SaveActions.SetSize then
+		if not isSaveSize(payload.size) then
+			return false, "InvalidSize"
 		end
 	elseif action == Protocol.SaveActions.Rename then
 		if not isNameText(payload.name) then
@@ -376,6 +417,22 @@ function Protocol.forgetUser(limiter, playerUserId: number)
 			limiter.buckets[key] = nil
 		end
 	end
+end
+
+-- Counts the entries inside the window without recording a new one (CM2-S2 join lockout).
+function Protocol.recentCount(limiter, playerUserId: number, action: string, timestamp: number): number
+	local bucket = limiter.buckets[tostring(playerUserId) .. ":" .. action]
+	if bucket == nil then
+		return 0
+	end
+	local cutoff = timestamp - limiter.windowSeconds
+	local count = 0
+	for _, previous in ipairs(bucket) do
+		if previous > cutoff then
+			count += 1
+		end
+	end
+	return count
 end
 
 function Protocol.allowRequest(limiter, playerUserId: number, action: string, timestamp: number): boolean

@@ -169,6 +169,52 @@ return function(t)
 		expect.equal(envelope, "UnsupportedVersion")
 	end)
 
+	-- CM2-S2: co-op save actions validate every new field.
+	t.test("validates co-op save payloads", function()
+		local Save = Protocol.SaveActions
+		expect.truthy(saveRequest(Save.Join, { code = "12345" }))
+		expect.truthy(saveRequest(Save.LeaveTeam, { saveId = SAVE_ID }))
+		expect.truthy(saveRequest(Save.Team, {}))
+		expect.truthy(saveRequest(Save.RemoveMember, { userId = 43 }))
+		expect.truthy(saveRequest(Save.RegenerateCode, {}))
+		expect.truthy(saveRequest(Save.SetSize, { size = "Trio" }))
+		expect.truthy(saveRequest(Save.Create, { name = "Team Lot", size = "Quad" }))
+		local _, hugeCreate = saveRequest(Save.Create, { size = "Huge" })
+		expect.equal(hugeCreate, "InvalidSize")
+		local _, hugeSet = saveRequest(Save.SetSize, { size = "Huge" })
+		expect.equal(hugeSet, "InvalidSize")
+		local _, missingSize = saveRequest(Save.SetSize, {})
+		expect.equal(missingSize, "InvalidSize")
+		for _, code in { "01234", "1234", 12345, "12a45" } do
+			local _, reason = saveRequest(Save.Join, { code = code })
+			expect.equal(reason, "InvalidInviteCode")
+		end
+		for _, userId in { 0, 1.5, "7" } do
+			local _, reason = saveRequest(Save.RemoveMember, { userId = userId })
+			expect.equal(reason, "InvalidUserId")
+		end
+		local _, badLeave = saveRequest(Save.LeaveTeam, { saveId = "nope" })
+		expect.equal(badLeave, "InvalidSaveId")
+		local _, extra = saveRequest(Save.Join, { code = "12345", saveId = SAVE_ID })
+		expect.equal(extra, "UnexpectedField")
+		local _, teamExtra = saveRequest(Save.Team, { all = true })
+		expect.equal(teamExtra, "UnexpectedField")
+	end)
+
+	t.test("counts recent requests without recording them", function()
+		local limiter = Protocol.newRateLimiter(3, 60)
+		expect.equal(Protocol.recentCount(limiter, 7, "fail", 100), 0)
+		expect.truthy(Protocol.allowRequest(limiter, 7, "fail", 100))
+		expect.truthy(Protocol.allowRequest(limiter, 7, "fail", 110))
+		expect.equal(Protocol.recentCount(limiter, 7, "fail", 120), 2)
+		expect.equal(Protocol.recentCount(limiter, 7, "fail", 120), 2)
+		expect.equal(Protocol.recentCount(limiter, 8, "fail", 120), 0)
+		-- Only entries newer than the window count.
+		expect.equal(Protocol.recentCount(limiter, 7, "fail", 165), 1)
+		expect.truthy(Protocol.allowRequest(limiter, 7, "fail", 165))
+		expect.equal(Protocol.recentCount(limiter, 7, "fail", 165), 2)
+	end)
+
 	t.test("accepts Douglas Fir orders and rejects the display spelling as an ID", function()
 		local ok = Protocol.validateRequest({
 			version = 1,

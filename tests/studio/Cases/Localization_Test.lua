@@ -51,6 +51,67 @@ return function(t)
 		expect.equal(Localization.saveErrorKey(nil), "saveErrorUnknown")
 	end)
 
+	-- CM2-S2: the co-op error and UI keys of plan step 10.
+	t.test("has every co-op UI key in English and German", function()
+		local keys = {
+			"saveErrorOwnerOnly",
+			"saveErrorNotMember",
+			"saveErrorRemoved",
+			"saveErrorInviteInvalid",
+			"saveErrorSaveFull",
+			"saveErrorJoinLocked",
+			"saveErrorOwnerCannotLeave",
+			"saveErrorCannotRemoveOwner",
+			"saveErrorNotActive",
+			"saveErrorSizeTooSmall",
+			"saveErrorSoloNoCode",
+			"saveErrorCodeUnavailable",
+			"saveErrorInUse",
+			"saveSizeSolo",
+			"saveSizeDuo",
+			"saveSizeTrio",
+			"saveSizeQuad",
+			"saveRowSolo",
+			"saveRowCoopOwner",
+			"saveRowCoopMember",
+			"sharedSaveName",
+			"sharedSaveNameUnknown",
+			"saveLeave",
+			"joinCodePlaceholder",
+			"joinButton",
+			"teamButton",
+			"teamTitle",
+			"teamSeats",
+			"teamCode",
+			"teamCodeHint",
+			"teamNoCode",
+			"teamCodePending",
+			"teamNewCode",
+			"teamRemove",
+			"teamRemoveConfirm",
+			"teamLeave",
+			"teamLeaveConfirm",
+			"teamOwnerTag",
+			"teamMemberTag",
+			"teamOnline",
+			"teamOffline",
+			"teamUnknownPlayer",
+			"teamClose",
+			"hudSharedSaveStatus",
+			"hudSharedSaveStatusUnknown",
+		}
+		for _, key in ipairs(keys) do
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+		expect.equal(Localization.saveErrorKey("InvalidInviteCode"), "saveErrorInviteInvalid")
+		expect.equal(Localization.saveErrorKey("RemovedFromSave"), "saveErrorRemoved")
+		expect.equal(Localization.saveErrorKey("InvalidSize"), "saveErrorUnknown")
+		expect.equal(Localization.saveErrorKey("InvalidUserId"), "saveErrorUnknown")
+		expect.equal(Localization.format("en", "sharedSaveName", "Kim"), "Shared lot from Kim")
+		expect.equal(Localization.format("en", "teamSeats", 2, 4), "2 of 4 seats are taken.")
+	end)
+
 	t.test("formats the supplier species row", function()
 		expect.equal(
 			Localization.format("en", "supplierSpeciesRow", "Douglas Fir", 21, 28, 41),
