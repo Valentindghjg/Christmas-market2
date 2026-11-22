@@ -367,3 +367,9 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - New rule B (owner): Studio playtests are batched. Test now for tier L or MODEL, save data, money, inventory, purchases, world geometry or a milestone's last task; otherwise the task is committed after headless checks and review with "Studio: deferred (batch)" and queued in "Studio-Test ausstehend" (CLAUDE_BACKLOG.md); the third queued task triggers a batch run (full repeatable run plus each plan's steps). hasseln runs the queue before a run ends.
 - Rejected: fast mode (twice the token price).
 - Files: CLAUDE.md, .claude/agents/implementer.md, playtester.md, reviewer.md, .claude/skills/cm2-task/SKILL.md, .claude/skills/hasseln/SKILL.md.
+
+## 2026-11-22 — owner: keep files small
+- Found: DECISION_LOG.md 70 KB, CLAUDE_BACKLOG.md 56 KB, PROGRESS.md 44 KB again one night after archiving; plans met the line budget with very long lines (CM2-S1 52 KB); RunPlaytest.lua 2461 lines and SaveSlotService.lua 1803 lines.
+- New rules: the reviewer archives PROGRESS.md whenever it passes 20 KB (latest five entries stay); the planner budget is in KB (S 12, M 20, L 30, MODEL 12; an amendment at most 4 KB) instead of lines.
+- New task CM2-RF (launch order 9a, after CM2-N1): split RunPlaytest.lua and SaveSlotService.lua without behaviour change.
+- Files: .claude/agents/reviewer.md, .claude/agents/planner.md, docs/CLAUDE_BACKLOG.md.
