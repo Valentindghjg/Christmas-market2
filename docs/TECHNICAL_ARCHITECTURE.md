@@ -3,7 +3,7 @@ Status: DESIGN BASELINE; implementation partial
 Updated: 2026-11-19
 
 ## 1. Toolchain and repository
-Roblox Studio + Luau, Rojo project mapping in `default.project.json`, GitHub source of truth. Proposed additions: `aftman.toml` or pinned Rojo tool version, Luau linter/type checker, TestEZ or equivalent, CI checks for formatting/static analysis/unit tests. Do not claim Studio tests without actual Studio run.
+Roblox Studio + Luau, Rojo project mapping in `default.project.json`, GitHub source of truth. Proposed additions: `aftman.toml` or pinned Rojo tool version, Luau linter/type checker, TestEZ or equivalent, CI checks for formatting/static analysis/unit tests. Do not claim Studio tests without actual Studio run. Line endings: `.gitattributes` sets `* text=auto eol=lf`, so the index and every working copy use LF on every platform regardless of `core.autocrlf`; binary art files are marked `binary` (CM2-EOL).
 
 ```text
 src/

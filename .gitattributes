@@ -1,3 +1,7 @@
+# Line endings (CM2-EOL): the index and every working copy use LF on all
+# platforms, whatever core.autocrlf says. Binary files stay untouched.
+* text=auto eol=lf
+
 # Keep third-party model sources byte-identical to their original downloads.
 *.fbx binary
 *.glb binary

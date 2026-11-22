@@ -541,3 +541,8 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - PROVISIONAL (plan deviation): the queue attachment is `Checkout1`, not the plan's `Checkout_1`. The art contract allows only `^[A-Z][A-Za-z0-9]*$` attachment names (`cm2_kit.attachment`, `blender_export.py` ATTACHMENT_NAME, `AssetSpec` requiredAttachments); CM2-13W looks up `Checkout1`.
 - Final values changed in the render rounds (review latitude +-15 %): counter lantern posts at x +-2.3 (lanterns stay inside 5.0), bows at x +-1.6, z 2.3 with loops flattened to 0.2 deep (nothing beyond y -1.0), baubles hang about 0.3 under the garland, register 0.65 high with a raised display at the back, the two swags share the middle garland ball; bay stakes at +-2.27, deck boards 4.9 long (+-0.08 jitter keeps 5.0); rails end 0.05 short of +L/2 so the tilt stays inside the footprint.
 - TreeBundle net rings are body radius + 0.04 as planned, so the two widest rings reach 0.013 below z 0 and the bundle measures 1.03 high (within 1.0 +- 0.1).
+
+## 2026-11-22 — CM2-EOL LF working copies (engineering)
+- `core.autocrlf=true` (system Git config) checked text files out as CRLF while the index is LF; `stylua --check` then failed (three times in the CM2-RF / CM2-13b run).
+- `.gitattributes` gets `* text=auto eol=lf` as its first rule; the existing binary and `-text` rules stay and keep art files byte-identical. No CRLF exception: no file is stored as CRLF and the repo has no Windows batch scripts. Git config is not changed.
+- `git add --renormalize` changed no blob (index already LF). CRLF working copies outside `.claude/` were re-checked-out as LF; `.claude/` files are left until git next writes them.
