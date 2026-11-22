@@ -6,7 +6,7 @@
 -- PASS/FAIL/SKIP per step prefixed with [PLAYTEST]. This module is not under Cases, so the
 -- unit-test runners never execute it. It touches no game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-g14"
+RunPlaytest.BUILD = "cm2-n1-fix2"
 
 local PREFIX = "[PLAYTEST]"
 local SPECIES = "DouglasFir"
@@ -65,6 +65,8 @@ local function execute(hook: any, mode: string, minutes: number)
 	local Stats = game:GetService("Stats")
 
 	local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+	local NpcPath = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("NpcPath"))
+	local ArtLibrary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ArtLibrary"))
 	local Services = ServerScriptService:WaitForChild("Server"):WaitForChild("Services")
 	local SupplierStockService = require(Services:WaitForChild("SupplierStockService"))
 	local PricingService = require(Services:WaitForChild("PricingService"))
@@ -222,12 +224,117 @@ local function execute(hook: any, mode: string, minutes: number)
 		return folder ~= nil and folder:FindFirstChild(name) ~= nil
 	end
 
-	-- Humanoids in the world that do not belong to a connected player (walking NPCs, leaks).
+	-- Walking customers (CM2-N1) ---------------------------------------------------------------
+	-- The ten states of a customer who buys and waits at the car.
+	local NPC_FULL_PATH = {
+		"Arriving",
+		"WalkingIn",
+		"Browsing",
+		"WalkingToTree",
+		"PickingUp",
+		"WalkingToQueue",
+		"Queued",
+		"CheckingOut",
+		"WalkingToCar",
+		"WaitingAtCar",
+	}
+	-- States in which the visit holds its reservation.
+	local NPC_RESERVED_STATES = {
+		WalkingToTree = true,
+		PickingUp = true,
+		WalkingToQueue = true,
+		Queued = true,
+		CheckingOut = true,
+	}
+
+	local function npcSnapshot(): any
+		return call("npcSnapshot", nil)
+	end
+
+	-- Fix round 1 (P6, P7): one snap-log entry as "visit state@(x,z)->(goalX,goalZ)".
+	local function snapEntryText(entry: any): string
+		local function number(value: any): string
+			return if type(value) == "number" then string.format("%.1f", value) else "?"
+		end
+		return string.format(
+			"%s %s@(%s,%s)->(%s,%s)",
+			tostring(entry.visitId),
+			tostring(entry.state),
+			number(entry.x),
+			number(entry.z),
+			number(entry.goalX),
+			number(entry.goalZ)
+		)
+	end
+
+	-- The snap-log entries of one visit, appended to a snap FAIL.
+	local function snapLogOf(visitId: string): string
+		local log = npcSnapshot().snapLog
+		local parts: { string } = {}
+		if type(log) == "table" then
+			for _, entry in log do
+				if entry.visitId == visitId then
+					table.insert(parts, snapEntryText(entry))
+				end
+			end
+		end
+		return if #parts > 0 then table.concat(parts, "; ") else "no snap-log entry"
+	end
+
+	local function findNpc(snapshot: any, visitId: string): any
+		for _, visit in snapshot.visits do
+			if visit.visitId == visitId then
+				return visit
+			end
+		end
+		return nil
+	end
+
+	local function npcOnPlot(plotId: string?): number
+		local count = 0
+		for _, visit in npcSnapshot().visits do
+			if visit.plotId == plotId then
+				count += 1
+			end
+		end
+		return count
+	end
+
+	-- NPC objects left behind: avatars in a plot's Customers folder, visit cars, carried trees.
+	local function npcObjectsLeft(plotIds: { string? }): string?
+		for _, plotId in plotIds do
+			local plot = plotFolder(plotId)
+			local customers = plot and plot:FindFirstChild("Customers")
+			if customers and #customers:GetChildren() > 0 then
+				return tostring(plotId) .. ".Customers is not empty"
+			end
+		end
+		for _, descendant in workspace:GetDescendants() do
+			if string.sub(descendant.Name, 1, 9) == "VisitCar_" or descendant.Name == "NpcCarriedTree" then
+				return descendant.Name .. " left in the world"
+			end
+		end
+		return nil
+	end
+
+	-- Humanoids in the world that belong neither to a connected player nor to a live walking
+	-- customer (leaks).
 	local function strayHumanoids(): number
+		local live: { [string]: boolean } = {}
+		local response = invoke("npcSnapshot", nil)
+		if type(response) == "table" and response.ok == true then
+			for _, visit in response.data.visits do
+				live[visit.visitId] = true
+			end
+		end
 		local count = 0
 		for _, descendant in workspace:GetDescendants() do
 			if descendant:IsA("Humanoid") and Players:GetPlayerFromCharacter(descendant.Parent) == nil then
-				count += 1
+				local owner = descendant.Parent
+				local visitId = owner and owner:GetAttribute("NpcVisitId")
+				if not (type(visitId) == "string" and live[visitId]) then
+					count += 1
+				end
 			end
 		end
 		return count
@@ -684,29 +791,94 @@ local function execute(hook: any, mode: string, minutes: number)
 		priceToSell(S.userId)
 	end
 
+	-- The companies whose customers a reset clears: R, and S while the shadow is joined.
+	local function resetUsers(): { number }
+		local users = { R.userId }
+		if shadowJoined then
+			table.insert(users, S.userId)
+		end
+		return users
+	end
+
+	-- Fix round 1 (P1, P4): lets open customer orders expire from the server's own clock
+	-- (snapshot.clock), at most 3 rounds per company. It never loads an order or changes cash;
+	-- an expiry only adds missedPickups and the reputation penalty.
+	local function expireOrders()
+		for _, userId in resetUsers() do
+			for _ = 1, 3 do
+				local snapshot = snap(userId)
+				if #snapshot.customerOrders == 0 then
+					break
+				end
+				local latest = -math.huge
+				for _, order in snapshot.customerOrders do
+					if type(order.expiresAt) == "number" then
+						latest = math.max(latest, order.expiresAt)
+					end
+				end
+				local clock = if type(snapshot.clock) == "number" then snapshot.clock else 0
+				advance(math.clamp(latest - clock + 1, 1, 3600))
+				poll(function()
+					return #snap(userId).customerOrders == 0
+				end, 8)
+			end
+		end
+	end
+
+	-- Fix round 1 (P1): removes every walking customer at once, expires the open customer
+	-- orders and waits until both plots are clean. Customers stay paused.
+	local function resetCustomers()
+		call("pauseCustomers", true)
+		call("npcReset", nil)
+		expireOrders()
+		local function leftover(): string?
+			if not plotClean(R.plotId) then
+				return tostring(R.plotId) .. " order objects"
+			end
+			if not plotClean(S.plotId) then
+				return tostring(S.plotId) .. " order objects"
+			end
+			local npcLeft = npcObjectsLeft({ R.plotId, S.plotId })
+			if npcLeft ~= nil then
+				return npcLeft
+			end
+			for _, placement in snap(R.userId).placements do
+				if placement.reserved then
+					return placement.placementId .. " reserved"
+				end
+			end
+			return nil
+		end
+		local clean = poll(function()
+			return leftover() == nil
+		end, 8)
+		if not clean then
+			error("reset: " .. tostring(leftover()), 0)
+		end
+	end
+
+	-- Fix round 1 (P3): the NPC steps always end with a reset, so a failure leaves no waiting
+	-- visit, car or order behind. The step's own error wins over the reset error.
+	local function withNpcCleanup(fn: () -> string?): () -> string?
+		return function()
+			local ok, detail = pcall(fn)
+			local resetOk, resetError = pcall(resetCustomers)
+			if not ok then
+				error(detail, 0)
+			end
+			if not resetOk then
+				error(resetError, 0)
+			end
+			return detail
+		end
+	end
+
 	local function preflight(soak: boolean): string
+		resetCustomers()
 		check(#Players:GetPlayers() == 1, "expected exactly 1 player, got " .. #Players:GetPlayers())
 		local current = realPlayer()
 		check(current:GetAttribute("CompanyReady") == true, "CompanyReady is not true")
 		check(type(R.plotId) == "string", "player has no PlotId")
-		local function busy(userId: number): boolean
-			local snapshot = snap(userId)
-			if #snapshot.customerOrders > 0 then
-				return true
-			end
-			for _, order in snapshot.pendingOrders do
-				if order.status == "Pending" then
-					return true
-				end
-			end
-			return false
-		end
-		if busy(R.userId) or busy(S.userId) then
-			advance(121)
-			poll(function()
-				return not busy(R.userId) and not busy(S.userId)
-			end, 8)
-		end
 		local snapshot = snap(R.userId)
 		check(#snapshot.customerOrders == 0, "player still has customer orders")
 		priceToSell(R.userId)
@@ -741,9 +913,14 @@ local function execute(hook: any, mode: string, minutes: number)
 			string.format("S DisplayedTrees %d vs placementCount %d", displayedCount(S.plotId), sSnap.placementCount)
 		)
 		check(not carriedTreeOnAnyCharacter(), "a CarriedTree is left on a character")
+		-- CM2-N1: no walking customer and none of its objects is left.
+		local npcCount = npcSnapshot().count
+		check(npcCount == 0, npcCount .. " walking customer(s) still alive")
+		local npcLeft = npcObjectsLeft({ R.plotId, S.plotId })
+		check(npcLeft == nil, tostring(npcLeft))
 		local stray = strayHumanoids()
 		check(stray == 0, stray .. " Humanoid(s) outside player characters")
-		return "plots clean, no stray Humanoid"
+		return "plots clean, no NPC left, no stray Humanoid"
 	end
 
 	local function cleanup(): string
@@ -754,6 +931,8 @@ local function execute(hook: any, mode: string, minutes: number)
 				table.insert(errors, label .. ": " .. tostring(message))
 			end
 		end
+		-- Fix round 1 (P2): no walking customer, waiting car or open order survives the run.
+		attempt("reset customers", resetCustomers)
 		if shadowJoined then
 			attempt("setStaff", function()
 				call("setStaff", { employeeId = "LotWorker", count = 0 })
@@ -765,6 +944,15 @@ local function execute(hook: any, mode: string, minutes: number)
 		end)
 		attempt("shadowLeave", function()
 			call("shadowLeave", nil)
+		end)
+		-- CM2-N1: the shadow's walking customers leave with it.
+		attempt("shadow NPCs", function()
+			if S.plotId ~= nil then
+				local gone = poll(function()
+					return npcOnPlot(S.plotId) == 0
+				end, 3)
+				check(gone, "a walking customer is still on the shadow plot 3 s after shadowLeave")
+			end
 		end)
 		attempt("shadow2Leave", function()
 			call("shadow2Leave", nil)
@@ -799,7 +987,7 @@ local function execute(hook: any, mode: string, minutes: number)
 			local runner = require(ServerStorage:WaitForChild("UnitTest"):WaitForChild("RunUnitTest")) :: any
 			local totals = runner(nil, 10)
 			check(totals.failed == 0, totals.failed .. " unit test(s) failed")
-			check(totals.run >= 332, "only " .. totals.run .. " unit tests ran (expected >= 332)")
+			check(totals.run >= 380, "only " .. totals.run .. " unit tests ran (expected >= 380)")
 			return string.format("%d run, %d passed", totals.run, totals.passed)
 		end)
 
@@ -1738,6 +1926,442 @@ local function execute(hook: any, mode: string, minutes: number)
 			return string.format("3 reasons, row of 5 and replay, store back x5, total %d kept", finalTotal)
 		end)
 
+		-- Walking customers (CM2-N1) -----------------------------------------------------------
+		local function npcVisit(profile: number): string
+			return call("npcVisit", { userId = R.userId, profile = profile })
+		end
+
+		local function findPlacement(snapshot: any, placementId: string?): any
+			for _, placement in snapshot.placements do
+				if placement.placementId == placementId then
+					return placement
+				end
+			end
+			return nil
+		end
+
+		local function displayedTree(placementId: string?): Instance?
+			local plot = plotFolder(R.plotId)
+			local display = plot and plot:FindFirstChild("DisplayedTrees")
+			return if display and placementId then display:FindFirstChild("DisplayedTree_" .. placementId) else nil
+		end
+
+		-- Horizontal distance from the visit's avatar to its car door, or nil without an avatar.
+		local function doorDistance(visitId: string, space: number): number?
+			local plot = plotFolder(R.plotId)
+			local customers = plot and plot:FindFirstChild("Customers")
+			if not (plot and plot:IsA("Model") and plot.PrimaryPart and customers) then
+				return nil
+			end
+			local center = (plot.PrimaryPart :: BasePart).Position
+			local door = NpcPath.toWorld({ x = center.X, z = center.Z }, NpcPath.door(space))
+			for _, model in customers:GetChildren() do
+				if model:IsA("Model") and model:GetAttribute("NpcVisitId") == visitId then
+					local position = model:GetPivot().Position
+					local dx, dz = position.X - door.x, position.Z - door.z
+					return math.sqrt(dx * dx + dz * dz)
+				end
+			end
+			return nil
+		end
+
+		-- The player loads order `number` with prompts (teleport, carry, load), as in step 13;
+		-- within 5 s the waiting customer is gone.
+		local function loadAndAwaitDeparture(visitId: string, number: number)
+			local ready = poll(function()
+				return orderPart(R.plotId, "PickupTree_" .. number) ~= nil
+			end, 3)
+			check(ready, "PickupTree_" .. number .. " missing")
+			teleport(orderPart(R.plotId, "PickupTree_" .. number))
+			prompt("carry", number)
+			teleport(orderPart(R.plotId, "CustomerCar_" .. number))
+			prompt("load", number)
+			check(findOrder(snap(R.userId), number) == nil, "order " .. number .. " still open after loading")
+			local gone = poll(function()
+				return findNpc(npcSnapshot(), visitId) == nil
+			end, 5)
+			check(gone, visitId .. " still present 5 s after its tree was loaded")
+		end
+
+		-- One wave of buying customers: each walks the full path, waits at its car and leaves
+		-- once a player loads its tree.
+		local function npcWave(profiles: { number })
+			local ids: { string } = {}
+			local seen: { [string]: { reserved: boolean, carried: boolean } } = {}
+			for _, profile in profiles do
+				local visitId = npcVisit(profile)
+				table.insert(ids, visitId)
+				seen[visitId] = { reserved = false, carried = false }
+			end
+			local waiting: { [string]: any } = {}
+			local deadline = os.clock() + 150
+			while true do
+				local npcs = npcSnapshot()
+				local rSnap = snap(R.userId)
+				local all = true
+				for _, visitId in ids do
+					local customer = findNpc(npcs, visitId)
+					check(customer ~= nil, visitId .. " vanished before WaitingAtCar")
+					if customer.state == "WaitingAtCar" then
+						waiting[visitId] = customer
+					else
+						all = false
+						local placement = findPlacement(rSnap, customer.placementId)
+						-- A placement already sold in between the two snapshots is skipped.
+						if NPC_RESERVED_STATES[customer.state] and placement ~= nil then
+							check(
+								placement.reserved,
+								visitId .. " in " .. customer.state .. " but its tree is not reserved"
+							)
+							local model = displayedTree(customer.placementId)
+							if model and model:GetAttribute("Reserved") == true then
+								seen[visitId].reserved = true
+							end
+							if model and model:GetAttribute("NpcCarried") == true then
+								seen[visitId].carried = true
+							end
+						end
+					end
+				end
+				if all then
+					break
+				end
+				check(os.clock() < deadline, table.concat(ids, ", ") .. " not all WaitingAtCar within 150 s")
+				task.wait(POLL_INTERVAL)
+			end
+			local rSnap = snap(R.userId)
+			for _, visitId in ids do
+				local customer = waiting[visitId]
+				local history = table.concat(customer.history, ">")
+				check(#customer.history == #NPC_FULL_PATH, visitId .. " history " .. history)
+				for index, state in NPC_FULL_PATH do
+					check(customer.history[index] == state, visitId .. " history " .. history)
+				end
+				check(
+					customer.snaps == 0,
+					visitId .. " snapped " .. customer.snaps .. " time(s): " .. snapLogOf(visitId)
+				)
+				check(seen[visitId].reserved, visitId .. ": its tree never showed Reserved")
+				check(seen[visitId].carried, visitId .. ": its tree was never NpcCarried")
+				local order = findOrder(rSnap, customer.orderNumber)
+				check(
+					order ~= nil and order.parkingSpace == customer.space,
+					string.format(
+						"%s: order #%s space %s, visit space %d",
+						visitId,
+						tostring(customer.orderNumber),
+						tostring(order and order.parkingSpace),
+						customer.space
+					)
+				)
+				local carName = "CustomerCar_" .. tostring(customer.orderNumber)
+				check(hasObject(R.plotId, carName), carName .. " missing")
+				local visitCarName = "VisitCar_" .. tostring(string.match(visitId, "^visit:(%d+)$"))
+				check(not hasObject(R.plotId, visitCarName), visitCarName .. " left over")
+				local distance = doorDistance(visitId, customer.space)
+				check(
+					distance ~= nil and distance <= 3,
+					string.format("%s is %s studs from its door", visitId, tostring(distance))
+				)
+			end
+			for _, visitId in ids do
+				loadAndAwaitDeparture(visitId, waiting[visitId].orderNumber)
+			end
+		end
+
+		-- R shows at least n unreserved Medium Douglas Fir: order, deliver and place the missing
+		-- ones. Returns the number placed.
+		local function ensureDouglas(n: number): number
+			local function unreservedDouglas(): number
+				local count = 0
+				for _, placement in snap(R.userId).placements do
+					if placement.speciesId == SPECIES and placement.sizeId == SIZE and not placement.reserved then
+						count += 1
+					end
+				end
+				return count
+			end
+			local need = math.max(0, n - unreservedDouglas())
+			if need > 0 then
+				local inBays = 0
+				for _, bay in snap(R.userId).bays do
+					if bay.speciesId == SPECIES then
+						inBays += bay.counts[SIZE]
+					end
+				end
+				if inBays < need then
+					local data = orderTrees(R.userId, need - inBays)
+					advance(DELIVERY_WAIT)
+					awaitDelivery(R.userId, data.orderId)
+				end
+				task.wait(10) -- stay under the per-action rate limit after ROW_FILL
+				for _ = 1, need do
+					local bay = bayWith(R.userId, 1)
+					check(bay ~= nil, "no bay with a Medium Douglas Fir")
+					placeOne(R.userId, bay :: number)
+				end
+			end
+			return need
+		end
+
+		-- Fix round 1 (P6): every plot's stand fits its KeepClear box and passes walking
+		-- customers through (LotStructure); the player's character is in PlayerCharacter.
+		local function checkStandsAndCharacter()
+			local stand: any = nil
+			for _, box in GameConfig.Placement.KeepClear do
+				if box.id == "Stand" then
+					stand = box
+				end
+			end
+			check(stand ~= nil, "KeepClear has no Stand box")
+			local groups = Customers.Npc.CollisionGroups
+			for index = 1, 6 do
+				local plotId = string.format("Plot_%02d", index)
+				local plot = plotFolder(plotId)
+				local tent = plot and plot:FindFirstChild("StarterSalesTent")
+				check(
+					plot ~= nil and plot:IsA("Model") and plot.PrimaryPart ~= nil and tent ~= nil and tent:IsA("Model"),
+					plotId .. " has no StarterSalesTent"
+				)
+				local center = ((plot :: Model).PrimaryPart :: BasePart).Position
+				local c = { x = center.X, z = center.Z }
+				-- Fix round 2 (G3): lot-frame AABB over every part's 8 corners.
+				local minX, maxX, minZ, maxZ = math.huge, -math.huge, math.huge, -math.huge
+				local ref: BasePart? = nil
+				local bestArea = -math.huge
+				for _, d in (tent :: Model):GetDescendants() do
+					if d:IsA("BasePart") then
+						for _, sx in { -1, 1 } do
+							for _, sy in { -1, 1 } do
+								for _, sz in { -1, 1 } do
+									local corner = d.CFrame:PointToWorldSpace(Vector3.new(sx, sy, sz) * d.Size / 2)
+									local l = NpcPath.fromWorld(c, corner.X, corner.Z)
+									minX, maxX = math.min(minX, l.x), math.max(maxX, l.x)
+									minZ, maxZ = math.min(minZ, l.z), math.max(maxZ, l.z)
+								end
+							end
+						end
+						local area = d.Size.X * d.Size.Z
+						if area > bestArea then
+							bestArea = area
+							ref = d
+						end
+					end
+				end
+				check(ref ~= nil, plotId .. " stand has no parts")
+				check(
+					minX >= stand.minX - 0.5
+						and maxX <= stand.maxX + 0.5
+						and minZ >= stand.minZ - 0.5
+						and maxZ <= stand.maxZ + 0.5,
+					string.format(
+						"%s stand exceeds KeepClear (x %.1f..%.1f, z %.1f..%.1f)",
+						plotId,
+						minX,
+						maxX,
+						minZ,
+						maxZ
+					)
+				)
+				local rv = (ref :: BasePart).CFrame.RightVector
+				local delta = ArtLibrary.levelYaw(rv.X, rv.Z)
+				check(
+					math.abs(delta) <= math.rad(1),
+					string.format("%s stand not lot-aligned (%.1f deg)", plotId, math.deg(delta))
+				)
+				for _, descendant in (tent :: Model):GetDescendants() do
+					if descendant:IsA("BasePart") then
+						check(
+							descendant.CollisionGroup == groups.Structure,
+							"stand part not LotStructure (" .. plotId .. " " .. descendant.Name .. ")"
+						)
+					end
+				end
+			end
+			local character = realPlayer().Character
+			check(character ~= nil, "player has no character")
+			for _, descendant in (character :: Model):GetDescendants() do
+				if descendant:IsA("BasePart") then
+					check(
+						descendant.CollisionGroup == groups.Player,
+						"player character not in PlayerCharacter (" .. descendant.Name .. ")"
+					)
+				end
+			end
+		end
+
+		local function npcWalkStep(): string?
+			-- PREFLIGHT's reset left no NPC, waiting car or open order (Fix round 1, P1-P3).
+			checkStandsAndCharacter()
+			local need = ensureDouglas(4)
+			local shown = poll(function()
+				return displayedCount(R.plotId) == snap(R.userId).placementCount
+			end, 4)
+			check(shown, "DisplayedTrees differs from placementCount before the walk")
+			local start = snap(R.userId)
+			npcWave({ 8, 20 })
+			npcWave({ 32 })
+			local final = snap(R.userId)
+			check(
+				final.sales == start.sales + 3,
+				string.format("sales %d -> %d, expected +3", start.sales, final.sales)
+			)
+			local clean = poll(function()
+				return npcObjectsLeft({ R.plotId }) == nil
+			end, 4)
+			check(clean, tostring(npcObjectsLeft({ R.plotId })))
+			for _, placement in final.placements do
+				check(not placement.reserved, placement.placementId .. " is still reserved")
+			end
+			return string.format("3 customers walked, paid and left; sales +3, %d tree(s) placed", need)
+		end
+		addStep("37", "NPC_WALK", { "03" }, withNpcCleanup(npcWalkStep))
+
+		local function npcGiveUpStep(): string?
+			-- (a) Profile 5 wants Fraser Fir: nothing matches, the customer walks out.
+			local startSnap = snap(R.userId)
+			local first = npcVisit(5)
+			local history: { string } = {}
+			local goneFirst = poll(function()
+				local customer = findNpc(npcSnapshot(), first)
+				if customer then
+					history = customer.history
+					return false
+				end
+				return true
+			end, 45)
+			check(goneFirst, first .. " still present after 45 s")
+			local n = #history
+			check(
+				n >= 3 and history[n - 2] == "Browsing" and history[n - 1] == "WalkingOut" and history[n] == "Departing",
+				first .. " history " .. table.concat(history, ">")
+			)
+			local afterFirst = snap(R.userId)
+			check(
+				afterFirst.customerVisits == startSnap.customerVisits + 1,
+				string.format("customerVisits %d -> %d", startSnap.customerVisits, afterFirst.customerVisits)
+			)
+			check(
+				afterFirst.abandonedCustomers == startSnap.abandonedCustomers + 1,
+				string.format(
+					"abandonedCustomers %d -> %d",
+					startSnap.abandonedCustomers,
+					afterFirst.abandonedCustomers
+				)
+			)
+
+			-- (b) Profile 8 gives up while carrying its tree.
+			local second = npcVisit(8)
+			local placementId: string? = nil
+			local carrying = poll(function()
+				local customer = findNpc(npcSnapshot(), second)
+				if customer and (customer.state == "PickingUp" or customer.state == "WalkingToQueue") then
+					placementId = customer.placementId
+					return true
+				end
+				return false
+			end, 60)
+			check(carrying, second .. " never reached PickingUp or WalkingToQueue")
+			call("npcGiveUp", second)
+			local released = poll(function()
+				local placement = findPlacement(snap(R.userId), placementId)
+				local model = displayedTree(placementId)
+				return placement ~= nil
+					and not placement.reserved
+					and not (model ~= nil and model:GetAttribute("NpcCarried") == true)
+			end, 3)
+			check(released, tostring(placementId) .. " still reserved or hidden 3 s after giving up")
+			local goneSecond = poll(function()
+				return findNpc(npcSnapshot(), second) == nil
+			end, 30)
+			check(goneSecond, second .. " still present 30 s after giving up")
+			local final = snap(R.userId)
+			check(final.sales == afterFirst.sales, string.format("sales %d -> %d", afterFirst.sales, final.sales))
+			return "no-stock walk-out counted, give-up released " .. tostring(placementId)
+		end
+		addStep("38", "NPC_GIVE_UP", { "03" }, withNpcCleanup(npcGiveUpStep))
+
+		local function npcRejoinStep(): string?
+			local visitId = npcVisit(8)
+			local reserved = poll(function()
+				local customer = findNpc(npcSnapshot(), visitId)
+				return customer ~= nil and NPC_RESERVED_STATES[customer.state] == true
+			end, 60)
+			check(reserved, visitId .. " never reserved its tree")
+			call("rejoin", R.userId)
+			local clean = poll(function()
+				if npcOnPlot(R.plotId) ~= 0 or npcObjectsLeft({ R.plotId }) ~= nil then
+					return false
+				end
+				local snapshot = snap(R.userId)
+				for _, placement in snapshot.placements do
+					if placement.reserved then
+						return false
+					end
+				end
+				return displayedCount(R.plotId) == snapshot.placementCount and strayHumanoids() == 0
+			end, 5)
+			check(
+				clean,
+				string.format(
+					"after rejoin: %d visit(s) on the plot, %s, %d stray Humanoid(s)",
+					npcOnPlot(R.plotId),
+					tostring(npcObjectsLeft({ R.plotId })),
+					strayHumanoids()
+				)
+			)
+			return "the rejoin removed the customer, its car and the reservation"
+		end
+		addStep("39", "NPC_REJOIN_CLEANUP", { "03" }, withNpcCleanup(npcRejoinStep))
+
+		-- Fix round 1 (P5): a customer from the live arrival loop (not npcVisit) buys a tree.
+		local function npcRealArrivalStep(): string?
+			ensureDouglas(2)
+			local known: { [string]: boolean } = {}
+			for _, customer in npcSnapshot().visits do
+				known[customer.visitId] = true
+			end
+			local start = snap(R.userId)
+			call("npcNextArrival", { userId = R.userId, profile = 8 })
+			call("pauseCustomers", false)
+			local visitId: string? = nil
+			local arrived = poll(function()
+				for _, customer in npcSnapshot().visits do
+					if not known[customer.visitId] and customer.plotId == R.plotId and customer.customerNumber == 8 then
+						visitId = customer.visitId
+						return true
+					end
+				end
+				return false
+			end, 12)
+			call("pauseCustomers", true)
+			check(arrived and visitId ~= nil, "no live arrival with customer number 8 within 12 s")
+			local id = visitId :: string
+			local customer: any = nil
+			local waiting = poll(function()
+				customer = findNpc(npcSnapshot(), id)
+				check(customer ~= nil, id .. " vanished before WaitingAtCar")
+				return customer.state == "WaitingAtCar"
+			end, 150)
+			check(waiting, id .. " not WaitingAtCar within 150 s")
+			local history = table.concat(customer.history, ">")
+			check(#customer.history == #NPC_FULL_PATH, id .. " history " .. history)
+			for index, state in NPC_FULL_PATH do
+				check(customer.history[index] == state, id .. " history " .. history)
+			end
+			check(customer.snaps == 0, id .. " snapped " .. customer.snaps .. " time(s): " .. snapLogOf(id))
+			local number = customer.orderNumber
+			check(type(number) == "number", id .. " has no order number")
+			loadAndAwaitDeparture(id, number)
+			local final = snap(R.userId)
+			check(
+				final.sales >= start.sales + 1,
+				string.format("sales %d -> %d, expected at least +1", start.sales, final.sales)
+			)
+			return "live arrival bought order #" .. tostring(number)
+		end
+		addStep("40", "NPC_REAL_ARRIVAL", { "03" }, withNpcCleanup(npcRealArrivalStep))
+
 		addStep("22", "LEAK_CHECK", { "02" }, leakCheck)
 		addStep("23", "CLEANUP", {}, cleanup)
 	else
@@ -1754,6 +2378,10 @@ local function execute(hook: any, mode: string, minutes: number)
 		end)
 
 		addStep("03", "SOAK_REALTIME", { "02" }, function()
+			-- Fix round 1 (P4): PREFLIGHT's reset paused customers; the soak runs with arrivals.
+			call("pauseCustomers", false)
+			local startNpc = npcSnapshot()
+			local snapsBefore = startNpc.customerSnaps or 0
 			local totalSeconds = minutes * 60
 			local startClock = os.clock()
 			local startR, startS = snap(R.userId), snap(S.userId)
@@ -1923,8 +2551,11 @@ local function execute(hook: any, mode: string, minutes: number)
 			local expiries = (endR.missedPickups - startR.missedPickups) + (endS.missedPickups - startS.missedPickups)
 			local drivePasts = (endR.drivePastCustomers - startR.drivePastCustomers)
 				+ (endS.drivePastCustomers - startS.drivePastCustomers)
+			-- Fix round 1 (P7): walking customers of the live loop never snap.
+			local endNpc = npcSnapshot()
+			local npcSnaps = (endNpc.customerSnaps or 0) - snapsBefore
 			local detail = string.format(
-				"%d s, %d samples, %d mismatches, sales %d, player loads %d, worker loads %d, expiries %d, drive-pasts %d, max active %d/%d, memory %d→%d MB",
+				"%d s, %d samples, %d mismatches, sales %d, player loads %d, worker loads %d, expiries %d, drive-pasts %d, max active %d/%d, memory %d→%d MB, npc snaps %d",
 				math.floor(os.clock() - startClock + 0.5),
 				samples,
 				mismatches,
@@ -1936,8 +2567,15 @@ local function execute(hook: any, mode: string, minutes: number)
 				maxActive,
 				maxSpaces,
 				math.floor(memoryStart),
-				math.floor(Stats:GetTotalMemoryUsageMb())
+				math.floor(Stats:GetTotalMemoryUsageMb()),
+				npcSnaps
 			)
+			if npcSnaps > 0 then
+				local log = if type(endNpc.snapLog) == "table" then endNpc.snapLog else {}
+				local firstNew = log[math.max(1, #log - npcSnaps + 1)]
+				local entry = if firstNew ~= nil then snapEntryText(firstNew) else "no snap-log entry"
+				error("walking customers snapped (" .. entry .. ") | " .. detail, 0)
+			end
 			check(mismatches == 0, firstMismatch .. " | " .. detail)
 			check(sales >= 10, "sales below 10 | " .. detail)
 			check(playerLoads >= 1, "no player load | " .. detail)
@@ -1946,9 +2584,51 @@ local function execute(hook: any, mode: string, minutes: number)
 			return detail
 		end)
 
+		-- CM2-N1: 24 NPCs on plots 1-6 (including the mirrored ones) keep >= 55 FPS.
+		addStep("03a", "NPC_LOAD", { "01" }, function()
+			call("pauseCustomers", true)
+			-- Fix round 1 (P2): real visits still live from soak 03 would take budget room.
+			resetCustomers()
+			local result = call("npcLoadTest", { seconds = 60 })
+			local detail = string.format(
+				"spawned %d, peak %d, %d windows, min %.1f FPS, mean %.1f FPS, snaps %d, left %d",
+				result.spawned,
+				result.peakLive,
+				result.windows,
+				result.minFps,
+				result.meanFps,
+				result.snaps,
+				result.left
+			)
+			check(result.spawned == 24, "spawned is not 24 | " .. detail)
+			check(result.peakLive == 24, "peak live is not 24 | " .. detail)
+			check(result.minFps >= 55, "a window ran below 55 FPS | " .. detail)
+			check(result.snaps == 0, "load NPCs snapped | " .. detail)
+			check(result.left == 0, "load NPCs left over | " .. detail)
+			return detail
+		end)
+
 		addStep("04", "LEAK_CHECK", { "01" }, function()
 			call("pauseCustomers", true)
-			advance(121)
+			-- Fix round 1 (P4): orders expire from the server clock; no npcReset here, so this
+			-- step still proves that natural visits end.
+			expireOrders()
+			-- Walking customers finish their visits; a waiting one leaves when its order expires.
+			local deadline = os.clock() + 180
+			while true do
+				local snapshot = npcSnapshot()
+				if snapshot.count == 0 then
+					break
+				end
+				check(os.clock() < deadline, snapshot.count .. " walking customer(s) still alive after 180 s")
+				for _, customer in snapshot.visits do
+					if customer.state == "WaitingAtCar" then
+						expireOrders()
+						break
+					end
+				end
+				task.wait(5)
+			end
 			task.wait(8)
 			return leakCheck()
 		end)
