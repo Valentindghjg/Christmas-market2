@@ -6,7 +6,7 @@
 -- PASS/FAIL/SKIP per step prefixed with [PLAYTEST]. This module is not under Cases, so the
 -- unit-test runners never execute it. It touches no game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-g20-fix1"
+RunPlaytest.BUILD = "cm2-s1-r2"
 
 local PREFIX = "[PLAYTEST]"
 local SPECIES = "DouglasFir"
@@ -238,10 +238,11 @@ local function execute(hook: any, mode: string, minutes: number)
 	-- Actors -------------------------------------------------------------------------------
 	local player: Player? = nil
 	do
+		-- CM2-S1: a joined player has a readable profile; a save is played by ACTIVE_SAVE.
 		local deadline = os.clock() + 30
 		while os.clock() < deadline do
 			local candidate = Players:GetPlayers()[1]
-			if candidate and candidate:GetAttribute("CompanyReady") == true then
+			if candidate and candidate:GetAttribute("ProfileReady") == true then
 				player = candidate
 				break
 			end
@@ -407,6 +408,89 @@ local function execute(hook: any, mode: string, minutes: number)
 		end
 	end
 
+	-- Save slots (CM2-S1) --------------------------------------------------------------------
+	local SAVE_A, SAVE_B, SAVE_B2, SAVE_C = "Playtest A", "Playtest B", "Playtest B2", "Playtest C"
+	local saveA, saveB, saveC = "", "", ""
+
+	-- One Save.* request for the player; a rate-limited request is retried once after the window.
+	local function saveAct(action: string, payload: any, requestId: string?): any
+		local arg = { userId = R.userId, action = action, payload = payload, requestId = requestId }
+		local response = invoke("saveAction", arg)
+		if type(response) == "table" and response.errorCode == "RateLimited" then
+			task.wait(61)
+			response = invoke("saveAction", arg)
+		end
+		task.wait(ACTION_PAUSE)
+		return response
+	end
+
+	local function saveActOk(action: string, payload: any, requestId: string?): any
+		local response = saveAct(action, payload, requestId)
+		check(
+			type(response) == "table" and response.ok == true,
+			string.format(
+				"%s failed: %s",
+				action,
+				tostring(type(response) == "table" and response.errorCode or response)
+			)
+		)
+		return response.data
+	end
+
+	local function saveRefused(action: string, payload: any, expected: string)
+		local response = saveAct(action, payload)
+		local code = type(response) == "table" and response.errorCode or response
+		check(code == expected, string.format("%s returned %s, expected %s", action, tostring(code), expected))
+	end
+
+	local function saveList(): { any }
+		return call("saves", R.userId)
+	end
+
+	local function findSave(name: string): any
+		for _, entry in saveList() do
+			if entry.name == name then
+				return entry
+			end
+		end
+		return nil
+	end
+
+	-- Plays a save and waits until the player is ready on it.
+	local function playSave(saveId: string)
+		saveActOk("Save.Play", { saveId = saveId })
+		local ready = poll(function()
+			local current = realPlayer()
+			return current:GetAttribute("CompanyReady") == true and current:GetAttribute("ActiveSaveId") == saveId
+		end, 10)
+		check(ready, "save " .. saveId .. " not ready within 10 s")
+		R.plotId = realPlayer():GetAttribute("PlotId")
+	end
+
+	-- Deletes a leftover save from an earlier run; a stolen test lock is cleared first.
+	local function deleteLeftover(name: string): boolean
+		local entry = findSave(name)
+		if not entry then
+			return false
+		end
+		call("unlockSave", { userId = R.userId, saveId = entry.saveId })
+		saveActOk("Save.Delete", { saveId = entry.saveId, confirmName = name })
+		return true
+	end
+
+	local function activeSave(): string
+		local entry = findSave(SAVE_A)
+		local created = entry == nil
+		if entry then
+			saveA = entry.saveId
+		else
+			saveA = saveActOk("Save.Create", { name = SAVE_A }).saveId
+		end
+		playSave(saveA)
+		check(type(R.plotId) == "string", "no PlotId after playing " .. SAVE_A)
+		return string.format("%s %s, plot %s", SAVE_A, if created then "created" else "found", tostring(R.plotId))
+	end
+
 	-- Steps --------------------------------------------------------------------------------
 	type Step = { id: string, name: string, needs: { string }, run: () -> string? }
 	local steps: { Step } = {}
@@ -513,8 +597,20 @@ local function execute(hook: any, mode: string, minutes: number)
 		attempt("pauseCustomers", function()
 			call("pauseCustomers", false)
 		end)
+		-- CM2-S1: end on Playtest A and remove the saves this run created.
+		attempt("play " .. SAVE_A, function()
+			local entry = findSave(SAVE_A)
+			if entry and not entry.active then
+				playSave(entry.saveId)
+			end
+		end)
+		for _, name in { SAVE_B, SAVE_B2, SAVE_C } do
+			attempt("delete " .. name, function()
+				deleteLeftover(name)
+			end)
+		end
 		check(#errors == 0, table.concat(errors, "; "))
-		return "shadow left, customers unpaused"
+		return "shadow left, customers unpaused, test saves removed"
 	end
 
 	if mode == "full" then
@@ -522,9 +618,11 @@ local function execute(hook: any, mode: string, minutes: number)
 			local runner = require(ServerStorage:WaitForChild("UnitTest"):WaitForChild("RunUnitTest")) :: any
 			local totals = runner(nil, 10)
 			check(totals.failed == 0, totals.failed .. " unit test(s) failed")
-			check(totals.run >= 147, "only " .. totals.run .. " unit tests ran (expected >= 147)")
+			check(totals.run >= 205, "only " .. totals.run .. " unit tests ran (expected >= 205)")
 			return string.format("%d run, %d passed", totals.run, totals.passed)
 		end)
+
+		addStep("02a", "ACTIVE_SAVE", {}, activeSave)
 
 		addStep("02", "SHADOW_JOIN", {}, function()
 			shadowJoin(0)
@@ -971,9 +1069,113 @@ local function execute(hook: any, mode: string, minutes: number)
 			return string.format("%d blender models, %d meshes, 0 failed, 0 duplicates", models, #meshParts)
 		end)
 
+		addStep("24", "SAVE_CREATE", { "02a" }, function()
+			local removed = 0
+			for _, name in { SAVE_B, SAVE_B2, SAVE_C } do
+				if deleteLeftover(name) then
+					removed += 1
+				end
+			end
+			local listedBefore = #saveList()
+			local requestId = "playtest_create_" .. HttpService:GenerateGUID(false)
+			local first = saveActOk("Save.Create", { name = SAVE_B }, requestId)
+			local replay = saveActOk("Save.Create", { name = SAVE_B }, requestId)
+			check(replay.saveId == first.saveId, "replayed create returned another save")
+			local listedAfter = #saveList()
+			check(
+				listedAfter == listedBefore + 1,
+				string.format("save list %d -> %d, expected +1", listedBefore, listedAfter)
+			)
+			saveB = first.saveId
+			return string.format("%s created, replay deduplicated, %d leftover(s) removed", SAVE_B, removed)
+		end)
+
+		addStep("25", "SAVE_SWITCH", { "24" }, function()
+			local snapA = snap(R.userId)
+			local plotA = R.plotId
+			playSave(saveB)
+			check(R.plotId == plotA, string.format("PlotId %s -> %s", tostring(plotA), tostring(R.plotId)))
+			local snapB = snap(R.userId)
+			check(
+				snapB.cash == GameConfig.StartingCash,
+				string.format("B cash %d, expected %d", snapB.cash, GameConfig.StartingCash)
+			)
+			check(snapB.placementCount == 0, "B has " .. snapB.placementCount .. " placements")
+			orderTrees(R.userId, 1)
+			check(snap(R.userId).cash == GameConfig.StartingCash - UNIT_PRICE, "B order did not cost " .. UNIT_PRICE)
+			playSave(saveA)
+			local backA = snap(R.userId)
+			for _, field in { "cash", "revision", "placementCount" } do
+				check(
+					snapA[field] == backA[field],
+					string.format("A %s %s -> %s", field, tostring(snapA[field]), tostring(backA[field]))
+				)
+			end
+			sameTable("A stock", snapA.stock, backA.stock)
+			playSave(saveB)
+			local backB = snap(R.userId).cash
+			check(
+				backB == GameConfig.StartingCash - UNIT_PRICE,
+				string.format("B cash %d, expected %d", backB, GameConfig.StartingCash - UNIT_PRICE)
+			)
+			playSave(saveA)
+			return string.format("same plot %s, A cash %d kept, B cash %d", tostring(R.plotId), backA.cash, backB)
+		end)
+
+		addStep("26", "SAVE_RENAME", { "24" }, function()
+			saveRefused("Save.Rename", { saveId = saveB, name = "" }, "NameInvalid")
+			saveActOk("Save.Rename", { saveId = saveB, name = SAVE_B2 })
+			local renamed = findSave(SAVE_B2)
+			check(renamed ~= nil and renamed.saveId == saveB, SAVE_B2 .. " not listed")
+			saveRefused("Save.Rename", { saveId = saveB, name = "playtest a" }, "NameInUse")
+			return SAVE_B .. " renamed to " .. SAVE_B2
+		end)
+
+		addStep("27", "SAVE_DELETE", { "26" }, function()
+			saveRefused("Save.Delete", { saveId = saveB, confirmName = SAVE_B }, "ConfirmationMismatch")
+			check(findSave(SAVE_B2) ~= nil, SAVE_B2 .. " vanished after a mismatched confirmation")
+			saveRefused("Save.Delete", { saveId = saveA, confirmName = SAVE_A }, "SaveActive")
+			saveActOk("Save.Delete", { saveId = saveB, confirmName = " playtest b2 " })
+			check(findSave(SAVE_B2) == nil, SAVE_B2 .. " still listed after deleting")
+			saveRefused("Save.Play", { saveId = saveB }, "SaveNotFound")
+			return "mismatch and active refused, " .. SAVE_B2 .. " deleted"
+		end)
+
+		addStep("28", "FAIL_CLOSED", { "02a" }, function()
+			saveC = saveActOk("Save.Create", { name = SAVE_C }).saveId
+			playSave(saveC)
+			call("lockSave", { userId = R.userId, saveId = saveC })
+			call("flush", nil)
+			local current = realPlayer()
+			local stopped = poll(function()
+				return current:GetAttribute("CompanyReady") == false
+					and current:GetAttribute("CompanyError") == "SessionLocked"
+			end, 5)
+			check(
+				stopped,
+				string.format(
+					"CompanyReady %s, CompanyError %s",
+					tostring(current:GetAttribute("CompanyReady")),
+					tostring(current:GetAttribute("CompanyError"))
+				)
+			)
+			local refused = act(R.userId, "Supplier.PlaceOrder", { speciesId = SPECIES, sizeId = SIZE, quantity = 1 })
+			check(
+				type(refused) == "table" and refused.errorCode == "CompanyUnavailable",
+				"order on a failed save returned "
+					.. tostring(type(refused) == "table" and refused.errorCode or refused)
+			)
+			call("unlockSave", { userId = R.userId, saveId = saveC })
+			playSave(saveA)
+			saveActOk("Save.Delete", { saveId = saveC, confirmName = SAVE_C })
+			return "SessionLocked shown, order refused, back on " .. SAVE_A
+		end)
+
 		addStep("22", "LEAK_CHECK", { "02" }, leakCheck)
 		addStep("23", "CLEANUP", {}, cleanup)
 	else
+		addStep("01a", "ACTIVE_SAVE", {}, activeSave)
+
 		addStep("01", "SHADOW_JOIN", {}, function()
 			shadowJoin(1)
 			call("pauseCustomers", false)
