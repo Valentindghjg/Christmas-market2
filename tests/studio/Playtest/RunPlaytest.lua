@@ -6,7 +6,7 @@
 -- PASS/FAIL/SKIP per step prefixed with [PLAYTEST]. This module is not under Cases, so the
 -- unit-test runners never execute it. It touches no game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-s2-r2"
+RunPlaytest.BUILD = "cm2-s3"
 
 local PREFIX = "[PLAYTEST]"
 local SPECIES = "DouglasFir"
@@ -256,7 +256,8 @@ local function execute(hook: any, mode: string, minutes: number)
 		userId = if player then player.UserId else 0,
 		plotId = if player then player:GetAttribute("PlotId") else nil,
 	}
-	local S = { userId = StudioTestService.SHADOW_USER_ID, plotId = nil :: any }
+	-- finderSaveId: the save the shadow's teammate search created (step 35, CM2-S3).
+	local S = { userId = StudioTestService.SHADOW_USER_ID, plotId = nil :: any, finderSaveId = nil :: any }
 
 	local function realPlayer(): Player
 		check(player ~= nil and player.Parent == Players, "no player in the session")
@@ -530,6 +531,63 @@ local function execute(hook: any, mode: string, minutes: number)
 		return nil
 	end
 
+	-- One server per save and the teammate finder (CM2-S3).
+	local SAVE_FAR = "Playtest Far"
+
+	-- The raw save-to-server map value for one of the player's saves.
+	local function locatorEntry(saveId: string): any
+		return call("locatorEntry", { userId = R.userId, saveId = saveId }).entry
+	end
+
+	-- Deletes a leftover "Playtest Far" after clearing its fake foreign map entry.
+	local function deleteFar(): boolean
+		local entry = findSave(SAVE_FAR)
+		if not entry then
+			return false
+		end
+		call("clearElsewhere", { userId = R.userId, saveId = entry.saveId })
+		return deleteLeftover(SAVE_FAR)
+	end
+
+	local function finderListings(userId: number): any
+		return saveActAsOk(userId, "Save.FinderList", {})
+	end
+
+	-- The shadow's most recently played owned save other than the finder save.
+	local function shadowOtherSave(): any
+		for _, entry in call("saves", S.userId) do
+			if entry.role == "Owner" and entry.saveId ~= S.finderSaveId then
+				return entry
+			end
+		end
+		return nil
+	end
+
+	-- Removes the finder save if a failed run left it: the player leaves its team, the shadow
+	-- switches away and deletes it.
+	local function deleteFinderSave(): boolean
+		local finderSaveId = S.finderSaveId
+		if finderSaveId == nil then
+			return false
+		end
+		if rowOf(R.userId, finderSaveId) ~= nil then
+			saveActOk("Save.LeaveTeam", { saveId = finderSaveId })
+		end
+		local row = rowOf(S.userId, finderSaveId)
+		if row == nil then
+			S.finderSaveId = nil
+			return false
+		end
+		if row.active then
+			local other = shadowOtherSave()
+			check(other ~= nil, "shadow has no other own save")
+			S.plotId = saveActAsOk(S.userId, "Save.Play", { saveId = other.saveId }).plotId
+		end
+		saveActAsOk(S.userId, "Save.Delete", { saveId = finderSaveId, confirmName = row.name })
+		S.finderSaveId = nil
+		return true
+	end
+
 	local function activeSave(): string
 		local entry = findSave(SAVE_A)
 		local created = entry == nil
@@ -640,6 +698,10 @@ local function execute(hook: any, mode: string, minutes: number)
 				call("setStaff", { employeeId = "LotWorker", count = 0 })
 			end)
 		end
+		-- CM2-S3: the finder save needs the shadow's live profile, so it goes before shadowLeave.
+		attempt("delete finder save", function()
+			deleteFinderSave()
+		end)
 		attempt("shadowLeave", function()
 			call("shadowLeave", nil)
 		end)
@@ -664,6 +726,9 @@ local function execute(hook: any, mode: string, minutes: number)
 				deleteLeftover(name)
 			end)
 		end
+		attempt("delete " .. SAVE_FAR, function()
+			deleteFar()
+		end)
 		check(#errors == 0, table.concat(errors, "; "))
 		return "shadow left, customers unpaused, test saves removed"
 	end
@@ -673,7 +738,7 @@ local function execute(hook: any, mode: string, minutes: number)
 			local runner = require(ServerStorage:WaitForChild("UnitTest"):WaitForChild("RunUnitTest")) :: any
 			local totals = runner(nil, 10)
 			check(totals.failed == 0, totals.failed .. " unit test(s) failed")
-			check(totals.run >= 245, "only " .. totals.run .. " unit tests ran (expected >= 245)")
+			check(totals.run >= 271, "only " .. totals.run .. " unit tests ran (expected >= 271)")
 			return string.format("%d run, %d passed", totals.run, totals.passed)
 		end)
 
@@ -1380,6 +1445,115 @@ local function execute(hook: any, mode: string, minutes: number)
 			saveActOk("Save.Delete", { saveId = saveDuo, confirmName = SAVE_DUO })
 			check(rowOf(S.userId, saveDuo) == nil, "shadow still lists the deleted Duo")
 			return string.format("removed and re-joined, Duo deleted, shadow back on %s", tostring(S.plotId))
+		end)
+
+		-- One server per save (CM2-S3): this Studio server holds the played save in the map.
+		addStep("33", "LOCATOR_CLAIM", { "02a" }, function()
+			local entry = locatorEntry(saveA)
+			check(type(entry) == "table", "no map entry for " .. SAVE_A)
+			check(entry.jobId == "studio", "map jobId " .. tostring(entry.jobId))
+			check(entry.hostUserId == R.userId, "map hostUserId " .. tostring(entry.hostUserId))
+			check(entry.releasedAt == nil, "map entry for the played save is released")
+			local renewal = call("renewLocations", nil)
+			check(renewal.ok == true, string.format("renewal failed for %s saves", tostring(renewal.failures)))
+			check(type(renewal.renewed) == "number" and renewal.renewed >= 1, "renewed " .. tostring(renewal.renewed))
+			return string.format("held by studio for %d, %d renewed", R.userId, renewal.renewed)
+		end)
+
+		-- A co-op save that another server holds: the row offers Join, Play refuses, and Studio
+		-- cannot teleport.
+		addStep("34", "ELSEWHERE", { "02a" }, function()
+			local removed = deleteFar()
+			local far = saveActOk("Save.Create", { name = SAVE_FAR, size = "Duo" }).saveId
+			playSave(far)
+			playSave(saveA)
+			local released = locatorEntry(far)
+			check(
+				type(released) == "table" and released.releasedAt ~= nil,
+				"map entry for " .. SAVE_FAR .. " is not released"
+			)
+			call("placeElsewhere", { userId = R.userId, saveId = far })
+			call("lockSave", { userId = R.userId, saveId = far })
+			local listed = saveActOk("Save.List", {})
+			local row = nil
+			for _, entry in listed.saves do
+				if entry.saveId == far then
+					row = entry
+				end
+			end
+			check(row ~= nil and row.elsewhere == true, SAVE_FAR .. " row is not marked elsewhere")
+			saveRefused("Save.Play", { saveId = far }, "SaveInUseElsewhere")
+			saveRefused("Save.Teleport", { saveId = far }, "TeleportUnavailable")
+			local cleared = call("clearElsewhere", { userId = R.userId, saveId = far })
+			check(cleared.cleared == true, "clearElsewhere did not clear the entry")
+			call("unlockSave", { userId = R.userId, saveId = far })
+			playSave(far)
+			playSave(saveA)
+			saveActOk("Save.Delete", { saveId = far, confirmName = SAVE_FAR })
+			return string.format(
+				"elsewhere row, Play refused, Teleport unavailable in Studio%s",
+				if removed then ", leftover removed" else ""
+			)
+		end)
+
+		-- Teammate finder (CM2-S3): the shadow searches, the player takes the free seat.
+		addStep("35", "FINDER", { "02", "02a" }, function()
+			local started = saveActAsOk(S.userId, "Save.FinderStart", { size = "Duo" })
+			check(started.created == true, "the shadow's search did not create a save")
+			S.finderSaveId = started.saveId
+			local listed = finderListings(R.userId)
+			local listing = nil
+			for _, candidate in listed.listings do
+				if candidate.saveId == S.finderSaveId then
+					listing = candidate
+				end
+			end
+			check(listing ~= nil, "the shadow's listing is missing")
+			check(listing.ownerUserId == S.userId, "listing owner " .. tostring(listing.ownerUserId))
+			check(
+				listing.seats == 2 and listing.taken == 1,
+				string.format("seats %s, taken %s", listing.seats, listing.taken)
+			)
+
+			-- Amendment A1.8: the player's plot is the one FinderJoin returned.
+			local join = saveActOk("Save.FinderJoin", { saveId = S.finderSaveId })
+			local joined = poll(function()
+				local current = realPlayer()
+				return current:GetAttribute("PlotId") == join.plotId
+					and current:GetAttribute("ActiveSaveRole") == "Member"
+			end, 10)
+			check(
+				joined,
+				string.format(
+					"PlotId %s (expected %s), role %s",
+					tostring(realPlayer():GetAttribute("PlotId")),
+					tostring(join.plotId),
+					tostring(realPlayer():GetAttribute("ActiveSaveRole"))
+				)
+			)
+			R.plotId = join.plotId
+			check(#finderListings(R.userId).listings == 0, "a full listing is still shown")
+			saveRefusedAs(S2.userId, "Save.FinderJoin", { saveId = S.finderSaveId }, "ListingGone")
+			saveActOk("Save.LeaveTeam", { saveId = S.finderSaveId })
+			playSave(saveA)
+
+			local again = saveActAsOk(S.userId, "Save.FinderStart", {})
+			check(again.created == false and again.saveId == S.finderSaveId, "the search did not list the same save")
+			check(#finderListings(R.userId).listings == 1, "the relisted save is not shown")
+			saveActAsOk(S.userId, "Save.FinderStop", {})
+			check(#finderListings(R.userId).listings == 0, "a stopped listing is still shown")
+			local third = saveActAsOk(S.userId, "Save.FinderStart", {})
+			check(third.saveId == S.finderSaveId, "the third search listed another save")
+			check(#finderListings(R.userId).listings == 1, "the listing is not shown again")
+			local other = shadowOtherSave()
+			check(other ~= nil, "shadow has no other own save")
+			S.plotId = saveActAsOk(S.userId, "Save.Play", { saveId = other.saveId }).plotId
+			check(#finderListings(R.userId).listings == 0, "the listing outlived the switch")
+			check(deleteFinderSave(), "the finder save was not deleted")
+			return string.format(
+				"listed, joined on %s, left, relisted, stopped, switched, deleted",
+				tostring(join.plotId)
+			)
 		end)
 
 		addStep("22", "LEAK_CHECK", { "02" }, leakCheck)

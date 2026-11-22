@@ -201,6 +201,47 @@ return function(t)
 		expect.equal(teamExtra, "UnexpectedField")
 	end)
 
+	-- CM2-S3: Save.Teleport carries a saveId or a code; a teammate search a co-op size.
+	t.test("validates teleport and finder payloads", function()
+		local Save = Protocol.SaveActions
+		expect.truthy(saveRequest(Save.Teleport, { saveId = SAVE_ID }))
+		expect.truthy(saveRequest(Save.Teleport, { code = "12345" }))
+		local _, both = saveRequest(Save.Teleport, { saveId = SAVE_ID, code = "12345" })
+		expect.equal(both, "InvalidTeleportTarget")
+		local _, neither = saveRequest(Save.Teleport, {})
+		expect.equal(neither, "InvalidTeleportTarget")
+		local _, badId = saveRequest(Save.Teleport, { saveId = "42_NOTHEX" })
+		expect.equal(badId, "InvalidSaveId")
+		for _, code in { "01234", "1234", 12345 } do
+			local _, reason = saveRequest(Save.Teleport, { code = code })
+			expect.equal(reason, "InvalidInviteCode")
+		end
+		expect.truthy(saveRequest(Save.FinderStart, {}))
+		expect.truthy(saveRequest(Save.FinderStart, { size = "Quad" }))
+		expect.truthy(saveRequest(Save.FinderStart, { size = "Duo" }))
+		for _, size in { "Solo", "Huge", 2 } do
+			local _, reason = saveRequest(Save.FinderStart, { size = size })
+			expect.equal(reason, "InvalidSize")
+		end
+		expect.truthy(saveRequest(Save.FinderStop, {}))
+		expect.truthy(saveRequest(Save.FinderList, {}))
+		expect.truthy(saveRequest(Save.FinderJoin, { saveId = SAVE_ID }))
+		local _, badJoin = saveRequest(Save.FinderJoin, { saveId = "nope" })
+		expect.equal(badJoin, "InvalidSaveId")
+		for _, case in
+			{
+				{ Save.Teleport, { saveId = SAVE_ID, cash = 1 } },
+				{ Save.FinderStart, { size = "Duo", name = "x" } },
+				{ Save.FinderStop, { all = true } },
+				{ Save.FinderList, { all = true } },
+				{ Save.FinderJoin, { saveId = SAVE_ID, code = "12345" } },
+			}
+		do
+			local _, reason = saveRequest(case[1], case[2])
+			expect.equal(reason, "UnexpectedField")
+		end
+	end)
+
 	t.test("counts recent requests without recording them", function()
 		local limiter = Protocol.newRateLimiter(3, 60)
 		expect.equal(Protocol.recentCount(limiter, 7, "fail", 100), 0)

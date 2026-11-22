@@ -112,6 +112,49 @@ return function(t)
 		expect.equal(Localization.format("en", "teamSeats", 2, 4), "2 of 4 seats are taken.")
 	end)
 
+	t.test("has every cross-server and finder key in English and German", function()
+		local errorKeys = {
+			SaveInUseElsewhere = "saveErrorElsewhere",
+			ServerFull = "saveErrorServerFull",
+			SaveServerGone = "saveErrorServerGone",
+			TeleportFailed = "saveErrorTeleportFailed",
+			TeleportUnavailable = "saveErrorTeleportUnavailable",
+			SaveNotElsewhere = "saveErrorNotElsewhere",
+			ListingGone = "saveErrorListingGone",
+			OwnListing = "saveErrorOwnListing",
+		}
+		for code, key in pairs(errorKeys) do
+			expect.equal(Localization.saveErrorKey(code), key)
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+		local keys = {
+			"saveRowElsewhere",
+			"saveRowElsewhereUnknown",
+			"saveJoinServer",
+			"teleportJoining",
+			"finderButton",
+			"finderOpen",
+			"finderTitle",
+			"finderHint",
+			"finderEmpty",
+			"finderSeats",
+			"finderJoin",
+			"finderStart",
+			"finderStartHint",
+			"finderOwnListing",
+			"finderStop",
+		}
+		for _, key in ipairs(keys) do
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+		expect.equal(Localization.saveErrorKey("ServerFull:3"), "saveErrorServerFull")
+		expect.equal(Localization.saveErrorKey("InvalidTeleportTarget"), "saveErrorUnknown")
+		expect.equal(Localization.format("en", "saveRowElsewhere", "Kim"), "Being played by Kim")
+		expect.equal(Localization.format("en", "finderSeats", 1, 3), "1 of 3 seats are taken.")
+	end)
+
 	t.test("formats the supplier species row", function()
 		expect.equal(
 			Localization.format("en", "supplierSpeciesRow", "Douglas Fir", 21, 28, 41),
