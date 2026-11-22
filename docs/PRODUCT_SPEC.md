@@ -50,6 +50,11 @@ Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST
   - Small, distant or rare models need at least tier B.
 - **Reference look (owner decision 2026-11-22):** every model follows the reference game's look: how it is built, its proportions, the arrangement of its parts and its colour mood. It is never identical: the silhouette details, palette values and decoration are our own, with no logos, names or textures from the reference.
 
+## UI look (owner decision 2026-11-22)
+- **Until shortly before release** the UI stays functional in its current style. New screens use only the tokens in `src/shared/UiTheme.lua` and the builders in `src/client/UiKit.lua` and get no visual polish, so the redesign does not have to be redone after every feature.
+- **The visual redesign is the last task before release** (CM2-UI in the backlog). It works from the owner's liked and disliked UI screenshots and, if one exists, a mockup, and uses one graphics set (frames, buttons, icons). Possible sources are an AI UI generator such as ForgeGUI, a CC0 set such as Kenney, or a bought kit with a written licence for commercial use in Roblox. Every set gets its licence and source recorded.
+- The redesign changes the look only. Behaviour, remotes and string keys stay as they are.
+
 ## Way of working and release
 - **Model routing (owner decision 2026-11-21, amended):** every task runs through the skill `cm2-task`.
   - Planning: always Opus 5.5, high effort. The plan settles every decision.

@@ -446,3 +446,10 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Playtest: BUILD `cm2-n1-fix2`, unit runner ≥ 380. Headless +1 (`ArtLibrary_Test`: levelYaw snaps a part's yaw to the nearest half turn), total 380.
 - Files: src/shared/ArtLibrary.lua, src/server/Services/WorldService.lua, tests/studio/Playtest/RunPlaytest.lua, tests/studio/Cases/ArtLibrary_Test.lua, docs/TEST_PLAN.md, docs/MODEL_INTEGRATION.md.
 - Reviewer (2026-11-22): the N1 derivations 1-4, the fix-round-1 and fix-round-2 own decisions (local names, helper splits) confirmed as minor details. Soak acceptance: soak 03 keeps its fixed `sales >= 10`, so soak runs use `minutes >= 10` (TEST_PLAN already names 10); the 5-min run made 6 sales, the 10-min run 31. The Cashier no longer adding arrivals is the plan's decision; CM2-N2 gives it a role again.
+
+## 2026-11-22 — owner: UI redesign last, before release
+- Owner: the UI looks poor (plain frames, layout). It is not redesigned feature by feature. Until shortly before release the UI stays functional in its current style; the visual redesign is the last task before release, so it is done once.
+- Rule until then: new screens use only `src/shared/UiTheme.lua` tokens and `src/client/UiKit.lua` builders (no hard-coded colours, fonts or sizes, no image assets), so the redesign is mostly a theme and asset swap.
+- Placement (planner): CM2-UI is launch order 22a, after the last Gate B feature task (CM2-43) and before CM2-47 QA, so QA, the release candidate and the Go/No-Go regression run on the new UI. Gate C screens (Analytics, decor catalog, event shops) are built after it in the new style.
+- Graphics source (owner to choose before CM2-UI starts): an AI UI generator (for example ForgeGUI), a CC0 set (for example Kenney UI packs) or a bought kit with a written licence for commercial use in Roblox. Fallback if nothing is supplied: a CC0 set. Licence and source go to `assets/third_party/<set>/` and this log (CC0 precedent 2026-11-21).
+- Files: docs/PRODUCT_SPEC.md (UI look), docs/CLAUDE_BACKLOG.md (rules for the order, order 22a, owner inputs).
