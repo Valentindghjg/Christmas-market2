@@ -43,10 +43,9 @@ function CustomerSelection.choose(state, profile)
 		local mediumPrice = state.mediumPrices[placement.speciesId]
 		if type(mediumPrice) == "number" then
 			local salePrice = Economy.priceForSize(mediumPrice, placement.sizeId)
-			if CustomerProfile.canPurchase(profile, placement, salePrice) then
-				local tree = GameConfig.Trees[placement.speciesId]
-				local score =
-					Demand.score(salePrice / tree.typicalMedium, state.reputation, 1, varietyFactor(state), stockFactor)
+			local typical = Economy.typicalPrice(placement.speciesId, placement.sizeId)
+			if typical ~= nil and CustomerProfile.canPurchase(profile, placement, salePrice) then
+				local score = Demand.score(salePrice / typical, state.reputation, 1, varietyFactor(state), stockFactor)
 				return { placementId = placementId, salePrice = salePrice, conversionScore = score }
 			end
 		end

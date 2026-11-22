@@ -1,6 +1,8 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Economy = require(Shared:WaitForChild("Economy"))
 
 local PricingService = {}
 
@@ -12,13 +14,13 @@ local function validInteger(value): boolean
 		and value ~= -math.huge
 end
 
+-- Manual price bounds around the benchmark (GameConfig.typicalMediumFor, CM2-G7).
 function PricingService.bounds(speciesId: string)
-	local tree = GameConfig.Trees[speciesId]
-	if not tree then
+	local typical = GameConfig.typicalMediumFor(speciesId)
+	if typical == nil then
 		return nil
 	end
-	return math.ceil(tree.typicalMedium * GameConfig.MinPriceMultiplier),
-		math.floor(tree.typicalMedium * GameConfig.MaxPriceMultiplier)
+	return math.ceil(typical * GameConfig.MinPriceMultiplier), math.floor(typical * GameConfig.MaxPriceMultiplier)
 end
 
 function PricingService.setMediumPrice(state, speciesId: string, mediumPrice: number)
@@ -57,11 +59,11 @@ function PricingService.applyAutomatic(state)
 		return false, "AutoPricingDisabled"
 	end
 	local updated = {}
-	for speciesId, tree in pairs(GameConfig.Trees) do
+	for speciesId in pairs(GameConfig.Trees) do
+		local typical = GameConfig.typicalMediumFor(speciesId) :: number
 		local minimum, maximum = PricingService.bounds(speciesId)
 		local stockPressure = math.min(displayedCount(state, speciesId) / GameConfig.AutoPricing.TargetDisplayStock, 1)
-		local target =
-			math.floor(tree.typicalMedium * (1 - stockPressure * GameConfig.AutoPricing.MaxDiscountFraction) + 0.5)
+		local target = math.floor(typical * (1 - stockPressure * GameConfig.AutoPricing.MaxDiscountFraction) + 0.5)
 		local price = math.max(minimum :: number, math.min(maximum :: number, target))
 		if state.mediumPrices[speciesId] ~= price then
 			state.mediumPrices[speciesId] = price
@@ -69,6 +71,57 @@ function PricingService.applyAutomatic(state)
 		end
 	end
 	return true, updated
+end
+
+-- Names how a medium price compares with the benchmark (GameConfig.Pricing.SentimentPercent).
+function PricingService.sentiment(mediumPrice: number, typicalMedium: number): string
+	local percent = GameConfig.Pricing.SentimentPercent
+	local p = mediumPrice * 100
+	if p <= typicalMedium * percent.Bargain then
+		return "Bargain"
+	elseif p <= typicalMedium * percent.Fair then
+		return "Fair"
+	elseif p <= typicalMedium * percent.Pricey then
+		return "Pricey"
+	end
+	return "TooHigh"
+end
+
+function PricingService.marginPercent(price: number, wholesale: number): number
+	if price < 1 then
+		return 0
+	end
+	return math.floor((price - wholesale) * 100 / price + 0.5)
+end
+
+-- Presentation-safe pricing table for Company.GetSummary (CM2-G7). Reads the state only.
+function PricingService.summary(state)
+	local species = {}
+	for _, speciesId in ipairs(GameConfig.SpeciesOrder) do
+		local mediumPrice = state.mediumPrices[speciesId]
+		local typicalMedium = GameConfig.typicalMediumFor(speciesId) :: number
+		local wholesaleMedium = GameConfig.wholesaleFor(speciesId, "Medium") :: number
+		local minPrice, maxPrice = PricingService.bounds(speciesId)
+		local sizes = {}
+		for _, sizeId in ipairs(GameConfig.SizeIds) do
+			local price = Economy.priceForSize(mediumPrice, sizeId)
+			local wholesale = GameConfig.wholesaleFor(speciesId, sizeId) :: number
+			table.insert(sizes, { sizeId = sizeId, price = price, wholesale = wholesale, profit = price - wholesale })
+		end
+		table.insert(species, {
+			speciesId = speciesId,
+			mediumPrice = mediumPrice,
+			minPrice = minPrice,
+			maxPrice = maxPrice,
+			typicalMedium = typicalMedium,
+			wholesaleMedium = wholesaleMedium,
+			marginMedium = mediumPrice - wholesaleMedium,
+			marginPercent = PricingService.marginPercent(mediumPrice, wholesaleMedium),
+			sentiment = PricingService.sentiment(mediumPrice, typicalMedium),
+			sizes = sizes,
+		})
+	end
+	return { automatic = state.autoPricing == true, species = species }
 end
 
 return PricingService

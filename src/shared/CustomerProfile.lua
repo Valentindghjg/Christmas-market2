@@ -1,5 +1,10 @@
 --!strict
 -- Deterministic customer preferences; no client-owned customer input is trusted.
+-- Budgets follow the size benchmark (Economy.typicalPrice, CM2-G7): 85-155 % of the typical
+-- price of the preferred species and size (PROVISIONAL until CM2-N1).
+local GameConfig = require(script.Parent.GameConfig)
+local Economy = require(script.Parent.Economy)
+
 local CustomerProfile = {}
 
 -- Douglas Fir is appended so existing profile numbers keep their species (tests and
@@ -17,11 +22,16 @@ function CustomerProfile.create(customerNumber: number)
 	end
 	local speciesIndex = ((customerNumber - 1) % #species) + 1
 	local sizeIndex = ((math.floor((customerNumber - 1) / #species)) % #sizes) + 1
+	local preferredSpeciesId = species[speciesIndex]
+	local preferredSizeId = sizes[sizeIndex]
+	local Budget = GameConfig.Pricing.BudgetPercent
+	local percent = Budget.Min + ((customerNumber * 17) % (Budget.Max - Budget.Min + 1))
+	local budget = ((Economy.typicalPrice(preferredSpeciesId, preferredSizeId) :: number) * percent + 50) // 100
 	return {
 		id = "npc:" .. tostring(customerNumber),
-		preferredSpeciesId = species[speciesIndex],
-		preferredSizeId = sizes[sizeIndex],
-		budget = 70 + ((customerNumber * 17) % 81),
+		preferredSpeciesId = preferredSpeciesId,
+		preferredSizeId = preferredSizeId,
+		budget = budget,
 		patienceSeconds = 12 + ((customerNumber * 7) % 19),
 	}
 end

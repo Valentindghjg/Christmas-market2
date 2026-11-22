@@ -99,8 +99,8 @@ end
 -- Every configured species starts at its catalog default (validate() requires one price per species).
 local function defaultMediumPrices(): { [string]: number }
 	local prices = {}
-	for speciesId, tree in pairs(GameConfig.Trees) do
-		prices[speciesId] = tree.initialMediumPrice
+	for speciesId in pairs(GameConfig.Trees) do
+		prices[speciesId] = GameConfig.typicalMediumFor(speciesId) :: number
 	end
 	return prices
 end
@@ -184,10 +184,10 @@ local function backfillMediumPrices(state)
 	if type(state.mediumPrices) ~= "table" then
 		state.mediumPrices = {}
 	end
-	for speciesId, tree in pairs(GameConfig.Trees) do
+	for speciesId in pairs(GameConfig.Trees) do
 		local price = state.mediumPrices[speciesId]
 		if not isFiniteInteger(price) or price < 1 then
-			state.mediumPrices[speciesId] = tree.initialMediumPrice
+			state.mediumPrices[speciesId] = GameConfig.typicalMediumFor(speciesId) :: number
 		end
 	end
 end

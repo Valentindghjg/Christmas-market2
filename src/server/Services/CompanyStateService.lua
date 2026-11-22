@@ -771,6 +771,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 				receiving = BusinessState.receivingSummary(state),
 				supplier = SupplierStockService.summary(state, self._clock()),
 				customers = CustomerOrderService.summary(state),
+				pricing = PricingService.summary(state),
 			},
 		}
 	end

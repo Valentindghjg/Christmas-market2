@@ -108,50 +108,61 @@ GameConfig.Saves = {
 
 local validSizes = { Small = true, Medium = true, Large = true }
 
+-- Price benchmark and pricing panel (CM2-G7, docs/REFERENCE_GAME_LIVE_TEST.md §4.3).
+GameConfig.Pricing = {
+	BenchmarkMultiplier = 5, -- OBSERVED: the "typical" price is about 5 x medium wholesale
+	Steps = { -5, -1, 1, 5 }, -- OBSERVED price buttons
+	SentimentPercent = { Bargain = 85, Fair = 110, Pricey = 130 }, -- PROVISIONAL, above Pricey = TooHigh
+	BudgetPercent = { Min = 85, Max = 155 }, -- PROVISIONAL customer budget vs the size benchmark
+}
+
 -- OBSERVED supplier row order, which is also the unlock order of the starter species
 -- (docs/REFERENCE_GAME_LIVE_TEST.md §4.1). Every key of GameConfig.Trees appears here once.
 GameConfig.SpeciesOrder = { "DouglasFir", "FrasierFir", "NobleFir", "BlueSpruce" }
 
 GameConfig.Trees = {
 	-- Wholesale per species and size and the rarity are OBSERVED (docs/REFERENCE_GAME_LIVE_TEST.md §4.1).
-	-- typicalMedium and initialMediumPrice are PROVISIONAL until CM2-G7 (benchmark = wholesale x 5).
+	-- The typical retail price is derived: GameConfig.typicalMediumFor (CM2-G7).
 	-- Species IDs are stable save keys: "FrasierFir" keeps its ID; only the display name is "Fraser Fir".
 	DouglasFir = {
 		displayName = "Douglas Fir",
 		rarity = "Common",
 		evidence = GameConfig.Evidence.Observed,
 		wholesale = { Small = 21, Medium = 28, Large = 41 },
-		typicalMedium = 70,
-		initialMediumPrice = 72,
 	},
 	FrasierFir = {
 		displayName = "Fraser Fir",
 		rarity = "Uncommon",
 		evidence = GameConfig.Evidence.Observed,
 		wholesale = { Small = 24, Medium = 32, Large = 46 },
-		typicalMedium = 80,
-		initialMediumPrice = 82,
 	},
 	NobleFir = {
 		displayName = "Noble Fir",
 		rarity = "Rare",
 		evidence = GameConfig.Evidence.Observed,
 		wholesale = { Small = 28, Medium = 37, Large = 54 },
-		typicalMedium = 92,
-		initialMediumPrice = 96,
 	},
 	BlueSpruce = {
 		displayName = "Blue Spruce",
 		rarity = "Uncommon",
 		evidence = GameConfig.Evidence.Observed,
 		wholesale = { Small = 32, Medium = 42, Large = 61 },
-		typicalMedium = 105,
-		initialMediumPrice = 105,
 	},
 }
 
 function GameConfig.isValidSize(size: unknown): boolean
 	return type(size) == "string" and validSizes[size] == true
+end
+
+function GameConfig.typicalMediumFor(speciesId: unknown): number?
+	if type(speciesId) ~= "string" then
+		return nil
+	end
+	local tree = GameConfig.Trees[speciesId]
+	if not tree then
+		return nil
+	end
+	return tree.wholesale.Medium * GameConfig.Pricing.BenchmarkMultiplier
 end
 
 function GameConfig.wholesaleFor(species: unknown, size: unknown): number?
