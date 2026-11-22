@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/CheckoutCounter",
+	"displayName": "Checkout Counter",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 1500,
+	"maxMeshParts": 8,
+	"requiredAttachments": ["Checkout1", "CashierStand", "Register"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

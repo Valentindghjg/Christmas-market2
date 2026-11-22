@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Environment/FencePost",
+	"displayName": "Fence Post",
+	"tier": "B",
+	"version": 1,
+	"maxTriangles": 100,
+	"maxMeshParts": 2,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

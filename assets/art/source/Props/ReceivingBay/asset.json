@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/ReceivingBay",
+	"displayName": "Receiving Bay",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 900,
+	"maxMeshParts": 4,
+	"requiredAttachments": ["BundleBase"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}
