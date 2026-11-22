@@ -7,6 +7,7 @@ Report coordinates are Roblox axes in studs: Xr = -Xb, Yr = Zb, Zr = Yb.
 """
 
 import json
+import os
 import re
 import sys
 
@@ -36,7 +37,7 @@ def parse_args():
     if "--fbx" not in values or "--report" not in values:
         print("ART_USAGE blender_export.py -- --fbx <path> --report <path>")
         sys.exit(2)
-    return values["--fbx"], values["--report"]
+    return os.path.abspath(values["--fbx"]), os.path.abspath(values["--report"])
 
 
 def to_roblox(vector):

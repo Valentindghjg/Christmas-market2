@@ -3,13 +3,19 @@
 local fs = require("@lune/fs")
 local process = require("@lune/process")
 local Config = require("./Config")
+local Paths = require("./Paths")
 
 local Blender = {}
+
+local PATH_FLAGS: { [string]: boolean } =
+	{ ["--fbx"] = true, ["--report"] = true, ["--out-dir"] = true, ["--out"] = true }
 
 export type Result = { ok: boolean, code: number, stdout: string, stderr: string }
 
 Blender.MISSING_CODE = "ART_BLENDER_MISSING"
 Blender.MISSING_HINT = "winget install BlenderFoundation.Blender"
+Blender.RELATIVE_CODE = "ART_RELATIVE_PATH"
+Blender.PATH_FLAGS = PATH_FLAGS
 
 -- CM2_BLENDER overrides the default install path. Returns nil when no executable exists.
 function Blender.resolve(): string?
@@ -36,7 +42,34 @@ function Blender.arguments(blend: string?, script: string, extra: { string }): {
 	return args
 end
 
+-- The paths among the arguments that are not absolute (blend, script, values of PATH_FLAGS).
+function Blender.relativePaths(cwd: string, blend: string?, script: string, extra: { string }): { string }
+	local bad = {}
+	if blend ~= nil and not Paths.isAbsolute(blend, cwd) then
+		table.insert(bad, blend)
+	end
+	if not Paths.isAbsolute(script, cwd) then
+		table.insert(bad, script)
+	end
+	for index, flag in ipairs(extra) do
+		local value = extra[index + 1]
+		if PATH_FLAGS[flag] and value ~= nil and not Paths.isAbsolute(value, cwd) then
+			table.insert(bad, value)
+		end
+	end
+	return bad
+end
+
 function Blender.run(blender: string, blend: string?, script: string, extra: { string }): Result
+	local bad = Blender.relativePaths(process.cwd, blend, script, extra)
+	if #bad > 0 then
+		return {
+			ok = false,
+			code = -1,
+			stdout = "",
+			stderr = Blender.RELATIVE_CODE .. " " .. table.concat(bad, " "),
+		}
+	end
 	local result = process.exec(blender, Blender.arguments(blend, script, extra))
 	return { ok = result.ok, code = result.code, stdout = result.stdout, stderr = result.stderr }
 end

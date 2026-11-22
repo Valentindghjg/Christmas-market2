@@ -9,7 +9,7 @@
 --   build <artPath>            export, upload, normalize
 --   verify <placeFile>         integrated art vs the built place
 --   probe                      the generated pipeline probe, end to end
--- Every command takes --root <dir> (default assets/art). Exit codes: 0 ok, 1 error,
+-- Every command takes --root <dir> (default assets/art, relative to the working directory); every path handed to Blender is absolute (CM2-ART1). Exit codes: 0 ok, 1 error,
 -- 2 missing API key or creator.
 local fs = require("@lune/fs")
 local net = require("@lune/net")
@@ -28,11 +28,11 @@ local Normalize = require("./lib/Normalize")
 local Paths = require("./lib/Paths")
 local Verify = require("./lib/Verify")
 
-local PROBE_ROOT = "tests/fixtures/art"
+local PROBE_ROOT = Paths.absolute(process.cwd, "tests/fixtures/art")
 local PROBE_PATH = "Props/ArtPipelineProbe"
-local EXPORT_SCRIPT = "tools/art/blender_export.py"
-local RENDER_SCRIPT = "tools/art/blender_render.py"
-local PROBE_SCRIPT = "tools/art/make_probe.py"
+local EXPORT_SCRIPT = Paths.absolute(process.cwd, "tools/art/blender_export.py")
+local RENDER_SCRIPT = Paths.absolute(process.cwd, "tools/art/blender_render.py")
+local PROBE_SCRIPT = Paths.absolute(process.cwd, "tools/art/make_probe.py")
 local NO_KEY_MESSAGE = "ART_NO_API_KEY: set ROBLOX_OPEN_CLOUD_API_KEY and CM2_ART_CREATOR (CLAUDE_BACKLOG PC-2)"
 
 local function die(message: string, code: number?)
@@ -61,7 +61,10 @@ do
 	end
 end
 local command = positional[1]
-local root: string = if type(options["--root"]) == "string" then options["--root"] :: string else Paths.DEFAULT_ROOT
+local root: string = Paths.absolute(
+	process.cwd,
+	if type(options["--root"]) == "string" then options["--root"] :: string else Paths.DEFAULT_ROOT
+)
 
 -- Helpers -------------------------------------------------------------------------------------
 local function requireArtPath(): string

@@ -668,18 +668,79 @@ test("R1 rojo maps an .rbxm into ReplicatedStorage.ArtAssets", function()
 	eq(#failures, 0, table.concat(codes(failures), ","))
 end)
 
+-- Paths -----------------------------------------------------------------------------------------
+test("P1 relative roots resolve to absolute paths under the working directory", function()
+	eq(Paths.absolute("C:\\repo\\", "assets/art"), "C:/repo/assets/art")
+	eq(Paths.absolute("C:\\repo", "./assets/art"), "C:/repo/assets/art")
+	eq(Paths.absolute("C:\\repo\\", "D:\\art"), "D:/art")
+	eq(Paths.absolute("C:\\repo\\", "/x/y"), "C:/x/y")
+	eq(Paths.absolute("/home/u/repo/", "assets/art"), "/home/u/repo/assets/art")
+	eq(Paths.absolute("/home/u/repo", "/tmp/art"), "/tmp/art")
+	eq(Paths.absolute("C:\\repo\\", "."), "C:/repo")
+	eq(Paths.isAbsolute("assets/art", "C:\\repo\\"), false)
+	eq(Paths.isAbsolute("./x", "C:\\repo\\"), false)
+	eq(Paths.isAbsolute("/x", "C:\\repo\\"), false)
+	eq(Paths.isAbsolute("C:/x", "C:\\repo\\"), true)
+	eq(Paths.isAbsolute("c:\\x", "C:\\repo\\"), true)
+	eq(Paths.isAbsolute("\\\\srv\\share", "C:\\repo\\"), true)
+	eq(Paths.isAbsolute("/x", "/repo/"), true)
+	local base = string.gsub(string.gsub(process.cwd, "\\", "/"), "/+$", "")
+	local root = Paths.absolute(process.cwd, Paths.DEFAULT_ROOT)
+	eq(root, base .. "/assets/art")
+	truthy(Paths.isAbsolute(root, process.cwd), "root is absolute")
+	eq(Paths.buildDir(root, "Trees/DouglasFir/Medium"), base .. "/assets/art/_build/Trees/DouglasFir/Medium")
+end)
+
+test("P2 Blender.run refuses relative paths without starting Blender", function()
+	local relBlend = "assets/art/source/X/model.blend"
+	local relScript = "tools/art/blender_render.py"
+	local extra = { "--out-dir", "assets/art/_build/X", "--colors", "Snow=1,2,3" }
+	local bad = Blender.relativePaths(process.cwd, relBlend, relScript, extra)
+	eq(#bad, 3)
+	eq(bad[1], relBlend)
+	eq(bad[2], relScript)
+	eq(bad[3], "assets/art/_build/X")
+	local absExtra = { "--out-dir", Paths.absolute(process.cwd, extra[2]), "--colors", "Snow=1,2,3" }
+	eq(
+		#Blender.relativePaths(
+			process.cwd,
+			Paths.absolute(process.cwd, relBlend),
+			Paths.absolute(process.cwd, relScript),
+			absExtra
+		),
+		0
+	)
+	local absScript = Paths.absolute(process.cwd, relScript)
+	local partial = Blender.relativePaths(
+		process.cwd,
+		nil,
+		absScript,
+		{ "--fbx", Paths.absolute(process.cwd, "a/model.fbx"), "--report", "rel/report.json" }
+	)
+	eq(#partial, 1)
+	eq(partial[1], "rel/report.json")
+	eq(#Blender.relativePaths(process.cwd, nil, absScript, { "--out" }), 0)
+	local result =
+		Blender.run("Z:/no/such/blender.exe", nil, "tools/art/make_probe.py", { "--out", "tests/fixtures/art/x.blend" })
+	eq(result.ok, false)
+	eq(result.code, -1)
+	truthy(string.sub(Blender.artLines(result)[1] or "", 1, 17) == Blender.RELATIVE_CODE, "ART_RELATIVE_PATH line")
+end)
+
 -- Blender ---------------------------------------------------------------------------------------
 local blender = Blender.resolve()
 if blender == nil then
 	skip("B1 make_probe and export", "Blender is not installed (" .. Blender.MISSING_CODE .. ")")
 else
 	test("B1 make_probe and export", function()
-		local blendFile = Paths.blendFile(FIXTURE_ROOT, PROBE_PATH)
-		local buildDir = Paths.buildDir(FIXTURE_ROOT, PROBE_PATH)
+		local fixtureRoot = Paths.absolute(process.cwd, FIXTURE_ROOT)
+		local blendFile = Paths.blendFile(fixtureRoot, PROBE_PATH)
+		local buildDir = Paths.buildDir(fixtureRoot, PROBE_PATH)
 		fs.writeDir(buildDir)
-		local made = Blender.run(blender, nil, "tools/art/make_probe.py", { "--out", blendFile })
+		local made =
+			Blender.run(blender, nil, Paths.absolute(process.cwd, "tools/art/make_probe.py"), { "--out", blendFile })
 		eq(made.code, 0, "make_probe exit code")
-		local exported = Blender.run(blender, blendFile, "tools/art/blender_export.py", {
+		local exported = Blender.run(blender, blendFile, Paths.absolute(process.cwd, "tools/art/blender_export.py"), {
 			"--fbx",
 			buildDir .. "/model.fbx",
 			"--report",

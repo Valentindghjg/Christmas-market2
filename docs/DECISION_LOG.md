@@ -507,3 +507,10 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Palette keys added (PROVISIONAL, SmoothPlastic): NeedleDeep, NeedleSage, NeedleBlue, NeedleSilver and their Shade keys; no existing value changed.
 - Final `SPECIES` values after the render rounds (review latitude ±15%; others as planned): DouglasFir t 0.138, overlap 1.15, inner 0.88, droop 0.102, snow 0.40; FrasierFir overlap 1.19, snow 0.345; BlueSpruce overlap 1.11, snow 0.2875; FrostcrownFir overlap 1.15, snow 0.5175; HollyberrySpruce overlap 1.11, snow 0.345; NobleFir unchanged. Reason: at the planned overlap the next tier hid the snow band.
 - Modeler details: tiers are spaced so the top tier ends at the leader base (leader sunk 15%); snow sits 0.06 studs above the tier and has no bottom cap (hidden inside the tier); the frost underside is the tier rim mirrored downwards, 0.12 of the tier height deep, narrowing to 0.88 R, so it shows as a silver edge from the side; the topper star sits on a thin gold stem from the leader tip; berry clusters sit on the bottom six tiers 2/2/2/2/1/1; the collider uses the species radius (Fraser 0.85 x class R).
+
+## 2026-11-22 — CM2-ART1 absolute Blender paths (engineering)
+- Defect: render previews landed in `C:\assets\…` with the default relative `--root`.
+- Fix: Luau resolves every path against `process.cwd` (`Paths.absolute`), `Blender.run` refuses relative paths with `ART_RELATIVE_PATH`, and the three Blender scripts apply `os.path.abspath`.
+- `--root` semantics unchanged (relative to the working directory).
+- Files: `tools/art/lib/Paths.luau`, `tools/art/lib/Blender.luau`, `tools/art/art.luau`, `tools/art/blender_render.py`, `tools/art/blender_export.py`, `tools/art/make_probe.py`, `tests/tools/art_pipeline.luau`, `docs/MODEL_INTEGRATION.md`.
+- Art pipeline tests 22 (local), 21 passed + 1 skipped on CI. No Studio test (tooling only).

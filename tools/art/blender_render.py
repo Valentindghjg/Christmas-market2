@@ -40,7 +40,7 @@ def parse_args():
     if not out_dir:
         print("ART_USAGE blender_render.py -- --out-dir <dir> --colors Key=r,g,b ...")
         sys.exit(2)
-    return out_dir, colors
+    return os.path.abspath(out_dir), colors
 
 
 def srgb_to_linear(value):

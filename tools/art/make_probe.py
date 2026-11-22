@@ -25,7 +25,7 @@ def parse_args():
     if not out:
         print("ART_USAGE make_probe.py -- --out <model.blend>")
         sys.exit(2)
-    return out
+    return os.path.abspath(out)
 
 
 def add_box(name, size, location):
