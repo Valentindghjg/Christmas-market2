@@ -2,8 +2,10 @@
 -- Save picker (CM2-S1): choose, create, rename and delete saves, and switch saves through
 -- the "Saves" button. CM2-S2 adds the save size, joining by invite code and shared (Member)
 -- rows, which show the owner's username instead of the save name and can only be left.
--- Mobile first; every button is at least 44 px tall. The UI only sends Save.* requests; the
--- server validates, filters names and owns every result.
+-- CM2-S3 adds "Being played by X" rows with Join (Save.Teleport), the teleport after a code
+-- join of a save played elsewhere and the "Find teammates" button. Mobile first; every
+-- button is at least 44 px tall. The UI only sends Save.* requests; the server validates,
+-- filters names and owns every result.
 local HttpService = game:GetService("HttpService")
 local LocalizationService = game:GetService("LocalizationService")
 local Players = game:GetService("Players")
@@ -127,13 +129,19 @@ local picker = dialogFrame("Picker")
 picker.Visible = false
 
 local title = textLabel(picker, "Title", localized("savePickerTitle"), 22)
-title.Size = UDim2.new(1, 0, 0, 30)
+title.Size = UDim2.new(0.6, -4, 0, 30)
 
 local hint = textLabel(picker, "Hint", localized("savePickerHint"), 14)
 hint.Position = UDim2.fromOffset(0, 32)
-hint.Size = UDim2.new(1, 0, 0, 22)
+hint.Size = UDim2.new(0.6, -4, 0, 22)
 hint.TextWrapped = true
 hint.TextTruncate = Enum.TextTruncate.AtEnd
+
+-- CM2-S3: opens the teammate finder (TeammateFinder.client.lua) above the picker.
+local findTeammates = textButton(picker, "FindTeammates", localized("finderOpen"), SAND)
+findTeammates.AnchorPoint = Vector2.new(1, 0)
+findTeammates.Position = UDim2.fromScale(1, 0)
+findTeammates.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
 
 -- Four footer rows: size toggles, new save, join by code, status and back.
 local FOOTER_HEIGHT = BUTTON_HEIGHT * 4 + 24
@@ -315,6 +323,19 @@ local function closeDeleteConfirm()
 	confirm.Visible = false
 end
 
+-- CM2-S3: moves the player to the server that plays the save ({saveId} or {code}).
+local function teleportTo(payload: { [string]: any })
+	local response = request("Save.Teleport", payload)
+	if response == nil then
+		return
+	end
+	if not response.ok then
+		showError(response.errorCode)
+		return
+	end
+	status.Text = localized("teleportJoining")
+end
+
 local function play(entry)
 	status.Text = localized("saveLoading")
 	local response = request("Save.Play", { saveId = entry.saveId })
@@ -323,6 +344,10 @@ local function play(entry)
 	end
 	if not response.ok then
 		showError(response.errorCode)
+		if response.errorCode == "SaveInUseElsewhere" then
+			-- The row now offers Join.
+			refreshList()
+		end
 		return
 	end
 	-- Choosing the save that is already running needs no reload.
@@ -402,6 +427,16 @@ local function buildRow(index: number, entry)
 		sub.Size = UDim2.new(0.4, -4, 0, 34)
 		sub.TextXAlignment = Enum.TextXAlignment.Right
 		sub.TextTruncate = Enum.TextTruncate.AtEnd
+		-- CM2-S3: another server plays this save.
+		if entry.elsewhere == true then
+			if type(entry.hostName) == "string" then
+				sub.Text = localizedFormat("saveRowElsewhere", entry.hostName)
+				-- Contains a username.
+				sub.AutoLocalize = false
+			else
+				sub.Text = localized("saveRowElsewhereUnknown")
+			end
+		end
 	end
 
 	-- Solo, or a co-op save with its seat count.
@@ -423,9 +458,14 @@ local function buildRow(index: number, entry)
 		return value
 	end
 
-	local playButton = rowButton("Play", localized("savePlay"), GOLD, 0)
+	local elsewhere = entry.elsewhere == true
+	local playButton = rowButton("Play", localized(if elsewhere then "saveJoinServer" else "savePlay"), GOLD, 0)
 	playButton.Activated:Connect(function()
-		play(entry)
+		if elsewhere then
+			teleportTo({ saveId = entry.saveId })
+		else
+			play(entry)
+		end
 	end)
 
 	if member then
@@ -545,6 +585,11 @@ joinSave.Activated:Connect(function()
 	if response == nil then
 		return
 	end
+	if not response.ok and response.errorCode == "SaveInUseElsewhere" then
+		-- CM2-S3: the tap already says "join", so go to that server at once.
+		teleportTo({ code = code })
+		return
+	end
 	if not response.ok or type(response.data) ~= "table" then
 		showError(response.errorCode)
 		return
@@ -576,6 +621,27 @@ end)
 confirmCancel.Activated:Connect(closeDeleteConfirm)
 backToGame.Activated:Connect(close)
 savesButton.Activated:Connect(open)
+
+-- Opens the teammate finder; nothing happens while it is not built yet.
+findTeammates.Activated:Connect(function()
+	local finderGui = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FinderUI")
+	local openEvent = finderGui and finderGui:FindFirstChild("Open")
+	if openEvent and openEvent:IsA("BindableEvent") then
+		openEvent:Fire()
+	end
+end)
+
+-- CM2-S3: a failed move to another server (ServerFull, SaveServerGone, TeleportFailed).
+player:GetAttributeChangedSignal("SaveTeleportError"):Connect(function()
+	local code = player:GetAttribute("SaveTeleportError")
+	if code == nil then
+		return
+	end
+	if not picker.Visible then
+		open()
+	end
+	showError(code)
+end)
 
 player:GetAttributeChangedSignal("CompanyReady"):Connect(function()
 	updateBackButton()
