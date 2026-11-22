@@ -7,6 +7,16 @@ local UiTheme = {}
 
 export type Box = { x: number, y: number, w: number, h: number }
 
+export type WorldLabelLayout = {
+	w: number,
+	h: number,
+	textSize: number,
+	wrap: boolean,
+	height: number,
+	stagger: number,
+	maxDistance: number,
+}
+
 export type Metrics = {
 	width: number,
 	height: number,
@@ -93,6 +103,55 @@ UiTheme.MinTouch = 44
 UiTheme.CornerRadius = { Button = 8, Row = 10, Panel = 14 }
 UiTheme.CompactHeight = 520
 UiTheme.CompactWidth = 720
+
+-- World billboard layouts (CM2-UVF2, PROVISIONAL): w/h in px, height in studs above the adornee.
+UiTheme.WorldLabels = {
+	Bay = {
+		w = 200,
+		h = 28,
+		textSize = UiTheme.TextSize.Small,
+		wrap = false,
+		height = 5,
+		stagger = 0,
+		maxDistance = 60,
+	},
+	DisplayTree = {
+		w = 220,
+		h = 44,
+		textSize = UiTheme.TextSize.Small,
+		wrap = true,
+		height = 10,
+		stagger = 0,
+		maxDistance = 40,
+	},
+	CarNumber = {
+		w = 130,
+		h = 30,
+		textSize = UiTheme.TextSize.Chip,
+		wrap = false,
+		height = 6,
+		stagger = 0,
+		maxDistance = 60,
+	},
+	PickupOrder = {
+		w = 240,
+		h = 30,
+		textSize = UiTheme.TextSize.Body,
+		wrap = false,
+		height = 9,
+		stagger = 2,
+		maxDistance = 60,
+	},
+	Speech = {
+		w = 170,
+		h = 30,
+		textSize = UiTheme.TextSize.Body,
+		wrap = false,
+		height = 3,
+		stagger = 0,
+		maxDistance = 60,
+	},
+} :: { [string]: WorldLabelLayout }
 
 -- The six Lot Manager tabs in the OBSERVED order (REFERENCE_GAME_LIVE_TEST section 4).
 UiTheme.LotManagerTabs = {

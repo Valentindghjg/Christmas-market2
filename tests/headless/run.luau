@@ -72,6 +72,7 @@ local sourcePaths = {
 	Economy = "src/shared/Economy.lua",
 	GameConfig = "src/shared/GameConfig.lua",
 	Inventory = "src/shared/Inventory.lua",
+	LabelDeclutter = "src/shared/LabelDeclutter.lua",
 	Localization = "src/shared/Localization.lua",
 	ModalCoordinator = "src/shared/ModalCoordinator.lua",
 	NpcLook = "src/shared/NpcLook.lua",

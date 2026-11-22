@@ -460,3 +460,14 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Amends the CM2-40 "Modal rules" bullet. CM2-UI adds only a dim layer on this stack (picker DisplayOrder 20 under finder 25).
 - Files: `src/shared/ModalCoordinator.lua` (new), `src/client/UiKit.lua`, `src/client/SavePicker.client.lua`, `tests/studio/Cases/ModalCoordinator_Test.lua` (new), `tests/headless/run.luau`, `docs/TEST_PLAN.md`.
 - Headless +9, total 389.
+
+## 2026-11-22 — CM2-UVF2 world label layout (engineering)
+- Defects (CM2-UV (i), (e)+(j): uv-i1, uv-i9, uv-e1, uv-e2): world billboards overlapped and the pickup label wrapped to two lines.
+- D1: cause was `TextScaled` in one 190x46 px box for all kinds with neighbours 4.5-6 studs apart. Fix: fixed text size, per-kind boxes, pickup stagger, client declutter.
+- D2: the client hides (`Enabled = false`, local) a label whose screen box overlaps one of higher priority, or equal priority and nearer (`LabelDeclutter`, 10 Hz); keeps the OBSERVED per-tree label.
+- D3: bay contents text is the OBSERVED short form "Douglas Fir · 6 trees" (`bayContents`, `bayContentsOne`); the size breakdown stays in the StockBay prompt and the stocking bar.
+- D4: pickup labels in columns 0 and 2 sit 2 studs above columns 1 and 3.
+- D5: colours, font and corner come from `UiTheme` tokens.
+- CM2-UI restyles the labels via `UiTheme.WorldLabels`.
+- Files: `src/shared/UiTheme.lua`, `src/shared/LabelDeclutter.lua` (new), `src/server/Services/WorldService.lua`, `src/client/WorldLabels.client.lua`, `src/shared/Localization.lua`, `tests/studio/Cases/LabelDeclutter_Test.lua` (new), `tests/studio/Cases/UiTheme_Test.lua`, `tests/headless/run.luau`, `docs/TEST_PLAN.md`.
+- Headless +8, total 397.

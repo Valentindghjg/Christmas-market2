@@ -4,6 +4,8 @@
 -- only: every action stays a server-validated prompt or request.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local RunService = game:GetService("RunService")
+local LabelDeclutter = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("LabelDeclutter"))
 local TreeHeight = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("TreeHeight"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local UiTheme = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UiTheme"))
@@ -21,17 +23,6 @@ local function speciesName(speciesId: unknown): string
 	return if tree then tree.displayName else tostring(speciesId)
 end
 
--- Bay counts as "a Small · b Medium · c Large" (promptStockObject) and the header form.
-local function bayHeader(instance: Instance): string
-	return UiKit.localizedFormat(
-		"stockingHeader",
-		speciesName(instance:GetAttribute("SpeciesId")),
-		number(instance, "CountSmall"),
-		number(instance, "CountMedium"),
-		number(instance, "CountLarge")
-	)
-end
-
 local function countdownText(seconds: number): string
 	local whole = math.max(0, math.floor(seconds))
 	return string.format("%d:%02d", whole // 60, whole % 60)
@@ -44,7 +35,13 @@ local function localizeLabel(label: TextLabel)
 	elseif kind == "BayArriving" then
 		label.Text = UiKit.localizedFormat("bayArriving", countdownText(number(label, "ArrivesIn")))
 	elseif kind == "BayContents" then
-		label.Text = bayHeader(label)
+		local total = number(label, "CountSmall") + number(label, "CountMedium") + number(label, "CountLarge")
+		local name = speciesName(label:GetAttribute("SpeciesId"))
+		if total == 1 then
+			label.Text = UiKit.localizedFormat("bayContentsOne", name)
+		else
+			label.Text = UiKit.localizedFormat("bayContents", name, total)
+		end
 	elseif kind == "DisplayTree" and label:GetAttribute("Reserved") == true then
 		label.Text = UiKit.localized("treeReserved")
 	elseif kind == "DisplayTree" then
@@ -95,8 +92,16 @@ local function isBayLabel(label: TextLabel): boolean
 	return type(kind) == "string" and string.sub(kind, 1, 3) == "Bay"
 end
 
+-- CM2-UVF2: every world billboard is registered here and shown or hidden by the declutter pass.
+local labelGuis: { [BillboardGui]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+
 local function visit(instance: Instance)
 	if instance:IsA("TextLabel") and instance:GetAttribute("LabelKind") ~= nil then
+		local parent = instance.Parent
+		if parent and parent:IsA("BillboardGui") then
+			labelGuis[parent] = true
+			parent.Enabled = false
+		end
 		localizeLabel(instance)
 		if isBayLabel(instance) and not watched[instance] then
 			watched[instance] = true
@@ -120,6 +125,55 @@ for _, descendant in workspace:GetDescendants() do
 	visit(descendant)
 end
 workspace.DescendantAdded:Connect(visit)
+
+-- Declutter pass at 10 Hz: hides a label whose screen box overlaps a better one. No Instances
+-- are created; labels out of range or behind the camera are left enabled (the engine culls them).
+local passClock = 0
+RunService.RenderStepped:Connect(function(dt: number)
+	passClock += dt
+	if passClock < LabelDeclutter.IntervalSeconds then
+		return
+	end
+	passClock = 0
+	local camera = workspace.CurrentCamera
+	if camera == nil then
+		return
+	end
+	local guis: { BillboardGui } = {}
+	local entries: { LabelDeclutter.Entry } = {}
+	for gui in pairs(labelGuis) do
+		if not gui:IsDescendantOf(workspace) then
+			labelGuis[gui] = nil
+			continue
+		end
+		local adornee = gui.Adornee
+		local label = gui:FindFirstChild("Text")
+		if adornee == nil or not adornee:IsA("BasePart") or label == nil or not label:IsA("TextLabel") then
+			continue
+		end
+		local point = adornee.Position + gui.StudsOffsetWorldSpace
+		local viewport = camera:WorldToViewportPoint(point)
+		if (point - camera.CFrame.Position).Magnitude > gui.MaxDistance or viewport.Z <= 0 then
+			gui.Enabled = true
+			continue
+		end
+		local width, height = gui.Size.X.Offset, gui.Size.Y.Offset
+		table.insert(guis, gui)
+		table.insert(entries, {
+			box = { x = viewport.X - width / 2, y = viewport.Y - height / 2, w = width, h = height },
+			priority = LabelDeclutter.priorityFor(
+				label:GetAttribute("LabelKind"),
+				label:GetAttribute("Reserved") == true
+			),
+			depth = viewport.Z,
+			shown = gui.Enabled,
+		})
+	end
+	local result = LabelDeclutter.resolve(entries)
+	for index, gui in ipairs(guis) do
+		gui.Enabled = result[index]
+	end
+end)
 
 -- Toast for server notifications { key = string, args = { number } }.
 -- A transient overlay above every other screen; the HUD layout keeps it clear of the HUD and the rail.

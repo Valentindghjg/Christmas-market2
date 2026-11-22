@@ -33,6 +33,21 @@ return function(t)
 		expect.equal(UiTheme.formatMoney(12.7), "12")
 	end)
 
+	t.test("world label layouts are complete", function()
+		for _, id in ipairs({ "Bay", "DisplayTree", "CarNumber", "PickupOrder", "Speech" }) do
+			local layout = UiTheme.WorldLabels[id]
+			expect.truthy(layout ~= nil)
+			expect.truthy(layout.w > 0)
+			expect.truthy(layout.h > 0)
+			expect.truthy(layout.textSize > 0)
+			expect.truthy(layout.height > 0)
+			expect.truthy(layout.maxDistance > 0)
+			expect.truthy(layout.stagger >= 0)
+		end
+		expect.equal(UiTheme.WorldLabels.PickupOrder.wrap, false)
+		expect.equal(UiTheme.WorldLabels.CarNumber.wrap, false)
+	end)
+
 	t.test("picks compact for phones and regular for tablets and PC", function()
 		for _, size in ipairs(MATRIX) do
 			expect.equal(UiTheme.metrics(size.w, size.h).compact, size.compact)

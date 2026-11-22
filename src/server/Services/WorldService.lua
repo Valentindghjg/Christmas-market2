@@ -9,6 +9,7 @@ local Economy = require(Shared:WaitForChild("Economy"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Stocking = require(Shared:WaitForChild("Stocking"))
 local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
+local UiTheme = require(Shared:WaitForChild("UiTheme"))
 
 local WorldService = {}
 
@@ -278,29 +279,41 @@ end
 
 -- A floating label. Server text is the English fallback; the client script
 -- WorldLabels.client.lua localizes it from the label's attributes (LabelKind etc.).
-local function billboard(adornee: BasePart, kind: string, text: string, height: number, attributes): TextLabel
+-- CM2-UVF2: fixed text size and a per-kind box from UiTheme.WorldLabels (no TextScaled).
+local function billboard(
+	adornee: BasePart,
+	kind: string,
+	text: string,
+	layoutId: string,
+	height: number,
+	attributes
+): TextLabel
+	local layout = UiTheme.WorldLabels[layoutId]
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "Label"
-	gui.Size = UDim2.fromOffset(190, 46)
+	gui.Size = UDim2.fromOffset(layout.w, layout.h)
 	gui.StudsOffsetWorldSpace = Vector3.new(0, height, 0)
-	gui.MaxDistance = 60
+	gui.MaxDistance = layout.maxDistance
 	gui.AlwaysOnTop = false
 	gui.Adornee = adornee
 	gui.Parent = adornee
 	local textLabel = Instance.new("TextLabel")
 	textLabel.Name = "Text"
 	textLabel.Size = UDim2.fromScale(1, 1)
-	textLabel.BackgroundColor3 = Color3.fromRGB(24, 74, 50)
+	textLabel.BackgroundColor3 = Color3.fromRGB(table.unpack(UiTheme.Colors.Panel))
 	textLabel.BackgroundTransparency = 0.15
-	textLabel.TextColor3 = Color3.fromRGB(255, 244, 217)
-	textLabel.Font = Enum.Font.GothamBold
-	textLabel.TextScaled = true
+	textLabel.TextColor3 = Color3.fromRGB(table.unpack(UiTheme.Colors.Cream))
+	textLabel.Font = Enum.Font[UiTheme.Fonts.Bold]
+	textLabel.TextScaled = false
+	textLabel.TextSize = layout.textSize
+	textLabel.TextWrapped = layout.wrap
+	textLabel.TextTruncate = Enum.TextTruncate.None
 	textLabel.Text = text
 	textLabel:SetAttribute("LabelKind", kind)
 	for key, value in pairs(attributes) do
 		textLabel:SetAttribute(key, value)
 	end
-	Instance.new("UICorner", textLabel).CornerRadius = UDim.new(0, 8)
+	Instance.new("UICorner", textLabel).CornerRadius = UDim.new(0, UiTheme.CornerRadius.Button)
 	textLabel.Parent = gui
 	return textLabel
 end
@@ -355,7 +368,7 @@ local function buildReceiving(plot: Model)
 			Enum.Material.WoodPlanks
 		)
 		bay:SetAttribute("BayIndex", index)
-		billboard(bay, "BayFree", "Free bay", 5, { BayIndex = index })
+		billboard(bay, "BayFree", "Free bay", "Bay", UiTheme.WorldLabels.Bay.height, { BayIndex = index })
 		local stockPrompt = Instance.new("ProximityPrompt")
 		stockPrompt.Name = "StockBay"
 		stockPrompt.ActionText = "Stock"
@@ -701,7 +714,8 @@ function WorldService.syncDisplayedTrees(plotId: string, placements, mediumPrice
 					TreeHeight.feetText(tenths),
 					price
 				),
-				10 * scale,
+				"DisplayTree",
+				UiTheme.WorldLabels.DisplayTree.height * scale,
 				{
 					SpeciesId = placement.speciesId,
 					SizeId = placement.sizeId,
@@ -803,7 +817,9 @@ function WorldService.syncReceiving(plotId: string, bays)
 					label.Text = string.format("Delivery arriving %d:%02d", arrivesIn // 60, arrivesIn % 60)
 				elseif total > 0 then
 					label:SetAttribute("LabelKind", "BayContents")
-					label.Text = name .. " · " .. sizesText
+					label.Text = if total == 1
+						then name .. " · 1 tree"
+						else string.format("%s · %d trees", name, total)
 				else
 					label:SetAttribute("LabelKind", "BayFree")
 					label.Text = "Free bay"
@@ -911,7 +927,14 @@ local function decorateCar(carModel: Model, orderNumber: number, callbacks)
 		return
 	end
 	if body:FindFirstChild("Label") == nil then
-		billboard(body, "CarNumber", "#" .. orderNumber, 6, { OrderNumber = orderNumber })
+		billboard(
+			body,
+			"CarNumber",
+			"#" .. orderNumber,
+			"CarNumber",
+			UiTheme.WorldLabels.CarNumber.height,
+			{ OrderNumber = orderNumber }
+		)
 	end
 	if body:FindFirstChild("LoadOrder") == nil then
 		local loadPrompt = prompt(body, "LoadOrder", "Load tree", orderNumber)
@@ -1008,9 +1031,15 @@ function WorldService.syncCustomerOrders(plotId: string, summary, callbacks)
 			pickupTree:SetAttribute("OrderNumber", orderNumber)
 			setCollisionGroup(pickupTree, GameConfig.Customers.Npc.CollisionGroups.Tree)
 			local trunk = pickupTree.PrimaryPart :: BasePart
-			billboard(trunk, "PickupOrder", string.format("Order #%d · PICK UP", orderNumber), 9, {
-				OrderNumber = orderNumber,
-			})
+			local pickupLayout = UiTheme.WorldLabels.PickupOrder
+			billboard(
+				trunk,
+				"PickupOrder",
+				string.format("Order #%d · PICK UP", orderNumber),
+				"PickupOrder",
+				pickupLayout.height + (if column % 2 == 0 then pickupLayout.stagger else 0),
+				{ OrderNumber = orderNumber }
+			)
 			local carryPrompt = prompt(trunk, "CarryOrder", "Pick up customer tree", orderNumber)
 			carryPrompt.Triggered:Connect(function(player)
 				if callbacks and callbacks.carry then
@@ -1187,10 +1216,9 @@ end
 
 -- A short speech billboard ("Thanks so much!", OBSERVED) removed after `seconds`.
 function WorldService.speech(adornee: BasePart, kind: string, text: string, seconds: number)
-	local label = billboard(adornee, kind, text, 3, {})
+	local label = billboard(adornee, kind, text, "Speech", UiTheme.WorldLabels.Speech.height, {})
 	local gui = label.Parent :: BillboardGui
 	gui.Name = "Speech"
-	gui.Size = UDim2.fromOffset(170, 40)
 	Debris:AddItem(gui, seconds)
 end
 

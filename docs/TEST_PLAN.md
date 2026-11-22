@@ -61,7 +61,7 @@ F. Parking, land and HQ upgrades enforce prerequisites and unlock correct slots.
 G. Two personal businesses cannot spend each other's money or stock.
 H. Shared company: invite, join, role enforcement, owner disconnect, simultaneous purchase requests, session migration.
 I. Reload restores all placements, upgrades, employees, stats, pricing and orders.
-J. Localization and accessibility across input modes; no UI clipped by phone safe areas. Layout rules, device matrix and the Studio device-simulator checks (blocked until PC-3, then CM2-UV (f)) are in `docs/plans/CM2-40.md`; the headless layout tests are `UiTheme_Test`. The modal rule (one dialog at a time, picker as base layer, finder over it) is covered headless by `ModalCoordinator_Test` (CM2-UVF1).
+J. Localization and accessibility across input modes; no UI clipped by phone safe areas. Layout rules, device matrix and the Studio device-simulator checks (blocked until PC-3, then CM2-UV (f)) are in `docs/plans/CM2-40.md`; the headless layout tests are `UiTheme_Test`. The modal rule (one dialog at a time, picker as base layer, finder over it) is covered headless by `ModalCoordinator_Test` (CM2-UVF1). World labels: `LabelDeclutter_Test` and the `UiTheme_Test` world label case (CM2-UVF2).
 K. Event flags work only during Christmas event window; no offline passive payout.
 L. Monetization is active at launch (owner decision 2026-11-21): every product needs a receipt test pass (grant once, replay rejected, offline player, failed grant retried) before the owner publishes.
 
