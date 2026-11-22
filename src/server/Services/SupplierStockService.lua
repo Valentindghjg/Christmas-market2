@@ -7,6 +7,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Inventory = require(Shared:WaitForChild("Inventory"))
+local Receiving = require(Shared:WaitForChild("Receiving"))
 
 local SupplierStockService = {}
 
@@ -83,7 +84,7 @@ function SupplierStockService.refundFor(speciesId: string, sizeId: string): numb
 	return math.floor(unitCost * GameConfig.Supplier.SellBackFraction + 0.5)
 end
 
--- Sells trees back from storage first, then from the lot; reserved trees are never sold.
+-- Sells trees back from the receiving bays first, then from the lot; reserved trees are never sold.
 -- All-or-nothing: an impossible request changes nothing.
 function SupplierStockService.sellBack(state, speciesId: string, sizeId: string, quantity: number)
 	local refund = SupplierStockService.refundFor(speciesId, sizeId)
@@ -93,8 +94,7 @@ function SupplierStockService.sellBack(state, speciesId: string, sizeId: string,
 	if type(quantity) ~= "number" or quantity ~= math.floor(quantity) or quantity < 1 then
 		return false, "InvalidQuantity"
 	end
-	local key = Inventory.key(speciesId, sizeId)
-	local fromStorage = math.min(Inventory.count(state.stock, key), quantity)
+	local fromStorage = math.min(Receiving.count(state, speciesId, sizeId), quantity)
 	local fromLot = {}
 	local placementIds = {}
 	for placementId, placement in pairs(state.layout.placements) do
@@ -116,8 +116,10 @@ function SupplierStockService.sellBack(state, speciesId: string, sizeId: string,
 	if fromStorage + #fromLot < quantity then
 		return false, "NotEnoughTrees"
 	end
+	-- Receiving first, fewest of the SKU first, so that bays free up (CM2-G14).
 	if fromStorage > 0 then
-		Inventory.remove(state.stock, key, fromStorage)
+		Receiving.takeForSale(state, speciesId, sizeId, fromStorage)
+		Receiving.normalize(state)
 	end
 	for _, placementId in ipairs(fromLot) do
 		state.layout.placements[placementId] = nil

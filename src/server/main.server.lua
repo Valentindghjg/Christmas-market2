@@ -211,11 +211,19 @@ local function effectiveParking(spaces: number): number
 	return math.max(config.Customers.BaseParkingSpaces, spaces)
 end
 
--- Displayed trees follow authoritative placements, including NPC sales.
-companies:setPlacementsChangedHandler(function(companyId: string, placements, mediumPrices)
+-- Displayed trees follow authoritative placements, including NPC sales and reservations.
+companies:setPlacementsChangedHandler(function(companyId: string, placements, mediumPrices, reservations)
 	local plotId = plots:getPlot(companyId)
 	if plotId then
-		WorldService.syncDisplayedTrees(plotId, placements, mediumPrices)
+		WorldService.syncDisplayedTrees(plotId, placements, mediumPrices, reservations)
+	end
+end)
+
+-- Receiving bays, bundles, the countdown and the delivery truck follow the bays (CM2-G14).
+companies:setReceivingChangedHandler(function(companyId: string, bays)
+	local plotId = plots:getPlot(companyId)
+	if plotId then
+		WorldService.syncReceiving(plotId, bays)
 	end
 end)
 
@@ -402,11 +410,8 @@ end)
 every(config.CustomerVisitIntervalSeconds, "customer orders", function()
 	return companies:serviceCustomerOrdersAll()
 end)
-every(config.CustomerVisitIntervalSeconds, "delivery reconciliation", function()
+every(config.Receiving.DeliveryPassSeconds, "deliveries", function()
 	return companies:reconcileDeliveriesAll()
-end)
-every(config.CustomerVisitIntervalSeconds, "lot-worker unload", function()
-	return companies:autoUnloadDeliveriesAll()
 end)
 every(config.CustomerVisitIntervalSeconds, "supplier stock refresh", function()
 	return companies:refreshSupplierStockAll()
@@ -429,6 +434,7 @@ local function syncPlotWorld(plotId: string, companyId: string, state)
 	WorldService.applyParkingVisual(plotId, effectiveParking(state.progression.parkingSpaces))
 	WorldService.syncDisplayedTrees(plotId, state.layout.placements, state.mediumPrices)
 	WorldService.syncCustomerOrders(plotId, companies:getCustomerOrders(companyId), orderCallbacks)
+	WorldService.syncReceiving(plotId, companies:getReceivingView(companyId))
 end
 
 local function clearPlotVisuals(plotId: string)
@@ -437,6 +443,7 @@ local function clearPlotVisuals(plotId: string)
 	WorldService.applyParkingVisual(plotId, 0)
 	WorldService.syncDisplayedTrees(plotId, {})
 	WorldService.syncCustomerOrders(plotId, nil, nil)
+	WorldService.syncReceiving(plotId, nil)
 end
 
 -- A played save mirrors into its plot and marks the player ready. A player joining a live

@@ -14,6 +14,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
+local Receiving = require(Shared:WaitForChild("Receiving"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
@@ -58,6 +59,7 @@ function CompanyStateService.new(persistence, clock, randomRoll, wait)
 	self._customerSequence = 0
 	self._placementsChanged = nil
 	self._ordersChanged = nil
+	self._receivingChanged = nil
 	return self
 end
 
@@ -77,6 +79,11 @@ end
 -- Trusted server code (cars, pickup trees, carried trees) follows customer orders.
 function CompanyStateService:setCustomerOrdersChangedHandler(handler)
 	self._ordersChanged = handler
+end
+
+-- Trusted server code (bays, bundles, truck, countdown; CM2-G14) follows the receiving bays.
+function CompanyStateService:setReceivingChangedHandler(handler)
+	self._receivingChanged = handler
 end
 
 -- Trusted server code (SaveSlotService wiring in main.server.lua) learns when a live
@@ -486,9 +493,25 @@ end
 function CompanyStateService:_notifyPlacements(companyId: string, session)
 	local handler = self._placementsChanged
 	if handler and self._sessions[companyId] == session then
-		local ok, err = pcall(handler, companyId, session.state.layout.placements, session.state.mediumPrices)
+		local ok, err = pcall(
+			handler,
+			companyId,
+			session.state.layout.placements,
+			session.state.mediumPrices,
+			session.state.reservations
+		)
 		if not ok then
 			warn(string.format("[ChristmasMarket2] placement visual sync failed for %s: %s", companyId, tostring(err)))
+		end
+	end
+end
+
+function CompanyStateService:_notifyReceiving(companyId: string, session)
+	local handler = self._receivingChanged
+	if handler and self._sessions[companyId] == session then
+		local ok, err = pcall(handler, companyId, Receiving.view(session.state, self._clock()))
+		if not ok then
+			warn(string.format("[ChristmasMarket2] receiving visual sync failed for %s: %s", companyId, tostring(err)))
 		end
 	end
 end
@@ -507,8 +530,8 @@ function CompanyStateService:_notifyOrders(companyId: string, session, loadedNum
 end
 
 -- Runs one server-owned pass over every available session under its critical section.
--- step(state) returns the number of changes, whether displayed trees changed and
--- whether customer orders changed.
+-- step(state) returns the number of changes, whether displayed trees changed, whether
+-- customer orders changed and (optionally) whether the receiving bays should be re-synced.
 function CompanyStateService:_runPass(filter, step)
 	local failures = 0
 	local total = 0
@@ -516,12 +539,17 @@ function CompanyStateService:_runPass(filter, step)
 		local session = self._sessions[companyId]
 		if session and session.healthy and not session.unloading and (filter == nil or filter(session.state)) then
 			local ok, changes, flags = self:_withSession(companyId, session, function(state)
-				local changed, displayChanged, ordersChanged = step(state)
+				local changed, displayChanged, ordersChanged, receivingChanged = step(state)
 				if changed > 0 then
 					state.revision += 1
 					session.dirty = true
 				end
-				return changed, { display = displayChanged == true, orders = ordersChanged }
+				return changed,
+					{
+						display = displayChanged == true,
+						orders = ordersChanged,
+						receiving = receivingChanged == true,
+					}
 			end)
 			if ok then
 				total += changes
@@ -530,6 +558,9 @@ function CompanyStateService:_runPass(filter, step)
 				end
 				if flags.orders then
 					self:_notifyOrders(companyId, session, type(flags.orders) == "table" and flags.orders.loaded or nil)
+				end
+				if flags.receiving then
+					self:_notifyReceiving(companyId, session)
 				end
 			elseif changes == "InternalError" then
 				failures += 1
@@ -632,32 +663,24 @@ function CompanyStateService:getCustomerOrders(companyId: string)
 	return CustomerOrderService.summary(session.state)
 end
 
+-- Due deliveries land in their bay (CM2-G14). Every company with an open order is synced each
+-- pass, so the countdown over its bay refreshes every DeliveryPassSeconds.
 function CompanyStateService:reconcileDeliveriesAll()
-	return self:_runPass(nil, function(state)
+	return self:_runPass(function(state)
+		return next(state.pendingOrders) ~= nil
+	end, function(state)
 		local reconciled, delivered = BusinessState.reconcileDeliveries(state, self._clock())
-		return if reconciled then delivered else 0, false
+		return if reconciled then delivered else 0, false, false, true
 	end)
 end
 
-function CompanyStateService:autoUnloadDeliveriesAll()
-	return self:_runPass(function(state)
-		return state.staff.LotWorker > 0
-	end, function(state)
-		local delivered = {}
-		for orderId, order in pairs(state.pendingOrders) do
-			if order.status == "Delivered" then
-				table.insert(delivered, orderId)
-			end
-		end
-		table.sort(delivered)
-		local unloaded = 0
-		for _, orderId in ipairs(delivered) do
-			if BusinessState.unloadOrder(state, orderId, self._clock()) then
-				unloaded += 1
-			end
-		end
-		return unloaded, false
-	end)
+-- Server-only projection of the receiving bays for world visuals; nil without a healthy session.
+function CompanyStateService:getReceivingView(companyId: string)
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return nil
+	end
+	return Receiving.view(session.state, self._clock())
 end
 
 -- CM2-S2 (PRODUCT_SPEC, OWNER DECIDED): the owner and every member may perform every
@@ -671,9 +694,8 @@ local MEMBER_ACTIONS = {
 	[Protocol.Actions.ProgressionBuyLotExpansion] = true,
 	[Protocol.Actions.ProgressionBuyParking] = true,
 	[Protocol.Actions.ProgressionBuyHQ] = true,
-	[Protocol.Actions.DeliveryUnload] = true,
-	[Protocol.Actions.InventoryPlace] = true,
-	[Protocol.Actions.InventoryPickup] = true,
+	[Protocol.Actions.StockPlace] = true,
+	[Protocol.Actions.StockStore] = true,
 	[Protocol.Actions.OrderCarry] = true,
 	[Protocol.Actions.OrderLoad] = true,
 	[Protocol.Actions.OrderRelease] = true,
@@ -730,11 +752,19 @@ local function placementCount(state): number
 end
 
 local PLACEMENT_ACTIONS = {
-	[Protocol.Actions.InventoryPlace] = true,
-	[Protocol.Actions.InventoryPickup] = true,
+	[Protocol.Actions.StockPlace] = true,
+	[Protocol.Actions.StockStore] = true,
 	[Protocol.Actions.SupplierSellBack] = true,
 	-- Price labels on displayed trees follow manual price changes.
 	[Protocol.Actions.PricingSetMediumPrice] = true,
+}
+
+-- Bays, bundles and the countdown follow these actions (CM2-G14).
+local RECEIVING_ACTIONS = {
+	[Protocol.Actions.StockPlace] = true,
+	[Protocol.Actions.StockStore] = true,
+	[Protocol.Actions.SupplierPlaceOrder] = true,
+	[Protocol.Actions.SupplierSellBack] = true,
 }
 
 local ORDER_ACTIONS = {
@@ -766,9 +796,9 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 				plot = table.clone(state.progression),
 				analytics = AnalyticsService.summary(state),
 				deliveries = deliverySummary(state),
-				stock = table.clone(state.stock),
+				stock = Receiving.totals(state),
 				placementCount = placementCount(state),
-				receiving = BusinessState.receivingSummary(state),
+				receiving = BusinessState.receivingSummary(state, self._clock()),
 				supplier = SupplierStockService.summary(state, self._clock()),
 				customers = CustomerOrderService.summary(state),
 				pricing = PricingService.summary(state),
@@ -798,18 +828,26 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 			payload.quantity,
 			self._clock()
 		)
-	elseif action == Protocol.Actions.DeliveryUnload then
-		succeeded, result = BusinessState.unloadOrder(state, payload.orderId, self._clock())
-	elseif action == Protocol.Actions.InventoryPlace then
-		succeeded, result = PlacementService.place(
-			state,
-			"placement:" .. request.requestId,
-			payload.speciesId,
-			payload.sizeId,
-			payload.transform
-		)
-	elseif action == Protocol.Actions.InventoryPickup then
-		succeeded, result = PlacementService.pickup(state, payload.placementId)
+	elseif action == Protocol.Actions.StockPlace or action == Protocol.Actions.StockStore then
+		-- OBSERVED: stocking needs empty hands.
+		if CustomerOrderService.carriedOrderNumber(state, userId) ~= nil then
+			succeeded, result = false, "HandsFull"
+		elseif action == Protocol.Actions.StockPlace then
+			succeeded, result = PlacementService.stockFromBay(
+				state,
+				"placement:" .. request.requestId,
+				payload.bay,
+				payload.speciesId,
+				payload.sizeId,
+				payload.x,
+				payload.z,
+				payload.rotation,
+				payload.count,
+				payload.gap
+			)
+		else
+			succeeded, result = PlacementService.storeBack(state, payload.placementId)
+		end
 	elseif action == Protocol.Actions.PricingSetMediumPrice then
 		succeeded, result = PricingService.setMediumPrice(state, payload.speciesId, payload.mediumPrice)
 	elseif action == Protocol.Actions.PricingSetAuto then
@@ -847,6 +885,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 		data = result,
 		placementsChanged = PLACEMENT_ACTIONS[action] == true,
 		ordersChanged = ORDER_ACTIONS[action] == true,
+		receivingChanged = RECEIVING_ACTIONS[action] == true,
 	}
 end
 
@@ -880,8 +919,12 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 			else nil
 		self:_notifyOrders(companyId, session, loaded)
 	end
+	if response.receivingChanged then
+		self:_notifyReceiving(companyId, session)
+	end
 	response.placementsChanged = nil
 	response.ordersChanged = nil
+	response.receivingChanged = nil
 	return response
 end
 
@@ -977,6 +1020,22 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 	table.sort(pending, function(a, b)
 		return a.orderId < b.orderId
 	end)
+	local placements = {}
+	for placementId, placement in pairs(state.layout.placements) do
+		local transform = if type(placement.transform) == "table" then placement.transform else {}
+		table.insert(placements, {
+			placementId = placementId,
+			speciesId = placement.speciesId,
+			sizeId = placement.sizeId,
+			x = transform.x,
+			z = transform.z,
+			reserved = state.reservations[placementId] ~= nil,
+		})
+	end
+	table.sort(placements, function(a, b)
+		return a.placementId < b.placementId
+	end)
+	local clock = self._clock()
 	return {
 		saveName = state.saveName,
 		cash = state.cash,
@@ -984,14 +1043,16 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		revision = state.revision,
 		revenue = state.revenue,
 		sales = state.sales,
-		stock = table.clone(state.stock),
+		stock = Receiving.totals(state),
+		bays = Receiving.view(state, clock),
+		placements = placements,
 		mediumPrices = table.clone(state.mediumPrices),
 		staff = table.clone(state.staff),
 		loadedOrders = state.loadedOrders,
 		missedPickups = state.missedPickups,
 		drivePastCustomers = state.drivePastCustomers,
 		placementCount = placementCount(state),
-		receiving = BusinessState.receivingSummary(state),
+		receiving = BusinessState.receivingSummary(state, clock),
 		pendingOrders = pending,
 		customerOrders = CustomerOrderService.summary(state).orders,
 	}

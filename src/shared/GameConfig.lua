@@ -23,7 +23,7 @@ GameConfig.MaxPlacements = 100
 GameConfig.MinPriceMultiplier = 0.5
 GameConfig.MaxPriceMultiplier = 2.5
 -- Fallback only; a server ConfigService value will supersede this when configured.
-GameConfig.DeliverySeconds = 60
+GameConfig.DeliverySeconds = 30 -- OBSERVED: actual ETA 25–31 s (REFERENCE §3.2); was 60 PROVISIONAL
 -- Persistence cadence. Mutations only mark a session dirty; a flush writes dirty
 -- sessions at most once per SaveFlushSeconds, and every session is re-saved at
 -- least once per AutosaveSeconds to renew its lock. If no save has succeeded for
@@ -233,6 +233,10 @@ GameConfig.Receiving = {
 	BayCapacity = 9, -- INFERRED from the "x / 9 free" order panel
 	BaseStorage = 30, -- OBSERVED starter-lot delivery storage
 	StoragePerLotExpansion = 10, -- OBSERVED (+10 for expansion 1)
+	-- CM2-G14: deliveries land in their bay by themselves at dueAt.
+	DeliveryPassSeconds = 1, -- PROVISIONAL
+	TruckPullInSeconds = 5, -- PROVISIONAL, visual
+	TruckLeaveSeconds = 3, -- PROVISIONAL, visual
 }
 
 -- Finite supplier stock that refreshes on a timer (docs/REFERENCE_GAME_LIVE_TEST.md §4.1).
@@ -253,17 +257,26 @@ GameConfig.TreeHeightTenths = {
 	Large = { min = 90, max = 100 },
 }
 
--- Offsets from the plot centre. The lot ground is 80 x 54 studs (WorldService), so
--- the bounds keep displayed trees on the owner's lot instead of neighbouring land.
+-- Stocking spots in the lot frame (CM2-G14): x is the offset from the plot centre, z the
+-- depth toward the road (+ = toward the road). The lot ground is 80 x 54 studs (WorldService).
 GameConfig.Placement = {
-	MinX = -38,
-	MaxX = 38,
-	MinY = -2,
-	MaxY = 5,
-	MinZ = -25,
-	MaxZ = 25,
-	MinRotation = 0,
-	MaxRotationExclusive = 360,
+	LotHalfWidth = 40,
+	LotHalfDepth = 27, -- the 80 x 54 LotGround
+	BackDepthPerLevel = 6, -- PROVISIONAL until CM2-G9 (lot grows backwards)
+	FootprintRadius = { Small = 2.1, Medium = 2.8, Large = 3.5 }, -- display scales 0.6/0.8/1.0 x 7-stud needles
+	SpacingTolerance = 0.01,
+	RotationStep = 45, -- PROVISIONAL
+	Gap = { Default = 0.5, Min = 0, Max = 4, Step = 0.5 }, -- Default OBSERVED ("GAP 0.5"), range PROVISIONAL
+	RowMax = 10, -- PROVISIONAL
+	CoordinateLimit = 200, -- protocol sanity bound
+	KeepClear = { -- PROVISIONAL, lot frame {minX, maxX, minZ, maxZ}
+		{ id = "Stand", minX = -24, maxX = 8, minZ = -16, maxZ = 8 }, -- starter stand box (G3)
+		{ id = "Checkout", minX = 11, maxX = 21, minZ = -18, maxZ = -4 }, -- counter, staff side, queue
+		{ id = "Parking", minX = -29, maxX = 17, minZ = 13, maxZ = 27 }, -- 4 spaces
+		{ id = "Pickup", minX = 20, maxX = 39, minZ = 10, maxZ = 16 }, -- G1 pickup row
+		{ id = "Spawn", minX = -31, maxX = -25, minZ = 11, maxZ = 17 },
+		{ id = "Bays", minX = 30, maxX = 40, minZ = -26, maxZ = 0 },
+	},
 }
 
 return GameConfig

@@ -8,9 +8,9 @@ Protocol.VERSION = 1
 Protocol.Actions = {
 	SupplierPlaceOrder = "Supplier.PlaceOrder",
 	SupplierRequestQuote = "Supplier.RequestQuote",
-	DeliveryUnload = "Delivery.Unload",
-	InventoryPlace = "Inventory.Place",
-	InventoryPickup = "Inventory.Pickup",
+	-- CM2-G14: stock trees from a receiving bay onto the lot and store one back.
+	StockPlace = "Stock.Place",
+	StockStore = "Stock.Store",
 	PricingSetMediumPrice = "Pricing.SetMediumPrice",
 	PricingSetAuto = "Pricing.SetAuto",
 	EmployeeHire = "Employee.Hire",
@@ -32,9 +32,8 @@ local actionSet = {
 	[Protocol.Actions.SupplierSellBack] = true,
 	[Protocol.Actions.SupplierPlaceOrder] = true,
 	[Protocol.Actions.SupplierRequestQuote] = true,
-	[Protocol.Actions.DeliveryUnload] = true,
-	[Protocol.Actions.InventoryPlace] = true,
-	[Protocol.Actions.InventoryPickup] = true,
+	[Protocol.Actions.StockPlace] = true,
+	[Protocol.Actions.StockStore] = true,
 	[Protocol.Actions.PricingSetMediumPrice] = true,
 	[Protocol.Actions.PricingSetAuto] = true,
 	[Protocol.Actions.EmployeeHire] = true,
@@ -88,7 +87,16 @@ local function isFiniteNumber(value: unknown): boolean
 	return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local TRANSFORM_KEYS = { x = true, y = true, z = true, rotation = true }
+local STOCK_PLACE_KEYS = {
+	bay = true,
+	speciesId = true,
+	sizeId = true,
+	x = true,
+	z = true,
+	rotation = true,
+	count = true,
+	gap = true,
+}
 
 local function isOrderNumber(value: unknown): boolean
 	return isFiniteInteger(value) and (value :: number) >= 1 and (value :: number) < 2 ^ 31
@@ -101,6 +109,58 @@ local function hasOnlyKeys(payload, allowed)
 		end
 	end
 	return true
+end
+
+local function hasExactKeys(payload, keys): boolean
+	if not hasOnlyKeys(payload, keys) then
+		return false
+	end
+	for key in pairs(keys) do
+		if payload[key] == nil then
+			return false
+		end
+	end
+	return true
+end
+
+-- Stock.Place (CM2-G14): coordinates in the lot frame, rotation and gap on their step grid.
+local function validStockPlace(payload): (boolean, string?)
+	local config = GameConfig.Placement
+	if not hasExactKeys(payload, STOCK_PLACE_KEYS) then
+		return false, "UnexpectedField"
+	end
+	local bay = payload.bay
+	if not isFiniteInteger(bay) or bay < 1 or bay > GameConfig.Receiving.BayCount then
+		return false, "InvalidBay"
+	end
+	if type(payload.speciesId) ~= "string" or not GameConfig.Trees[payload.speciesId] then
+		return false, "UnknownSpecies"
+	end
+	if not GameConfig.isValidSize(payload.sizeId) then
+		return false, "InvalidSize"
+	end
+	for _, value in { payload.x, payload.z } do
+		if not isFiniteNumber(value) or math.abs(value) > config.CoordinateLimit then
+			return false, "InvalidPlacement"
+		end
+	end
+	local rotation = payload.rotation
+	if not isFiniteInteger(rotation) or rotation < 0 or rotation >= 360 or rotation % config.RotationStep ~= 0 then
+		return false, "InvalidPlacement"
+	end
+	local gap = payload.gap
+	if not isFiniteNumber(gap) or gap < config.Gap.Min or gap > config.Gap.Max then
+		return false, "InvalidPlacement"
+	end
+	local steps = gap / config.Gap.Step
+	if steps ~= math.floor(steps) then
+		return false, "InvalidPlacement"
+	end
+	local count = payload.count
+	if not isFiniteInteger(count) or count < 1 or count > config.RowMax then
+		return false, "InvalidQuantity"
+	end
+	return true, nil
 end
 
 -- Envelope checks shared by business and save requests.
@@ -166,45 +226,14 @@ function Protocol.validateRequest(request)
 		end
 		return true, nil
 	end
-	if request.action == Protocol.Actions.DeliveryUnload then
-		if not hasOnlyKeys(request.payload, { orderId = true }) then
-			return false, "UnexpectedField"
-		end
-		if
-			type(request.payload.orderId) ~= "string"
-			or #request.payload.orderId < 8
-			or #request.payload.orderId > 80
-		then
-			return false, "InvalidOrderId"
-		end
-		return true, nil
+	if request.action == Protocol.Actions.StockPlace then
+		return validStockPlace(request.payload)
 	end
-	if request.action == Protocol.Actions.InventoryPlace then
-		if not hasOnlyKeys(request.payload, { speciesId = true, sizeId = true, transform = true }) then
-			return false, "UnexpectedField"
-		end
-		if type(request.payload.speciesId) ~= "string" or not GameConfig.Trees[request.payload.speciesId] then
-			return false, "UnknownSpecies"
-		end
-		local transform = request.payload.transform
-		if not GameConfig.isValidSize(request.payload.sizeId) or type(transform) ~= "table" then
-			return false, "InvalidPlacement"
-		end
-		if
-			not hasOnlyKeys(transform, TRANSFORM_KEYS)
-			or not isFiniteNumber(transform.x)
-			or not isFiniteNumber(transform.y)
-			or not isFiniteNumber(transform.z)
-			or not isFiniteNumber(transform.rotation)
-		then
-			return false, "InvalidPlacement"
-		end
-		return true, nil
-	end
-	if request.action == Protocol.Actions.InventoryPickup then
+	if request.action == Protocol.Actions.StockStore then
 		if
 			not hasOnlyKeys(request.payload, { placementId = true })
 			or type(request.payload.placementId) ~= "string"
+			or #request.payload.placementId < 1
 			or #request.payload.placementId > 96
 		then
 			return false, "InvalidPlacementId"

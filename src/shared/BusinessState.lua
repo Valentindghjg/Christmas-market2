@@ -1,10 +1,11 @@
 --!strict
 local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
+local Receiving = require(script.Parent.Receiving)
 local SaveProfile = require(script.Parent.SaveProfile)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 12
+BusinessState.SCHEMA_VERSION = 13
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -122,7 +123,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		revision = 0,
 		cash = GameConfig.StartingCash,
 		reputation = GameConfig.StartingReputation,
-		stock = {},
+		bays = Receiving.newBays(),
 		pendingOrders = {},
 		sales = 0,
 		customerVisits = 0,
@@ -192,6 +193,16 @@ local function backfillMediumPrices(state)
 	end
 end
 
+-- Schema 13 (CM2-G14): stored stock and pending orders move into the receiving bays; trees
+-- and orders that do not fit are refunded at wholesale, so no tree value is lost.
+local function applyStockMigration(state)
+	local refund = Receiving.migrateStock(state)
+	if refund > 0 and type(state.cash) == "number" and type(state.history) == "table" then
+		state.cash += refund
+		BusinessState.record(state, "MigrationRefund", refund)
+	end
+end
+
 -- Migrates the original scaffold record without changing balances or stock.
 function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	if type(state) ~= "table" then
@@ -248,10 +259,15 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.members = ownerOnlyMembers(state.ownerUserId)
 		state.inviteCode = nil
 	end
+	if state.schemaVersion == 12 then
+		state.schemaVersion = 13
+		applyStockMigration(state)
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
 		end
+		Receiving.normalize(state)
 		BusinessState.clearCarried(state)
 		normalizeSchema10(state)
 		return validated(state)
@@ -280,6 +296,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.questClaims = {}
 	addSchema10Fields(state)
 	backfillMediumPrices(state)
+	applyStockMigration(state)
 	return validated(state)
 end
 
@@ -463,6 +480,48 @@ local function validMembers(state): boolean
 	return true
 end
 
+-- Schema 13 (CM2-G14): exactly BayCount bays {speciesId, counts}. Capacity is enforced only on
+-- mutation, never here, so no save gets locked out.
+local function validBays(state): boolean
+	local bays = state.bays
+	if type(bays) ~= "table" then
+		return false
+	end
+	local entries = 0
+	for key in pairs(bays) do
+		if not isFiniteInteger(key) or key < 1 or key > Receiving.BayCount then
+			return false
+		end
+		entries += 1
+	end
+	if entries ~= Receiving.BayCount then
+		return false
+	end
+	for index = 1, Receiving.BayCount do
+		local bay = bays[index]
+		if type(bay) ~= "table" or type(bay.speciesId) ~= "string" or type(bay.counts) ~= "table" then
+			return false
+		end
+		if bay.speciesId ~= "" and not GameConfig.Trees[bay.speciesId] then
+			return false
+		end
+		for sizeId, quantity in pairs(bay.counts) do
+			if
+				not GameConfig.isValidSize(sizeId)
+				or not isFiniteInteger(quantity)
+				or quantity < 1
+				or quantity > 1000
+			then
+				return false
+			end
+		end
+		if bay.speciesId == "" and next(bay.counts) ~= nil then
+			return false
+		end
+	end
+	return true
+end
+
 function BusinessState.validate(state)
 	if type(state) ~= "table" or state.schemaVersion ~= BusinessState.SCHEMA_VERSION then
 		return false
@@ -491,7 +550,7 @@ function BusinessState.validate(state)
 	if not isFiniteInteger(state.reputation) or state.reputation < 0 then
 		return false
 	end
-	if type(state.stock) ~= "table" or type(state.pendingOrders) ~= "table" or type(state.history) ~= "table" then
+	if not validBays(state) or type(state.pendingOrders) ~= "table" or type(state.history) ~= "table" then
 		return false
 	end
 	if type(state.recentRequests) ~= "table" or not isFiniteInteger(state.updatedAt) or state.updatedAt < 0 then
@@ -584,16 +643,6 @@ function BusinessState.validate(state)
 	if not isFiniteInteger(state.spent) or state.spent < 0 then
 		return false
 	end
-	for key, quantity in pairs(state.stock) do
-		if
-			type(key) ~= "string"
-			or not isFiniteInteger(quantity)
-			or quantity < 0
-			or quantity > GameConfig.MaxStockPerSku
-		then
-			return false
-		end
-	end
 	for placementId, reservation in pairs(state.reservations) do
 		if
 			type(placementId) ~= "string"
@@ -621,42 +670,8 @@ function BusinessState.record(state, eventType: string, amount: number)
 	end
 end
 
--- Cost is always obtained from GameConfig; a caller never provides it.
-function BusinessState.buyStock(state, species: string, size: string, quantity: number)
-	if not BusinessState.validate(state) then
-		return false, "InvalidState"
-	end
-	if not GameConfig.Trees[species] then
-		return false, "UnknownSpecies"
-	end
-	if not GameConfig.isValidSize(size) then
-		return false, "InvalidSize"
-	end
-	if not isFiniteInteger(quantity) or quantity < 1 or quantity > GameConfig.MaxOrderQuantity then
-		return false, "InvalidQuantity"
-	end
-	local unitCost = GameConfig.wholesaleFor(species, size)
-	if not unitCost then
-		return false, "InvalidPrice"
-	end
-	local cost = quantity * unitCost
-	if state.cash < cost then
-		return false, "InsufficientFunds"
-	end
-	local key = Inventory.key(species, size)
-	if Inventory.count(state.stock, key) + quantity > GameConfig.MaxStockPerSku then
-		return false, "Capacity"
-	end
-	if not Inventory.add(state.stock, key, quantity) then
-		return false, "Capacity"
-	end
-	state.cash -= cost
-	state.spent += cost
-	BusinessState.record(state, "Purchase", -cost)
-	return true, cost
-end
-
--- Creates a server-priced delivery order. Stock stays out of storage until unloaded.
+-- Creates a server-priced delivery order in its own receiving bay. The trees land in the bay
+-- by themselves at dueAt (reconcileDeliveries); cost is always obtained from GameConfig.
 function BusinessState.placeOrder(
 	state,
 	requestId: string,
@@ -687,8 +702,9 @@ function BusinessState.placeOrder(
 	if BusinessState.openOrderCount(state) >= GameConfig.MaxOpenOrders then
 		return false, "TooManyOpenOrders"
 	end
-	-- Each open order occupies one receiving bay until it is unloaded.
-	if BusinessState.openOrderCount(state) >= GameConfig.Receiving.BayCount then
+	-- One order = one bay (OBSERVED "Bays n/4"); a bay is busy while it holds trees or an order.
+	local bay = Receiving.freeBay(state)
+	if bay == nil then
 		return false, "NoFreeBay"
 	end
 	if quantity > GameConfig.Receiving.BayCapacity then
@@ -718,50 +734,48 @@ function BusinessState.placeOrder(
 		createdAt = timestamp,
 		dueAt = timestamp + GameConfig.DeliverySeconds,
 		status = "Pending",
+		bay = bay,
 	}
+	state.bays[bay].speciesId = species
 	BusinessState.record(state, "OrderPlaced", -cost)
-	return true, { orderId = orderId, cost = cost }
+	return true, { orderId = orderId, cost = cost, bay = bay }
 end
 
+local function isBayIndex(value: unknown): boolean
+	return isFiniteInteger(value) and (value :: number) >= 1 and (value :: number) <= Receiving.BayCount
+end
+
+-- Due orders land in their bay by themselves (OBSERVED: "The player does not unload"). An
+-- order without a usable bay stays pending. A completed order leaves the open-order map so
+-- the saved record stays bounded; the persisted request IDs keep replay protection and the
+-- history ledger keeps the audit trail.
 function BusinessState.reconcileDeliveries(state, timestamp: number)
 	if not BusinessState.validate(state) or not isFiniteInteger(timestamp) then
 		return false, "InvalidState"
 	end
+	local due = {}
+	for orderId, order in pairs(state.pendingOrders) do
+		if type(order) == "table" and isFiniteInteger(order.dueAt) and order.dueAt <= timestamp then
+			table.insert(due, { orderId = orderId, order = order })
+		end
+	end
+	table.sort(due, function(a, b)
+		if a.order.dueAt ~= b.order.dueAt then
+			return a.order.dueAt < b.order.dueAt
+		end
+		return a.orderId < b.orderId
+	end)
 	local delivered = 0
-	for _, order in pairs(state.pendingOrders) do
-		if order.status == "Pending" and order.dueAt <= timestamp then
-			order.status = "Delivered"
+	for _, entry in ipairs(due) do
+		local order = entry.order
+		local bay = if isBayIndex(order.bay) then order.bay else Receiving.freeBay(state)
+		if bay ~= nil and Receiving.add(state, bay, order.speciesId, order.sizeId, order.quantity) then
+			state.pendingOrders[entry.orderId] = nil
+			BusinessState.record(state, "OrderUnloaded", 0)
 			delivered += 1
 		end
 	end
 	return true, delivered
-end
-
-function BusinessState.unloadOrder(state, orderId: string, timestamp: number)
-	if not BusinessState.validate(state) then
-		return false, "InvalidState"
-	end
-	BusinessState.reconcileDeliveries(state, timestamp)
-	local order = state.pendingOrders[orderId]
-	if type(order) ~= "table" then
-		return false, "UnknownOrder"
-	end
-	if order.status ~= "Delivered" then
-		return false, "DeliveryNotReady"
-	end
-	local key = Inventory.key(order.speciesId, order.sizeId)
-	if Inventory.count(state.stock, key) + order.quantity > GameConfig.MaxStockPerSku then
-		return false, "Capacity"
-	end
-	if not Inventory.add(state.stock, key, order.quantity) then
-		return false, "Capacity"
-	end
-	-- A completed order leaves the open-order map so the saved record stays
-	-- bounded; replay protection is provided by the persisted request IDs and the
-	-- history ledger keeps the audit trail.
-	state.pendingOrders[orderId] = nil
-	BusinessState.record(state, "OrderUnloaded", 0)
-	return true, orderId
 end
 
 function BusinessState.openOrderCount(state): number
@@ -778,12 +792,9 @@ function BusinessState.storageCapacity(state): number
 	return GameConfig.Receiving.BaseStorage + level * GameConfig.Receiving.StoragePerLotExpansion
 end
 
--- Trees waiting in storage plus trees already ordered count against storage.
+-- Trees waiting in the bays plus trees already ordered count against storage.
 function BusinessState.storageUsed(state): number
-	local used = 0
-	for _, quantity in pairs(state.stock) do
-		used += quantity
-	end
+	local used = Receiving.storedTotal(state)
 	for _, order in pairs(state.pendingOrders) do
 		if type(order) == "table" and isFiniteInteger(order.quantity) then
 			used += order.quantity
@@ -792,14 +803,14 @@ function BusinessState.storageUsed(state): number
 	return used
 end
 
-function BusinessState.receivingSummary(state)
-	local used = BusinessState.openOrderCount(state)
+function BusinessState.receivingSummary(state, now: number?)
 	return {
-		baysUsed = math.min(used, GameConfig.Receiving.BayCount),
+		baysUsed = Receiving.usedCount(state),
 		bayCount = GameConfig.Receiving.BayCount,
 		bayCapacity = GameConfig.Receiving.BayCapacity,
 		storageUsed = BusinessState.storageUsed(state),
 		storageCapacity = BusinessState.storageCapacity(state),
+		bays = Receiving.view(state, now or 0),
 	}
 end
 
@@ -813,30 +824,6 @@ function BusinessState.pruneCompletedOrders(state): number
 		end
 	end
 	return removed
-end
-
-function BusinessState.sellStock(state, species: string, size: string, salePrice: number)
-	if not BusinessState.validate(state) then
-		return false, "InvalidState"
-	end
-	if not GameConfig.Trees[species] then
-		return false, "UnknownSpecies"
-	end
-	if not GameConfig.isValidSize(size) then
-		return false, "InvalidSize"
-	end
-	if not isFiniteInteger(salePrice) or salePrice < 0 or salePrice > 100000 then
-		return false, "InvalidPrice"
-	end
-	local key = Inventory.key(species, size)
-	if not Inventory.remove(state.stock, key, 1) then
-		return false, "OutOfStock"
-	end
-	state.cash += salePrice
-	state.revenue += salePrice
-	state.sales += 1
-	BusinessState.record(state, "Sale", salePrice)
-	return true, salePrice
 end
 
 return BusinessState

@@ -66,6 +66,14 @@ export type DialogLayout = {
 	rightHeader: Box?,
 }
 
+export type StockingBarLayout = {
+	frame: Box,
+	header: Box,
+	reason: Box,
+	controls: { [string]: Box },
+	twoRows: boolean,
+}
+
 -- UI colours as RGB tuples; they stay separate from ArtPalette (3D materials).
 UiTheme.Colors = {
 	Panel = { 20, 68, 48 },
@@ -319,6 +327,58 @@ function UiTheme.dialogLayout(m: Metrics, spec: DialogSpec): DialogLayout
 		footer = footer,
 		leftWidth = leftWidth,
 		rightHeader = rightHeader,
+	}
+end
+
+-- Stocking bar (CM2-G14): one row of controls on regular screens, two rows on compact screens
+-- or when one row would make the controls narrower than MinTouch. Control boxes are relative
+-- to the frame; every value is clamped to >= 0.
+local STOCKING_GAP = 6
+local STOCKING_PADDING = 8
+local STOCKING_MAX_WIDTH = 760
+local STOCKING_SINGLE_ROW = { "Size", "Rotate", "Row", "GapDown", "Gap", "GapUp", "Store", "Place", "Done" }
+local STOCKING_TOP_ROW = { "Size", "Rotate", "Row", "Store", "Done" }
+local STOCKING_BOTTOM_ROW = { "GapDown", "Gap", "GapUp", "Place" }
+
+local function clampedBox(x: number, y: number, w: number, h: number): Box
+	return { x = math.max(0, x), y = math.max(0, y), w = math.max(0, w), h = math.max(0, h) }
+end
+
+function UiTheme.stockingBarLayout(m: Metrics): StockingBarLayout
+	local controls: { [string]: Box } = {}
+	-- Place spans two cells (2 units + one gap).
+	local function row(ids: { string }, y: number, unit: number)
+		local x = STOCKING_PADDING
+		for _, id in ipairs(ids) do
+			local width = if id == "Place" then 2 * unit + STOCKING_GAP else unit
+			controls[id] = clampedBox(x, y, width, BUTTON_HEIGHT)
+			x += width + STOCKING_GAP
+		end
+	end
+	local regularWidth = math.min(STOCKING_MAX_WIDTH, m.width - 2 * (m.margin + m.railWidth + RAIL_SIDE_PADDING))
+	local singleUnit = math.floor((regularWidth - 2 * STOCKING_PADDING - 8 * STOCKING_GAP) / 10)
+	if not m.compact and singleUnit >= UiTheme.MinTouch then
+		local w = regularWidth
+		row(STOCKING_SINGLE_ROW, 58, singleUnit)
+		return {
+			frame = clampedBox(math.floor((m.width - w) / 2), m.height - m.margin - 110, w, 110),
+			header = clampedBox(8, 8, w - 16, 22),
+			reason = clampedBox(8, 32, w - 16, 18),
+			controls = controls,
+			twoRows = false,
+		}
+	end
+	local w = if m.compact then math.floor(0.5 * m.width) else regularWidth
+	local unit = math.floor((w - 2 * STOCKING_PADDING - 4 * STOCKING_GAP) / 5)
+	row(STOCKING_TOP_ROW, 52, unit)
+	row(STOCKING_BOTTOM_ROW, 102, unit)
+	local x = if m.compact then math.floor(0.3 * m.width) else math.floor((m.width - w) / 2)
+	return {
+		frame = clampedBox(x, m.height - m.margin - 154, w, 154),
+		header = clampedBox(8, 8, w - 16, 20),
+		reason = clampedBox(8, 30, w - 16, 16),
+		controls = controls,
+		twoRows = true,
 	}
 end
 

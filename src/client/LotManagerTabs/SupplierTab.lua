@@ -1,7 +1,7 @@
 --!strict
--- Supplier tab of the Lot Manager (CM2-40): order trees, unload deliveries, place and sell back
--- trees. Moved from UiController unchanged in behaviour; every request goes through the tab
--- context (BusinessAction) and the server owns costs and results.
+-- Supplier tab of the Lot Manager (CM2-40): order and sell back trees. Deliveries land in a
+-- receiving bay by themselves and are stocked at the bay (CM2-G14, StockingMode.client.lua).
+-- Every request goes through the tab context (BusinessAction) and the server owns costs and results.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -22,7 +22,6 @@ local SupplierTab = {}
 
 -- Supplier rows follow the OBSERVED order; prices shown come from the server summary.
 local SPECIES_ORDER = GameConfig.SpeciesOrder
-local UNLOAD_GREEN = Color3.fromRGB(114, 172, 113)
 local SELL_BACK_SAND = Color3.fromRGB(214, 186, 120)
 
 local function speciesName(speciesId: string): string
@@ -57,7 +56,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	local localized = UiKit.localized
 	local localizedFormat = UiKit.localizedFormat
 
-	page.CanvasSize = UDim2.fromOffset(0, 450)
+	page.CanvasSize = UDim2.fromOffset(0, 386)
 
 	local titleLabel = UiKit.label(page, "SupplierTitle", localized("supplier"), 22)
 	titleLabel.Position = UDim2.fromOffset(0, 0)
@@ -102,37 +101,33 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	order.Position = UDim2.fromOffset(0, 182)
 	order.Size = UDim2.fromOffset(324, 44)
 
-	local unload = UiKit.button(page, "UnloadDelivery", localized("noDeliveryReady"), UNLOAD_GREEN, 14)
-	unload.Position = UDim2.fromOffset(0, 234)
-	unload.Size = UDim2.fromOffset(324, 44)
-	unload.Visible = false
-
-	local place = UiKit.button(page, "PlaceTree", "", colors.Sand, 14)
-	place.Position = UDim2.fromOffset(0, 286)
-	place.Size = UDim2.fromOffset(324, 44)
-	place.Visible = false
+	-- CM2-G14: deliveries land in a bay by themselves; stocking happens at the bay.
+	local stockingHint = UiKit.label(page, "StockingHint", localized("supplierStockingHint"), 13)
+	stockingHint.Position = UDim2.fromOffset(0, 234)
+	stockingHint.Size = UDim2.fromOffset(324, 36)
+	stockingHint.TextWrapped = true
+	stockingHint.TextTruncate = Enum.TextTruncate.None
 
 	-- G4/G5/G1 status lines and sell-back.
 	local supplierLine = UiKit.label(page, "SupplierLine", "", 13)
-	supplierLine.Position = UDim2.fromOffset(0, 338)
+	supplierLine.Position = UDim2.fromOffset(0, 274)
 	supplierLine.Size = UDim2.fromOffset(324, 18)
 	local receivingLine = UiKit.label(page, "ReceivingLine", "", 13)
-	receivingLine.Position = UDim2.fromOffset(0, 356)
+	receivingLine.Position = UDim2.fromOffset(0, 292)
 	receivingLine.Size = UDim2.fromOffset(324, 18)
 	local customerLine = UiKit.label(page, "CustomerLine", "", 13)
-	customerLine.Position = UDim2.fromOffset(0, 374)
+	customerLine.Position = UDim2.fromOffset(0, 310)
 	customerLine.Size = UDim2.fromOffset(324, 18)
 	local sellBack = UiKit.button(page, "SellBackTree", "", SELL_BACK_SAND, 13)
-	sellBack.Position = UDim2.fromOffset(0, 398)
+	sellBack.Position = UDim2.fromOffset(0, 334)
 	sellBack.Size = UDim2.fromOffset(324, 44)
 	sellBack.Visible = false
 
-	local deliveredOrderId: string? = nil
 	local storedSelectedMedium = 0
 	local lastSummary: any = nil
 	local placementCount = 0
 	-- One in-flight request per button: a double tap must not place two orders.
-	local busy = { order = false, unload = false, place = false, sellBack = false }
+	local busy = { order = false, sellBack = false }
 
 	local function mediumKey(): string
 		return selectedSpecies .. ":Medium"
@@ -153,20 +148,8 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	end
 
 	local function renderSummary(data: any)
-		-- The server lists ready deliveries first.
-		deliveredOrderId = nil
-		for _, delivery in ipairs(data.deliveries or {}) do
-			if delivery.status == "Delivered" then
-				deliveredOrderId = delivery.orderId
-				break
-			end
-		end
-		unload.Visible = deliveredOrderId ~= nil
-		unload.Text = localized(if deliveredOrderId then "unloadDelivery" else "noDeliveryReady")
 		storedSelectedMedium = data.stock and (data.stock[mediumKey()] or 0) or 0
 		placementCount = data.placementCount or 0
-		place.Visible = storedSelectedMedium > 0
-		place.Text = localizedFormat("placeTree", speciesName(selectedSpecies), storedSelectedMedium)
 		local supplier = data.supplier
 		if supplier and supplier.stock then
 			supplierLine.Text =
@@ -236,35 +219,6 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		busy.sellBack = false
 	end)
 
-	place.Activated:Connect(function()
-		if busy.place or storedSelectedMedium < 1 then
-			return
-		end
-		busy.place = true
-		local speciesId = selectedSpecies
-		-- Two rows of four east of the sales stand: clear of the stand, checkout, pickup row and parking.
-		local slot = placementCount % 8
-		local response = context.request("Inventory.Place", {
-			speciesId = speciesId,
-			sizeId = "Medium",
-			transform = { x = 14 + (slot % 4) * 7, y = 0, z = -3 + (slot // 4) * 8, rotation = 0 },
-		})
-		detail.Text = if response.ok then localized("treePlaced") else errorText(response.errorCode)
-		context.refresh()
-		busy.place = false
-	end)
-
-	unload.Activated:Connect(function()
-		if busy.unload or not deliveredOrderId then
-			return
-		end
-		busy.unload = true
-		local response = context.request("Delivery.Unload", { orderId = deliveredOrderId })
-		detail.Text = if response.ok then localized("treesUnloaded") else errorText(response.errorCode)
-		context.refresh()
-		busy.unload = false
-	end)
-
 	order.Activated:Connect(function()
 		if busy.order then
 			return
@@ -294,11 +248,8 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		if summary == nil then
 			-- No data: a switched save starts from its own summary, never the previous one.
 			lastSummary = nil
-			deliveredOrderId = nil
 			storedSelectedMedium = 0
 			placementCount = 0
-			unload.Visible = false
-			place.Visible = false
 			sellBack.Visible = false
 			detail.Text = localized("loading")
 			return
