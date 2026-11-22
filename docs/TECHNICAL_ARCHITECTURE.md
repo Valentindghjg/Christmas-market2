@@ -71,10 +71,50 @@ Server->client: a one-way `Notify` RemoteEvent carries localized notice keys (or
 ```
 Schema is a proposal; existing `BusinessState.lua` currently uses a simpler v1 shape and must be migrated carefully before production. Keep all persisted numeric values finite, capped and serializable. Store transforms as numeric arrays, not Instances/CFrames.
 
+**Save slots (CM2-S1, implemented 2026-11-22).** Each player owns a profile that lists their saves; each save is its own company record.
+- **Company schema 11** (`BusinessState.SCHEMA_VERSION = 11`): adds `saveName` (valid UTF-8, 1–24 code points) and `saveSize` (`Solo`, `Duo`, `Trio`, `Quad`; S1 writes `Solo`). Migration 10 → 11 sets the default name `Tree Lot 1` when the name is missing or invalid and `saveSize = "Solo"`; the v1 path sets both. The save's company ID is `save:<saveId>`. `validate` ignores the persistence envelope fields `_session`, `_deletedAt`, `_migratedTo`, `_migratedAt` and `_migratedFrom`. In S1 the profile entry's name is the source; the record's `saveName` is a copy written on every load and on renaming the active save.
+- **Save ID (fix round 2):** `<ownerUserId>_<16 lowercase hex>`, at most 36 chars (`SaveProfile.SAVE_ID_MAX_LENGTH`). `SaveProfile.newSaveId(userId, guid)` takes the GUID from `HttpService:GenerateGUID(false)`, drops the hyphens, lowercases it and keeps characters 17–32; the user ID is written by `SaveProfile.userIdText` (`string.format("%d", userId)`, because `tostring` writes 19-digit numbers in exponent form). `SaveProfile.isSaveId`: a string of at most 36 bytes matching `^(%d+)_(%x+)$` with 1–19 digits, exactly 16 hex characters and no uppercase. The user-ID prefix makes IDs unique across players; within one player 62 random bits remain, and a collision fails closed (`ProfileCorrupt` on Create, `SaveDeleted` on Play) without data loss. IDs are never reused; deleted saves keep a tombstone.
+- **Profile schema v1** (`SaveProfile.lua`, `SaveProfile.VERSION = 1`):
+```lua
+{ profileVersion = 1, userId = 123, createdAt = 0, updatedAt = 0,
+  saves = { { saveId, name, role = "Owner", size = "Solo", createdAt, lastPlayedAt } }, -- creation order
+  nextSaveNumber = 1, lastSaveId = nil, legacyState = "Pending" | "Done" | "None",
+  legacySaveId = nil, recentCreates = { { requestId, saveId } } }                      -- newest last, at most 10
+```
+`validate` also accepts role `Member` and sizes Duo/Trio/Quad (S2 placeholders), and rejects duplicate save IDs and more than `GameConfig.Saves.MaxSavesPerPlayer` (50) entries. Names are trimmed, single-spaced, 1–24 code points, no control characters and no `#`; they are filtered with `TextService` at submission (the broadcast result must equal the name).
+
 ## 5. Persistence and concurrency
 DataStore keys scoped by company ID; use UpdateAsync-based session lock with job ID and expiry/heartbeat, not a naive GetAsync/SetAsync last-write-wins. Acquire lock before enabling writes; renew while active; release at leave/shutdown; recover expired locks with a safety margin. Save after significant actions (debounced) plus periodic autosave and BindToClose; retries with exponential backoff and budget awareness. If load fails, block financial actions instead of creating a fresh default and overwriting existing progress. Use versioned migration functions and backup/rollback strategy. Shared-company single-writer policy; conflicts must not fork balances.
 
 **Implemented policy (2026-11-21):** a company record is one DataStore key holding cash, inventory, orders, placements and recent request IDs together. Mutations run to completion inside the company critical section without yielding and only mark the session dirty; `CompanyStateService:flushDirty()` writes dirty sessions every `GameConfig.SaveFlushSeconds` (15 s) and re-saves every session at least every `AutosaveSeconds` (60 s) to renew the `SessionLockSeconds` (120 s) lock. Leave/shutdown perform a final save and release. A crash can therefore lose at most one flush interval, but never persists a debit without its effect. Transient save failures are retried on the next flush; lock loss, an invalid record, or `SaveFailClosedSeconds` (90 s) without a successful save stops mutations. A runtime error inside a critical section fails that session closed and it is never saved again. Future Robux receipt handling must force a flush before acknowledging a receipt.
+
+**Save slots (CM2-S1, implemented 2026-11-22).** `SaveSlotService` fills the SessionService role of section 2: profile I/O, the legacy migration call, the `Save.*` actions (`Remotes.SaveAction`), play, switch, leave, the teleport seam and the active-save registry.
+
+| Store | Key | Holds |
+|---|---|---|
+| `ChristmasMarket2_CompanyState_v1` (`PersistenceService.STORE_NAME`) | `company:personal:<userId>` | The legacy record. Never deleted or overwritten again; only `_migratedTo`, `_migratedAt` and `_session` change |
+| same store | `company:save:<saveId>` | One company record per save, with its own session lock |
+| `ChristmasMarket2_Profiles_v2` (`SaveSlotService.PROFILE_STORE_NAME`; v2 since fix round 2) | `profile:<userId>` (`SaveSlotService.profileKey`) | The player profile |
+
+Every key contains the user ID as a fixed substring, so RTBF erasure templates can match it. Store names are not scoped by environment (out of scope). `Profiles_v1` held only Studio test profiles with old 32-hex save IDs that the current `isSaveId` rejects; it is abandoned and never read.
+
+**Key budget.** Roblox DataStore keys are limited to 50 characters (`KeyNameLimit`, `SaveProfile.KEY_MAX_LENGTH`). The worst case is a 19-digit user ID:
+
+| Family | Format | Max chars |
+|---|---|---|
+| Company legacy | `company:personal:<userId>` | 36 |
+| Company save | `company:save:<userId>_<16hex>` | 49 |
+| Profile | `profile:<userId>` | 27 |
+| S2 invite code (foreseen; 5 digits per backlog) | `invite:<code>` | 12 |
+| S3 save-to-server map (foreseen; MemoryStore, limit 128) | `save:<saveId>` | 41 |
+
+Rule for S2 and S3: a key holding a save ID gets a prefix of at most 14 chars; a key holding a user ID, at most 31. Every new key family adds a row here and a case to the key-length test (SaveSlotService_Test "keeps every key within 50 characters for a 19-digit user ID"). S2 member lists stay inside the company record (no new key). Every fake DataStore in the tests enforces the 50-character limit.
+- **Lock-free profile:** every profile change is one `UpdateAsync` transform applied to the stored value (3 attempts, 1 s and 2 s apart), so a second server can never lose an update and S2 can write to another player's profile. Transforms reset their results at the start (they can run more than once). An unreadable profile fails with `ProfileUnavailable`, an invalid one with `ProfileCorrupt`; neither is ever overwritten with a fresh default.
+- **Legacy migration** (`PersistenceService:migrateLegacy(userId, saveId, saveName)`, called on the first profile open while `legacyState = "Pending"`): a. `UpdateAsync(company:personal:<userId>)`: absent → `NoLegacy` (no write); already `_migratedTo` → that save ID wins; locked by another unexpired server → `SessionLocked`; otherwise take a deep copy without `_session` and write our lock. b. migrate the copy to the current schema as `save:<saveId>` with `saveName`, `saveSize = "Solo"` and `_migratedFrom = <legacy key>`; on failure return `MigrationFailed`. c. `UpdateAsync(company:save:<saveId>)`: absent → write the record without `_session`; `_migratedFrom` equal → no write (idempotent); anything else → `MigrationConflict`. d. `UpdateAsync(legacy)`: when the lock is ours or absent, set `_migratedTo` and `_migratedAt` and clear `_session`; the data stays unchanged; another job's lock → `SessionLocked`, a non-table record → `MigrationFailed` (no write). Store errors after retries return `LoadFailed`. Steps b–d run in `_finishMigration` under a `pcall` (a thrown error → `MigrationFailed`), and every failure after locking the legacy record clears our lock once (fix round 2); the clear touches only a `_session` with our job ID, and if it fails the lock expires after `SessionLockSeconds`. Every step is idempotent, so a crash between steps is repaired by the next open. A brand-new player gets one starter save "Tree Lot 1".
+- **Tombstones:** `PersistenceService:markDeleted` (one `UpdateAsync`) refuses a save locked by another unexpired server (`SaveInUse`) or by this server (`SaveActive`); otherwise it sets `_deletedAt` and keeps all data. `load` refuses `_deletedAt` (`SaveDeleted`) and `_migratedTo` (`SaveMigrated`) without writing. Deleting needs the typed save name (case-insensitive, `SaveProfile.confirmMatches`).
+- **Play and switch:** a save claims a plot keyed by its company ID, preferring the plot of the save it replaces; a switch saves and unloads the old save first. Without a free plot the player is teleported to another server of the place (`TeleportData.cm2NoFreePlot = {saveId, attempt}`, at most `MaxPlotTeleports` = 3 attempts); nothing is loaded in that case. `PlayerRemoving` and `BindToClose` call `leave(userId, true)` for every active save (the shadow included), which waits for an in-flight save action.
+- **Shutdown:** `beginShutdown` refuses new save work; BindToClose waits for `pendingCount()` (final leaves plus busy actions) up to 25 s.
+- **Fail-closed surfacing (CM2-R3):** `CompanyStateService:setSessionFailedHandler` is called once per session, never while unloading, with `SessionLocked` (lock lost), `SaveFailed` (`NotLoaded` or `SaveFailClosedSeconds` without a save) or `InternalError`. `main.server.lua` sets `CompanyReady = false` and `CompanyError = <code>` for every player on that save; the HUD and the save picker show `Localization.saveErrorKey(code)`. Playing the save again reloads it once the lock is back.
 
 Persist financial request IDs/reward claims enough to prevent replay after reconnect; ledger should be append-bounded with aggregate counters. Avoid DataStore budget exhaustion by batching updates.
 
