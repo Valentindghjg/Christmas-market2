@@ -39,3 +39,11 @@ Recommended approach: Roblox Studio procedural construction and original low-pol
 Asset contract remains: `ArtAssets/Trees/<Species>/<Size>`, `Buildings/<TierId>`, `Props/<AssetId>`, `Vehicles/<AssetId>`, `NPCs/<CharacterId>`, `Environment/<AssetId>`. Stable pivots/PrimaryPart; TreeBase, Entrance, Checkout_1, DeliveryPoint and CargoAnchor attachments as applicable. Model scripts must not bypass server gameplay logic.
 
 Definition of done per model: original geometry, named/pivoted correctly, appropriate collision and scale, performant on mobile, screenshot-reviewed, Studio-tested, and documented in asset inventory.
+
+# Asset pipeline (CM2-AP, 2026-11-22)
+Larger models are Blender MeshParts; small items stay Parts. The `.blend` in `assets/art/source/<artPath>/` is the source; `tools/art/art.luau` exports it to FBX, uploads it through Open Cloud (or the Studio import fallback) and normalizes the result into `assets/art/rbxm/<artPath>.rbxm`, which Rojo maps into `ReplicatedStorage.ArtAssets`. Full rules and commands: `assets/art/README.md`.
+- Pivot: Blender origin = ground pivot, front = Blender -Y, 1 unit = 1 stud; the normalized model's `PrimaryPart` is `ArtRoot` at `CFrame.identity` (size 0.05, transparent). `WorldPivot` is not used.
+- Colour and material come from `src/shared/ArtPalette.lua` through the object name `<PartName>__<PaletteKey>`; no textures. `COL_<Name>` boxes become `Collider_<Name>`; `ATT_<Name>` empties become Attachments under `ArtRoot` (`Trees/*` always has `TreeBase`).
+- Attributes on every normalized model: `ArtAssetId`, `ArtPath`, `ArtSource = "blender"`, `ArtVersion`, `ArtTier`. Budgets: tier A 4000 triangles / 10 MeshParts, tier B 1000 / 4.
+- `ArtLibrary.find/prepareClone` (`src/shared/ArtLibrary.lua`) look art up and clone it; a missing or broken path logs `[ART] <MissingArtAsset|InvalidArtAsset|InvalidArtPath> <path>` once per path and the primitive fallback stays.
+- Checks: `tests/tools/art_pipeline.luau`, `art.luau verify <place>` (CI), playtest step `ART_ASSETS`.

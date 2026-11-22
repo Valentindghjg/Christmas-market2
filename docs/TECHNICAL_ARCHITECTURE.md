@@ -14,6 +14,9 @@ src/
 docs/           PRODUCT_SPEC, GAME_DESIGN, TECHNICAL_ARCHITECTURE,
                 TEST_PLAN, MODEL_INTEGRATION, PROGRESS, DECISION_LOG
 tests/          pure module tests and Studio integration test scripts
+assets/art/     Blender sources (source/), normalized models (rbxm/, mapped to
+                ReplicatedStorage.ArtAssets by Rojo), generated builds (_build/, ignored)
+tools/art/      art pipeline CLI (Lune) and headless Blender scripts (CM2-AP)
 ```
 
 ## 2. Authority and service boundaries
@@ -88,7 +91,7 @@ Visitor: read-only. Invitation and membership changes checked against authoritat
 NPC simulation server-side with pooled rigs and configurable cap per plot/server. Limit PathfindingService calls, reuse waypoints, avoid per-frame full scans, cancel jobs on plot unload. Customer preferences seeded server-side; reservation timeouts release inventory. Use explicit FSM transition tables and telemetry on failures.
 
 ## 9. Asset boundary
-Final 3D models supplied by owner; integration via stable asset IDs, pivots and attachments documented in `MODEL_INTEGRATION.md`. Scripts may use temporary invisible markers for tests but must not generate final art. If art missing, disable affected visual placement gracefully while keeping state safe.
+Final 3D models supplied by owner; integration via stable asset IDs, pivots and attachments documented in `MODEL_INTEGRATION.md`. Scripts may use temporary invisible markers for tests but must not generate final art. If art missing, disable affected visual placement gracefully while keeping state safe. Art pipeline (CM2-AP): Blender `.blend` -> FBX -> Open Cloud mesh upload (or Studio import fallback) -> normalized `.rbxm` -> Rojo -> `ReplicatedStorage.ArtAssets`; `ArtLibrary` looks it up and the primitive fallback stays (`assets/art/README.md`, `MODEL_INTEGRATION.md`).
 
 ## 10. Security and compliance
 Validate all remotes, role membership, rate limits and server prices; ensure client cannot force NPC sales or bypass HQ requirements. Audit monetization receipt processing for replay safety. Never store personal data beyond required Roblox user IDs and game state. Restrict logs to operational diagnostics. Gamepass IDs and purchases remain disabled until owner approval.

@@ -19,6 +19,24 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
 - WIP-Branch: none
 - Seit: 2026-11-22, Owner-Gespräch
 
+### PC-2 Open-Cloud-API-Key für die Art-Pipeline
+- Status: offen
+- Art: zugriff
+- Problem: Um Blender-Meshes als MeshParts ins Spiel zu bringen, lädt die Art-Pipeline (CM2-AP) die FBX-Dateien über Open Cloud hoch, und dafür braucht sie einen API-Key unter dem Creator, dem das Spiel gehören wird.
+- Deine Schritte:
+  1. create.roblox.com → Dashboard öffnen und den Creator wählen, dem das Spiel gehören wird (dein Konto oder die Gruppe, falls das Spiel der Gruppe gehören soll).
+  2. Open Cloud → API Keys → Create API Key, Name „CM2 art pipeline“:
+     - die API „Assets“ mit `asset:read` und `asset:write` hinzufügen, dazu die API „Legacy Assets“ (Asset Delivery) mit `legacy-asset:manage`;
+     - Accepted IP Addresses: deine IP oder `0.0.0.0/0`;
+     - Expiration: 2027-02-01.
+  3. In PowerShell: `setx ROBLOX_OPEN_CLOUD_API_KEY "<key>"` und `setx CM2_ART_CREATOR "user:<deine User-ID>"` (oder `"group:<Gruppen-ID>"`). Danach Claude Code neu starten. Den Key nie in den Chat oder ins Repo kopieren.
+  4. Alternative ohne Key: jedes Modell eines MODEL-Tasks per Studio-Import einbinden, wie in `assets/art/README.md` beschrieben.
+- Prüfen: `lune run tools/art/art.luau doctor` endet mit Exit-Code 0.
+- Blockiert: das Einbinden der Meshes in den Place für CM2-12, CM2-13, CM2-14, CM2-10 (Modellieren und Blender-Renders laufen weiter)
+- Danach: der erste Art-Probe-Lauf (`lune run tools/art/art.luau probe`) zum Prüfen der Endpunkte, dann der nächste offene MODEL-Task
+- WIP-Branch: none
+- Seit: 2026-11-22, hasseln
+
 #### Erledigt
 _Noch keine._
 
@@ -205,7 +223,7 @@ Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or ab
 31. [ ] **CM2-50 Final integration and regression** · S · Depends: everything done before. Accept: full Studio script PASS on the release commit, recorded in PROGRESS.md.
 
 **MODEL tasks — ready since 2026-11-22** (reference images supplied). They enter the order right after the current task, in this order.
-- [ ] **CM2-R2 → CM2-AP Asset pipeline for Blender MeshParts** (re-scoped: the CC0 art is being removed, so R2 versions the new art instead) · M · Depends: reference images. `.rbxm`/`.fbx` sources under `assets/`, mapped in `default.project.json`, so `rojo build` contains the models; registry IDs and pivots unchanged.
+- [x] **CM2-R2 → CM2-AP Asset pipeline for Blender MeshParts** (re-scoped: the CC0 art is being removed, so R2 versions the new art instead) · M · Depends: reference images. `.rbxm`/`.fbx` sources under `assets/`, mapped in `default.project.json`, so `rojo build` contains the models; registry IDs and pivots unchanged. Status 2026-11-22: done per `docs/plans/CM2-AP.md` (tooling, 20 pipeline tests, probe fixture; no art), reviewed and committed. Open: the Open Cloud endpoints are only fake-HTTP-tested until PC-2 (first `probe` run in the next MODEL task); the live Studio sync showed no `ArtAssets/Trees` folder (both builds contain it; re-check after a fresh `rojo serve` and plugin reconnect).
 - [ ] **CM2-12 Trees** (4 starter species × 3 sizes, special trees) · MODEL.
 - [ ] **CM2-13 HQ tiers, fence, bays, checkout** (Sales Tent, Timber Pavilion, Alpine Hut, Mountain Chalet) · MODEL.
 - [ ] **CM2-14 Supplier truck and customer cars** · MODEL.
