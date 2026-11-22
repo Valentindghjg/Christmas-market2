@@ -113,6 +113,62 @@ return function(t)
 		expect.equal(zero, "InvalidQuantity")
 	end)
 
+	-- CM2-S1: Save.* requests are typed, bounded and carry only their own fields.
+	local SAVE_ID = "42_" .. string.rep("ab", 8)
+	local function saveRequest(action, payload)
+		return Protocol.validateSaveRequest({
+			version = 1,
+			requestId = "save_request_1",
+			action = action,
+			payload = payload,
+		})
+	end
+
+	t.test("validates save action payloads", function()
+		local Save = Protocol.SaveActions
+		expect.truthy(saveRequest(Save.List, {}))
+		expect.truthy(saveRequest(Save.Create, {}))
+		expect.truthy(saveRequest(Save.Create, { name = "" }))
+		expect.truthy(saveRequest(Save.Create, { name = "My Lot" }))
+		expect.truthy(saveRequest(Save.Rename, { saveId = SAVE_ID, name = "New Name" }))
+		expect.truthy(saveRequest(Save.Delete, { saveId = SAVE_ID, confirmName = "new name" }))
+		expect.truthy(saveRequest(Save.Play, { saveId = SAVE_ID }))
+		local _, badId = saveRequest(Save.Play, { saveId = "42_NOTHEX" })
+		expect.equal(badId, "InvalidSaveId")
+		local _, missingId = saveRequest(Save.Rename, { name = "x" })
+		expect.equal(missingId, "InvalidSaveId")
+		local _, longName = saveRequest(Save.Rename, { saveId = SAVE_ID, name = string.rep("a", 101) })
+		expect.equal(longName, "InvalidName")
+		local _, longCreate = saveRequest(Save.Create, { name = string.rep("a", 101) })
+		expect.equal(longCreate, "InvalidName")
+		local _, numberConfirm = saveRequest(Save.Delete, { saveId = SAVE_ID, confirmName = 5 })
+		expect.equal(numberConfirm, "InvalidName")
+		expect.truthy(saveRequest(Save.Rename, { saveId = SAVE_ID, name = string.rep("a", 100) }))
+	end)
+
+	t.test("rejects unknown or extra save fields", function()
+		local _, extra = saveRequest(Protocol.SaveActions.Play, { saveId = SAVE_ID, cash = 1000 })
+		expect.equal(extra, "UnexpectedField")
+		local _, listExtra = saveRequest(Protocol.SaveActions.List, { all = true })
+		expect.equal(listExtra, "UnexpectedField")
+		local _, unknown = saveRequest("Save.Steal", {})
+		expect.equal(unknown, "UnknownAction")
+		local _, crossed = Protocol.validateRequest({
+			version = 1,
+			requestId = "save_request_2",
+			action = Protocol.SaveActions.List,
+			payload = {},
+		})
+		expect.equal(crossed, "UnknownAction")
+		local _, envelope = Protocol.validateSaveRequest({
+			version = 2,
+			requestId = "save_request_3",
+			action = "Save.List",
+			payload = {},
+		})
+		expect.equal(envelope, "UnsupportedVersion")
+	end)
+
 	t.test("accepts Douglas Fir orders and rejects the display spelling as an ID", function()
 		local ok = Protocol.validateRequest({
 			version = 1,

@@ -3,7 +3,22 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 10
+BusinessState.SCHEMA_VERSION = 11
+
+local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
+
+local function defaultSaveName(): string
+	return string.format(GameConfig.Saves.DefaultNameFormat, 1)
+end
+
+-- Schema 11: a save name of 1 to NameMaxLength code points in valid UTF-8.
+local function isValidSaveName(value: unknown): boolean
+	if type(value) ~= "string" then
+		return false
+	end
+	local length = utf8.len(value)
+	return length ~= nil and length >= 1 and length <= GameConfig.Saves.NameMaxLength
+end
 
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
@@ -79,13 +94,17 @@ local function defaultMediumPrices(): { [string]: number }
 	return prices
 end
 
-function BusinessState.new(companyId: string?, ownerUserId: number?)
+-- Envelope fields (_session, _deletedAt, _migratedTo, _migratedAt, _migratedFrom) belong to
+-- PersistenceService; validate() ignores them.
+function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: string?)
 	local resolvedCompanyId = companyId or "personal:0"
 	local resolvedOwnerUserId = ownerUserId or 0
 	return {
 		schemaVersion = BusinessState.SCHEMA_VERSION,
 		companyId = resolvedCompanyId,
 		ownerUserId = resolvedOwnerUserId,
+		saveName = saveName or defaultSaveName(),
+		saveSize = "Solo",
 		mode = "personal",
 		members = { [tostring(resolvedOwnerUserId)] = "Owner" },
 		revision = 0,
@@ -169,14 +188,6 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	if state.schemaVersion ~= 1 then
 		backfillMediumPrices(state)
 	end
-	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
-		if type(state.pendingOrders) == "table" then
-			BusinessState.pruneCompletedOrders(state)
-		end
-		BusinessState.clearCarried(state)
-		normalizeSchema10(state)
-		return validated(state)
-	end
 	if state.schemaVersion == 2 then
 		state.schemaVersion = 3
 		state.layout = { placements = {} }
@@ -209,11 +220,22 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.questClaims = {}
 	end
 	if state.schemaVersion == 9 then
-		state.schemaVersion = BusinessState.SCHEMA_VERSION
+		state.schemaVersion = 10
 		addSchema10Fields(state)
+	end
+	if state.schemaVersion == 10 then
+		state.schemaVersion = 11
+		if not isValidSaveName(state.saveName) then
+			state.saveName = defaultSaveName()
+		end
+		state.saveSize = "Solo"
+	end
+	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
 		end
+		BusinessState.clearCarried(state)
+		normalizeSchema10(state)
 		return validated(state)
 	end
 	if not isValidLegacyV1(state) then
@@ -222,6 +244,8 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.schemaVersion = BusinessState.SCHEMA_VERSION
 	state.companyId = companyId or "personal:0"
 	state.ownerUserId = ownerUserId or 0
+	state.saveName = defaultSaveName()
+	state.saveSize = "Solo"
 	state.mode = "personal"
 	state.members = { [tostring(state.ownerUserId)] = "Owner" }
 	state.revision = 0
@@ -308,6 +332,9 @@ function BusinessState.validate(state)
 		return false
 	end
 	if not isFiniteInteger(state.ownerUserId) or state.ownerUserId < 0 then
+		return false
+	end
+	if not isValidSaveName(state.saveName) or not SAVE_SIZES[state.saveSize] then
 		return false
 	end
 	if state.mode ~= "personal" and state.mode ~= "shared" then

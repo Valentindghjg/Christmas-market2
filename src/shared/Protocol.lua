@@ -1,6 +1,7 @@
 --!strict
 -- Shared validation for untrusted client actions. The server owns all prices and state changes.
 local GameConfig = require(script.Parent.GameConfig)
+local SaveProfile = require(script.Parent.SaveProfile)
 
 local Protocol = {}
 Protocol.VERSION = 1
@@ -44,6 +45,20 @@ local actionSet = {
 	[Protocol.Actions.QuestClaim] = true,
 }
 
+-- Save-slot actions travel through their own remote (Remotes.SaveAction).
+Protocol.SaveActions = {
+	List = "Save.List",
+	Create = "Save.Create",
+	Rename = "Save.Rename",
+	Delete = "Save.Delete",
+	Play = "Save.Play",
+}
+
+local saveActionSet = {}
+for _, action in pairs(Protocol.SaveActions) do
+	saveActionSet[action] = true
+end
+
 local function isFiniteInteger(value: unknown): boolean
 	return type(value) == "number"
 		and value == value
@@ -75,7 +90,8 @@ local function hasOnlyKeys(payload, allowed)
 	return true
 end
 
-function Protocol.validateRequest(request)
+-- Envelope checks shared by business and save requests.
+local function validateEnvelope(request, actions): (boolean, string?)
 	if type(request) ~= "table" then
 		return false, "MalformedRequest"
 	end
@@ -85,11 +101,19 @@ function Protocol.validateRequest(request)
 	if not isRequestId(request.requestId) then
 		return false, "InvalidRequestId"
 	end
-	if type(request.action) ~= "string" or not actionSet[request.action] then
+	if type(request.action) ~= "string" or not actions[request.action] then
 		return false, "UnknownAction"
 	end
 	if type(request.payload) ~= "table" then
 		return false, "MalformedPayload"
+	end
+	return true, nil
+end
+
+function Protocol.validateRequest(request)
+	local envelopeOk, envelopeError = validateEnvelope(request, actionSet)
+	if not envelopeOk then
+		return false, envelopeError
 	end
 
 	if request.action == Protocol.Actions.SupplierPlaceOrder then
@@ -265,6 +289,48 @@ function Protocol.validateRequest(request)
 	end
 
 	return false, "UnknownAction"
+end
+
+local function isNameText(value: unknown): boolean
+	return type(value) == "string" and #value <= GameConfig.Saves.NamePayloadMaxBytes
+end
+
+local SAVE_PAYLOAD_KEYS = {
+	[Protocol.SaveActions.List] = {},
+	[Protocol.SaveActions.Create] = { name = true },
+	[Protocol.SaveActions.Rename] = { saveId = true, name = true },
+	[Protocol.SaveActions.Delete] = { saveId = true, confirmName = true },
+	[Protocol.SaveActions.Play] = { saveId = true },
+}
+
+-- Save-slot requests (CM2-S1) use the same envelope as business requests.
+function Protocol.validateSaveRequest(request)
+	local envelopeOk, envelopeError = validateEnvelope(request, saveActionSet)
+	if not envelopeOk then
+		return false, envelopeError
+	end
+	local action = request.action
+	local payload = request.payload
+	if not hasOnlyKeys(payload, SAVE_PAYLOAD_KEYS[action]) then
+		return false, "UnexpectedField"
+	end
+	if SAVE_PAYLOAD_KEYS[action].saveId and not SaveProfile.isSaveId(payload.saveId) then
+		return false, "InvalidSaveId"
+	end
+	if action == Protocol.SaveActions.Create then
+		if payload.name ~= nil and not isNameText(payload.name) then
+			return false, "InvalidName"
+		end
+	elseif action == Protocol.SaveActions.Rename then
+		if not isNameText(payload.name) then
+			return false, "InvalidName"
+		end
+	elseif action == Protocol.SaveActions.Delete then
+		if not isNameText(payload.confirmName) then
+			return false, "InvalidName"
+		end
+	end
+	return true, nil
 end
 
 function Protocol.findRequest(state, requestId: string)

@@ -137,10 +137,45 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(migrated.schemaVersion, 10)
+		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(migrated.cash, 1234)
 		expect.equal(migrated.nextOrderNumber, 1)
 		expect.truthy(migrated.supplier.stock["FrasierFir:Medium"] > 0)
+	end)
+
+	-- CM2-S1: schema 11 adds the save name and size without touching balances.
+	t.test("migrates v10 to v11 with a save name and Solo size", function()
+		local legacy = BusinessState.new("personal:42", 42)
+		legacy.schemaVersion = 10
+		legacy.saveName = nil
+		legacy.saveSize = nil
+		legacy.cash = 777
+		legacy.reputation = 120
+		legacy.stock["NobleFir:Small"] = 4
+		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(BusinessState.SCHEMA_VERSION, 11)
+		expect.equal(migrated.schemaVersion, 11)
+		expect.equal(migrated.cash, 777)
+		expect.equal(migrated.reputation, 120)
+		expect.equal(migrated.stock["NobleFir:Small"], 4)
+		expect.equal(migrated.saveName, "Tree Lot 1")
+		expect.equal(migrated.saveSize, "Solo")
+	end)
+
+	t.test("rejects an invalid save name or size", function()
+		local tooLong = BusinessState.new("save:42_x", 42)
+		tooLong.saveName = string.rep("ä", 25)
+		expect.falsy(BusinessState.validate(tooLong))
+		local empty = BusinessState.new("save:42_x", 42)
+		empty.saveName = ""
+		expect.falsy(BusinessState.validate(empty))
+		local huge = BusinessState.new("save:42_x", 42)
+		huge.saveSize = "Huge"
+		expect.falsy(BusinessState.validate(huge))
+		local named = BusinessState.new("save:42_x", 42, string.rep("ä", 24))
+		expect.truthy(BusinessState.validate(named))
 	end)
 
 	t.test("rejects a corrupt customer order", function()

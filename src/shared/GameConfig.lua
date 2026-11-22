@@ -47,6 +47,26 @@ GameConfig.AutoPricing = {
 }
 GameConfig.PersonalPlotIds = { "Plot_01", "Plot_02", "Plot_03", "Plot_04", "Plot_05", "Plot_06" }
 
+-- Save slots per player (CM2-S1). All values are PROVISIONAL engineering choices.
+GameConfig.Saves = {
+	-- The spec says unlimited; this technical cap bounds the profile size and the DataStore
+	-- storage quota and lies far above realistic use.
+	MaxSavesPerPlayer = 50,
+	NameMaxLength = 24,
+	NamePayloadMaxBytes = 100,
+	DefaultNameFormat = "Tree Lot %d",
+	MaxPlotTeleports = 3,
+	LoadAttempts = 5,
+	RecentCreates = 10,
+	RateLimits = {
+		["Save.List"] = { limit = 20, window = 10 },
+		["Save.Create"] = { limit = 5, window = 60 },
+		["Save.Rename"] = { limit = 5, window = 60 },
+		["Save.Delete"] = { limit = 5, window = 60 },
+		["Save.Play"] = { limit = 10, window = 60 },
+	},
+}
+
 local validSizes = { Small = true, Medium = true, Large = true }
 
 -- OBSERVED supplier row order, which is also the unlock order of the starter species

@@ -28,6 +28,29 @@ return function(t)
 		expect.equal(Localization.format("en", "orderAccepted", "not a number"), "Order accepted: $%d")
 	end)
 
+	-- CM2-S1/R3: every save error code has a player-facing text in both languages.
+	t.test("has an English text for every save error code", function()
+		for code, key in pairs(Localization.SaveErrorKeys) do
+			expect.equal(type(code), "string")
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+			expect.equal(Localization.saveErrorKey(code), key)
+		end
+		expect.equal(type(Localization.Strings.en.saveErrorUnknown), "string")
+		expect.equal(type(Localization.Strings.de.saveErrorUnknown), "string")
+		expect.equal(Localization.saveErrorKey("NoSuchCode"), "saveErrorUnknown")
+		expect.equal(Localization.saveErrorKey(nil), "saveErrorUnknown")
+	end)
+
+	-- CM2-S1 fix round 1: a reason suffix after ":" stays in CompanyError for diagnostics.
+	t.test("maps error codes with a reason suffix", function()
+		expect.equal(Localization.saveErrorKey("LoadFailed:Throttled"), "saveErrorLoadFailed")
+		expect.equal(Localization.saveErrorKey("SaveFailed:x"), "saveErrorSaveFailed")
+		expect.equal(Localization.saveErrorKey("ServerShuttingDown"), "saveErrorLoadFailed")
+		expect.equal(Localization.saveErrorKey("Nope"), "saveErrorUnknown")
+		expect.equal(Localization.saveErrorKey(nil), "saveErrorUnknown")
+	end)
+
 	t.test("formats the supplier species row", function()
 		expect.equal(
 			Localization.format("en", "supplierSpeciesRow", "Douglas Fir", 21, 28, 41),
