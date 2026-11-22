@@ -27,6 +27,8 @@ Put models into `ReplicatedStorage/ArtAssets` during development, or server-only
 ## Initial requested models
 DouglasFir, FrasierFir (display name "Fraser Fir"), NobleFir, BlueSpruce (each Small/Medium/Large); StarterSalesTent, ChristmasPavilion; SupplierTruck; CheckoutCounter; DeliveryBay; BasicFence; FestiveLights; CustomerRig; CashierRig; LotWorkerRig.
 
+CustomerRig note (CM2-N1, 2026-11-22): walking customers do not use `ArtAssets/NPCs/CustomerRig`. `NpcAvatar` builds one template from the default Roblox R15 body (`HumanoidDescription` without catalog asset IDs, created once on the server) and clones it per customer; body colours come from `GameConfig.Customers.Npc.Look`, and the beanie, pompom and scarf are our own welded Parts. Animations are Roblox's first-party default R15 walk and idle. A Blender customer mesh stays out of scope until a later task; staff (CM2-25/26) reuse `NpcAvatar.build(look)`. Sales stands: `WorldService.salesStand` levels the art's yaw to the nearest half turn of its largest part (CM2-N1 fix round 2), so a Studio-only template's rotation cannot tilt the stall.
+
 ## Integration behavior
 Missing model: fail gracefully and log `MissingArtAsset`; never grant extra inventory or charge a player for a placement that failed. Config IDs must not be derived from art model filenames.
 

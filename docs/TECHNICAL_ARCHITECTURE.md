@@ -29,7 +29,7 @@ tools/art/      art pipeline CLI (Lune) and headless Blender scripts (CM2-AP)
 - InventoryService: unique stock item IDs, capacity and atomic lifecycle.
 - PlacementService: bounded transforms, collision checks, plot persistence.
 - PricingService: manual/auto prices and effective price at reservation time.
-- CustomerService: NPC spawning, preferences, FSM and pathfinding budgets.
+- CustomerService: NPC spawning, preferences, FSM and pathfinding budgets. CM2-N1: the walking customers' director is `CustomerNpcService` (FSM, queue, budget 4 per plot and 24 per server, cleanup; headless-safe, its world adapter injected). Routes come from `NpcPath` (pure lot-frame router over the known keep-clear boxes; no PathfindingService). The Roblox side is `CustomerNpcWorld` (adapter) and `NpcAvatar` (default R15 template, own beanie and scarf Parts, collision groups `CustomerNpc`/`LotTree`/`PlayerCharacter`). Money and stock change only in `CompanyStateService`'s server-trusted `npc*` methods inside the company's critical section; no remote reaches them. Parking claims (`session.npcClaims`) and session tokens are runtime only; reservations are cleared on every load.
 - CheckoutService: reserve, queue, finalize sale, rollback/cancel.
 - EmployeeService: hire once, task assignment, job lease and completion.
 - ProgressionService: prerequisites, HQ/parking/land unlocks.
