@@ -110,3 +110,22 @@ End: as CM2-UV "End".
 
 ## Out of scope
 Look beyond tokens (CM2-UI); phone and tablet (CM2-UV2); prompt overlap; CM2-UVF3; `TextService` measuring (fixed widths suffice for the English launch).
+
+## Amendments (these win over the text above)
+**UVF2-A1 (defect CM2-UVF2-D1, batch run 2026-11-22: steps 3 and 4 FAIL).** Tier stays S (one client file, two lines of docs).
+
+Cause: `labelGuis` in `WorldLabels.client.lua` is a weak-keyed table (`__mode = "k"`). Roblox hands Luau a userdata proxy per Instance; when no strong Luau reference to the proxy is left, the GC drops the proxy and its weak-table entry, although the gui still lives in workspace. Nothing else in the script holds the server-created guis, so they leave the registry soon after a few passes. Those passes already set them `Enabled = true` (spawn view without overlap, or out of range), and afterwards no pass touches them. That matches the evidence: all 11 stayed true while a manual `resolve` hid some. The tester's synthetic label was held by the tester's own variable, so its proxy survived. `watched` works because each `AttributeChanged` closure captures its instance. The camera read is correct. Lune cannot model this GC behaviour and the pure module has no defect, so no headless test is added; the total stays **397**.
+
+Fix steps:
+1. `src/client/WorldLabels.client.lua` line 95-96: make the registry strong, `local labelGuis: { [BillboardGui]: boolean } = {}`. Comment above it: `-- CM2-UVF2: every world billboard is registered here and shown or hidden by the declutter pass. Strong keys: a weak Instance key is dropped once no Luau reference remains (CM2-UVF2-D1); the pass prunes guis that left workspace.` The existing prune (`not gui:IsDescendantOf(workspace)` → `labelGuis[gui] = nil`) bounds the table. Leave `watched` as it is.
+2. Same file, at the end of each pass (after the `Enabled = result[index]` loop): `script:SetAttribute("DeclutterTracked", tracked)` and `script:SetAttribute("DeclutterHidden", hidden)`. `tracked` = registered guis still in workspace this pass (including the skipped ones without an Adornee). `hidden` = the number of `false` values in `result`. These are diagnostics for the playtest only; they create no Instances.
+3. `docs/DECISION_LOG.md`, entry `2026-11-22 — CM2-UVF2 world label layout`: append the bullet `- Fix (CM2-UVF2-D1): the declutter registry was a weak-keyed table, so the GC dropped server-created guis (no Luau reference) and the pass stopped touching them; the registry is now a strong table pruned by the pass. Diagnostics: WorldLabels script attributes DeclutterTracked, DeclutterHidden.`
+No other file changes. Checks as in "Acceptance" (397 run).
+
+Re-test (playtester, PC 1564x730, BUILD `cm2-n1-fix2`, server `H("pauseCustomers", true)`):
+- **R0, registry**: at least 120 s after join, `LocalPlayer.PlayerScripts.WorldLabels:GetAttribute("DeclutterTracked")` equals the number of BillboardGuis in workspace whose `Text` child has `LabelKind`. Check it again after step R3.
+- **R1, steps 1-2**: re-run because their "shown" checks now depend on the working pass. Step 2's row uses `Row`, `aim(-35, -20)` (CM2-UV (i) step 4); z -13 is KeepClear. Pass criteria unchanged.
+- **R2, step 3**: as written, with one change for the cars. At H3 on each `CustomerCar_<n>`: H6 empty and at least one "#N HERE" shown (the other may be hidden by design, D2). Then H7 offset (0, 6, 14 s) at the midpoint of the two cars: H6 empty and both "#N HERE" shown (`uvf2-5b`). Pickup views unchanged: H6 empty, both pickup labels shown, one line. At the uvf2-6c view, sample `Enabled` of all label guis over 30 frames: at least one is false and `DeclutterHidden >= 1` (`uvf2-6d`).
+- **R3, step 4**: as written: Custom camera, walk the row, H6 empty in two captures 1 s apart (`uvf2-8c`, `uvf2-8d`), and no label toggles between them.
+- **R4, step 5**: a fresh `runPlaytest {mode="full"}`, all PASS.
+Accept: R0-R4 PASS. The playtester records the captures in PROGRESS.md, and the reviewer then removes CM2-UVF2 from "Studio-Test ausstehend" and ticks 5d.

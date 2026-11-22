@@ -471,6 +471,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - CM2-UI restyles the labels via `UiTheme.WorldLabels`.
 - Files: `src/shared/UiTheme.lua`, `src/shared/LabelDeclutter.lua` (new), `src/server/Services/WorldService.lua`, `src/client/WorldLabels.client.lua`, `src/shared/Localization.lua`, `tests/studio/Cases/LabelDeclutter_Test.lua` (new), `tests/studio/Cases/UiTheme_Test.lua`, `tests/headless/run.luau`, `docs/TEST_PLAN.md`.
 - Headless +8, total 397.
+- Fix (CM2-UVF2-D1): the declutter registry was a weak-keyed table, so the GC dropped server-created guis (no Luau reference) and the pass stopped touching them; the registry is now a strong table pruned by the pass. Diagnostics: WorldLabels script attributes DeclutterTracked, DeclutterHidden.
 
 ## 2026-11-22 — CM2-UVF4 dialog text fit (engineering)
 - Defect (CM2-UV (d), uv-d1): the save row state text (0.4 of the row, about 169 px) and the footer status lines were truncated; server messages are up to 118 chars.

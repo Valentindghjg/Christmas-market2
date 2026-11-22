@@ -92,8 +92,8 @@ local function isBayLabel(label: TextLabel): boolean
 	return type(kind) == "string" and string.sub(kind, 1, 3) == "Bay"
 end
 
--- CM2-UVF2: every world billboard is registered here and shown or hidden by the declutter pass.
-local labelGuis: { [BillboardGui]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+-- CM2-UVF2: every world billboard is registered here and shown or hidden by the declutter pass. Strong keys: a weak Instance key is dropped once no Luau reference remains (CM2-UVF2-D1); the pass prunes guis that left workspace.
+local labelGuis: { [BillboardGui]: boolean } = {}
 
 local function visit(instance: Instance)
 	if instance:IsA("TextLabel") and instance:GetAttribute("LabelKind") ~= nil then
@@ -141,11 +141,13 @@ RunService.RenderStepped:Connect(function(dt: number)
 	end
 	local guis: { BillboardGui } = {}
 	local entries: { LabelDeclutter.Entry } = {}
+	local tracked = 0
 	for gui in pairs(labelGuis) do
 		if not gui:IsDescendantOf(workspace) then
 			labelGuis[gui] = nil
 			continue
 		end
+		tracked += 1
 		local adornee = gui.Adornee
 		local label = gui:FindFirstChild("Text")
 		if adornee == nil or not adornee:IsA("BasePart") or label == nil or not label:IsA("TextLabel") then
@@ -170,9 +172,15 @@ RunService.RenderStepped:Connect(function(dt: number)
 		})
 	end
 	local result = LabelDeclutter.resolve(entries)
+	local hidden = 0
 	for index, gui in ipairs(guis) do
 		gui.Enabled = result[index]
+		if not result[index] then
+			hidden += 1
+		end
 	end
+	script:SetAttribute("DeclutterTracked", tracked)
+	script:SetAttribute("DeclutterHidden", hidden)
 end)
 
 -- Toast for server notifications { key = string, args = { number } }.
