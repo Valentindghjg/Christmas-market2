@@ -190,17 +190,30 @@ local placementCount = 0
 -- One in-flight request per button: a double tap must not place two orders.
 local busy = { order = false, unload = false, place = false, sellBack = false }
 
+-- CM2-R3: the HUD says which save runs, why it stopped, or that one must be chosen.
 local function updateReady()
-	local ready = player:GetAttribute("CompanyReady")
-	status.Text = if ready
-		then localizedFormat("plotStatus", tostring(player:GetAttribute("PlotId")))
-		else localizedFormat(
-			"unavailable",
-			tostring(player:GetAttribute("CompanyLoadError") or localized("loading"))
+	local ready = player:GetAttribute("CompanyReady") == true
+	local errorCode = player:GetAttribute("CompanyError")
+	if ready then
+		status.Text = localizedFormat(
+			"hudSaveStatus",
+			tostring(player:GetAttribute("ActiveSaveName") or ""),
+			tostring(player:GetAttribute("PlotId"))
 		)
+	elseif errorCode ~= nil then
+		status.Text = localized(Localization.saveErrorKey(errorCode))
+	elseif player:GetAttribute("ActiveSaveId") == nil then
+		status.Text = localized("hudChooseSave")
+	else
+		status.Text = localized("saveLoading")
+	end
+	-- The supplier panel only works on a running save.
+	panel.Visible = ready
 end
 player:GetAttributeChangedSignal("CompanyReady"):Connect(updateReady)
-player:GetAttributeChangedSignal("CompanyLoadError"):Connect(updateReady)
+player:GetAttributeChangedSignal("CompanyError"):Connect(updateReady)
+player:GetAttributeChangedSignal("ActiveSaveId"):Connect(updateReady)
+player:GetAttributeChangedSignal("ActiveSaveName"):Connect(updateReady)
 player:GetAttributeChangedSignal("PlotId"):Connect(updateReady)
 updateReady()
 
@@ -225,11 +238,6 @@ end
 local function renderSummary(data: any)
 	cash.Text =
 		string.format("%s: $%d · %s: %d", localized("cash"), data.cash, localized("reputation"), data.reputation)
-	-- Effective spaces include the base tier; data.plot holds only purchased upgrades.
-	if data.customers then
-		status.Text =
-			localizedFormat("plotParkingStatus", tostring(player:GetAttribute("PlotId")), data.customers.parkingSpaces)
-	end
 	-- The server lists ready deliveries first.
 	deliveredOrderId = nil
 	for _, delivery in ipairs(data.deliveries or {}) do
@@ -302,6 +310,11 @@ local function refreshSummary()
 	end
 end
 player:GetAttributeChangedSignal("CompanyReady"):Connect(refreshSummary)
+-- A switched save starts from its own summary, never the previous save's figures.
+player:GetAttributeChangedSignal("ActiveSaveId"):Connect(function()
+	lastSummary = nil
+	refreshSummary()
+end)
 
 for speciesId, choice in pairs(speciesButtons) do
 	choice.Activated:Connect(function()
@@ -380,7 +393,7 @@ order.Activated:Connect(function()
 		refreshSummary()
 	else
 		order.Text = localized("orderUnavailable")
-		status.Text = errorText(response.errorCode)
+		detail.Text = errorText(response.errorCode)
 		task.delay(2, function()
 			order.Text = localized("placeOrder")
 		end)

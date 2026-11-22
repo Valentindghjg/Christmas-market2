@@ -54,6 +54,7 @@ for name, path in pairs({
 	PricingService = "src/server/Services/PricingService.lua",
 	ProgressionService = "src/server/Services/ProgressionService.lua",
 	QuestService = "src/server/Services/QuestService.lua",
+	SaveSlotService = "src/server/Services/SaveSlotService.lua",
 }) do
 	child(services, name, path)
 end
@@ -70,6 +71,7 @@ local sourcePaths = {
 	Inventory = "src/shared/Inventory.lua",
 	Localization = "src/shared/Localization.lua",
 	Protocol = "src/shared/Protocol.lua",
+	SaveProfile = "src/shared/SaveProfile.lua",
 	SupplierCatalog = "src/shared/SupplierCatalog.lua",
 	TreeHeight = "src/shared/TreeHeight.lua",
 }

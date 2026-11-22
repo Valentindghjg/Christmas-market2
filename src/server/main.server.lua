@@ -1,19 +1,23 @@
 --!strict
 -- Server bootstrap. Every business mutation enters through the validated RemoteFunction
 -- or a server-side ProximityPrompt that is checked exactly like a remote call.
+local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TeleportService = game:GetService("TeleportService")
+local TextService = game:GetService("TextService")
 
 local config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
+local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
 local PersistenceService = require(script.Parent.Services:WaitForChild("PersistenceService"))
 local CompanyStateService = require(script.Parent.Services:WaitForChild("CompanyStateService"))
 local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
+local SaveSlotService = require(script.Parent.Services:WaitForChild("SaveSlotService"))
 local WorldService = require(script.Parent.Services:WaitForChild("WorldService"))
 
-local LOAD_ATTEMPTS = 5
 local SHUTDOWN_WAIT_SECONDS = 25
 
 local remotes = ReplicatedStorage:FindFirstChild("Remotes") or Instance.new("Folder")
@@ -23,6 +27,11 @@ remotes.Parent = ReplicatedStorage
 local businessAction = remotes:FindFirstChild("BusinessAction") or Instance.new("RemoteFunction")
 businessAction.Name = "BusinessAction"
 businessAction.Parent = remotes
+
+-- Save-slot actions (CM2-S1): validated and rate-limited by SaveSlotService.
+local saveAction = remotes:FindFirstChild("SaveAction") or Instance.new("RemoteFunction")
+saveAction.Name = "SaveAction"
+saveAction.Parent = remotes
 
 -- One-way, server-to-client notices; clients cannot send anything through it.
 local notify = remotes:FindFirstChild("Notify") or Instance.new("RemoteEvent")
@@ -57,12 +66,59 @@ local companies = CompanyStateService.new(persistence, businessClock, businessRo
 local plots = PlotService.new(config.PersonalPlotIds)
 WorldService.build()
 
-local function companyIdFor(userId: number): string
-	return "personal:" .. tostring(userId)
+-- Save IDs: `<userId>_<16 lowercase hex>` (GUID chars 17-32), at most 36 chars, so every
+-- save key fits the 50-char DataStore key limit (CM2-S1 Fix round 2, R1).
+local function newSaveId(userId: number): string
+	return SaveProfile.newSaveId(userId, HttpService:GenerateGUID(false))
 end
 
-local function userIdFromCompanyId(companyId: string): number?
-	return tonumber(string.match(companyId, "^personal:(%d+)$"))
+-- Names are filtered at submission; the broadcast result must equal the name.
+local function filterName(userId: number, text: string): (boolean, string?)
+	if not Players:GetPlayerByUserId(userId) then
+		return false, "FilterUnavailable"
+	end
+	local ok, filtered = pcall(function()
+		local result = TextService:FilterStringAsync(text, userId, Enum.TextFilterContext.PublicChat)
+		return result:GetNonChatStringForBroadcastAsync()
+	end)
+	if not ok or type(filtered) ~= "string" then
+		return false, "FilterUnavailable"
+	end
+	return true, filtered
+end
+
+local function teleportForFreePlot(userId: number, data): (boolean, string?)
+	if RunService:IsStudio() then
+		return false, "TeleportUnavailable"
+	end
+	local player = Players:GetPlayerByUserId(userId)
+	if not player then
+		return false, "NoPlayer"
+	end
+	local options = Instance.new("TeleportOptions")
+	options:SetTeleportData({ cm2NoFreePlot = data })
+	local ok, err = pcall(TeleportService.TeleportAsync, TeleportService, game.PlaceId, { player }, options)
+	if not ok then
+		return false, tostring(err)
+	end
+	return true, nil
+end
+
+local saveSlots = SaveSlotService.new({
+	profileStore = DataStoreService:GetDataStore(SaveSlotService.PROFILE_STORE_NAME),
+	persistence = persistence,
+	companies = companies,
+	plots = plots,
+	-- Real time, so business-clock offsets never bypass the save-action rate limits.
+	clock = os.time,
+	wait = task.wait,
+	newSaveId = newSaveId,
+	filterName = filterName,
+	teleport = teleportForFreePlot,
+})
+
+local function companyIdFor(userId: number): string?
+	return saveSlots:activeCompanyId(userId)
 end
 
 local function effectiveParking(spaces: number): number
@@ -71,8 +127,7 @@ end
 
 -- Displayed trees follow authoritative placements, including NPC sales.
 companies:setPlacementsChangedHandler(function(companyId: string, placements, mediumPrices)
-	local userId = userIdFromCompanyId(companyId)
-	local plotId = userId and plots:getPlotForUser(userId)
+	local plotId = plots:getPlot(companyId)
 	if plotId then
 		WorldService.syncDisplayedTrees(plotId, placements, mediumPrices)
 	end
@@ -102,14 +157,27 @@ local function syncCarriedVisual(player: Player, summary)
 end
 
 companies:setCustomerOrdersChangedHandler(function(companyId: string, summary)
-	local userId = userIdFromCompanyId(companyId)
-	local plotId = userId and plots:getPlotForUser(userId)
+	local plotId = plots:getPlot(companyId)
 	if plotId then
 		WorldService.syncCustomerOrders(plotId, summary, orderCallbacks)
 	end
-	local player = userId and Players:GetPlayerByUserId(userId)
-	if player then
-		syncCarriedVisual(player, summary)
+	for _, userId in saveSlots:playersOn(companyId) do
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			syncCarriedVisual(player, summary)
+		end
+	end
+end)
+
+-- CM2-R3: a live save that stops accepting mutations tells its players why.
+companies:setSessionFailedHandler(function(companyId: string, code: string)
+	warn(string.format("[ChristmasMarket2] %s stopped: %s", companyId, code))
+	for _, userId in saveSlots:playersOn(companyId) do
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			player:SetAttribute("CompanyReady", false)
+			player:SetAttribute("CompanyError", code)
+		end
 	end
 end)
 
@@ -170,12 +238,16 @@ performOrderAction = function(player: Player, action: string, payload)
 	if player:GetAttribute("CompanyReady") ~= true then
 		return
 	end
+	local companyId = companyIdFor(player.UserId)
+	if companyId == nil then
+		return
+	end
 	if not orderReachAllowed(player, action, payload) then
 		tell(player, "outOfReach")
 		return
 	end
 	-- Request IDs are persisted, so they must stay unique across servers and restarts.
-	local response = companies:handle(companyIdFor(player.UserId), player.UserId, {
+	local response = companies:handle(companyId, player.UserId, {
 		version = Protocol.VERSION,
 		requestId = "prompt_" .. HttpService:GenerateGUID(false),
 		action = action,
@@ -190,7 +262,11 @@ orderCallbacks = {
 	end,
 	load = function(player: Player, carNumber: number)
 		-- The saved state knows which order the player carries; the car supplies its number.
-		local orderNumber = companies:getCarriedOrderNumber(companyIdFor(player.UserId), player.UserId)
+		local companyId = companyIdFor(player.UserId)
+		if companyId == nil then
+			return
+		end
+		local orderNumber = companies:getCarriedOrderNumber(companyId, player.UserId)
 		if orderNumber == nil then
 			return
 		end
@@ -266,51 +342,6 @@ local function syncPlotWorld(plotId: string, companyId: string, state)
 	WorldService.syncCustomerOrders(plotId, companies:getCustomerOrders(companyId), orderCallbacks)
 end
 
-local function loadPlayer(player: Player)
-	local companyId = companyIdFor(player.UserId)
-	local state, errorCode
-	for attempt = 1, LOAD_ATTEMPTS do
-		state, errorCode = companies:loadPersonalCompany(player.UserId)
-		-- SessionBusy: this server is still saving the player's previous session.
-		if state or errorCode ~= "SessionBusy" or not isInGame(player) then
-			break
-		end
-		task.wait(attempt)
-	end
-	if not isInGame(player) then
-		-- The player left while the load yielded; PlayerRemoving found nothing to unload.
-		if state then
-			companies:unloadCompany(companyId)
-		end
-		return
-	end
-	if not state then
-		player:SetAttribute("CompanyReady", false)
-		player:SetAttribute("CompanyLoadError", errorCode)
-		warn(string.format("[ChristmasMarket2] company load failed for %d: %s", player.UserId, tostring(errorCode)))
-		return
-	end
-	local plotId, plotError = plots:claim(player.UserId)
-	if not plotId then
-		companies:unloadCompany(companyId)
-		player:SetAttribute("CompanyReady", false)
-		player:SetAttribute("CompanyLoadError", plotError)
-		return
-	end
-	syncPlotWorld(plotId, companyId, state)
-	player:SetAttribute("CompanyReady", true)
-	player:SetAttribute("CompanyLoadError", nil)
-	player:SetAttribute("PlotId", plotId)
-	player.CharacterAdded:Connect(function(character)
-		-- A respawn drops the carried tree back at the pickup spot.
-		companies:releaseCarried(companyId, player.UserId)
-		spawnAtClaimedPlot(player, character)
-	end)
-	if player.Character then
-		task.spawn(spawnAtClaimedPlot, player, player.Character)
-	end
-end
-
 local function clearPlotVisuals(plotId: string)
 	WorldService.applyHQVisual(plotId, nil)
 	WorldService.applyLotExpansionVisual(plotId, 0)
@@ -319,19 +350,119 @@ local function clearPlotVisuals(plotId: string)
 	WorldService.syncCustomerOrders(plotId, nil, nil)
 end
 
-Players.PlayerAdded:Connect(loadPlayer)
-Players.PlayerRemoving:Connect(function(player)
-	local ok, errorCode = companies:unloadCompany(companyIdFor(player.UserId))
-	if not ok then
-		warn(string.format("[ChristmasMarket2] company unload failed for %d: %s", player.UserId, tostring(errorCode)))
+-- A played save mirrors into its plot and marks the player ready.
+saveSlots:setActivationHandlers(function(userId: number, companyId: string, plotId: string, state, saveName: string)
+	syncPlotWorld(plotId, companyId, state)
+	local player = Players:GetPlayerByUserId(userId)
+	if player then
+		player:SetAttribute("PlotId", plotId)
+		player:SetAttribute("ActiveSaveId", string.match(companyId, "^save:(.+)$"))
+		player:SetAttribute("ActiveSaveName", saveName)
+		player:SetAttribute("CompanyError", nil)
+		player:SetAttribute("CompanyReady", true)
+		if player.Character then
+			task.spawn(spawnAtClaimedPlot, player, player.Character)
+		end
 	end
-	companies:forgetUser(player.UserId)
-	local plotId = plots:getPlotForUser(player.UserId)
-	if plotId then
+end, function(userId: number, _companyId: string, plotId: string?, plotReleased: boolean)
+	if plotReleased and plotId then
 		-- The next claimant must not inherit the previous owner's stand, lot or trees.
 		clearPlotVisuals(plotId)
 	end
-	plots:release(player.UserId)
+	local player = Players:GetPlayerByUserId(userId)
+	if player then
+		WorldService.detachCarriedTree(player.Character)
+		player:SetAttribute("CompanyReady", false)
+		player:SetAttribute("PlotId", nil)
+		player:SetAttribute("ActiveSaveId", nil)
+		player:SetAttribute("ActiveSaveName", nil)
+	end
+end)
+
+-- Untrusted `Save.*` requests from the save picker.
+local function handleSaveAction(player: Player, request)
+	local response = saveSlots:handle(player.UserId, request)
+	local action = type(request) == "table" and request.action or nil
+	if response.ok and action == Protocol.SaveActions.Rename and type(response.data) == "table" then
+		if response.data.saveId == player:GetAttribute("ActiveSaveId") then
+			player:SetAttribute("ActiveSaveName", response.data.name)
+		end
+	elseif not response.ok and action == Protocol.SaveActions.Play then
+		if saveSlots:activeCompanyId(player.UserId) == nil then
+			player:SetAttribute("CompanyError", response.errorCode)
+		end
+	end
+	return response
+end
+saveAction.OnServerInvoke = handleSaveAction
+
+-- A teleport for a free plot carries the save to play on arrival (validated here).
+local function noFreePlotJoin(player: Player): (string?, number?)
+	local ok, joinData = pcall(function()
+		return player:GetJoinData()
+	end)
+	if not ok or type(joinData) ~= "table" or joinData.SourcePlaceId ~= game.PlaceId then
+		return nil, nil
+	end
+	local teleportData = joinData.TeleportData
+	local data = type(teleportData) == "table" and teleportData.cm2NoFreePlot or nil
+	if type(data) ~= "table" or not SaveProfile.isSaveId(data.saveId) then
+		return nil, nil
+	end
+	local attempt = data.attempt
+	if
+		type(attempt) ~= "number"
+		or attempt ~= math.floor(attempt)
+		or attempt < 1
+		or attempt > config.Saves.MaxPlotTeleports
+	then
+		return nil, nil
+	end
+	return data.saveId, attempt
+end
+
+local function onPlayerAdded(player: Player)
+	player.CharacterAdded:Connect(function(character)
+		-- A respawn drops the carried tree back at the pickup spot.
+		local companyId = companyIdFor(player.UserId)
+		if companyId then
+			companies:releaseCarried(companyId, player.UserId)
+		end
+		spawnAtClaimedPlot(player, character)
+	end)
+	player:SetAttribute("CompanyReady", false)
+	local profile, profileError = saveSlots:openProfile(player.UserId)
+	if not isInGame(player) then
+		return
+	end
+	if not profile then
+		player:SetAttribute("ProfileReady", false)
+		player:SetAttribute("CompanyError", profileError)
+		warn(string.format("[ChristmasMarket2] profile load failed for %d: %s", player.UserId, tostring(profileError)))
+		return
+	end
+	player:SetAttribute("ProfileReady", true)
+	local saveId, attempt = noFreePlotJoin(player)
+	if saveId then
+		local played, playError = saveSlots:play(player.UserId, saveId, { attempt = attempt })
+		if not played and isInGame(player) then
+			player:SetAttribute("CompanyError", playError)
+		end
+	end
+	-- Otherwise the save picker chooses; the character uses the world spawn until then.
+end
+
+TeleportService.TeleportInitFailed:Connect(function(player: Player)
+	player:SetAttribute("CompanyError", "NoFreePlot")
+end)
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+Players.PlayerRemoving:Connect(function(player)
+	local ok, errorCode = saveSlots:leave(player.UserId, true)
+	if not ok then
+		warn(string.format("[ChristmasMarket2] save unload failed for %d: %s", player.UserId, tostring(errorCode)))
+	end
+	companies:forgetUser(player.UserId)
 end)
 
 local ORDER_REACH_ACTIONS = {
@@ -352,7 +483,11 @@ local function handleBusinessAction(player: Player, request)
 	then
 		return { ok = false, errorCode = "OutOfReach" }
 	end
-	local response = companies:handle(companyIdFor(player.UserId), player.UserId, request)
+	local companyId = companyIdFor(player.UserId)
+	if companyId == nil then
+		return { ok = false, errorCode = "CompanyUnavailable" }
+	end
+	local response = companies:handle(companyId, player.UserId, request)
 	if not response.ok then
 		return response
 	end
@@ -373,10 +508,6 @@ local function handleBusinessAction(player: Player, request)
 end
 businessAction.OnServerInvoke = handleBusinessAction
 
--- Synthetic playtest companies (StudioTestService shadow players) that must also be
--- saved on shutdown. Stays empty outside Studio.
-local studioShadowUsers: { [number]: boolean } = {}
-
 -- Studio-only test instrument for reproducible playtests (docs/TEST_PLAN.md). The hook is
 -- never created on live servers (the release build omits StudioTestService), and clients
 -- cannot reach a ServerStorage BindableFunction.
@@ -386,9 +517,12 @@ if RunService:IsStudio() then
 		require(module).install({
 			companies = companies,
 			plots = plots,
+			saveSlots = saveSlots,
 			orderCallbacks = orderCallbacks,
 			companyIdFor = companyIdFor,
 			handleBusinessAction = handleBusinessAction,
+			handleSaveAction = handleSaveAction,
+			persistenceStoreName = PersistenceService.STORE_NAME,
 			syncPlotWorld = syncPlotWorld,
 			clearPlotVisuals = clearPlotVisuals,
 			businessClock = businessClock,
@@ -402,8 +536,6 @@ if RunService:IsStudio() then
 			setCustomersPaused = function(paused: boolean)
 				customersPaused = paused
 			end,
-			shadowUsers = studioShadowUsers,
-			loadAttempts = LOAD_ATTEMPTS,
 		})
 	else
 		warn("[ChristmasMarket2] StudioTestService missing; StudioTestHook not installed")
@@ -411,28 +543,21 @@ if RunService:IsStudio() then
 end
 
 for _, player in Players:GetPlayers() do
-	task.spawn(loadPlayer, player)
+	task.spawn(onPlayerAdded, player)
 end
 
 game:BindToClose(function()
+	-- Refuse new save work first, so no save can start loading after this point.
+	saveSlots:beginShutdown()
 	-- Unload in parallel: sequential saves with retry backoff can exceed the shutdown budget.
-	local pending = 0
-	local userIds = {}
-	for _, player in Players:GetPlayers() do
-		table.insert(userIds, player.UserId)
+	-- activeUserIds() covers every active save, including the Studio shadow player.
+	for _, userId in saveSlots:activeUserIds() do
+		task.spawn(pcall, saveSlots.leave, saveSlots, userId, true)
 	end
-	for userId in pairs(studioShadowUsers) do
-		table.insert(userIds, userId)
-	end
-	for _, userId in userIds do
-		pending += 1
-		task.spawn(function()
-			pcall(companies.unloadCompany, companies, companyIdFor(userId))
-			pending -= 1
-		end)
-	end
+	-- pendingCount() also covers final leaves already past activeUserIds() (PlayerRemoving)
+	-- and every save action in flight.
 	local waited = 0
-	while pending > 0 and waited < SHUTDOWN_WAIT_SECONDS do
+	while saveSlots:pendingCount() > 0 and waited < SHUTDOWN_WAIT_SECONDS do
 		waited += task.wait(0.1)
 	end
 end)

@@ -42,7 +42,7 @@ return function(t)
 		end, function()
 			return 0
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		local ordered = service:handle(
 			COMPANY,
 			42,
@@ -128,7 +128,7 @@ return function(t)
 		local service = Service.new(fakePersistence(), function()
 			return 100
 		end)
-		local state = service:loadPersonalCompany(42)
+		local state = service:loadCompany("personal:42", 42)
 		local cash = state.cash
 		expect.truthy(service:setStaffForTest(COMPANY, "LotWorker", 1))
 		expect.equal(state.staff.LotWorker, 1)
@@ -143,7 +143,7 @@ return function(t)
 		local service = Service.new(fakePersistence(), function()
 			return 100
 		end)
-		service:loadPersonalCompany(42)
+		service:loadCompany("personal:42", 42)
 		local snapshot = service:snapshotForTest(COMPANY)
 		expect.truthy(snapshot)
 		local copy = snapshot :: any

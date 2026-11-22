@@ -3,17 +3,24 @@
 -- main.server.lua installs it only when RunService:IsStudio() and this module exists; the
 -- release build (release.project.json) leaves the file out. The hook is a BindableFunction
 -- in ServerStorage, so clients cannot reach it.
+local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
+local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
+local PersistenceService = require(script.Parent:WaitForChild("PersistenceService"))
 
 local StudioTestService = {}
 
 -- Synthetic second player for the playtest; far above real Roblox user IDs.
 StudioTestService.SHADOW_USER_ID = 999999999001
+
+-- Job ID of the fake foreign server that lockSave uses to steal a save's lock.
+local THIEF_JOB_ID = "studio-test-thief"
+local THIEF_LOCK_SECONDS = 300
 
 local function failure(errorCode: string)
 	return { ok = false, errorCode = errorCode }
@@ -25,7 +32,7 @@ end
 
 function StudioTestService.install(context)
 	local companies = context.companies
-	local plots = context.plots
+	local saveSlots = context.saveSlots
 	local companyIdFor = context.companyIdFor
 	local shadowUserId = StudioTestService.SHADOW_USER_ID
 
@@ -61,7 +68,11 @@ function StudioTestService.install(context)
 
 	function commands.customerOrders(arg)
 		if type(arg) == "number" then
-			return companies:getCustomerOrders(companyIdFor(arg))
+			local companyId = companyIdFor(arg)
+			if companyId == nil then
+				return failure("NoActiveSave")
+			end
+			return companies:getCustomerOrders(companyId)
 		end
 		return nil
 	end
@@ -82,7 +93,11 @@ function StudioTestService.install(context)
 		if type(arg) ~= "number" then
 			return failure("BadArgument")
 		end
-		local snapshot = companies:snapshotForTest(companyIdFor(arg))
+		local companyId = companyIdFor(arg)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		local snapshot = companies:snapshotForTest(companyId)
 		if snapshot == nil then
 			return failure("NoSession")
 		end
@@ -92,6 +107,10 @@ function StudioTestService.install(context)
 	function commands.act(arg)
 		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
 			return failure("BadArgument")
+		end
+		local companyId = companyIdFor(arg.userId)
+		if companyId == nil then
+			return failure("NoActiveSave")
 		end
 		local request = {
 			version = Protocol.VERSION,
@@ -103,8 +122,8 @@ function StudioTestService.install(context)
 		if player then
 			return context.handleBusinessAction(player, request)
 		end
-		if arg.userId == shadowUserId and context.shadowUsers[shadowUserId] then
-			return companies:handle(companyIdFor(shadowUserId), shadowUserId, request)
+		if arg.userId == shadowUserId then
+			return companies:handle(companyId, shadowUserId, request)
 		end
 		return failure("NoPlayer")
 	end
@@ -113,7 +132,11 @@ function StudioTestService.install(context)
 		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
 			return failure("BadArgument")
 		end
-		local ok, result = companies:visitForTest(companyIdFor(arg.userId), arg.profile)
+		local companyId = companyIdFor(arg.userId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		local ok, result = companies:visitForTest(companyId, arg.profile)
 		if not ok then
 			return failure(tostring(result))
 		end
@@ -145,76 +168,56 @@ function StudioTestService.install(context)
 		return success()
 	end
 
+	-- Reloads the player's active save from the DataStore, as a rejoin would.
 	function commands.rejoin(arg)
 		local player = realPlayer(arg)
 		if not player then
 			return failure("NoPlayer")
 		end
 		local companyId = companyIdFor(player.UserId)
-		player:SetAttribute("CompanyReady", false)
-		local unloaded, unloadError = companies:unloadCompany(companyId)
-		if not unloaded then
-			return failure("UnloadFailed:" .. tostring(unloadError))
+		local activeSaveId = companyId and string.match(companyId, "^save:(.+)$")
+		if not activeSaveId then
+			return failure("NoActiveSave")
 		end
-		local state, errorCode
-		for attempt = 1, context.loadAttempts do
-			state, errorCode = companies:loadPersonalCompany(player.UserId)
-			-- SessionBusy: the unload above may still be finishing on this server.
-			if state or errorCode ~= "SessionBusy" then
-				break
-			end
-			task.wait(attempt)
+		local played, playError, data = saveSlots:play(player.UserId, activeSaveId, { reload = true })
+		if not played then
+			return failure(tostring(playError))
 		end
-		if not state then
-			player:SetAttribute("CompanyLoadError", errorCode)
-			return failure(tostring(errorCode))
-		end
-		local plotId = player:GetAttribute("PlotId")
-		if type(plotId) == "string" then
-			context.syncPlotWorld(plotId, companyId, state)
-		end
-		player:SetAttribute("CompanyReady", true)
-		player:SetAttribute("CompanyLoadError", nil)
-		return success({ plotId = plotId })
+		return success({ plotId = data and data.plotId })
 	end
 
+	-- The shadow plays its saves like a real player: its legacy personal record migrates
+	-- into "Tree Lot 1" on the first open.
 	function commands.shadowJoin()
-		local companyId = companyIdFor(shadowUserId)
-		local knownPlot = plots:getPlotForUser(shadowUserId)
-		if context.shadowUsers[shadowUserId] and knownPlot and companies:isAvailable(companyId) then
-			return success({ userId = shadowUserId, plotId = knownPlot })
+		local profile, profileError = saveSlots:openProfile(shadowUserId)
+		if not profile then
+			return failure(tostring(profileError))
 		end
-		local state, errorCode
-		for attempt = 1, context.loadAttempts do
-			state, errorCode = companies:loadPersonalCompany(shadowUserId)
-			if state or errorCode ~= "SessionBusy" then
-				break
+		if #profile.saves == 0 then
+			local created = saveSlots:handle(shadowUserId, {
+				version = Protocol.VERSION,
+				requestId = "studio_" .. HttpService:GenerateGUID(false),
+				action = Protocol.SaveActions.Create,
+				payload = {},
+			})
+			if not created.ok then
+				return failure(tostring(created.errorCode))
 			end
-			task.wait(attempt)
 		end
-		if not state then
-			return failure(tostring(errorCode))
+		local first = saveSlots:listFor(shadowUserId)[1]
+		if not first then
+			return failure("NoSave")
 		end
-		local plotId, plotError = plots:claim(shadowUserId)
-		if not plotId then
-			companies:unloadCompany(companyId)
-			return failure(tostring(plotError))
+		local played, playError, data = saveSlots:play(shadowUserId, first.saveId)
+		if not played then
+			return failure(tostring(playError))
 		end
-		context.syncPlotWorld(plotId, companyId, state)
-		context.shadowUsers[shadowUserId] = true
-		return success({ userId = shadowUserId, plotId = plotId })
+		return success({ userId = shadowUserId, plotId = data and data.plotId })
 	end
 
 	function commands.shadowLeave()
-		local companyId = companyIdFor(shadowUserId)
-		local unloaded, unloadError = companies:unloadCompany(companyId)
+		local unloaded, unloadError = saveSlots:leave(shadowUserId, true)
 		companies:forgetUser(shadowUserId)
-		local plotId = plots:getPlotForUser(shadowUserId)
-		if plotId then
-			context.clearPlotVisuals(plotId)
-		end
-		plots:release(shadowUserId)
-		context.shadowUsers[shadowUserId] = nil
 		if not unloaded then
 			return failure("UnloadFailed:" .. tostring(unloadError))
 		end
@@ -225,10 +228,104 @@ function StudioTestService.install(context)
 		if type(arg) ~= "table" then
 			return failure("BadStaff")
 		end
-		if not companies:setStaffForTest(companyIdFor(shadowUserId), arg.employeeId, arg.count) then
+		local companyId = companyIdFor(shadowUserId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		if not companies:setStaffForTest(companyId, arg.employeeId, arg.count) then
 			return failure("BadStaff")
 		end
 		return success()
+	end
+
+	-- One Save.* request: through the remote handler for a real player, directly for the shadow.
+	function commands.saveAction(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
+			return failure("BadArgument")
+		end
+		local request = {
+			version = Protocol.VERSION,
+			requestId = arg.requestId or ("studio_" .. HttpService:GenerateGUID(false)),
+			action = arg.action,
+			payload = arg.payload,
+		}
+		local player = realPlayer(arg.userId)
+		if player then
+			return context.handleSaveAction(player, request)
+		end
+		if arg.userId == shadowUserId then
+			return saveSlots:handle(shadowUserId, request)
+		end
+		return failure("NoPlayer")
+	end
+
+	function commands.saves(arg)
+		if type(arg) ~= "number" then
+			return failure("BadArgument")
+		end
+		return success(saveSlots:listFor(arg))
+	end
+
+	function commands.flush()
+		local ok, saved, failures = companies:flushDirty(true)
+		return success({ ok = ok, saved = saved, failures = failures })
+	end
+
+	-- Only saves listed in that user's profile can be locked or unlocked.
+	local function ownedSaveId(arg): string?
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" or not SaveProfile.isSaveId(arg.saveId) then
+			return nil
+		end
+		for _, entry in saveSlots:listFor(arg.userId) do
+			if entry.saveId == arg.saveId then
+				return arg.saveId
+			end
+		end
+		return nil
+	end
+
+	local function updateSaveRecord(saveId: string, transform)
+		local store = DataStoreService:GetDataStore(context.persistenceStoreName)
+		local ok, err = pcall(function()
+			store:UpdateAsync(PersistenceService.keyFor("save:" .. saveId), transform)
+		end)
+		if not ok then
+			return failure("StoreError:" .. tostring(err))
+		end
+		return success()
+	end
+
+	-- Simulates another server holding the save's session lock.
+	function commands.lockSave(arg)
+		local saveId = ownedSaveId(arg)
+		if not saveId then
+			return failure("NotOwnSave")
+		end
+		return updateSaveRecord(saveId, function(previous)
+			if type(previous) ~= "table" then
+				return nil
+			end
+			previous._session = { jobId = THIEF_JOB_ID, expiresAt = os.time() + THIEF_LOCK_SECONDS }
+			return previous
+		end)
+	end
+
+	function commands.unlockSave(arg)
+		local saveId = ownedSaveId(arg)
+		if not saveId then
+			return failure("NotOwnSave")
+		end
+		return updateSaveRecord(saveId, function(previous)
+			if
+				type(previous) ~= "table"
+				or type(previous._session) ~= "table"
+				or previous._session.jobId ~= THIEF_JOB_ID
+			then
+				return nil
+			end
+			previous._session = nil
+			return previous
+		end)
 	end
 
 	function commands.runPlaytest(arg)
