@@ -2,18 +2,14 @@
 -- Localizes server-created world labels and prompts from their attributes, and shows
 -- short server notifications (order complete, wrong car, out of reach). Presentation
 -- only: every action stays a server-validated prompt or request.
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local LocalizationService = game:GetService("LocalizationService")
 
-local Localization = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Localization"))
 local TreeHeight = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("TreeHeight"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local UiTheme = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UiTheme"))
+local UiKit = require(script.Parent:WaitForChild("UiKit") :: ModuleScript)
 
-local locale = string.lower(string.sub(LocalizationService.RobloxLocaleId, 1, 2))
-if locale ~= "de" and locale ~= "en" then
-	locale = "en"
-end
+-- The locale rule lives in UiKit (one place for CM2-43).
 
 local function number(instance: Instance, attribute: string): number
 	local value = instance:GetAttribute(attribute)
@@ -28,18 +24,17 @@ end
 local function localizeLabel(label: TextLabel)
 	local kind = label:GetAttribute("LabelKind")
 	if kind == "DisplayTree" then
-		label.Text = Localization.format(
-			locale,
+		label.Text = UiKit.localizedFormat(
 			"treeLabel",
 			speciesName(label:GetAttribute("SpeciesId")),
-			Localization.get(locale, "size" .. tostring(label:GetAttribute("SizeId"))),
+			UiKit.localized("size" .. tostring(label:GetAttribute("SizeId"))),
 			TreeHeight.feetText(number(label, "HeightTenths")),
 			number(label, "Price")
 		)
 	elseif kind == "PickupOrder" then
-		label.Text = Localization.format(locale, "pickupOrder", number(label, "OrderNumber"))
+		label.Text = UiKit.localizedFormat("pickupOrder", number(label, "OrderNumber"))
 	elseif kind == "CarNumber" then
-		label.Text = Localization.format(locale, "carNumber", number(label, "OrderNumber"))
+		label.Text = UiKit.localizedFormat("carNumber", number(label, "OrderNumber"))
 	end
 end
 
@@ -47,13 +42,13 @@ local function localizePrompt(prompt: ProximityPrompt)
 	local kind = prompt:GetAttribute("PromptKind")
 	local orderNumber = number(prompt, "OrderNumber")
 	if kind == "CarryOrder" then
-		prompt.ActionText = Localization.get(locale, "promptCarry")
+		prompt.ActionText = UiKit.localized("promptCarry")
 	elseif kind == "LoadOrder" then
-		prompt.ActionText = Localization.get(locale, "promptLoad")
+		prompt.ActionText = UiKit.localized("promptLoad")
 	else
 		return
 	end
-	prompt.ObjectText = Localization.format(locale, "promptObject", orderNumber)
+	prompt.ObjectText = UiKit.localizedFormat("promptObject", orderNumber)
 end
 
 local function visit(instance: Instance)
@@ -71,23 +66,23 @@ end
 workspace.DescendantAdded:Connect(visit)
 
 -- Toast for server notifications { key = string, args = { number } }.
-local player = Players.LocalPlayer
-local gui = Instance.new("ScreenGui")
-gui.Name = "ChristmasMarketNotifications"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
+-- A transient overlay above every other screen; the HUD layout keeps it clear of the HUD and the rail.
+local gui = UiKit.screenGui("ChristmasMarketNotifications", 30)
 local toast = Instance.new("TextLabel")
 toast.Name = "Toast"
-toast.AnchorPoint = Vector2.new(0.5, 0)
-toast.Position = UDim2.fromScale(0.5, 0.08)
-toast.Size = UDim2.fromOffset(460, 44)
 toast.BackgroundColor3 = Color3.fromRGB(24, 74, 50)
-toast.TextColor3 = Color3.fromRGB(255, 244, 217)
+toast.TextColor3 = UiKit.Colors.Cream
 toast.Font = Enum.Font.GothamBold
-toast.TextScaled = true
+toast.TextSize = UiTheme.TextSize.Body
+toast.TextWrapped = true
 toast.Visible = false
 toast.Parent = gui
-Instance.new("UICorner", toast).CornerRadius = UDim.new(0, 10)
+UiKit.corner(toast, UiTheme.CornerRadius.Row)
+UiKit.onLayout(gui, function(m)
+	local box = UiTheme.hudLayout(m, 0).toast
+	toast.Position = UDim2.fromOffset(box.x, box.y)
+	toast.Size = UDim2.fromOffset(box.w, box.h)
+end)
 
 local shownAt = 0
 local notify = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Notify") :: RemoteEvent
@@ -96,7 +91,7 @@ notify.OnClientEvent:Connect(function(message)
 		return
 	end
 	local args = if type(message.args) == "table" then message.args else {}
-	toast.Text = Localization.format(locale, message.key, table.unpack(args))
+	toast.Text = UiKit.localizedFormat(message.key, table.unpack(args))
 	toast.Visible = true
 	local token = os.clock()
 	shownAt = token

@@ -6,8 +6,6 @@
 -- join of a save played elsewhere and the "Find teammates" button. Mobile first; every
 -- button is at least 44 px tall. The UI only sends Save.* requests; the server validates,
 -- filters names and owns every result.
-local HttpService = game:GetService("HttpService")
-local LocalizationService = game:GetService("LocalizationService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -15,113 +13,47 @@ local player = Players.LocalPlayer
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Localization = require(Shared:WaitForChild("Localization"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
+local UiTheme = require(Shared:WaitForChild("UiTheme"))
+local UiKit = require(script.Parent:WaitForChild("UiKit") :: ModuleScript)
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local saveAction = remotes:WaitForChild("SaveAction") :: RemoteFunction
 
-local locale = string.lower(string.sub(LocalizationService.RobloxLocaleId, 1, 2))
-if locale ~= "de" and locale ~= "en" then
-	locale = "en"
-end
-local function localized(key: string): string
-	return Localization.get(locale, key)
-end
-local function localizedFormat(key: string, ...: any): string
-	return Localization.format(locale, key, ...)
-end
+local localized = UiKit.localized
+local localizedFormat = UiKit.localizedFormat
 
-local BUTTON_HEIGHT = 44
+local BUTTON_HEIGHT = UiTheme.MinTouch
 local ROW_HEIGHT = 120
-local CREAM = Color3.fromRGB(255, 244, 217)
-local DARK_TEXT = Color3.fromRGB(30, 48, 35)
-local PANEL = Color3.fromRGB(20, 68, 48)
-local ROW = Color3.fromRGB(38, 89, 63)
-local GOLD = Color3.fromRGB(201, 153, 53)
-local SAND = Color3.fromRGB(237, 212, 142)
-local RED = Color3.fromRGB(196, 58, 52)
-local DISABLED = Color3.fromRGB(120, 120, 120)
+local CREAM = UiKit.Colors.Cream
+local PANEL = UiKit.Colors.Panel
+local ROW = UiKit.Colors.Row
+local GOLD = UiKit.Colors.Gold
+local SAND = UiKit.Colors.Sand
+local RED = UiKit.Colors.Red
+local DISABLED = UiKit.Colors.Disabled
 
-local function corner(parent: Instance, radius: number)
-	Instance.new("UICorner", parent).CornerRadius = UDim.new(0, radius)
-end
+local corner = UiKit.corner
+local textLabel = UiKit.label
+local textBox = UiKit.textBox
 
-local function textLabel(parent: Instance, name: string, text: string, textSize: number): TextLabel
-	local value = Instance.new("TextLabel")
-	value.Name = name
-	value.BackgroundTransparency = 1
-	value.Text = text
-	value.TextColor3 = CREAM
-	value.Font = Enum.Font.GothamBold
-	value.TextSize = textSize
-	value.TextXAlignment = Enum.TextXAlignment.Left
-	value.Parent = parent
-	return value
-end
-
+-- The picker's buttons keep their 16 px text.
 local function textButton(parent: Instance, name: string, text: string, color: Color3): TextButton
-	local value = Instance.new("TextButton")
-	value.Name = name
-	value.BackgroundColor3 = color
-	value.TextColor3 = DARK_TEXT
-	value.Font = Enum.Font.GothamBold
-	value.TextSize = 16
-	value.TextWrapped = true
-	value.Text = text
-	value.Parent = parent
-	corner(value, 8)
-	return value
-end
-
-local function textBox(parent: Instance, name: string, placeholder: string): TextBox
-	local value = Instance.new("TextBox")
-	value.Name = name
-	value.BackgroundColor3 = CREAM
-	value.TextColor3 = DARK_TEXT
-	value.PlaceholderText = placeholder
-	value.PlaceholderColor3 = Color3.fromRGB(120, 110, 90)
-	value.Font = Enum.Font.Gotham
-	value.TextSize = 16
-	value.Text = ""
-	value.ClearTextOnFocus = false
-	value.TextXAlignment = Enum.TextXAlignment.Left
-	-- Typed save names are player text, never auto-translated.
-	value.AutoLocalize = false
-	value.Parent = parent
-	corner(value, 8)
-	local padding = Instance.new("UIPadding")
-	padding.PaddingLeft = UDim.new(0, 8)
-	padding.PaddingRight = UDim.new(0, 8)
-	padding.Parent = value
-	return value
+	return UiKit.button(parent, name, text, color, 16)
 end
 
 -- Layout ------------------------------------------------------------------------------------
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "SavePickerUI"
-gui.DisplayOrder = 20
-gui.ResetOnSpawn = false
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent = player:WaitForChild("PlayerGui")
+local gui = UiKit.screenGui("SavePickerUI", 20)
 
+-- The size and position of every dialog frame come from UiKit.bindDialog.
 local function dialogFrame(name: string): Frame
 	local frame = Instance.new("Frame")
 	frame.Name = name
-	frame.AnchorPoint = Vector2.new(0.5, 0.5)
-	frame.Position = UDim2.fromScale(0.5, 0.5)
-	frame.Size = UDim2.fromScale(0.92, 0.86)
 	frame.BackgroundColor3 = PANEL
 	frame.BorderSizePixel = 0
 	frame.Active = true
 	frame.Parent = gui
-	corner(frame, 14)
-	local constraint = Instance.new("UISizeConstraint")
-	constraint.MaxSize = Vector2.new(480, 600)
-	constraint.Parent = frame
-	local padding = Instance.new("UIPadding")
-	for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
-		(padding :: any)[side] = UDim.new(0, 12)
-	end
-	padding.Parent = frame
+	corner(frame, UiTheme.CornerRadius.Panel)
+	UiKit.padding(frame, 12)
 	return frame
 end
 
@@ -143,15 +75,18 @@ findTeammates.AnchorPoint = Vector2.new(1, 0)
 findTeammates.Position = UDim2.fromScale(1, 0)
 findTeammates.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
 
--- Four footer rows: size toggles, new save, join by code, status and back.
-local FOOTER_HEIGHT = BUTTON_HEIGHT * 4 + 24
+-- Four footer rows: size toggles, new save, join by code, status and back. The Footer frame
+-- (200 px high, see UiTheme.Dialogs.Picker) and the list are placed by UiKit.bindDialog.
 local FOOTER_ROW = BUTTON_HEIGHT + 8
+local footer = Instance.new("Frame")
+footer.Name = "Footer"
+footer.BackgroundTransparency = 1
+footer.BorderSizePixel = 0
+footer.Parent = picker
 local list = Instance.new("ScrollingFrame")
 list.Name = "SaveList"
 list.BackgroundTransparency = 1
 list.BorderSizePixel = 0
-list.Position = UDim2.fromOffset(0, 60)
-list.Size = UDim2.new(1, 0, 1, -(60 + FOOTER_HEIGHT + 8))
 list.CanvasSize = UDim2.new()
 list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 list.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -172,7 +107,7 @@ local SIZES = { "Solo", "Duo", "Trio", "Quad" }
 local selectedSize = "Solo"
 local sizeButtons: { [string]: TextButton } = {}
 for index, size in ipairs(SIZES) do
-	local button = textButton(picker, "Size_" .. size, localized("saveSize" .. size), SAND)
+	local button = textButton(footer, "Size_" .. size, localized("saveSize" .. size), SAND)
 	button.AnchorPoint = Vector2.new(0, 1)
 	button.Position = UDim2.new((index - 1) * 0.25, (index - 1) * 2, 1, -(FOOTER_ROW * 3))
 	button.Size = UDim2.new(0.25, -6, 0, BUTTON_HEIGHT)
@@ -193,34 +128,35 @@ for size, button in pairs(sizeButtons) do
 end
 
 -- Footer row 2: new save.
-local newName = textBox(picker, "NewSaveName", localized("saveNamePlaceholder"))
+local newName = textBox(footer, "NewSaveName", localized("saveNamePlaceholder"))
 newName.AnchorPoint = Vector2.new(0, 1)
 newName.Position = UDim2.new(0, 0, 1, -(FOOTER_ROW * 2))
 newName.Size = UDim2.new(0.6, -4, 0, BUTTON_HEIGHT)
 
-local createSave = textButton(picker, "CreateSave", localized("saveNew"), GOLD)
+local createSave = textButton(footer, "CreateSave", localized("saveNew"), GOLD)
 createSave.AnchorPoint = Vector2.new(1, 1)
 createSave.Position = UDim2.new(1, 0, 1, -(FOOTER_ROW * 2))
 createSave.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
 
 -- Footer row 3: join a friend's save by invite code.
-local joinCode = textBox(picker, "JoinCode", localized("joinCodePlaceholder"))
+local joinCode = textBox(footer, "JoinCode", localized("joinCodePlaceholder"))
 joinCode.AnchorPoint = Vector2.new(0, 1)
 joinCode.Position = UDim2.new(0, 0, 1, -FOOTER_ROW)
 joinCode.Size = UDim2.new(0.6, -4, 0, BUTTON_HEIGHT)
 
-local joinSave = textButton(picker, "JoinSave", localized("joinButton"), GOLD)
+local joinSave = textButton(footer, "JoinSave", localized("joinButton"), GOLD)
 joinSave.AnchorPoint = Vector2.new(1, 1)
 joinSave.Position = UDim2.new(1, 0, 1, -FOOTER_ROW)
 joinSave.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
 
-local status = textLabel(picker, "PickerStatus", "", 14)
+local status = textLabel(footer, "PickerStatus", "", UiTheme.TextSize.Small)
 status.AnchorPoint = Vector2.new(0, 1)
 status.Position = UDim2.fromScale(0, 1)
 status.Size = UDim2.new(0.6, -4, 0, BUTTON_HEIGHT)
 status.TextWrapped = true
+status.TextTruncate = Enum.TextTruncate.AtEnd
 
-local backToGame = textButton(picker, "BackToGame", localized("saveBack"), SAND)
+local backToGame = textButton(footer, "BackToGame", localized("saveBack"), SAND)
 backToGame.AnchorPoint = Vector2.new(1, 1)
 backToGame.Position = UDim2.fromScale(1, 1)
 backToGame.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
@@ -261,12 +197,19 @@ confirmCancel.AnchorPoint = Vector2.new(1, 0)
 confirmCancel.Position = UDim2.new(1, 0, 0, 202)
 confirmCancel.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 
--- "Saves" button, top right, while the picker is closed.
-local savesButton = textButton(gui, "SavesButton", localized("savesButton"), SAND)
-savesButton.AnchorPoint = Vector2.new(1, 0)
-savesButton.Position = UDim2.new(1, -12, 0, 12)
-savesButton.Size = UDim2.fromOffset(96, BUTTON_HEIGHT)
-savesButton.Visible = false
+-- Both dialogs are placed by UiKit.bindDialog; the picker is the base layer and never claims a
+-- modal, so the finder still opens over it.
+UiKit.bindDialog(gui, {
+	frame = picker,
+	list = list,
+	footer = footer,
+	leftItems = { title, hint },
+	rightHeader = findTeammates,
+}, UiTheme.Dialogs.Picker)
+UiKit.bindDialog(gui, { frame = confirm }, UiTheme.Dialogs.DeleteConfirm)
+
+-- "Saves" button in the left rail (slot 50), while the picker is closed.
+local savesButton = UiKit.addRailButton("SavesButton", "savesButton", 50)
 
 -- Requests ----------------------------------------------------------------------------------
 
@@ -277,16 +220,8 @@ local function request(action: string, payload: { [string]: any }): any
 		return nil
 	end
 	inFlight = true
-	local called, response = pcall(saveAction.InvokeServer, saveAction, {
-		version = 1,
-		requestId = HttpService:GenerateGUID(false),
-		action = action,
-		payload = payload,
-	})
+	local response = UiKit.request(saveAction, action, payload)
 	inFlight = false
-	if not called or type(response) ~= "table" then
-		return { ok = false, errorCode = "ConnectionError" }
-	end
 	return response
 end
 
@@ -548,6 +483,7 @@ local function updateBackButton()
 end
 
 local function open()
+	UiKit.closeModals()
 	picker.Visible = true
 	savesButton.Visible = false
 	updateBackButton()

@@ -3,106 +3,52 @@
 -- resizes the save, makes a new code and removes members; a member can leave. Mobile first;
 -- every button is at least 44 px tall. The UI only sends Save.* requests; the server checks
 -- every permission and owns every result.
-local HttpService = game:GetService("HttpService")
-local LocalizationService = game:GetService("LocalizationService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Localization = require(Shared:WaitForChild("Localization"))
+local UiTheme = require(Shared:WaitForChild("UiTheme"))
+local UiKit = require(script.Parent:WaitForChild("UiKit") :: ModuleScript)
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local saveAction = remotes:WaitForChild("SaveAction") :: RemoteFunction
 
-local locale = string.lower(string.sub(LocalizationService.RobloxLocaleId, 1, 2))
-if locale ~= "de" and locale ~= "en" then
-	locale = "en"
-end
-local function localized(key: string): string
-	return Localization.get(locale, key)
-end
-local function localizedFormat(key: string, ...: any): string
-	return Localization.format(locale, key, ...)
-end
+local localized = UiKit.localized
+local localizedFormat = UiKit.localizedFormat
 
-local BUTTON_HEIGHT = 44
+local BUTTON_HEIGHT = UiTheme.MinTouch
 local MEMBER_ROW_HEIGHT = 56
 local STATUS_HEIGHT = 36
 local SIZES = { "Solo", "Duo", "Trio", "Quad" }
-local CREAM = Color3.fromRGB(255, 244, 217)
-local DARK_TEXT = Color3.fromRGB(30, 48, 35)
-local PANEL = Color3.fromRGB(20, 68, 48)
-local ROW = Color3.fromRGB(38, 89, 63)
-local GOLD = Color3.fromRGB(201, 153, 53)
-local SAND = Color3.fromRGB(237, 212, 142)
-local RED = Color3.fromRGB(196, 58, 52)
+local CREAM = UiKit.Colors.Cream
+local PANEL = UiKit.Colors.Panel
+local ROW = UiKit.Colors.Row
+local GOLD = UiKit.Colors.Gold
+local SAND = UiKit.Colors.Sand
+local RED = UiKit.Colors.Red
 
-local function corner(parent: Instance, radius: number)
-	Instance.new("UICorner", parent).CornerRadius = UDim.new(0, radius)
-end
-
-local function textLabel(parent: Instance, name: string, text: string, textSize: number): TextLabel
-	local value = Instance.new("TextLabel")
-	value.Name = name
-	value.BackgroundTransparency = 1
-	value.Text = text
-	value.TextColor3 = CREAM
-	value.Font = Enum.Font.GothamBold
-	value.TextSize = textSize
-	value.TextXAlignment = Enum.TextXAlignment.Left
-	value.TextTruncate = Enum.TextTruncate.AtEnd
-	value.Parent = parent
-	return value
-end
-
-local function textButton(parent: Instance, name: string, text: string, color: Color3): TextButton
-	local value = Instance.new("TextButton")
-	value.Name = name
-	value.BackgroundColor3 = color
-	value.TextColor3 = DARK_TEXT
-	value.Font = Enum.Font.GothamBold
-	value.TextSize = 15
-	value.TextWrapped = true
-	value.Text = text
-	value.Parent = parent
-	corner(value, 8)
-	return value
-end
+local corner = UiKit.corner
+local textLabel = UiKit.label
+local textButton = UiKit.button
 
 -- Layout ------------------------------------------------------------------------------------
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "TeamUI"
-gui.DisplayOrder = 15
-gui.ResetOnSpawn = false
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent = player:WaitForChild("PlayerGui")
+local gui = UiKit.screenGui("TeamUI", 15)
 
-local teamButton = textButton(gui, "TeamButton", localized("teamButton"), SAND)
-teamButton.AnchorPoint = Vector2.new(1, 0)
-teamButton.Position = UDim2.new(1, -120, 0, 12)
-teamButton.Size = UDim2.fromOffset(96, BUTTON_HEIGHT)
-teamButton.Visible = false
+-- The Team button lives in the left rail (slot 60).
+local teamButton = UiKit.addRailButton("TeamButton", "teamButton", 60)
 
+-- The size and position of the panel come from UiKit.bindDialog.
 local panel = Instance.new("Frame")
 panel.Name = "TeamPanel"
-panel.AnchorPoint = Vector2.new(0.5, 0.5)
-panel.Position = UDim2.fromScale(0.5, 0.5)
-panel.Size = UDim2.fromScale(0.92, 0.8)
 panel.BackgroundColor3 = PANEL
 panel.BorderSizePixel = 0
 panel.Active = true
 panel.Visible = false
 panel.Parent = gui
-corner(panel, 14)
-local constraint = Instance.new("UISizeConstraint")
-constraint.MaxSize = Vector2.new(420, 560)
-constraint.Parent = panel
-local padding = Instance.new("UIPadding")
-for _, side in { "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" } do
-	(padding :: any)[side] = UDim.new(0, 12)
-end
-padding.Parent = panel
+corner(panel, UiTheme.CornerRadius.Panel)
+UiKit.padding(panel, 12)
 
 local title = textLabel(panel, "Title", localized("teamTitle"), 22)
 title.Size = UDim2.new(1, 0, 0, 30)
@@ -123,15 +69,18 @@ codeHint.Size = UDim2.new(1, 0, 0, 20)
 codeHint.TextWrapped = true
 
 -- Footer, bottom up: status, then New code / Leave save with Close, then the owner's sizes.
-local FOOTER_HEIGHT = STATUS_HEIGHT + 8 + BUTTON_HEIGHT + 8 + BUTTON_HEIGHT
-local LIST_TOP = 110
+-- The Footer frame (140 px high, see UiTheme.Dialogs.Team) and the list are placed by
+-- UiKit.bindDialog.
+local footer = Instance.new("Frame")
+footer.Name = "Footer"
+footer.BackgroundTransparency = 1
+footer.BorderSizePixel = 0
+footer.Parent = panel
 
 local memberList = Instance.new("ScrollingFrame")
 memberList.Name = "MemberList"
 memberList.BackgroundTransparency = 1
 memberList.BorderSizePixel = 0
-memberList.Position = UDim2.fromOffset(0, LIST_TOP)
-memberList.Size = UDim2.new(1, 0, 1, -(LIST_TOP + FOOTER_HEIGHT + 8))
 memberList.CanvasSize = UDim2.new()
 memberList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 memberList.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -144,7 +93,7 @@ listLayout.Parent = memberList
 
 local sizeButtons: { [string]: TextButton } = {}
 for index, size in ipairs(SIZES) do
-	local button = textButton(panel, "Size_" .. size, localized("saveSize" .. size), SAND)
+	local button = textButton(footer, "Size_" .. size, localized("saveSize" .. size), SAND)
 	button.AnchorPoint = Vector2.new(0, 1)
 	button.Position = UDim2.new((index - 1) * 0.25, (index - 1) * 2, 1, -(STATUS_HEIGHT + 8 + BUTTON_HEIGHT + 8))
 	button.Size = UDim2.new(0.25, -6, 0, BUTTON_HEIGHT)
@@ -152,30 +101,32 @@ for index, size in ipairs(SIZES) do
 	sizeButtons[size] = button
 end
 
-local newCode = textButton(panel, "NewCode", localized("teamNewCode"), GOLD)
+local newCode = textButton(footer, "NewCode", localized("teamNewCode"), GOLD)
 newCode.AnchorPoint = Vector2.new(0, 1)
 newCode.Position = UDim2.new(0, 0, 1, -(STATUS_HEIGHT + 8))
 newCode.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 newCode.Visible = false
 
-local leaveTeam = textButton(panel, "LeaveTeam", localized("teamLeave"), RED)
+local leaveTeam = textButton(footer, "LeaveTeam", localized("teamLeave"), RED)
 leaveTeam.TextColor3 = CREAM
 leaveTeam.AnchorPoint = Vector2.new(0, 1)
 leaveTeam.Position = UDim2.new(0, 0, 1, -(STATUS_HEIGHT + 8))
 leaveTeam.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 leaveTeam.Visible = false
 
-local closeButton = textButton(panel, "Close", localized("teamClose"), SAND)
+local closeButton = textButton(footer, "Close", localized("teamClose"), SAND)
 closeButton.AnchorPoint = Vector2.new(1, 1)
 closeButton.Position = UDim2.new(1, 0, 1, -(STATUS_HEIGHT + 8))
 closeButton.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 
-local status = textLabel(panel, "TeamStatus", "", 13)
+local status = textLabel(footer, "TeamStatus", "", UiTheme.TextSize.Small)
 status.AnchorPoint = Vector2.new(0, 1)
 status.Position = UDim2.fromScale(0, 1)
 status.Size = UDim2.new(1, 0, 0, STATUS_HEIGHT)
 status.TextWrapped = true
-status.TextTruncate = Enum.TextTruncate.None
+status.TextTruncate = Enum.TextTruncate.AtEnd
+
+UiKit.bindDialog(gui, { frame = panel, list = memberList, footer = footer }, UiTheme.Dialogs.Team)
 
 -- Requests ----------------------------------------------------------------------------------
 
@@ -189,16 +140,8 @@ local leaveArmed = false
 
 local function send(action: string, payload: { [string]: any }): any
 	inFlight = true
-	local called, response = pcall(saveAction.InvokeServer, saveAction, {
-		version = 1,
-		requestId = HttpService:GenerateGUID(false),
-		action = action,
-		payload = payload,
-	})
+	local response = UiKit.request(saveAction, action, payload)
 	inFlight = false
-	if not called or type(response) ~= "table" then
-		return { ok = false, errorCode = "ConnectionError" }
-	end
 	return response
 end
 
@@ -333,7 +276,10 @@ end
 
 -- Open and close ----------------------------------------------------------------------------
 
+local close: () -> ()
+
 local function open()
+	UiKit.claimModal("Team", close)
 	panel.Visible = true
 	status.Text = ""
 	removeArmed = nil
@@ -341,7 +287,8 @@ local function open()
 	fetchTeam()
 end
 
-local function close()
+close = function()
+	UiKit.releaseModal("Team")
 	panel.Visible = false
 	removeArmed = nil
 	leaveArmed = false
