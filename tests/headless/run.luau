@@ -55,6 +55,7 @@ for name, path in pairs({
 	PricingService = "src/server/Services/PricingService.lua",
 	ProgressionService = "src/server/Services/ProgressionService.lua",
 	QuestService = "src/server/Services/QuestService.lua",
+	SaveLocatorService = "src/server/Services/SaveLocatorService.lua",
 	SaveSlotService = "src/server/Services/SaveSlotService.lua",
 }) do
 	child(services, name, path)

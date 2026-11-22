@@ -67,6 +67,17 @@ GameConfig.Saves = {
 	SharedEntryName = "Shared lot", -- PROVISIONAL
 	JoinFailureLimit = { limit = 10, window = 3600 }, -- wrong codes per player
 	JoinServerFailureLimit = { limit = 60, window = 60 }, -- wrong codes per server
+	-- Save-to-server map (CM2-S3, PROVISIONAL): a MemoryStore HashMap entry per played save.
+	-- The TTL stays below SessionLockSeconds; renewal every 30 s tolerates two misses.
+	LocatorTtlSeconds = 90,
+	LocatorRenewSeconds = 30,
+	LocatorReleasedTtlSeconds = 30,
+	LocatorAttempts = 2,
+	LocatorListLookups = 8,
+	LocatorCacheSeconds = 15,
+	LocatorMapName = "CM2_SaveServers_v1",
+	-- Teammate finder (CM2-S3): the size of a save created by a search.
+	FinderDefaultSize = "Duo",
 	RateLimits = {
 		["Save.List"] = { limit = 20, window = 10 },
 		["Save.Create"] = { limit = 5, window = 60 },
@@ -79,6 +90,12 @@ GameConfig.Saves = {
 		["Save.RemoveMember"] = { limit = 10, window = 60 },
 		["Save.RegenerateCode"] = { limit = 3, window = 60 },
 		["Save.SetSize"] = { limit = 5, window = 60 },
+		-- Cross-server join and teammate finder (CM2-S3).
+		["Save.Teleport"] = { limit = 3, window = 60 },
+		["Save.FinderStart"] = { limit = 3, window = 300 },
+		["Save.FinderStop"] = { limit = 5, window = 60 },
+		["Save.FinderList"] = { limit = 20, window = 10 },
+		["Save.FinderJoin"] = { limit = 5, window = 60 },
 	},
 }
 

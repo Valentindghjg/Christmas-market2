@@ -59,6 +59,12 @@ Protocol.SaveActions = {
 	RemoveMember = "Save.RemoveMember",
 	RegenerateCode = "Save.RegenerateCode",
 	SetSize = "Save.SetSize",
+	-- One server per save and the teammate finder (CM2-S3).
+	Teleport = "Save.Teleport",
+	FinderStart = "Save.FinderStart",
+	FinderStop = "Save.FinderStop",
+	FinderList = "Save.FinderList",
+	FinderJoin = "Save.FinderJoin",
 }
 
 local saveActionSet = {}
@@ -326,7 +332,15 @@ local SAVE_PAYLOAD_KEYS = {
 	[Protocol.SaveActions.RemoveMember] = { userId = true },
 	[Protocol.SaveActions.RegenerateCode] = {},
 	[Protocol.SaveActions.SetSize] = { size = true },
+	[Protocol.SaveActions.Teleport] = { saveId = true, code = true },
+	[Protocol.SaveActions.FinderStart] = { size = true },
+	[Protocol.SaveActions.FinderStop] = {},
+	[Protocol.SaveActions.FinderList] = {},
+	[Protocol.SaveActions.FinderJoin] = { saveId = true },
 }
+
+-- Sizes a teammate search can create; a Solo save has no free seat.
+local FINDER_SIZES = { Duo = true, Trio = true, Quad = true }
 
 -- Save-slot requests (CM2-S1) use the same envelope as business requests.
 function Protocol.validateSaveRequest(request)
@@ -339,10 +353,29 @@ function Protocol.validateSaveRequest(request)
 	if not hasOnlyKeys(payload, SAVE_PAYLOAD_KEYS[action]) then
 		return false, "UnexpectedField"
 	end
-	if SAVE_PAYLOAD_KEYS[action].saveId and not SaveProfile.isSaveId(payload.saveId) then
+	-- Save.Teleport carries either a saveId or a code; it is checked below.
+	if
+		SAVE_PAYLOAD_KEYS[action].saveId
+		and action ~= Protocol.SaveActions.Teleport
+		and not SaveProfile.isSaveId(payload.saveId)
+	then
 		return false, "InvalidSaveId"
 	end
-	if action == Protocol.SaveActions.Create then
+	if action == Protocol.SaveActions.Teleport then
+		if (payload.saveId == nil) == (payload.code == nil) then
+			return false, "InvalidTeleportTarget"
+		end
+		if payload.saveId ~= nil and not SaveProfile.isSaveId(payload.saveId) then
+			return false, "InvalidSaveId"
+		end
+		if payload.code ~= nil and not isInviteCode(payload.code) then
+			return false, "InvalidInviteCode"
+		end
+	elseif action == Protocol.SaveActions.FinderStart then
+		if payload.size ~= nil and not (type(payload.size) == "string" and FINDER_SIZES[payload.size]) then
+			return false, "InvalidSize"
+		end
+	elseif action == Protocol.SaveActions.Create then
 		if payload.name ~= nil and not isNameText(payload.name) then
 			return false, "InvalidName"
 		end
