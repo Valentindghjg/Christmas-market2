@@ -139,20 +139,96 @@ return function(t)
 		expect.equal(saves, 1)
 	end)
 
-	t.test("lot worker unloads delivered stock through the save boundary", function()
+	t.test("deliveries land in their bay through the save boundary", function()
 		local persistence = fakePersistence()
 		local service = Service.new(persistence, function()
 			return 160
 		end)
+		local synced = {}
+		service:setReceivingChangedHandler(function(companyId, bays)
+			table.insert(synced, { companyId = companyId, bays = bays })
+		end)
 		local state = service:loadCompany("personal:42", 42)
-		state.staff.LotWorker = 1
 		expect.truthy(BusinessState.placeOrder(state, "worker_999", "FrasierFir", "Medium", 1, 100))
-		expect.truthy(BusinessState.reconcileDeliveries(state, 160))
-		local ok, unloaded = service:autoUnloadDeliveriesAll()
+		local ok, delivered = service:reconcileDeliveriesAll()
 		expect.truthy(ok)
-		expect.equal(unloaded, 1)
+		expect.equal(delivered, 1)
 		expect.equal(state.pendingOrders["order:worker_999"], nil)
-		expect.equal(state.stock["FrasierFir:Medium"], 1)
+		expect.equal(state.bays[1].counts.Medium, 1)
+		expect.truthy(service:isDirty("personal:42"))
+		expect.equal(#synced, 1)
+		expect.equal(synced[1].companyId, "personal:42")
+		expect.equal(synced[1].bays[1].counts.Medium, 1)
+		expect.equal(synced[1].bays[1].arrivesIn, -1)
+		-- Without open orders the pass skips the company.
+		local _, again = service:reconcileDeliveriesAll()
+		expect.equal(again, 0)
+		expect.equal(#synced, 1)
+	end)
+
+	local function stockPlace(requestId: string, x: number, z: number, count: number)
+		return {
+			version = 1,
+			requestId = requestId,
+			action = "Stock.Place",
+			payload = {
+				bay = 1,
+				speciesId = "DouglasFir",
+				sizeId = "Medium",
+				x = x,
+				z = z,
+				rotation = 0,
+				count = count,
+				gap = 0.5,
+			},
+		}
+	end
+
+	-- OBSERVED: stocking needs empty hands.
+	t.test("Stock actions refuse a player carrying a tree", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end)
+		local state = service:loadCompany("personal:42", 42)
+		state.bays[1] = { speciesId = "DouglasFir", counts = { Medium = 2 } }
+		state.customerOrders["1"] = {
+			orderNumber = 1,
+			speciesId = "DouglasFir",
+			sizeId = "Medium",
+			heightTenths = 75,
+			salePrice = 70,
+			soldAt = 100,
+			expiresAt = 220,
+			parkingSpace = 1,
+			carriedBy = 42,
+		}
+		state.nextOrderNumber = 2
+		expect.truthy(BusinessState.validate(state))
+		local response = service:handle("personal:42", 42, stockPlace("hands_full_1", -35, -13, 1))
+		expect.falsy(response.ok)
+		expect.equal(response.errorCode, "HandsFull")
+		expect.equal(state.bays[1].counts.Medium, 2)
+		expect.equal(next(state.layout.placements), nil)
+	end)
+
+	t.test("a replayed row fill places nothing twice", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end)
+		local state = service:loadCompany("personal:42", 42)
+		state.bays[1] = { speciesId = "DouglasFir", counts = { Medium = 9 } }
+		local first = service:handle("personal:42", 42, stockPlace("row_fill_01", -35, -20, 5))
+		expect.truthy(first.ok)
+		expect.equal(#first.data.placementIds, 5)
+		local replay = service:handle("personal:42", 42, stockPlace("row_fill_01", -35, -20, 5))
+		expect.falsy(replay.ok)
+		expect.equal(replay.errorCode, "DuplicateRequest")
+		local placements = 0
+		for _ in pairs(state.layout.placements) do
+			placements += 1
+		end
+		expect.equal(placements, 5)
+		expect.equal(state.bays[1].counts.Medium, 4)
 	end)
 
 	t.test("cashier raises customer processing capacity", function()

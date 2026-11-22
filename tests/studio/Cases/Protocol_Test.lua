@@ -55,20 +55,94 @@ return function(t)
 		expect.falsy(Protocol.allowRequest(limiter, 420, "Supplier.PlaceOrder", 101))
 	end)
 
-	-- Extra transform keys could otherwise reach the saved record or carry non-serializable values.
-	t.test("rejects placement transforms with extra or non-finite fields", function()
-		local function place(transform)
-			return Protocol.validateRequest({
-				version = 1,
-				requestId = "place_1234",
-				action = Protocol.Actions.InventoryPlace,
-				payload = { speciesId = "FrasierFir", sizeId = "Medium", transform = transform },
-			})
+	local function stockPayload(overrides: { [string]: any }?)
+		local payload: { [string]: any } = {
+			bay = 1,
+			speciesId = "FrasierFir",
+			sizeId = "Medium",
+			x = 0,
+			z = 0,
+			rotation = 0,
+			count = 1,
+			gap = 0.5,
+		}
+		for key, value in pairs(overrides or {}) do
+			payload[key] = value
 		end
-		expect.truthy(place({ x = 0, y = 0, z = 0, rotation = 0 }))
-		expect.falsy(place({ x = 0, y = 0, z = 0, rotation = 0, junk = "x" }))
-		expect.falsy(place({ x = 0 / 0, y = 0, z = 0, rotation = 0 }))
-		expect.falsy(place({ x = 0, y = 0, z = 0 }))
+		return payload
+	end
+
+	local function stockRequest(action: string, payload)
+		return Protocol.validateRequest({
+			version = 1,
+			requestId = "place_1234",
+			action = action,
+			payload = payload,
+		})
+	end
+
+	-- Extra keys could otherwise reach the saved record or carry non-serializable values.
+	t.test("rejects placement transforms with extra or non-finite fields", function()
+		local function place(payload)
+			return stockRequest(Protocol.Actions.StockPlace, payload)
+		end
+		expect.truthy(place(stockPayload()))
+		expect.falsy(place(stockPayload({ junk = "x" })))
+		expect.falsy(place(stockPayload({ x = 0 / 0 })))
+		expect.falsy(place(stockPayload({ rotation = "90" })))
+		local missing = stockPayload()
+		missing.rotation = nil
+		expect.falsy(place(missing))
+	end)
+
+	-- CM2-G14: Stock.Place and Stock.Store accept only bounded, typed fields.
+	t.test("validates Stock.Place and Stock.Store payloads", function()
+		local function placeReason(overrides): string?
+			local _, reason = stockRequest(Protocol.Actions.StockPlace, stockPayload(overrides))
+			return reason
+		end
+		expect.truthy(stockRequest(Protocol.Actions.StockPlace, stockPayload()))
+		expect.truthy(
+			stockRequest(
+				Protocol.Actions.StockPlace,
+				stockPayload({ bay = 4, count = 10, rotation = 315, gap = 4, x = -200, z = 200 })
+			)
+		)
+		expect.equal(placeReason({ bay = 0 }), "InvalidBay")
+		expect.equal(placeReason({ bay = 5 }), "InvalidBay")
+		expect.equal(placeReason({ count = 0 }), "InvalidQuantity")
+		expect.equal(placeReason({ count = 11 }), "InvalidQuantity")
+		expect.equal(placeReason({ rotation = 30 }), "InvalidPlacement")
+		expect.equal(placeReason({ rotation = 360 }), "InvalidPlacement")
+		expect.equal(placeReason({ gap = 0.3 }), "InvalidPlacement")
+		expect.equal(placeReason({ gap = 4.5 }), "InvalidPlacement")
+		expect.equal(placeReason({ x = 0 / 0 }), "InvalidPlacement")
+		expect.equal(placeReason({ z = 200.5 }), "InvalidPlacement")
+		expect.equal(placeReason({ speciesId = "Pine" }), "UnknownSpecies")
+		expect.equal(placeReason({ sizeId = "Huge" }), "InvalidSize")
+		expect.equal(placeReason({ cost = 0 }), "UnexpectedField")
+		local function storeReason(payload): string?
+			local _, reason = stockRequest(Protocol.Actions.StockStore, payload)
+			return reason
+		end
+		expect.truthy(stockRequest(Protocol.Actions.StockStore, { placementId = "placement:abc:1" }))
+		expect.equal(storeReason({ placementId = "" }), "InvalidPlacementId")
+		expect.equal(storeReason({ placementId = string.rep("a", 97) }), "InvalidPlacementId")
+		expect.equal(storeReason({ placementId = 5 }), "InvalidPlacementId")
+		expect.equal(storeReason({ placementId = "placement:abc:1", bay = 1 }), "InvalidPlacementId")
+	end)
+
+	t.test("removed actions are unknown", function()
+		for _, action in { "Delivery.Unload", "Inventory.Place", "Inventory.Pickup" } do
+			local ok, reason = Protocol.validateRequest({
+				version = 1,
+				requestId = "removed_1234",
+				action = action,
+				payload = {},
+			})
+			expect.falsy(ok)
+			expect.equal(reason, "UnknownAction")
+		end
 	end)
 
 	t.test("rejects unknown quest IDs before they reach the company lock", function()

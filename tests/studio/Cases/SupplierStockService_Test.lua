@@ -4,6 +4,7 @@ return function(t)
 	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 	local BusinessState = require(Shared:WaitForChild("BusinessState"))
 	local GameConfig = require(Shared:WaitForChild("GameConfig"))
+	local Receiving = require(Shared:WaitForChild("Receiving"))
 	local Services = game:GetService("ServerScriptService"):WaitForChild("Server"):WaitForChild("Services")
 	local Supplier = require(Services:WaitForChild("SupplierStockService"))
 	local CompanyStateService = require(Services:WaitForChild("CompanyStateService"))
@@ -68,23 +69,33 @@ return function(t)
 
 	t.test("sells back from storage first, then the lot, never reserved trees", function()
 		local state = BusinessState.new("personal:42", 42)
-		state.stock["FrasierFir:Medium"] = 1
+		-- CM2-G14: receiving first, the bay with the fewest of the SKU first, so bays free up.
+		state.bays[1] = { speciesId = "FrasierFir", counts = { Medium = 3 } }
+		state.bays[2] = { speciesId = "FrasierFir", counts = { Medium = 1 } }
 		state.layout.placements.fir_a = { speciesId = "FrasierFir", sizeId = "Medium" }
 		state.layout.placements.fir_b = { speciesId = "FrasierFir", sizeId = "Medium" }
 		state.reservations.fir_b = { customerId = "customer:1", expiresAt = 999, salePrice = 82 }
 		local cash = state.cash
-		local ok, result = Supplier.sellBack(state, "FrasierFir", "Medium", 2)
+		local first, firstResult = Supplier.sellBack(state, "FrasierFir", "Medium", 2)
+		expect.truthy(first)
+		expect.equal(firstResult.refund, 16)
+		expect.equal(firstResult.fromLot, 0)
+		expect.equal(state.bays[1].counts.Medium, 2)
+		expect.equal(state.bays[2].speciesId, "")
+		expect.equal(next(state.bays[2].counts), nil)
+		local ok, result = Supplier.sellBack(state, "FrasierFir", "Medium", 3)
 		expect.truthy(ok)
-		expect.equal(result.refund, 16)
+		expect.equal(result.refund, 24)
 		expect.equal(result.fromLot, 1)
-		expect.equal(state.cash, cash + 16)
-		expect.equal(state.stock["FrasierFir:Medium"] or 0, 0)
+		expect.equal(state.cash, cash + 40)
+		expect.equal(Receiving.count(state, "FrasierFir", "Medium"), 0)
+		expect.equal(state.bays[1].speciesId, "")
 		expect.equal(state.layout.placements.fir_a, nil)
 		expect.truthy(state.layout.placements.fir_b)
 		local more, reason = Supplier.sellBack(state, "FrasierFir", "Medium", 1)
 		expect.falsy(more)
 		expect.equal(reason, "NotEnoughTrees")
-		expect.equal(state.cash, cash + 16)
+		expect.equal(state.cash, cash + 40)
 		expect.truthy(BusinessState.validate(state))
 	end)
 
@@ -104,7 +115,7 @@ return function(t)
 		}
 		local service = CompanyStateService.new(persistence, constant(100), constant(0.5))
 		local state = service:loadCompany("personal:42", 42)
-		state.stock["NobleFir:Small"] = 2
+		state.bays[1] = { speciesId = "NobleFir", counts = { Small = 2 } }
 		local sell = {
 			version = 1,
 			requestId = "sellback_01",
@@ -114,7 +125,7 @@ return function(t)
 		local cash = state.cash
 		expect.truthy(service:handle("personal:42", 42, sell).ok)
 		expect.equal(service:handle("personal:42", 42, sell).errorCode, "DuplicateRequest")
-		expect.equal(state.stock["NobleFir:Small"], 1)
+		expect.equal(state.bays[1].counts.Small, 1)
 		expect.equal(state.cash, cash + Supplier.refundFor("NobleFir", "Small"))
 	end)
 
@@ -172,7 +183,7 @@ return function(t)
 	t.test("an existing save gains Douglas Fir supplier stock at the next refresh", function()
 		local state = BusinessState.new("personal:42", 42)
 		state.cash = 1000
-		state.stock["FrasierFir:Medium"] = 3
+		state.bays[1] = { speciesId = "FrasierFir", counts = { Medium = 3 } }
 		state.mediumPrices.FrasierFir = 90
 		state.mediumPrices.DouglasFir = nil
 		for _, sizeId in ipairs(GameConfig.SizeIds) do
@@ -183,7 +194,8 @@ return function(t)
 		expect.equal(err, nil)
 		expect.truthy(migrated)
 		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
-		expect.equal(migrated.stock["FrasierFir:Medium"], 3)
+		expect.equal(migrated.bays[1].speciesId, "FrasierFir")
+		expect.equal(migrated.bays[1].counts.Medium, 3)
 		expect.equal(migrated.mediumPrices.FrasierFir, 90)
 		expect.equal(migrated.mediumPrices.DouglasFir, GameConfig.typicalMediumFor("DouglasFir"))
 		local early, reason = BusinessState.placeOrder(migrated, "douglas_early", "DouglasFir", "Small", 1, 100)

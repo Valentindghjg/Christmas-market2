@@ -34,8 +34,9 @@ return function(t)
 		return { version = 1, requestId = id, action = action, payload = payload }
 	end
 
-	-- A company with `quantity` Medium Douglas Fir ordered, delivered, unloaded and displayed.
+	-- A company with `quantity` Medium Douglas Fir ordered, delivered into bay 1 and displayed.
 	local function displayedCompany(quantity: number)
+		expect.truthy(quantity <= 8)
 		local now = 100
 		local service = Service.new(fakePersistence(), function()
 			return now
@@ -54,19 +55,26 @@ return function(t)
 		)
 		expect.truthy(ordered.ok)
 		now += GameConfig.DeliverySeconds
-		local unloaded =
-			service:handle(COMPANY, 42, request("unload_001", "Delivery.Unload", { orderId = ordered.data.orderId }))
-		expect.truthy(unloaded.ok)
+		local reconciled, delivered = service:reconcileDeliveriesAll()
+		expect.truthy(reconciled)
+		expect.equal(delivered, 1)
 		for index = 1, quantity do
-			local transform = { x = 14 + (index - 1) * 7, y = 0, z = -3, rotation = 0 }
+			-- Slots (-35, -13), (-28, -13), (-35, -6), (-28, -6), ...
+			local x = if index % 2 == 1 then -35 else -28
+			local z = -13 + 7 * ((index - 1) // 2)
 			local placed = service:handle(
 				COMPANY,
 				42,
-				request(
-					"place_" .. string.format("%03d", index),
-					"Inventory.Place",
-					{ speciesId = "DouglasFir", sizeId = "Medium", transform = transform }
-				)
+				request("place_" .. string.format("%03d", index), "Stock.Place", {
+					bay = 1,
+					speciesId = "DouglasFir",
+					sizeId = "Medium",
+					x = x,
+					z = z,
+					rotation = 0,
+					count = 1,
+					gap = 0.5,
+				})
 			)
 			expect.truthy(placed.ok)
 		end

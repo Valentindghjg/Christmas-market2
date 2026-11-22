@@ -6,7 +6,7 @@
 -- PASS/FAIL/SKIP per step prefixed with [PLAYTEST]. This module is not under Cases, so the
 -- unit-test runners never execute it. It touches no game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-g7a"
+RunPlaytest.BUILD = "cm2-g14"
 
 local PREFIX = "[PLAYTEST]"
 local SPECIES = "DouglasFir"
@@ -326,10 +326,19 @@ local function execute(hook: any, mode: string, minutes: number)
 		return total
 	end
 
-	local function slotTransform(count: number): any
-		local slot = count % 16
-		return { x = 14 + (slot % 4) * 7, y = 0, z = -3 + (slot // 4) * 8, rotation = 0 }
+	-- CM2-G14: single-tree stocking spots in the lot frame, clear of every keep-clear box.
+	local SLOTS: { { x: number, z: number } } = {}
+	for _, z in { -13, -6, 1, 8 } do
+		for _, x in { -35, -28 } do
+			table.insert(SLOTS, { x = x, z = z })
+		end
 	end
+	for _, z in { -1, 6 } do
+		for _, x in { 11.5, 18.5, 25.5 } do
+			table.insert(SLOTS, { x = x, z = z })
+		end
+	end
+	local SLOT_SPACING = 5.6
 
 	local function visit(userId: number, profile: number): number
 		return call("visit", { userId = userId, profile = profile })
@@ -339,7 +348,8 @@ local function execute(hook: any, mode: string, minutes: number)
 		invoke("advanceClock", seconds)
 	end
 
-	-- Orders Medium Douglas Fir; one retry after a supplier restock when it is sold out.
+	-- Orders Medium Douglas Fir; one retry after a supplier restock when it is sold out. The
+	-- returned data carries the order's receiving bay (data.bay, CM2-G14).
 	local function orderTrees(userId: number, quantity: number): any
 		local payload = { speciesId = SPECIES, sizeId = SIZE, quantity = quantity }
 		local response = act(userId, "Supplier.PlaceOrder", payload)
@@ -354,45 +364,89 @@ local function execute(hook: any, mode: string, minutes: number)
 		return response.data
 	end
 
-	local function pendingStatus(userId: number, orderId: string): string?
-		for _, order in snap(userId).pendingOrders do
+	local function isPending(snapshot: any, orderId: string): boolean
+		for _, order in snapshot.pendingOrders do
 			if order.orderId == orderId then
-				return order.status
+				return true
+			end
+		end
+		return false
+	end
+
+	-- CM2-G14: a due delivery lands in its bay by itself within a delivery pass.
+	local function awaitDelivery(userId: number, orderId: string)
+		local landed = poll(function()
+			return not isPending(snap(userId), orderId)
+		end, 8)
+		check(landed, "delivery of " .. orderId .. " still pending after 8 s")
+	end
+
+	-- The lowest bay index holding at least n Medium Douglas Fir, or nil.
+	local function bayWith(userId: number, n: number): number?
+		for _, bay in snap(userId).bays do
+			if bay.speciesId == SPECIES and bay.counts[SIZE] >= n then
+				return bay.index
 			end
 		end
 		return nil
 	end
 
-	-- A Lot Worker may unload on its own, so an order that left the pending list counts as unloaded.
-	local function unloadOrder(userId: number, orderId: string)
-		local ready = poll(function()
-			local status = pendingStatus(userId, orderId)
-			return status == nil or status == "Delivered"
-		end, 8)
-		check(ready, "delivery of " .. orderId .. " not Delivered within 8 s")
-		if pendingStatus(userId, orderId) == nil then
-			return
-		end
-		local response = act(userId, "Delivery.Unload", { orderId = orderId })
-		if type(response) == "table" and response.ok == true then
-			return
-		end
-		check(
-			type(response) == "table" and response.errorCode == "UnknownOrder" and pendingStatus(userId, orderId) == nil,
-			"Delivery.Unload failed: " .. tostring(type(response) == "table" and response.errorCode or response)
-		)
-	end
-
-	local function unloadDelivered(userId: number)
-		for _, order in snap(userId).pendingOrders do
-			if order.status == "Delivered" then
-				actOk(userId, "Delivery.Unload", { orderId = order.orderId })
+	-- The first slot at least SLOT_SPACING from every displayed tree.
+	local function freeSlot(userId: number): { x: number, z: number }?
+		local placements = snap(userId).placements
+		for _, slot in SLOTS do
+			local free = true
+			for _, placement in placements do
+				if type(placement.x) == "number" and type(placement.z) == "number" then
+					local dx, dz = placement.x - slot.x, placement.z - slot.z
+					if math.sqrt(dx * dx + dz * dz) < SLOT_SPACING then
+						free = false
+						break
+					end
+				end
+			end
+			if free then
+				return slot
 			end
 		end
+		return nil
 	end
 
-	local function placeOne(userId: number, count: number)
-		actOk(userId, "Inventory.Place", { speciesId = SPECIES, sizeId = SIZE, transform = slotTransform(count) })
+	local function stockPayload(bay: number, x: number, z: number, count: number): any
+		return {
+			bay = bay,
+			speciesId = SPECIES,
+			sizeId = SIZE,
+			x = x,
+			z = z,
+			rotation = 0,
+			count = count,
+			gap = 0.5,
+		}
+	end
+
+	-- One Medium Douglas Fir from `bay` onto the first free slot.
+	local function placeOne(userId: number, bay: number)
+		local slot = freeSlot(userId)
+		check(slot ~= nil, "no free stocking slot")
+		local spot = slot :: { x: number, z: number }
+		actOk(userId, "Stock.Place", stockPayload(bay, spot.x, spot.z, 1))
+	end
+
+	-- Medium Douglas Fir in the bays plus on the lot.
+	local function douglasTotal(snapshot: any): number
+		local total = 0
+		for _, bay in snapshot.bays do
+			if bay.speciesId == SPECIES then
+				total += bay.counts[SIZE]
+			end
+		end
+		for _, placement in snapshot.placements do
+			if placement.speciesId == SPECIES and placement.sizeId == SIZE then
+				total += 1
+			end
+		end
+		return total
 	end
 
 	local function sameTable(label: string, left: any, right: any)
@@ -653,8 +707,6 @@ local function execute(hook: any, mode: string, minutes: number)
 				return not busy(R.userId) and not busy(S.userId)
 			end, 8)
 		end
-		unloadDelivered(R.userId)
-		unloadDelivered(S.userId)
 		local snapshot = snap(R.userId)
 		check(#snapshot.customerOrders == 0, "player still has customer orders")
 		priceToSell(R.userId)
@@ -747,7 +799,7 @@ local function execute(hook: any, mode: string, minutes: number)
 			local runner = require(ServerStorage:WaitForChild("UnitTest"):WaitForChild("RunUnitTest")) :: any
 			local totals = runner(nil, 10)
 			check(totals.failed == 0, totals.failed .. " unit test(s) failed")
-			check(totals.run >= 309, "only " .. totals.run .. " unit tests ran (expected >= 309)")
+			check(totals.run >= 332, "only " .. totals.run .. " unit tests ran (expected >= 332)")
 			return string.format("%d run, %d passed", totals.run, totals.passed)
 		end)
 
@@ -764,6 +816,7 @@ local function execute(hook: any, mode: string, minutes: number)
 		end)
 
 		local orderIds: { [number]: string } = {}
+		local orderBays: { [number]: number } = {}
 		local before: { [number]: any } = {}
 
 		addStep("04", "ORDER", { "03" }, function()
@@ -771,6 +824,8 @@ local function execute(hook: any, mode: string, minutes: number)
 				before[userId] = snap(userId)
 				local data = orderTrees(userId, 2)
 				orderIds[userId] = data.orderId
+				orderBays[userId] = data.bay
+				check(type(data.bay) == "number", "order has no receiving bay")
 				local after = snap(userId)
 				check(
 					before[userId].cash - after.cash == 2 * UNIT_PRICE,
@@ -781,34 +836,53 @@ local function execute(hook: any, mode: string, minutes: number)
 			return string.format("2 x %s each, cash -%d", STOCK_KEY, 2 * UNIT_PRICE)
 		end)
 
+		-- CM2-G14: the order lands in its own bay by itself (no unload step).
 		addStep("05", "DELIVER", { "04" }, function()
 			advance(DELIVERY_WAIT)
+			local function landed(userId: number): boolean
+				local snapshot = snap(userId)
+				local bay = snapshot.bays[orderBays[userId]]
+				return not isPending(snapshot, orderIds[userId]) and bay ~= nil and bay.counts[SIZE] == 2
+			end
 			local ok = poll(function()
-				return pendingStatus(R.userId, orderIds[R.userId]) == "Delivered"
-					and pendingStatus(S.userId, orderIds[S.userId]) == "Delivered"
+				return landed(R.userId) and landed(S.userId)
 			end, 8)
-			check(ok, "orders not Delivered within 8 s")
-			return "both orders Delivered"
+			check(ok, "orders not in their bays within 8 s")
+			return string.format("bays %d (R) and %d (S) hold 2 each", orderBays[R.userId], orderBays[S.userId])
 		end)
 
-		addStep("06", "UNLOAD", { "05" }, function()
+		addStep("06", "BAY_VIEW", { "05" }, function()
 			for _, userId in { R.userId, S.userId } do
-				local stockBefore = snap(userId).stock[STOCK_KEY] or 0
-				actOk(userId, "Delivery.Unload", { orderId = orderIds[userId] })
-				local stockAfter = snap(userId).stock[STOCK_KEY] or 0
+				local plotId = if userId == R.userId then R.plotId else S.plotId
+				local plot = plotFolder(plotId)
+				local receiving = plot and plot:FindFirstChild("Receiving")
+				local bayPart = receiving and receiving:FindFirstChild("Bay_" .. orderBays[userId])
+				check(bayPart ~= nil, "Bay_" .. orderBays[userId] .. " missing on " .. tostring(plotId))
+				local part = bayPart :: Instance
+				local expected = snap(userId).bays[orderBays[userId]].counts[SIZE]
+				local shown = poll(function()
+					return part:GetAttribute("SpeciesId") == SPECIES and part:GetAttribute("CountMedium") == expected
+				end, 4)
 				check(
-					stockAfter == stockBefore + 2,
-					string.format("stock %d -> %d, expected +2", stockBefore, stockAfter)
+					shown,
+					string.format(
+						"Bay_%d shows %s x%s, expected %s x%d",
+						orderBays[userId],
+						tostring(part:GetAttribute("SpeciesId")),
+						tostring(part:GetAttribute("CountMedium")),
+						SPECIES,
+						expected
+					)
 				)
 			end
-			return "stock +2 each"
+			return "bay attributes match the snapshot"
 		end)
 
 		addStep("07", "PLACE", { "06" }, function()
 			for _, userId in { R.userId, S.userId } do
 				local count = snap(userId).placementCount
-				placeOne(userId, count)
-				placeOne(userId, count + 1)
+				placeOne(userId, orderBays[userId])
+				placeOne(userId, orderBays[userId])
 				local after = snap(userId)
 				check(
 					after.placementCount == count + 2,
@@ -1039,7 +1113,7 @@ local function execute(hook: any, mode: string, minutes: number)
 			local afterOrder = snap(R.userId)
 			check(first.cash - afterOrder.cash == UNIT_PRICE, "order cost differs from " .. UNIT_PRICE)
 			advance(DELIVERY_WAIT)
-			unloadOrder(R.userId, data.orderId)
+			awaitDelivery(R.userId, data.orderId)
 			local beforeSell = snap(R.userId)
 			local payload = { speciesId = SPECIES, sizeId = SIZE, quantity = 1 }
 			local requestId = "playtest_sellback_" .. HttpService:GenerateGUID(false)
@@ -1091,6 +1165,7 @@ local function execute(hook: any, mode: string, minutes: number)
 				)
 			end
 			sameTable("stock", saved.stock, after.stock)
+			check(HttpService:JSONEncode(saved.bays) == HttpService:JSONEncode(after.bays), "bays changed")
 			sameTable("staff", saved.staff, after.staff)
 			check(#saved.pendingOrders == #after.pendingOrders, "pending order count changed")
 			check(realPlayer():GetAttribute("CompanyReady") == true, "CompanyReady is not true")
@@ -1114,8 +1189,8 @@ local function execute(hook: any, mode: string, minutes: number)
 					local start = snap(S.userId)
 					local data = orderTrees(S.userId, 1)
 					advance(DELIVERY_WAIT)
-					unloadOrder(S.userId, data.orderId)
-					placeOne(S.userId, snap(S.userId).placementCount)
+					awaitDelivery(S.userId, data.orderId)
+					placeOne(S.userId, data.bay)
 					local number = visit(S.userId, 8 + 24 * ((cycle - 1) % 9))
 					local mid = snap(S.userId)
 					if cycle % 2 == 1 then
@@ -1565,6 +1640,104 @@ local function execute(hook: any, mode: string, minutes: number)
 			)
 		end)
 
+		-- CM2-G14: the three spot reasons, a row fill of 5 (all or none), replay protection and
+		-- store mode without duplication. The trees stay in R's bay for the next run.
+		addStep("36", "ROW_FILL", { "08" }, function()
+			local function refused(payload: any, expected: string)
+				local beforeRefusal = snap(R.userId)
+				local response = act(R.userId, "Stock.Place", payload)
+				local code = type(response) == "table" and response.errorCode or response
+				check(code == expected, string.format("Stock.Place returned %s, expected %s", tostring(code), expected))
+				local afterRefusal = snap(R.userId)
+				check(afterRefusal.placementCount == beforeRefusal.placementCount, "a refused place changed placements")
+				check(
+					HttpService:JSONEncode(afterRefusal.bays) == HttpService:JSONEncode(beforeRefusal.bays),
+					"a refused place changed the bays"
+				)
+			end
+			local function storeOk(placementId: string)
+				actOk(R.userId, "Stock.Store", { placementId = placementId })
+			end
+
+			-- 1. A failed earlier run may have left trees on the row line.
+			local cleared = 0
+			for _, placement in snap(R.userId).placements do
+				if placement.z == -20 and not placement.reserved then
+					storeOk(placement.placementId)
+					cleared += 1
+				end
+			end
+			if cleared > 0 then
+				task.wait(10) -- stay under the per-action rate limit
+			end
+
+			-- 2. Five Medium Douglas Fir in one bay.
+			if bayWith(R.userId, 5) == nil then
+				check(snap(R.userId).cash >= 5 * UNIT_PRICE, "cash below " .. 5 * UNIT_PRICE)
+				local data = orderTrees(R.userId, 5)
+				advance(DELIVERY_WAIT)
+				awaitDelivery(R.userId, data.orderId)
+			end
+			local bay = bayWith(R.userId, 5)
+			check(bay ~= nil, "no bay with 5 Medium Douglas Fir")
+			local bayIndex = bay :: number
+			local start = snap(R.userId)
+			local startTotal = douglasTotal(start)
+
+			-- 3. The three reasons; nothing changes after a refusal.
+			refused(stockPayload(bayIndex, 39.5, 0, 1), "OutsideLot")
+			refused(stockPayload(bayIndex, 16, -10, 1), "KeepClear")
+			refused(stockPayload(bayIndex, -10.6, -20, 5), "KeepClear")
+
+			-- 4. A row of 5 lands as a whole; its replay places nothing.
+			local requestId = "playtest_row_" .. HttpService:GenerateGUID(false)
+			local beforeRow = snap(R.userId)
+			local response = act(R.userId, "Stock.Place", stockPayload(bayIndex, -35, -20, 5), requestId)
+			check(
+				type(response) == "table" and response.ok == true,
+				"row fill failed: " .. tostring(type(response) == "table" and response.errorCode or response)
+			)
+			local ids = response.data.placementIds
+			check(#ids == 5, #ids .. " placement IDs")
+			local afterRow = snap(R.userId)
+			check(afterRow.placementCount == beforeRow.placementCount + 5, "placementCount did not grow by 5")
+			check(
+				afterRow.bays[bayIndex].counts[SIZE] == beforeRow.bays[bayIndex].counts[SIZE] - 5,
+				"the bay did not lose 5 trees"
+			)
+			local shown = poll(function()
+				return displayedCount(R.plotId) == snap(R.userId).placementCount
+			end, 4)
+			check(shown, "DisplayedTrees differs from placementCount after the row fill")
+			local replay = act(R.userId, "Stock.Place", stockPayload(bayIndex, -35, -20, 5), requestId)
+			check(
+				type(replay) == "table" and replay.errorCode == "DuplicateRequest",
+				"row replay returned " .. tostring(type(replay) == "table" and replay.errorCode or replay)
+			)
+			check(snap(R.userId).placementCount == afterRow.placementCount, "the replay placed trees")
+
+			-- 5. With the first tree stored back, its neighbour blocks a spot 1 stud away.
+			storeOk(ids[1])
+			local storedIn = bayWith(R.userId, 1)
+			check(storedIn ~= nil, "the stored tree is in no bay")
+			refused(stockPayload(storedIn :: number, -27.9, -20, 1), "TooClose")
+			for index = 2, 5 do
+				storeOk(ids[index])
+			end
+
+			-- 6. A stored tree cannot be stored twice.
+			local again = act(R.userId, "Stock.Store", { placementId = ids[2] })
+			check(
+				type(again) == "table" and again.errorCode == "UnknownPlacement",
+				"second store returned " .. tostring(type(again) == "table" and again.errorCode or again)
+			)
+
+			-- 7. No tree was created or lost.
+			local finalTotal = douglasTotal(snap(R.userId))
+			check(finalTotal == startTotal, string.format("Douglas Medium total %d -> %d", startTotal, finalTotal))
+			return string.format("3 reasons, row of 5 and replay, store back x5, total %d kept", finalTotal)
+		end)
+
 		addStep("22", "LEAK_CHECK", { "02" }, leakCheck)
 		addStep("23", "CLEANUP", {}, cleanup)
 	else
@@ -1621,12 +1794,15 @@ local function execute(hook: any, mode: string, minutes: number)
 			end
 
 			local function stockAndPlace(userId: number)
-				unloadDelivered(userId)
 				local snapshot = snap(userId)
 				local count = snapshot.placementCount
 				local stored = snapshot.stock[STOCK_KEY] or 0
 				while stored > 0 and count < 6 do
-					placeOne(userId, count)
+					local bay = bayWith(userId, 1)
+					if bay == nil then
+						break
+					end
+					placeOne(userId, bay)
 					count += 1
 					stored -= 1
 				end

@@ -164,6 +164,53 @@ return function(t)
 		end
 	end)
 
+	-- CM2-G14: the stocking bar stays in the safe area, clear of the HUD and the toast.
+	t.test("keeps the stocking bar inside the safe area", function()
+		local ids = { "Size", "Rotate", "Row", "GapDown", "Gap", "GapUp", "Store", "Place", "Done" }
+		local function checkBar(w: number, h: number)
+			local m = UiTheme.metrics(w, h)
+			local bar = UiTheme.stockingBarLayout(m)
+			local hud = UiTheme.hudLayout(m, 4)
+			expect.truthy(UiTheme.inside(bar.frame, w, h))
+			expect.falsy(UiTheme.overlaps(bar.frame, hud.hud))
+			expect.falsy(UiTheme.overlaps(bar.frame, hud.toast))
+			expect.truthy(UiTheme.inside(bar.header, bar.frame.w, bar.frame.h))
+			expect.truthy(UiTheme.inside(bar.reason, bar.frame.w, bar.frame.h))
+			for index, id in ipairs(ids) do
+				local control = bar.controls[id]
+				expect.truthy(control ~= nil)
+				expect.truthy(control.w >= UiTheme.MinTouch)
+				expect.truthy(control.h >= UiTheme.MinTouch)
+				expect.truthy(UiTheme.inside(control, bar.frame.w, bar.frame.h))
+				expect.falsy(UiTheme.overlaps(control, bar.header))
+				expect.falsy(UiTheme.overlaps(control, bar.reason))
+				for other = index + 1, #ids do
+					expect.falsy(UiTheme.overlaps(control, bar.controls[ids[other]]))
+				end
+			end
+			if m.compact then
+				expect.truthy(bar.twoRows)
+				expect.truthy(bar.frame.x >= math.floor(0.3 * w))
+				expect.truthy(bar.frame.x + bar.frame.w <= math.floor(0.8 * w) + 1)
+			end
+			return bar
+		end
+		for _, size in ipairs(MATRIX) do
+			checkBar(size.w, size.h)
+		end
+		expect.truthy(checkBar(720, 520).twoRows)
+		expect.falsy(checkBar(1920, 1022).twoRows)
+		local tiny = UiTheme.stockingBarLayout(UiTheme.metrics(1, 1))
+		for _, b in ipairs({ tiny.frame, tiny.header, tiny.reason }) do
+			expect.truthy(b.x >= 0 and b.y >= 0)
+			noNegativeSize(b)
+		end
+		for _, control in pairs(tiny.controls) do
+			expect.truthy(control.x >= 0 and control.y >= 0)
+			noNegativeSize(control)
+		end
+	end)
+
 	t.test("fits the picker, delete confirm, Team panel and finder on every screen", function()
 		for _, size in ipairs(MATRIX) do
 			local m = UiTheme.metrics(size.w, size.h)

@@ -2,30 +2,37 @@
 return function(t)
 	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 	local BusinessState = require(Shared:WaitForChild("BusinessState"))
-	local Inventory = require(Shared:WaitForChild("Inventory"))
+	local GameConfig = require(Shared:WaitForChild("GameConfig"))
+	local Receiving = require(Shared:WaitForChild("Receiving"))
 	local expect = t.expect
 	-- A purchase derives cost from the server catalog, not caller input.
 	t.test("charges server configured wholesale price", function()
 		local state = BusinessState.new()
-		local ok, cost = BusinessState.buyStock(state, "FrasierFir", "Medium", 2)
+		local ok, order = BusinessState.placeOrder(state, "charge_0001", "FrasierFir", "Medium", 2, 100)
 		expect.truthy(ok)
-		expect.equal(cost, 64)
+		expect.equal(order.cost, 64)
 		expect.equal(state.cash, 20)
-		expect.equal(Inventory.count(state.stock, Inventory.key("FrasierFir", "Medium")), 2)
+		BusinessState.reconcileDeliveries(state, 100 + GameConfig.DeliverySeconds)
+		expect.equal(state.bays[order.bay].speciesId, "FrasierFir")
+		expect.equal(state.bays[order.bay].counts.Medium, 2)
 	end)
-	-- A rejected purchase leaves cash and stock unchanged.
+	-- A rejected purchase leaves cash and the bays unchanged.
 	t.test("does not partially mutate unaffordable order", function()
 		local state = BusinessState.new()
 		local beforeCash = state.cash
-		local ok, reason = BusinessState.buyStock(state, "BlueSpruce", "Large", 2)
+		local ok, reason = BusinessState.placeOrder(state, "unafford_01", "BlueSpruce", "Large", 2, 100)
 		expect.falsy(ok)
 		expect.equal(reason, "InsufficientFunds")
 		expect.equal(state.cash, beforeCash)
-		expect.equal(Inventory.count(state.stock, Inventory.key("BlueSpruce", "Large")), 0)
+		expect.equal(Receiving.count(state, "BlueSpruce", "Large"), 0)
+		expect.equal(state.bays[1].speciesId, "")
+		expect.equal(next(state.pendingOrders), nil)
 	end)
 	-- A v1 save retains all financial state while gaining v2 ownership fields.
 	t.test("migrates legacy state without losing balances", function()
 		local legacy = BusinessState.new()
+		legacy.stock = {}
+		legacy.bays = nil
 		legacy.schemaVersion = 1
 		legacy.companyId = nil
 		legacy.ownerUserId = nil
@@ -60,7 +67,8 @@ return function(t)
 		local legacy = BusinessState.new("personal:42", 42)
 		legacy.schemaVersion = 8
 		legacy.questClaims = nil
-		legacy.stock[Inventory.key("NobleFir", "Large")] = 2
+		legacy.bays = nil
+		legacy.stock = { ["NobleFir:Large"] = 2 }
 		legacy.pendingOrders = {
 			order_legacy = { orderId = "order_legacy", speciesId = "NobleFir", sizeId = "Large", quantity = 2 },
 		}
@@ -72,7 +80,9 @@ return function(t)
 		local migrated = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
 		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
-		expect.equal(Inventory.count(migrated.stock, Inventory.key("NobleFir", "Large")), 2)
+		expect.equal(migrated.stock, nil)
+		expect.equal(migrated.bays[1].speciesId, "NobleFir")
+		expect.equal(migrated.bays[1].counts.Large, 2)
 		expect.truthy(migrated.pendingOrders.order_legacy)
 		expect.equal(migrated.mediumPrices.NobleFir, 111)
 		expect.equal(migrated.progression.lotExpansion, 2)
@@ -151,15 +161,17 @@ return function(t)
 		legacy.saveSize = nil
 		legacy.cash = 777
 		legacy.reputation = 120
-		legacy.stock["NobleFir:Small"] = 4
+		legacy.bays = nil
+		legacy.stock = { ["NobleFir:Small"] = 4 }
 		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(BusinessState.SCHEMA_VERSION, 12)
-		expect.equal(migrated.schemaVersion, 12)
+		expect.equal(BusinessState.SCHEMA_VERSION, 13)
+		expect.equal(migrated.schemaVersion, 13)
 		expect.equal(migrated.cash, 777)
 		expect.equal(migrated.reputation, 120)
-		expect.equal(migrated.stock["NobleFir:Small"], 4)
+		expect.equal(migrated.bays[1].speciesId, "NobleFir")
+		expect.equal(migrated.bays[1].counts.Small, 4)
 		expect.equal(migrated.saveName, "Tree Lot 1")
 		expect.equal(migrated.saveSize, "Solo")
 	end)
@@ -195,7 +207,7 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(migrated.schemaVersion, 12)
+		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(migrated.members["42"], "Owner")
 		expect.equal(migrated.members["7"], nil)
 		expect.equal(BusinessState.memberCount(migrated), 1)
@@ -320,12 +332,74 @@ return function(t)
 	end)
 
 	t.test("a new company prices and stocks Douglas Fir", function()
-		local GameConfig = require(Shared:WaitForChild("GameConfig"))
 		local state = BusinessState.new("personal:42", 42)
 		expect.equal(state.mediumPrices.DouglasFir, 140)
 		expect.equal(state.supplier.stock["DouglasFir:Small"], GameConfig.Supplier.BaseStock.Small)
 		expect.equal(state.supplier.stock["DouglasFir:Medium"], GameConfig.Supplier.BaseStock.Medium)
 		expect.equal(state.supplier.stock["DouglasFir:Large"], GameConfig.Supplier.BaseStock.Large)
 		expect.truthy(BusinessState.validate(state))
+	end)
+
+	-- CM2-G14 (STK-04): stored stock and orders move into 4 bays; what does not fit is refunded.
+	t.test("migrates v12 to v13 into bays and refunds overflow", function()
+		local legacy = BusinessState.new("save:42_x", 42)
+		legacy.schemaVersion = 12
+		legacy.bays = nil
+		legacy.cash = 1000
+		legacy.stock = {
+			["DouglasFir:Medium"] = 12,
+			["FrasierFir:Small"] = 3,
+			["NobleFir:Large"] = 1,
+			["BlueSpruce:Medium"] = 9,
+		}
+		legacy.pendingOrders = {
+			["order:delivered_1"] = {
+				orderId = "order:delivered_1",
+				requestId = "delivered_1",
+				speciesId = "FrasierFir",
+				sizeId = "Small",
+				quantity = 1,
+				createdAt = 10,
+				dueAt = 70,
+				status = "Delivered",
+			},
+			["order:pending_01"] = {
+				orderId = "order:pending_01",
+				requestId = "pending_01",
+				speciesId = "NobleFir",
+				sizeId = "Small",
+				quantity = 2,
+				createdAt = 20,
+				dueAt = 80,
+				status = "Pending",
+			},
+		}
+		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
+		expect.equal(reason, nil)
+		expect.truthy(migrated)
+		local expected = {
+			{ "DouglasFir", "Medium", 9 },
+			{ "DouglasFir", "Medium", 3 },
+			{ "FrasierFir", "Small", 4 },
+			{ "NobleFir", "Large", 1 },
+		}
+		for index, bay in ipairs(expected) do
+			expect.equal(migrated.bays[index].speciesId, bay[1])
+			expect.equal(migrated.bays[index].counts[bay[2]], bay[3])
+			local keys = 0
+			for _ in pairs(migrated.bays[index].counts) do
+				keys += 1
+			end
+			expect.equal(keys, 1)
+		end
+		-- 9 Blue Spruce Medium x 42 = 378 and the pending order 2 x Noble Small 28 = 56.
+		expect.equal(migrated.cash, 1000 + 434)
+		local last = migrated.history[#migrated.history]
+		expect.equal(last.kind, "MigrationRefund")
+		expect.equal(last.amount, 434)
+		expect.equal(next(migrated.pendingOrders), nil)
+		expect.equal(migrated.stock, nil)
+		expect.equal(migrated.schemaVersion, 13)
+		expect.truthy(BusinessState.validate(migrated))
 	end)
 end

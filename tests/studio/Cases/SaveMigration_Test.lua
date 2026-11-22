@@ -74,7 +74,8 @@ return function(t)
 		record.sales = 5
 		record.customerVisits = 5
 		record.revenue = 400
-		record.stock["DouglasFir:Medium"] = 3
+		record.bays = nil
+		record.stock = { ["DouglasFir:Medium"] = 3 }
 		record.layout.placements["placement:p1"] = { speciesId = "DouglasFir", sizeId = "Medium", x = 14, z = -3 }
 		record.pendingOrders["order:abc12345"] = {
 			orderId = "order:abc12345",
@@ -104,9 +105,12 @@ return function(t)
 		expect.equal(target._session, nil)
 		expect.equal(target.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(target.cash, 1234)
-		expect.equal(target.stock["DouglasFir:Medium"], 3)
+		expect.equal(target.bays[1].speciesId, "DouglasFir")
+		expect.equal(target.bays[1].counts.Medium, 3)
+		expect.equal(target.stock, nil)
 		expect.truthy(target.layout.placements["placement:p1"])
 		expect.equal(target.pendingOrders["order:abc12345"].quantity, 2)
+		expect.equal(target.pendingOrders["order:abc12345"].bay, 2)
 		expect.equal(target.sales, 5)
 		expect.equal(target.revenue, 400)
 		local legacy = store.records[LEGACY_KEY]

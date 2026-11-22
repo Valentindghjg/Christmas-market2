@@ -202,6 +202,24 @@ return function(t)
 		)
 	end)
 
+	-- CM2-G14: every stocking error code has a sentence in both languages.
+	t.test("has a sentence for every stocking error", function()
+		local Stocking = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Stocking"))
+		local codes = 0
+		for code, key in pairs(Stocking.ErrorKeys) do
+			codes += 1
+			expect.equal(type(code), "string")
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+		expect.equal(codes, 13)
+		expect.equal(
+			Localization.format("en", "stockingHeader", "Douglas Fir", 1, 2, 3),
+			"Douglas Fir · 1 Small · 2 Medium · 3 Large"
+		)
+		expect.equal(Localization.format("en", "bayArriving", "0:25"), "Delivery arriving 0:25")
+	end)
+
 	-- CM2-G7: the Pricing tab keys.
 	t.test("has every pricing key in English and German", function()
 		local keys = {

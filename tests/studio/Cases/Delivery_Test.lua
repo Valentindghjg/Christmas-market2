@@ -2,20 +2,24 @@
 return function(t)
 	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 	local BusinessState = require(Shared:WaitForChild("BusinessState"))
-	local Inventory = require(Shared:WaitForChild("Inventory"))
+	local Receiving = require(Shared:WaitForChild("Receiving"))
 	local expect = t.expect
 
-	-- An order debits once but does not enter storage before its delivery is due.
+	-- An order debits once but does not reach its bay before its delivery is due (DEL-01).
 	t.test("moves order through delivery and unload", function()
 		local state = BusinessState.new("personal:42", 42)
 		local ok, order = BusinessState.placeOrder(state, "request_100", "FrasierFir", "Medium", 2, 100)
 		expect.truthy(ok)
 		expect.equal(state.cash, 20)
-		expect.equal(Inventory.count(state.stock, Inventory.key("FrasierFir", "Medium")), 0)
-		local early = BusinessState.unloadOrder(state, order.orderId, 101)
-		expect.falsy(early)
-		expect.truthy(BusinessState.unloadOrder(state, order.orderId, 160))
-		expect.equal(Inventory.count(state.stock, Inventory.key("FrasierFir", "Medium")), 2)
+		expect.equal(Receiving.count(state, "FrasierFir", "Medium"), 0)
+		local _, early = BusinessState.reconcileDeliveries(state, 101)
+		expect.equal(early, 0)
+		expect.equal(Receiving.count(state, "FrasierFir", "Medium"), 0)
+		expect.truthy(state.pendingOrders[order.orderId])
+		local _, arrived = BusinessState.reconcileDeliveries(state, 160)
+		expect.equal(arrived, 1)
+		expect.equal(state.bays[order.bay].counts.Medium, 2)
+		expect.equal(Receiving.count(state, "FrasierFir", "Medium"), 2)
 	end)
 
 	t.test("reports only newly arrived deliveries", function()
@@ -28,16 +32,16 @@ return function(t)
 		expect.equal(repeated, 0)
 	end)
 
-	-- Completed orders leave the record and cannot be unloaded a second time.
+	-- Completed orders leave the record and never land a second time.
 	t.test("removes an order once it is unloaded", function()
 		local state = BusinessState.new("personal:42", 42)
 		local _, order = BusinessState.placeOrder(state, "request_200", "FrasierFir", "Medium", 1, 100)
-		expect.truthy(BusinessState.unloadOrder(state, order.orderId, 160))
+		local _, arrived = BusinessState.reconcileDeliveries(state, 160)
+		expect.equal(arrived, 1)
 		expect.equal(state.pendingOrders[order.orderId], nil)
-		local again, reason = BusinessState.unloadOrder(state, order.orderId, 160)
-		expect.falsy(again)
-		expect.equal(reason, "UnknownOrder")
-		expect.equal(Inventory.count(state.stock, Inventory.key("FrasierFir", "Medium")), 1)
+		local _, again = BusinessState.reconcileDeliveries(state, 160)
+		expect.equal(again, 0)
+		expect.equal(Receiving.count(state, "FrasierFir", "Medium"), 1)
 	end)
 
 	-- G4: each open order occupies one of the receiving bays.
@@ -78,7 +82,8 @@ return function(t)
 		local GameConfig = require(Shared:WaitForChild("GameConfig"))
 		local state = BusinessState.new("personal:42", 42)
 		state.cash = 100000
-		state.stock["NobleFir:Medium"] = GameConfig.Receiving.BaseStorage - 2
+		-- Bay capacity is enforced on mutation only, so one legacy bay may hold 28 stored trees.
+		state.bays[1] = { speciesId = "NobleFir", counts = { Medium = GameConfig.Receiving.BaseStorage - 2 } }
 		local ok, reason = BusinessState.placeOrder(state, "storage_full", "FrasierFir", "Small", 3, 100)
 		expect.falsy(ok)
 		expect.equal(reason, "StorageFull")

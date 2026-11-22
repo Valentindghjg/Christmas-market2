@@ -120,6 +120,23 @@ return function(t)
 		expect.equal(GameConfig.Trees.NobleFir.wholesale.Medium * Pricing.BenchmarkMultiplier, 185)
 	end)
 
+	-- CM2-G14: stocking spots and the delivery countdown.
+	t.test("placement config is consistent", function()
+		local Placement = GameConfig.Placement
+		for _, sizeId in ipairs(GameConfig.SizeIds) do
+			expect.truthy(Placement.FootprintRadius[sizeId] > 0)
+		end
+		expect.truthy(Placement.Gap.Default >= Placement.Gap.Min and Placement.Gap.Default <= Placement.Gap.Max)
+		expect.truthy(Placement.RowMax >= 5)
+		expect.equal(GameConfig.DeliverySeconds, 30)
+		expect.truthy(#Placement.KeepClear > 0)
+		for _, box in ipairs(Placement.KeepClear) do
+			expect.equal(type(box.id), "string")
+			expect.truthy(box.minX < box.maxX)
+			expect.truthy(box.minZ < box.maxZ)
+		end
+	end)
+
 	-- CM2-R5: main's BindToClose waits SHUTDOWN_WAIT_SECONDS = 25.
 	t.test("unload retries fit the fail-closed window and the shutdown budget", function()
 		local sum = 0
