@@ -48,6 +48,7 @@ for name, path in pairs({
 	SupplierStockService = "src/server/Services/SupplierStockService.lua",
 	CustomerSimulationService = "src/server/Services/CustomerSimulationService.lua",
 	EmployeeService = "src/server/Services/EmployeeService.lua",
+	InviteCodeService = "src/server/Services/InviteCodeService.lua",
 	PersistenceService = "src/server/Services/PersistenceService.lua",
 	PlacementService = "src/server/Services/PlacementService.lua",
 	PlotService = "src/server/Services/PlotService.lua",

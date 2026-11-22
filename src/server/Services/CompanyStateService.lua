@@ -14,6 +14,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
+local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
 local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
@@ -94,14 +95,16 @@ function CompanyStateService:_failSession(companyId: string, session, code: stri
 	end
 end
 
-function CompanyStateService:loadCompany(companyId: string, ownerUserId: number, saveName: string?)
+-- options (CM2-S2) pass through to PersistenceService:load ({saveSize?, requireExisting?}).
+function CompanyStateService:loadCompany(companyId: string, ownerUserId: number, saveName: string?, options)
 	-- A previous session may still be saving after a fast rejoin to this server.
 	-- Loading now would let that unload release the lock under the new session.
 	if self._sessions[companyId] or self._loading[companyId] then
 		return nil, "SessionBusy"
 	end
 	self._loading[companyId] = true
-	local called, state, errorCode = pcall(self._persistence.load, self._persistence, companyId, ownerUserId, saveName)
+	local called, state, errorCode =
+		pcall(self._persistence.load, self._persistence, companyId, ownerUserId, saveName, options)
 	self._loading[companyId] = nil
 	if not called then
 		return nil, "LoadFailed:" .. tostring(state)
@@ -131,6 +134,71 @@ end
 function CompanyStateService:isDirty(companyId: string): boolean
 	local session = self._sessions[companyId]
 	return session ~= nil and session.dirty
+end
+
+-- A session exists (healthy or not) or a load is in progress (CM2-S2).
+function CompanyStateService:hasSession(companyId: string): boolean
+	return self._sessions[companyId] ~= nil or self._loading[companyId] == true
+end
+
+-- A session that stopped accepting mutations and is not being unloaded.
+function CompanyStateService:isFailed(companyId: string): boolean
+	local session = self._sessions[companyId]
+	return session ~= nil and not session.healthy and not session.unloading
+end
+
+-- The user's role in the live record ("Owner" or "Member"); nil without a healthy session.
+function CompanyStateService:memberRole(companyId: string, userId: number): string?
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return nil
+	end
+	return session.state.members[SaveProfile.userIdText(userId)]
+end
+
+-- Detached team view of the live record; nil without a healthy session.
+function CompanyStateService:teamInfo(companyId: string)
+	local session = self._sessions[companyId]
+	if not session or not session.healthy then
+		return nil
+	end
+	local state = session.state
+	return {
+		ownerUserId = state.ownerUserId,
+		saveName = state.saveName,
+		saveSize = state.saveSize,
+		inviteCode = state.inviteCode,
+		members = table.clone(state.members),
+	}
+end
+
+-- Applies a team change (BusinessState member/code/size helper) to the live record. mutate
+-- must not yield and returns (true, result) or (false, errorCode). Success marks the session
+-- dirty without a revision bump; saveNow saves once at once. A failed save keeps the session
+-- dirty and still returns ok with saved = false. Returns (ok, errorCode?, result?, saved).
+function CompanyStateService:changeTeam(companyId: string, mutate, saveNow: boolean?): (boolean, string?, any, boolean)
+	local session = self._sessions[companyId]
+	if not session then
+		return false, "CompanyUnavailable", nil, false
+	end
+	local entered, changed, result = self:_withSession(companyId, session, function(state)
+		local ok, value = mutate(state)
+		if ok then
+			session.dirty = true
+		end
+		return ok, value
+	end)
+	if not entered then
+		return false, changed, nil, false
+	end
+	if not changed then
+		return false, result, nil, false
+	end
+	local saved = false
+	if saveNow then
+		saved = (self:_save(companyId, session))
+	end
+	return true, nil, result, saved
 end
 
 function CompanyStateService:_companyIds(): { string }
@@ -459,41 +527,34 @@ function CompanyStateService:autoUnloadDeliveriesAll()
 	end)
 end
 
-local OWNER_MANAGER = { Owner = true, Manager = true }
-local OWNER_MANAGER_WORKER = { Owner = true, Manager = true, Worker = true }
-local ACTION_ROLES = {
-	[Protocol.Actions.SupplierPlaceOrder] = OWNER_MANAGER,
-	[Protocol.Actions.QuestClaim] = OWNER_MANAGER,
-	[Protocol.Actions.PricingSetMediumPrice] = OWNER_MANAGER,
-	[Protocol.Actions.PricingSetAuto] = OWNER_MANAGER,
-	[Protocol.Actions.EmployeeHire] = OWNER_MANAGER,
-	[Protocol.Actions.ProgressionBuyLotExpansion] = OWNER_MANAGER,
-	[Protocol.Actions.ProgressionBuyParking] = OWNER_MANAGER,
-	[Protocol.Actions.ProgressionBuyHQ] = OWNER_MANAGER,
-	[Protocol.Actions.DeliveryUnload] = OWNER_MANAGER_WORKER,
-	[Protocol.Actions.InventoryPlace] = OWNER_MANAGER_WORKER,
-	[Protocol.Actions.InventoryPickup] = OWNER_MANAGER_WORKER,
-	[Protocol.Actions.OrderCarry] = OWNER_MANAGER_WORKER,
-	[Protocol.Actions.OrderLoad] = OWNER_MANAGER_WORKER,
-	[Protocol.Actions.OrderRelease] = OWNER_MANAGER_WORKER,
-	[Protocol.Actions.SupplierSellBack] = OWNER_MANAGER,
-}
--- Read-only queries are available to every member, including visitors.
-local MEMBER_QUERIES = {
+-- CM2-S2 (PRODUCT_SPEC, OWNER DECIDED): the owner and every member may perform every
+-- gameplay action and query. Owner-only save management lives in SaveSlotService.
+local MEMBER_ACTIONS = {
+	[Protocol.Actions.SupplierPlaceOrder] = true,
+	[Protocol.Actions.QuestClaim] = true,
+	[Protocol.Actions.PricingSetMediumPrice] = true,
+	[Protocol.Actions.PricingSetAuto] = true,
+	[Protocol.Actions.EmployeeHire] = true,
+	[Protocol.Actions.ProgressionBuyLotExpansion] = true,
+	[Protocol.Actions.ProgressionBuyParking] = true,
+	[Protocol.Actions.ProgressionBuyHQ] = true,
+	[Protocol.Actions.DeliveryUnload] = true,
+	[Protocol.Actions.InventoryPlace] = true,
+	[Protocol.Actions.InventoryPickup] = true,
+	[Protocol.Actions.OrderCarry] = true,
+	[Protocol.Actions.OrderLoad] = true,
+	[Protocol.Actions.OrderRelease] = true,
+	[Protocol.Actions.SupplierSellBack] = true,
 	[Protocol.Actions.SupplierRequestQuote] = true,
 	[Protocol.Actions.CompanyGetSummary] = true,
 }
 
 local function canPerformAction(state, userId: number, action: string): boolean
-	local role = state.members[tostring(userId)]
-	if role == nil then
+	local role = state.members[SaveProfile.userIdText(userId)]
+	if role ~= "Owner" and role ~= "Member" then
 		return false
 	end
-	if MEMBER_QUERIES[action] then
-		return true
-	end
-	local allowed = ACTION_ROLES[action]
-	return allowed ~= nil and allowed[role] == true
+	return MEMBER_ACTIONS[action] == true
 end
 
 local STATUS_ORDER = { Delivered = 1, Pending = 2 }

@@ -17,6 +17,8 @@ local StudioTestService = {}
 
 -- Synthetic second player for the playtest; far above real Roblox user IDs.
 StudioTestService.SHADOW_USER_ID = 999999999001
+-- Synthetic third player for the co-op playtest steps (CM2-S2).
+StudioTestService.SHADOW_2_USER_ID = 999999999002
 
 -- Job ID of the fake foreign server that lockSave uses to steal a save's lock.
 local THIEF_JOB_ID = "studio-test-thief"
@@ -35,6 +37,12 @@ function StudioTestService.install(context)
 	local saveSlots = context.saveSlots
 	local companyIdFor = context.companyIdFor
 	local shadowUserId = StudioTestService.SHADOW_USER_ID
+	local shadow2UserId = StudioTestService.SHADOW_2_USER_ID
+
+	-- Both synthetic users act directly on the services, like a real client's requests.
+	local function isShadow(userId: unknown): boolean
+		return userId == shadowUserId or userId == shadow2UserId
+	end
 
 	local hook = Instance.new("BindableFunction")
 	hook.Name = "StudioTestHook"
@@ -122,8 +130,8 @@ function StudioTestService.install(context)
 		if player then
 			return context.handleBusinessAction(player, request)
 		end
-		if arg.userId == shadowUserId then
-			return companies:handle(companyId, shadowUserId, request)
+		if isShadow(arg.userId) then
+			return companies:handle(companyId, arg.userId, request)
 		end
 		return failure("NoPlayer")
 	end
@@ -224,6 +232,15 @@ function StudioTestService.install(context)
 		return success()
 	end
 
+	function commands.shadow2Leave()
+		local unloaded, unloadError = saveSlots:leave(shadow2UserId, true)
+		companies:forgetUser(shadow2UserId)
+		if not unloaded then
+			return failure("UnloadFailed:" .. tostring(unloadError))
+		end
+		return success()
+	end
+
 	function commands.setStaff(arg)
 		if type(arg) ~= "table" then
 			return failure("BadStaff")
@@ -253,8 +270,8 @@ function StudioTestService.install(context)
 		if player then
 			return context.handleSaveAction(player, request)
 		end
-		if arg.userId == shadowUserId then
-			return saveSlots:handle(shadowUserId, request)
+		if isShadow(arg.userId) then
+			return saveSlots:handle(arg.userId, request)
 		end
 		return failure("NoPlayer")
 	end

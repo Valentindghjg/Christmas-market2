@@ -156,6 +156,113 @@ return function(t)
 		expect.equal(store.records[PersistenceService.keyFor(SAVE_B)], nil)
 	end)
 
+	-- CM2-S2: co-op saves.
+	t.test("loads a member's save only when it exists", function()
+		local store = copyingStore()
+		local job = service(store, "job-a")
+		local missing, missingReason = job:load(SAVE_A, 42, nil, { requireExisting = true })
+		expect.equal(missing, nil)
+		expect.equal(missingReason, "SaveNotFound")
+		expect.equal(store.writes, 0)
+		expect.equal(job._sessions[SAVE_A], nil)
+
+		local record = BusinessState.new(SAVE_A, 42, "Owner Lot")
+		store.records[PersistenceService.keyFor(SAVE_A)] = record
+		local loaded = job:load(SAVE_A, 42, nil, { requireExisting = true, saveSize = "Quad" })
+		expect.truthy(loaded)
+		expect.equal(loaded.saveName, "Owner Lot")
+		expect.equal(loaded.saveSize, "Solo")
+		expect.equal(store.records[PersistenceService.keyFor(SAVE_A)].saveName, "Owner Lot")
+
+		local fresh = job:load(SAVE_B, 42, "Team Lot", { saveSize = "Trio" })
+		expect.truthy(fresh)
+		expect.equal(fresh.saveSize, "Trio")
+		expect.equal(store.records[PersistenceService.keyFor(SAVE_B)].saveSize, "Trio")
+		expect.equal(store.records[PersistenceService.keyFor(SAVE_B)].saveName, "Team Lot")
+	end)
+
+	t.test("changes an unlocked record without taking its lock", function()
+		local store = copyingStore()
+		local key = PersistenceService.keyFor(SAVE_A)
+		local record = BusinessState.new(SAVE_A, 42, "Team Lot")
+		record.saveSize = "Duo"
+		record.inviteCode = "12345"
+		store.records[key] = record
+		local job = service(store, "job-a")
+		local function addFriend(state)
+			return BusinessState.addMember(state, 43, "12345")
+		end
+
+		local ok, reason, result = job:updateUnlocked(SAVE_A, 42, addFriend)
+		expect.truthy(ok)
+		expect.equal(reason, nil)
+		expect.equal(result.outcome, "Joined")
+		expect.equal(store.records[key].members["43"], "Member")
+		expect.equal(store.records[key]._session, nil)
+		expect.equal(store.records[key].updatedAt, 100)
+		expect.equal(job._sessions[SAVE_A], nil)
+
+		-- An expired foreign lock is removed by the write.
+		store.records[key]._session = { jobId = "job-x", expiresAt = 50 }
+		expect.truthy(job:updateUnlocked(SAVE_A, 42, function(state)
+			return BusinessState.removeMember(state, 43)
+		end))
+		expect.equal(store.records[key]._session, nil)
+		expect.equal(store.records[key].members["43"], nil)
+
+		for _, jobId in { "job-x", "job-a" } do
+			store.records[key]._session = { jobId = jobId, expiresAt = 1000 }
+			local writes = store.writes
+			local inUse, inUseReason = job:updateUnlocked(SAVE_A, 42, addFriend)
+			expect.falsy(inUse)
+			expect.equal(inUseReason, "SaveInUse")
+			expect.equal(store.writes, writes)
+			expect.equal(store.records[key].members["43"], nil)
+		end
+		store.records[key]._session = nil
+
+		local writes = store.writes
+		local refused, refusedReason = job:updateUnlocked(SAVE_A, 42, function(state)
+			return BusinessState.addMember(state, 43, "54321")
+		end)
+		expect.falsy(refused)
+		expect.equal(refusedReason, "InviteCodeInvalid")
+		expect.equal(store.writes, writes)
+
+		store.records[key]._deletedAt = 90
+		local deleted, deletedReason = job:updateUnlocked(SAVE_A, 42, addFriend)
+		expect.falsy(deleted)
+		expect.equal(deletedReason, "SaveDeleted")
+		local missing, missingReason = job:updateUnlocked(SAVE_B, 42, addFriend)
+		expect.falsy(missing)
+		expect.equal(missingReason, "SaveNotFound")
+		expect.equal(store.writes, writes)
+		expect.equal(store.records[PersistenceService.keyFor(SAVE_B)], nil)
+	end)
+
+	t.test("markDeleted reports members and the invite code", function()
+		local store = copyingStore()
+		local key = PersistenceService.keyFor(SAVE_A)
+		local record = BusinessState.new(SAVE_A, 42, "Team Lot")
+		record.saveSize = "Duo"
+		record.inviteCode = "12345"
+		record.members["43"] = "Member"
+		store.records[key] = record
+		local job = service(store, "job-a")
+		local ok, reason, info = job:markDeleted(SAVE_A)
+		expect.truthy(ok)
+		expect.equal(reason, nil)
+		expect.equal(#info.memberUserIds, 1)
+		expect.equal(info.memberUserIds[1], 43)
+		expect.equal(info.inviteCode, "12345")
+		expect.equal(store.records[key]._deletedAt, 100)
+		local none, noneReason, noneInfo = job:markDeleted(SAVE_B)
+		expect.truthy(none)
+		expect.equal(noneReason, nil)
+		expect.equal(#noneInfo.memberUserIds, 0)
+		expect.equal(noneInfo.inviteCode, nil)
+	end)
+
 	-- CM2-S1 Fix round 2: the old 32-hex save key is 56 chars and the real store refuses it.
 	t.test("rejects over-long keys like the real DataStore", function()
 		local store = copyingStore()

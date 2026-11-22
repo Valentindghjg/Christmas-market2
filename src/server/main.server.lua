@@ -14,6 +14,7 @@ local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
 local PersistenceService = require(script.Parent.Services:WaitForChild("PersistenceService"))
 local CompanyStateService = require(script.Parent.Services:WaitForChild("CompanyStateService"))
+local InviteCodeService = require(script.Parent.Services:WaitForChild("InviteCodeService"))
 local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
 local SaveSlotService = require(script.Parent.Services:WaitForChild("SaveSlotService"))
 local WorldService = require(script.Parent.Services:WaitForChild("WorldService"))
@@ -104,11 +105,46 @@ local function teleportForFreePlot(userId: number, data): (boolean, string?)
 	return true, nil
 end
 
+-- Invite codes for co-op saves (CM2-S2): 5 digits without a leading zero.
+local rng = Random.new()
+local invites = InviteCodeService.new(
+	DataStoreService:GetDataStore(InviteCodeService.STORE_NAME),
+	os.time,
+	task.wait,
+	function()
+		return rng:NextInteger(config.Saves.InviteCodeMin, config.Saves.InviteCodeMax)
+	end
+)
+
+-- Roblox usernames for co-op views (they need no text filter). A failed lookup is cached as
+-- false, so it is not retried for every request.
+local userNames: { [number]: string | false } = {}
+local function userName(userId: number): string?
+	local player = Players:GetPlayerByUserId(userId)
+	if player then
+		userNames[userId] = player.Name
+		return player.Name
+	end
+	local cached = userNames[userId]
+	if cached ~= nil then
+		return if cached then cached else nil
+	end
+	local ok, name = pcall(Players.GetNameFromUserIdAsync, Players, userId)
+	if ok and type(name) == "string" then
+		userNames[userId] = name
+		return name
+	end
+	userNames[userId] = false
+	return nil
+end
+
 local saveSlots = SaveSlotService.new({
 	profileStore = DataStoreService:GetDataStore(SaveSlotService.PROFILE_STORE_NAME),
 	persistence = persistence,
 	companies = companies,
 	plots = plots,
+	invites = invites,
+	userName = userName,
 	-- Real time, so business-clock offsets never bypass the save-action rate limits.
 	clock = os.time,
 	wait = task.wait,
@@ -350,14 +386,21 @@ local function clearPlotVisuals(plotId: string)
 	WorldService.syncCustomerOrders(plotId, nil, nil)
 end
 
--- A played save mirrors into its plot and marks the player ready.
-saveSlots:setActivationHandlers(function(userId: number, companyId: string, plotId: string, state, saveName: string)
-	syncPlotWorld(plotId, companyId, state)
+-- A played save mirrors into its plot and marks the player ready. A player joining a live
+-- shared session gets no state: its plot already shows the save.
+saveSlots:setActivationHandlers(function(userId: number, companyId: string, plotId: string, state, view)
+	if state then
+		syncPlotWorld(plotId, companyId, state)
+	end
 	local player = Players:GetPlayerByUserId(userId)
 	if player then
 		player:SetAttribute("PlotId", plotId)
 		player:SetAttribute("ActiveSaveId", string.match(companyId, "^save:(.+)$"))
-		player:SetAttribute("ActiveSaveName", saveName)
+		player:SetAttribute("ActiveSaveRole", view.role)
+		player:SetAttribute("ActiveSaveSize", view.size)
+		-- The save name goes to owners only (filter rule, CM2-S2).
+		player:SetAttribute("ActiveSaveName", view.saveName)
+		player:SetAttribute("ActiveSaveOwnerName", view.ownerName)
 		player:SetAttribute("CompanyError", nil)
 		player:SetAttribute("CompanyReady", true)
 		if player.Character then
@@ -376,6 +419,28 @@ end, function(userId: number, _companyId: string, plotId: string?, plotReleased:
 		player:SetAttribute("PlotId", nil)
 		player:SetAttribute("ActiveSaveId", nil)
 		player:SetAttribute("ActiveSaveName", nil)
+		player:SetAttribute("ActiveSaveRole", nil)
+		player:SetAttribute("ActiveSaveSize", nil)
+		player:SetAttribute("ActiveSaveOwnerName", nil)
+	end
+end)
+
+-- Co-op teams (CM2-S2): a removed member learns why; a team change refreshes open team panels.
+saveSlots:setTeamHandlers(function(userId: number, _saveId: string)
+	local player = Players:GetPlayerByUserId(userId)
+	if player then
+		player:SetAttribute("CompanyError", "RemovedFromSave")
+	end
+end, function(companyId: string, size: string?)
+	for _, userId in saveSlots:playersOn(companyId) do
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			if size ~= nil then
+				player:SetAttribute("ActiveSaveSize", size)
+			end
+			local revision = player:GetAttribute("TeamRevision")
+			player:SetAttribute("TeamRevision", (if type(revision) == "number" then revision else 0) + 1)
+		end
 	end
 end)
 

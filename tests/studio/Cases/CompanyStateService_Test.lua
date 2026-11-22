@@ -402,4 +402,178 @@ return function(t)
 		expect.equal(calls[1].code, "SaveFailed")
 		expect.falsy(service:isAvailable("personal:42"))
 	end)
+
+	-- CM2-S2: co-op saves. The fake stores a deep copy on every save, like a DataStore.
+	local function deepCopy(value)
+		if type(value) ~= "table" then
+			return value
+		end
+		local copy = {}
+		for key, inner in pairs(value) do
+			copy[key] = deepCopy(inner)
+		end
+		return copy
+	end
+
+	local function copyingPersistence()
+		local persistence: any = { records = {}, saves = 0, failSaves = false }
+		function persistence.load(_, companyId, ownerUserId)
+			local stored = persistence.records[companyId] or BusinessState.new(companyId, ownerUserId)
+			return deepCopy(stored), nil
+		end
+		function persistence.save(_, companyId, state)
+			persistence.saves += 1
+			if persistence.failSaves then
+				return false, "SaveFailed:Throttled"
+			end
+			persistence.records[companyId] = deepCopy(state)
+			return true, nil
+		end
+		function persistence.release()
+			return true, nil
+		end
+		return persistence
+	end
+
+	local SHARED = "save:42_" .. string.rep("0c", 8)
+	local BIG_MEMBER = 9223372036854774784
+
+	local function sharedService(persistence, cash: number?)
+		local service = Service.new(persistence, function()
+			return 100
+		end)
+		local state = service:loadCompany(SHARED, 42)
+		state.saveSize = "Quad"
+		state.members["43"] = "Member"
+		state.members["9223372036854774784"] = "Member"
+		state.cash = cash or 10000
+		return service, state
+	end
+
+	local function act(service, userId: number, requestId: string, action: string, payload)
+		return service:handle(SHARED, userId, {
+			version = 1,
+			requestId = requestId,
+			action = action,
+			payload = payload,
+		})
+	end
+
+	t.test("members of a shared save may do every gameplay action", function()
+		local PricingService = require(
+			game:GetService("ServerScriptService")
+				:WaitForChild("Server")
+				:WaitForChild("Services")
+				:WaitForChild("PricingService")
+		)
+		local service = sharedService(copyingPersistence())
+		expect.truthy(act(service, 43, "member_order_1", "Supplier.PlaceOrder", {
+			speciesId = "FrasierFir",
+			sizeId = "Medium",
+			quantity = 2,
+		}).ok)
+		local minimum = PricingService.bounds("FrasierFir")
+		expect.truthy(act(service, 43, "member_price_1", "Pricing.SetMediumPrice", {
+			speciesId = "FrasierFir",
+			mediumPrice = minimum,
+		}).ok)
+		expect.truthy(act(service, 43, "member_hire_1", "Employee.Hire", { employeeId = "Cashier" }).ok)
+		expect.truthy(act(service, 43, "member_summary_1", "Company.GetSummary", {}).ok)
+		local stranger = act(service, 44, "stranger_order_1", "Supplier.PlaceOrder", {
+			speciesId = "FrasierFir",
+			sizeId = "Medium",
+			quantity = 1,
+		})
+		expect.falsy(stranger.ok)
+		expect.equal(stranger.errorCode, "Forbidden")
+		local strangerQuery = act(service, 44, "stranger_summary_1", "Company.GetSummary", {})
+		expect.equal(strangerQuery.errorCode, "Forbidden")
+		expect.truthy(act(service, BIG_MEMBER, "big_hire_1", "Employee.Hire", { employeeId = "LotWorker" }).ok)
+		expect.equal(service:memberRole(SHARED, 43), "Member")
+		expect.equal(service:memberRole(SHARED, 42), "Owner")
+		expect.equal(service:memberRole(SHARED, BIG_MEMBER), "Member")
+		expect.equal(service:memberRole(SHARED, 44), nil)
+	end)
+
+	t.test("two members never double-spend the shared cash", function()
+		local persistence = copyingPersistence()
+		local cost = 64 -- FrasierFir Medium x2 at the server wholesale price
+		local service, state = sharedService(persistence, cost + 1)
+		local payload = { speciesId = "FrasierFir", sizeId = "Medium", quantity = 2 }
+		local first = act(service, 42, "shared_order_a", "Supplier.PlaceOrder", payload)
+		expect.truthy(first.ok)
+		expect.equal(first.data.cost, cost)
+		local second = act(service, 43, "shared_order_b", "Supplier.PlaceOrder", payload)
+		expect.falsy(second.ok)
+		expect.equal(second.errorCode, "InsufficientFunds")
+		local replay = act(service, 43, "shared_order_a", "Supplier.PlaceOrder", payload)
+		expect.falsy(replay.ok)
+		expect.equal(replay.errorCode, "DuplicateRequest")
+		expect.equal(state.cash, 1)
+		expect.equal(state.spent, cost)
+		expect.truthy(service:flushDirty())
+		local stored = persistence.records[SHARED]
+		local pending = 0
+		for _ in pairs(stored.pendingOrders) do
+			pending += 1
+		end
+		expect.equal(pending, 1)
+		expect.equal(stored.cash, 1)
+		expect.equal(stored.spent, cost)
+	end)
+
+	t.test("changeTeam saves at once and stays dirty when the save fails", function()
+		local persistence = copyingPersistence()
+		local service = Service.new(persistence, function()
+			return 100
+		end)
+		local state = service:loadCompany(SHARED, 42)
+		state.saveSize = "Duo"
+		state.inviteCode = "12345"
+		local ok, reason, result, saved = service:changeTeam(SHARED, function(live)
+			return BusinessState.addMember(live, 43, "12345")
+		end, true)
+		expect.truthy(ok)
+		expect.equal(reason, nil)
+		expect.equal(result.outcome, "Joined")
+		expect.truthy(saved)
+		expect.equal(persistence.saves, 1)
+		expect.equal(persistence.records[SHARED].members["43"], "Member")
+		expect.falsy(service:isDirty(SHARED))
+		expect.equal(state.revision, 0)
+
+		local refused, refusedReason, _, refusedSaved = service:changeTeam(SHARED, function(live)
+			return BusinessState.addMember(live, 44, "12345")
+		end, true)
+		expect.falsy(refused)
+		expect.equal(refusedReason, "SaveFull")
+		expect.falsy(refusedSaved)
+		expect.equal(persistence.saves, 1)
+
+		persistence.failSaves = true
+		local kept, keptReason, _, keptSaved = service:changeTeam(SHARED, function(live)
+			return BusinessState.removeMember(live, 43)
+		end, true)
+		expect.truthy(kept)
+		expect.equal(keptReason, nil)
+		expect.falsy(keptSaved)
+		expect.equal(persistence.saves, 2)
+		expect.truthy(service:isDirty(SHARED))
+		expect.truthy(service:isAvailable(SHARED))
+		expect.equal(state.members["43"], nil)
+
+		local team = service:teamInfo(SHARED)
+		expect.equal(team.ownerUserId, 42)
+		expect.equal(team.saveSize, "Duo")
+		expect.equal(team.inviteCode, "12345")
+		team.members["99"] = "Member"
+		expect.equal(state.members["99"], nil)
+		expect.truthy(service:hasSession(SHARED))
+		expect.falsy(service:isFailed(SHARED))
+		local missing, missingReason = service:changeTeam("save:none", function()
+			return true
+		end, true)
+		expect.falsy(missing)
+		expect.equal(missingReason, "CompanyUnavailable")
+	end)
 end

@@ -85,10 +85,14 @@ function PersistenceService:_lockedByOther(record, currentTime: number): boolean
 end
 
 -- Acquires a lock atomically. A lock held by another non-expired server never loads writable state.
-function PersistenceService:load(companyId: string, ownerUserId: number, saveName: string?)
+-- options (CM2-S2): saveSize for a fresh record (default Solo); requireExisting refuses a
+-- missing record with "SaveNotFound" and writes nothing (members never create a save).
+-- saveName == nil keeps the stored name.
+function PersistenceService:load(companyId: string, ownerUserId: number, saveName: string?, options)
 	if type(companyId) ~= "string" or #companyId == 0 or type(ownerUserId) ~= "number" then
 		return nil, "InvalidIdentity"
 	end
+	local settings = options or {}
 	local loadedState = nil
 	local lockDenied = false
 	local refusal = nil
@@ -100,7 +104,12 @@ function PersistenceService:load(companyId: string, ownerUserId: number, saveNam
 			refusal = nil
 			local currentTime = self._clock()
 			if previous == nil then
+				if settings.requireExisting then
+					refusal = "SaveNotFound"
+					return nil
+				end
 				loadedState = BusinessState.new(companyId, ownerUserId, saveName)
+				loadedState.saveSize = settings.saveSize or "Solo"
 			elseif type(previous) ~= "table" then
 				error("CorruptRecord")
 			else
@@ -204,13 +213,101 @@ function PersistenceService:release(companyId: string)
 	return true, nil
 end
 
--- Tombstones a save that no server holds. The data stays; load() refuses it from now on.
-function PersistenceService:markDeleted(companyId: string): (boolean, string?)
+-- Non-owner member IDs (ascending) and the invite code of a stored record (CM2-S2).
+local function deletionInfo(record)
+	local memberUserIds = {}
+	if type(record.members) == "table" then
+		for key, role in pairs(record.members) do
+			if role ~= "Owner" and type(key) == "string" and string.match(key, "^%d+$") then
+				table.insert(memberUserIds, tonumber(key) :: number)
+			end
+		end
+	end
+	table.sort(memberUserIds)
+	return {
+		memberUserIds = memberUserIds,
+		inviteCode = if type(record.inviteCode) == "string" then record.inviteCode else nil,
+	}
+end
+
+-- Changes a record that no server holds, without taking its lock (CM2-S2: joins, leaves and
+-- the profile-independent team changes). mutate(state) returns (true, result) or
+-- (false, errorCode); a refusal writes nothing. An expired lock is dropped, so a stalled
+-- holder fails closed on its next save. The service's own _sessions map is never touched.
+-- Returns (true, nil, result) or (false, errorCode).
+function PersistenceService:updateUnlocked(companyId: string, ownerUserId: number, mutate): (boolean, string?, any)
 	local refusal = nil
+	local outcome = nil
 	local success = self:_retry(function()
 		return self._store:UpdateAsync(self:_key(companyId), function(previous)
 			refusal = nil
+			outcome = nil
 			if previous == nil then
+				refusal = "SaveNotFound"
+				return nil
+			end
+			if type(previous) ~= "table" then
+				refusal = "LoadFailed"
+				return nil
+			end
+			if previous._deletedAt ~= nil then
+				refusal = "SaveDeleted"
+				return nil
+			end
+			if previous._migratedTo ~= nil then
+				refusal = "SaveNotFound"
+				return nil
+			end
+			local currentTime = self._clock()
+			local session = previous._session
+			-- Any unexpired lock, this server's included, means a live session owns the record.
+			if type(session) == "table" and (session.expiresAt or 0) > currentTime then
+				refusal = "SaveInUse"
+				return nil
+			end
+			local copy = deepCopy(previous)
+			local migratedFrom = copy._migratedFrom
+			copy._session = nil
+			local migrated = BusinessState.migrate(copy, companyId, ownerUserId)
+			if not migrated then
+				refusal = "LoadFailed"
+				return nil
+			end
+			local changed, result = mutate(migrated)
+			if not changed then
+				refusal = if type(result) == "string" then result else "LoadFailed"
+				return nil
+			end
+			migrated._migratedFrom = migratedFrom
+			migrated.updatedAt = currentTime
+			if not BusinessState.validate(migrated) then
+				refusal = "LoadFailed"
+				return nil
+			end
+			outcome = result
+			return migrated
+		end)
+	end)
+	if not success then
+		return false, "LoadFailed", nil
+	end
+	if refusal then
+		return false, refusal, nil
+	end
+	return true, nil, outcome
+end
+
+-- Tombstones a save that no server holds. The data stays; load() refuses it from now on.
+-- On success info = {memberUserIds, inviteCode} of the record (CM2-S2), read in the transform.
+function PersistenceService:markDeleted(companyId: string): (boolean, string?, any)
+	local refusal = nil
+	local info = nil
+	local success = self:_retry(function()
+		return self._store:UpdateAsync(self:_key(companyId), function(previous)
+			refusal = nil
+			info = nil
+			if previous == nil then
+				info = { memberUserIds = {}, inviteCode = nil }
 				return nil
 			end
 			if type(previous) ~= "table" then
@@ -226,17 +323,18 @@ function PersistenceService:markDeleted(companyId: string): (boolean, string?)
 				refusal = "SaveInUse"
 				return nil
 			end
+			info = deletionInfo(previous)
 			previous._deletedAt = self._clock()
 			return previous
 		end)
 	end)
 	if not success then
-		return false, "DeleteFailed"
+		return false, "DeleteFailed", nil
 	end
 	if refusal then
-		return false, refusal
+		return false, refusal, nil
 	end
-	return true, nil
+	return true, nil, info
 end
 
 -- Clears our own lock on the legacy record after a failed migration step.
