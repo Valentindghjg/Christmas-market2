@@ -23,6 +23,9 @@ StudioTestService.SHADOW_2_USER_ID = 999999999002
 -- Job ID of the fake foreign server that lockSave uses to steal a save's lock.
 local THIEF_JOB_ID = "studio-test-thief"
 local THIEF_LOCK_SECONDS = 300
+-- Job ID of the fake foreign server that placeElsewhere writes into the save-to-server map.
+local ELSEWHERE_JOB_ID = "studio-test-elsewhere"
+local ELSEWHERE_SECONDS = 300
 
 local function failure(errorCode: string)
 	return { ok = false, errorCode = errorCode }
@@ -343,6 +346,71 @@ function StudioTestService.install(context)
 			previous._session = nil
 			return previous
 		end)
+	end
+
+	-- Save-to-server map (CM2-S3). Only saves listed in that user's profile.
+	local locatorMap = context.locatorMap
+	local locatorKey = context.locatorKey
+
+	-- The raw map value for the save, or nil.
+	function commands.locatorEntry(arg)
+		local saveId = ownedSaveId(arg)
+		if not saveId then
+			return failure("NotOwnSave")
+		end
+		local ok, value = pcall(function()
+			return locatorMap:GetAsync(locatorKey(saveId))
+		end)
+		if not ok then
+			return failure("LocatorUnavailable")
+		end
+		return success({ entry = value })
+	end
+
+	-- Simulates another live server holding the save.
+	function commands.placeElsewhere(arg)
+		local saveId = ownedSaveId(arg)
+		if not saveId then
+			return failure("NotOwnSave")
+		end
+		local ok = pcall(function()
+			locatorMap:SetAsync(locatorKey(saveId), {
+				jobId = ELSEWHERE_JOB_ID,
+				placeId = game.PlaceId,
+				hostUserId = shadowUserId,
+				renewedAt = os.time(),
+			}, ELSEWHERE_SECONDS)
+		end)
+		if not ok then
+			return failure("LocatorUnavailable")
+		end
+		return success({ placed = true })
+	end
+
+	-- Removes the entry only when placeElsewhere wrote it.
+	function commands.clearElsewhere(arg)
+		local saveId = ownedSaveId(arg)
+		if not saveId then
+			return failure("NotOwnSave")
+		end
+		local ok, cleared = pcall(function()
+			local key = locatorKey(saveId)
+			local value = locatorMap:GetAsync(key)
+			if type(value) ~= "table" or value.jobId ~= ELSEWHERE_JOB_ID then
+				return false
+			end
+			locatorMap:RemoveAsync(key)
+			return true
+		end)
+		if not ok then
+			return failure("LocatorUnavailable")
+		end
+		return success({ cleared = cleared == true })
+	end
+
+	function commands.renewLocations()
+		local ok, renewed, failures = saveSlots:renewLocations()
+		return success({ ok = ok, renewed = renewed, failures = failures })
 	end
 
 	function commands.runPlaytest(arg)

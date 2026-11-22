@@ -3,6 +3,7 @@
 -- or a server-side ProximityPrompt that is checked exactly like a remote call.
 local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
+local MemoryStoreService = game:GetService("MemoryStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -10,12 +11,14 @@ local TeleportService = game:GetService("TeleportService")
 local TextService = game:GetService("TextService")
 
 local config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local BusinessState = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BusinessState"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
 local PersistenceService = require(script.Parent.Services:WaitForChild("PersistenceService"))
 local CompanyStateService = require(script.Parent.Services:WaitForChild("CompanyStateService"))
 local InviteCodeService = require(script.Parent.Services:WaitForChild("InviteCodeService"))
 local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
+local SaveLocatorService = require(script.Parent.Services:WaitForChild("SaveLocatorService"))
 local SaveSlotService = require(script.Parent.Services:WaitForChild("SaveSlotService"))
 local WorldService = require(script.Parent.Services:WaitForChild("WorldService"))
 
@@ -105,6 +108,45 @@ local function teleportForFreePlot(userId: number, data): (boolean, string?)
 	return true, nil
 end
 
+-- One server per save (CM2-S3): the save-to-server map. Studio uses its own map, so Studio
+-- entries never mix with live ones.
+local locatorMap = MemoryStoreService:GetHashMap(
+	if RunService:IsStudio() then config.Saves.LocatorMapName .. "_Studio" else config.Saves.LocatorMapName
+)
+local locator = SaveLocatorService.new(
+	locatorMap,
+	if game.JobId ~= "" then game.JobId else "studio",
+	game.PlaceId,
+	os.time,
+	task.wait
+)
+
+-- Players sent to another server by Save.Teleport; TeleportInitFailed tells them apart from
+-- the S1 no-free-plot teleport.
+local joinTeleports: { [number]: boolean } = {}
+local teleportErrorSeq = 0
+
+-- Moves a player into the public server (JobId) that plays a save. Studio cannot teleport.
+local function teleportToServer(userId: number, placeId: number, jobId: string, data): (boolean, string?)
+	if RunService:IsStudio() then
+		return false, "TeleportUnavailable"
+	end
+	local player = Players:GetPlayerByUserId(userId)
+	if not player then
+		return false, "TeleportFailed"
+	end
+	local options = Instance.new("TeleportOptions")
+	options.ServerInstanceId = jobId
+	options:SetTeleportData({ cm2Join = data })
+	local ok, err = pcall(TeleportService.TeleportAsync, TeleportService, placeId, { player }, options)
+	if not ok then
+		warn(string.format("[ChristmasMarket2] teleport to %s failed for %d: %s", jobId, userId, tostring(err)))
+		return false, "TeleportFailed"
+	end
+	joinTeleports[userId] = true
+	return true, nil
+end
+
 -- Invite codes for co-op saves (CM2-S2): 5 digits without a leading zero.
 local rng = Random.new()
 local invites = InviteCodeService.new(
@@ -151,7 +193,15 @@ local saveSlots = SaveSlotService.new({
 	newSaveId = newSaveId,
 	filterName = filterName,
 	teleport = teleportForFreePlot,
+	locator = locator,
+	teleportToServer = teleportToServer,
 })
+
+-- Teammate finder (CM2-S3): open finder panels refetch when the listings change.
+saveSlots:setFinderHandler(function()
+	local revision = ReplicatedStorage:GetAttribute("FinderRevision")
+	ReplicatedStorage:SetAttribute("FinderRevision", (if type(revision) == "number" then revision else 0) + 1)
+end)
 
 local function companyIdFor(userId: number): string?
 	return saveSlots:activeCompanyId(userId)
@@ -364,6 +414,9 @@ end)
 every(config.AutoPricingIntervalSeconds, "automatic pricing", function()
 	return companies:applyAutoPricingAll()
 end)
+every(config.Saves.LocatorRenewSeconds, "save locator", function()
+	return saveSlots:renewLocations()
+end)
 
 local function isInGame(player: Player): boolean
 	return player.Parent == Players
@@ -486,6 +539,26 @@ local function noFreePlotJoin(player: Player): (string?, number?)
 	return data.saveId, attempt
 end
 
+-- A Save.Teleport arrival (CM2-S3). Teleport data is client-routed and untrusted: only a
+-- valid save ID and an optional valid code pass, and arrive() checks both again.
+local function crossServerJoin(player: Player)
+	local ok, joinData = pcall(function()
+		return player:GetJoinData()
+	end)
+	if not ok or type(joinData) ~= "table" or joinData.SourcePlaceId ~= game.PlaceId then
+		return nil
+	end
+	local teleportData = joinData.TeleportData
+	local data = type(teleportData) == "table" and teleportData.cm2Join or nil
+	if type(data) ~= "table" or not SaveProfile.isSaveId(data.saveId) then
+		return nil
+	end
+	if data.code ~= nil and not BusinessState.isInviteCode(data.code) then
+		return nil
+	end
+	return { saveId = data.saveId, code = data.code }
+end
+
 local function onPlayerAdded(player: Player)
 	player.CharacterAdded:Connect(function(character)
 		-- A respawn drops the carried tree back at the pickup spot.
@@ -507,6 +580,14 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 	player:SetAttribute("ProfileReady", true)
+	local arrival = crossServerJoin(player)
+	if arrival then
+		local arrived, arriveError = saveSlots:arrive(player.UserId, arrival)
+		if not arrived and isInGame(player) then
+			player:SetAttribute("CompanyError", arriveError)
+		end
+		return
+	end
 	local saveId, attempt = noFreePlotJoin(player)
 	if saveId then
 		local played, playError = saveSlots:play(player.UserId, saveId, { attempt = attempt })
@@ -517,12 +598,30 @@ local function onPlayerAdded(player: Player)
 	-- Otherwise the save picker chooses; the character uses the world spawn until then.
 end
 
-TeleportService.TeleportInitFailed:Connect(function(player: Player)
+local TELEPORT_RESULT_ERRORS = {
+	[Enum.TeleportResult.GameFull] = "ServerFull",
+	[Enum.TeleportResult.GameEnded] = "SaveServerGone",
+	[Enum.TeleportResult.GameNotFound] = "SaveServerGone",
+}
+
+TeleportService.TeleportInitFailed:Connect(function(player: Player, result: Enum.TeleportResult)
+	-- Amendment A1.4: a teleport already in progress changes nothing.
+	if result == Enum.TeleportResult.IsTeleporting then
+		return
+	end
+	if joinTeleports[player.UserId] then
+		joinTeleports[player.UserId] = nil
+		local code = TELEPORT_RESULT_ERRORS[result] or "TeleportFailed"
+		teleportErrorSeq += 1
+		player:SetAttribute("SaveTeleportError", code .. ":" .. teleportErrorSeq)
+		return
+	end
 	player:SetAttribute("CompanyError", "NoFreePlot")
 end)
 
 Players.PlayerAdded:Connect(onPlayerAdded)
 Players.PlayerRemoving:Connect(function(player)
+	joinTeleports[player.UserId] = nil
 	local ok, errorCode = saveSlots:leave(player.UserId, true)
 	if not ok then
 		warn(string.format("[ChristmasMarket2] save unload failed for %d: %s", player.UserId, tostring(errorCode)))
@@ -588,6 +687,8 @@ if RunService:IsStudio() then
 			handleBusinessAction = handleBusinessAction,
 			handleSaveAction = handleSaveAction,
 			persistenceStoreName = PersistenceService.STORE_NAME,
+			locatorMap = locatorMap,
+			locatorKey = SaveLocatorService.keyFor,
 			syncPlotWorld = syncPlotWorld,
 			clearPlotVisuals = clearPlotVisuals,
 			businessClock = businessClock,

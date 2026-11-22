@@ -8,6 +8,12 @@
 -- value, so a second server can never lose an update. Company records keep their own
 -- per-save session lock (PersistenceService). Several players on one server can share one
 -- live session of a co-op save; the last one to leave unloads it.
+--
+-- CM2-S3: one server per save. An optional save-to-server map (SaveLocatorService) is claimed
+-- before a load, renewed while the save is played and released by the last unload; it is a
+-- pre-check that fails open, while the session lock stays the authority. Save.Teleport and
+-- arrive() move a player to the server that plays a save; the teammate finder lists owned
+-- co-op saves with a free seat on this server.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -104,6 +110,10 @@ function SaveSlotService.new(deps)
 	self._newSaveId = deps.newSaveId
 	self._filterName = deps.filterName
 	self._teleport = deps.teleport
+	-- CM2-S3: the save-to-server map (optional; nil disables every locator step) and the
+	-- teleport into the server that plays a save.
+	self._locator = deps.locator
+	self._teleportToServer = deps.teleportToServer
 	self._limiters = {}
 	for action, rule in pairs(SAVES.RateLimits) do
 		self._limiters[action] = Protocol.newRateLimiter(rule.limit, rule.window)
@@ -130,6 +140,14 @@ function SaveSlotService.new(deps)
 	self._onTeamChanged = nil
 	self._closing = false
 	self._finalLeaves = 0
+	-- CM2-S3: registration order per player (the host of a save), cached locator lookups,
+	-- teammate-finder listings per owner.
+	self._since = {}
+	self._registerSeq = 0
+	self._locationCache = {}
+	self._listings = {}
+	self._finderSeq = 0
+	self._onListingsChanged = nil
 	return self
 end
 
@@ -159,6 +177,11 @@ function SaveSlotService:setTeamHandlers(onRemoved, onTeamChanged)
 	self._onTeamChanged = onTeamChanged
 end
 
+-- onListingsChanged(): the teammate-finder listings on this server changed (CM2-S3).
+function SaveSlotService:setFinderHandler(onListingsChanged)
+	self._onListingsChanged = onListingsChanged
+end
+
 local function callHandler(handler, label: string, ...)
 	if handler then
 		local ok, err = pcall(handler, ...)
@@ -166,6 +189,10 @@ local function callHandler(handler, label: string, ...)
 			warn(string.format("[ChristmasMarket2] %s handler errored: %s", label, tostring(err)))
 		end
 	end
+end
+
+function SaveSlotService:_listingsChanged()
+	callHandler(self._onListingsChanged, "finder listings")
 end
 
 -- Profile I/O -------------------------------------------------------------------------------
@@ -392,14 +419,127 @@ function SaveSlotService:_nameOf(userId: number?): string?
 	return nil
 end
 
+-- Save-to-server map (CM2-S3) ------------------------------------------------------------------
+
+-- The location of a save played on another server, cached for LocatorCacheSeconds. A lookup
+-- error caches "unknown" (false) as well, so a store outage does not cost a call per row.
+function SaveSlotService:_cachedLocation(saveId: string)
+	local now = self._clock()
+	local cached = self._locationCache[saveId]
+	if cached ~= nil and now - cached.at < SAVES.LocatorCacheSeconds then
+		return if cached.location then cached.location else nil
+	end
+	local location = self._locator:lookup(saveId)
+	self._locationCache[saveId] = { at = now, location = location or false }
+	return location
+end
+
+-- "X" of "Being played by X": the owner when they play the save on this server, else the
+-- registered player who has played it here longest.
+function SaveSlotService:_hostOf(companyId: string): number?
+	local members = self._members[companyId]
+	if members == nil then
+		return nil
+	end
+	local ownerUserId = SaveProfile.ownerUserIdOf(saveIdOf(companyId))
+	if ownerUserId ~= nil and members[ownerUserId] then
+		return ownerUserId
+	end
+	local host, hostSince = nil, nil
+	for userId in pairs(members) do
+		local since = self._since[userId]
+		if since ~= nil and (hostSince == nil or since < hostSince) then
+			host, hostSince = userId, since
+		end
+	end
+	return host
+end
+
+-- Pre-check before a load: refuses when another live server holds the save. Fails open: a
+-- store error lets the load go on, and the session lock decides.
+function SaveSlotService:_claimLocation(saveId: string, companyId: string, userId: number, saveSize: string)
+	if self._locator == nil then
+		return true, nil, nil
+	end
+	local outcome, location = self._locator:claim(saveId, self:_hostOf(companyId) or userId)
+	self._locationCache[saveId] = nil
+	if outcome == "HeldElsewhere" then
+		if saveSize == "Solo" then
+			-- Its only player is this one, so the other session is stale.
+			return false, "SaveInUse", nil
+		end
+		return false, "SaveInUseElsewhere", { hostName = self:_nameOf(location.hostUserId) }
+	end
+	if outcome == "Unavailable" then
+		warn(string.format("[ChristmasMarket2] save locator unavailable for %s; loading under the lock", saveId))
+	end
+	return true, nil, nil
+end
+
+function SaveSlotService:_releaseLocation(saveId: string?)
+	if self._locator == nil or saveId == nil then
+		return
+	end
+	self._locator:release(saveId)
+	self._locationCache[saveId] = nil
+end
+
+-- Renews the entry of every save played here (main runs it every LocatorRenewSeconds).
+function SaveSlotService:renewLocations(): (boolean, number, number)
+	if self._locator == nil then
+		return true, 0, 0
+	end
+	local renewed, failures = 0, 0
+	local companyIds = {}
+	for companyId in pairs(self._members) do
+		table.insert(companyIds, companyId)
+	end
+	table.sort(companyIds)
+	for _, companyId in ipairs(companyIds) do
+		local saveId = saveIdOf(companyId)
+		local host = self:_hostOf(companyId)
+		if saveId ~= nil and host ~= nil and not self._unloading[companyId] then
+			local outcome = self._locator:claim(saveId, host)
+			self._locationCache[saveId] = nil
+			if outcome == "Claimed" then
+				renewed += 1
+			else
+				if outcome == "HeldElsewhere" then
+					warn(string.format("[ChristmasMarket2] save %s is located on another server", saveId))
+				end
+				failures += 1
+			end
+		end
+	end
+	return failures == 0, renewed, failures
+end
+
 -- Picker rows: seats per row; a Member row never carries the save name (filter rule, CM2-S2).
-function SaveSlotService:_listView(profile, activeSaveId: string?)
+-- withLocations (Save.List only): co-op rows that another server plays carry elsewhere and
+-- hostName.
+function SaveSlotService:_listView(profile, activeSaveId: string?, withLocations: boolean?)
 	local rows = SaveProfile.listView(profile, activeSaveId)
+	local lookups = 0
 	for _, row in ipairs(rows) do
 		row.seats = SAVES.Seats[row.size]
 		if row.role == "Member" then
 			row.name = nil
 			row.ownerName = self:_nameOf(SaveProfile.ownerUserIdOf(row.saveId))
+		end
+		if
+			withLocations
+			and self._locator ~= nil
+			and lookups < SAVES.LocatorListLookups
+			and not row.active
+			and row.size ~= "Solo"
+			and self._members[companyIdOf(row.saveId)] == nil
+		then
+			lookups += 1
+			local location = self:_cachedLocation(row.saveId)
+			if location then
+				row.elsewhere = true
+				row.hostName = self:_nameOf(location.hostUserId)
+			end
 		end
 	end
 	return rows
@@ -418,16 +558,24 @@ function SaveSlotService:_register(userId: number, companyId: string)
 	local members = self._members[companyId] or {}
 	members[userId] = true
 	self._members[companyId] = members
+	self._registerSeq += 1
+	self._since[userId] = self._registerSeq
 end
 
 function SaveSlotService:_deregister(userId: number, companyId: string)
 	self._active[userId] = nil
+	self._since[userId] = nil
 	local members = self._members[companyId]
 	if members then
 		members[userId] = nil
 		if next(members) == nil then
 			self._members[companyId] = nil
 		end
+	end
+	local listing = self._listings[userId]
+	if listing ~= nil and listing.companyId == companyId then
+		self._listings[userId] = nil
+		self:_listingsChanged()
 	end
 end
 
@@ -443,6 +591,11 @@ function SaveSlotService:_unloadShared(companyId: string): (boolean, string?, bo
 	local plotReleased = self._members[companyId] == nil
 		and (self._pendingLoads[companyId] or 0) == 0
 		and self._plots:release(companyId)
+	-- CM2-S3: the last unload frees the map entry. A failed final save keeps it until it
+	-- expires, like the session lock.
+	if ok and self._members[companyId] == nil and (self._pendingLoads[companyId] or 0) == 0 then
+		self:_releaseLocation(saveIdOf(companyId))
+	end
 	self._unloading[companyId] = nil
 	return ok, unloadError, plotReleased == true
 end
@@ -720,6 +873,12 @@ function SaveSlotService:_join(userId: number, profile, payload)
 		end
 		return failure(lookupError)
 	end
+	return self:_joinSave(userId, profile, saveId, code)
+end
+
+-- Takes a seat on a save: with the typed code (Save.Join), or without one for a trusted
+-- caller (the teammate finder, code == nil).
+function SaveSlotService:_joinSave(userId: number, profile, saveId: string, code: string?)
 	local joinedSize = nil
 	local joinedRole = nil
 	local ok, changeError, result = self:_changeRecord(saveId, function(state)
@@ -750,8 +909,22 @@ function SaveSlotService:_join(userId: number, profile, payload)
 			return { ok = true, data = { saveId = saveId, size = joinedSize, alreadyMember = true } }
 		end
 		if changeError and JOIN_INVALID[changeError] then
+			if code == nil then
+				return failure("ListingGone")
+			end
 			self:_recordJoinFailure(userId)
 			return failure("InviteCodeInvalid")
+		end
+		-- CM2-S3: another server plays the save; offer that server (not a wrong code).
+		if changeError == "SaveInUse" and self._locator ~= nil then
+			local location = self._locator:lookup(saveId)
+			if location then
+				return {
+					ok = false,
+					errorCode = "SaveInUseElsewhere",
+					data = { hostName = self:_nameOf(location.hostUserId) },
+				}
+			end
 		end
 		return failure(changeError)
 	end
@@ -973,6 +1146,245 @@ function SaveSlotService:_setSize(userId: number, payload)
 	return { ok = true, data = { size = size, seats = SAVES.Seats[size] } }
 end
 
+-- Cross-server join (CM2-S3) ---------------------------------------------------------------------
+
+-- Save.Teleport {saveId | code}: sends the player to the server that plays the save. The code
+-- path has the same lockout and wrong-code count as Save.Join.
+function SaveSlotService:_teleportToSave(userId: number, profile, payload)
+	if self._locator == nil then
+		return failure("TeleportUnavailable")
+	end
+	local saveId = payload.saveId
+	if payload.code ~= nil then
+		if self:_joinLocked(userId) then
+			return failure("JoinLocked")
+		end
+		if #profile.saves >= SAVES.MaxSavesPerPlayer then
+			return failure("SaveLimit")
+		end
+		local found, lookupError = self._invites:lookup(payload.code)
+		if not found then
+			if lookupError == "InviteCodeInvalid" then
+				self:_recordJoinFailure(userId)
+			end
+			return failure(lookupError)
+		end
+		saveId = found
+	elseif SaveProfile.find(profile, saveId) == nil then
+		return failure("SaveNotFound")
+	end
+	if self._members[companyIdOf(saveId)] ~= nil then
+		return failure("SaveNotElsewhere")
+	end
+	local location, lookupError = self._locator:lookup(saveId)
+	self._locationCache[saveId] = { at = self._clock(), location = location or false }
+	if lookupError then
+		return failure("TeleportFailed")
+	end
+	if location == nil then
+		return failure("SaveNotElsewhere")
+	end
+	local sent, sendError =
+		self._teleportToServer(userId, location.placeId, location.jobId, { saveId = saveId, code = payload.code })
+	if not sent then
+		return failure(if sendError == "TeleportUnavailable" then "TeleportUnavailable" else "TeleportFailed")
+	end
+	return { ok = true, data = { teleporting = true } }
+end
+
+-- Arrival from Save.Teleport. data = {saveId, code?} is shape-checked by main and trusted for
+-- nothing: Play needs the profile entry, and a code goes through the Save.Join checks.
+function SaveSlotService:_arrive(userId: number, data): (boolean, string?, any)
+	local profile, profileError = self:_openProfile(userId)
+	if not profile then
+		return false, profileError, nil
+	end
+	local saveId = data.saveId
+	if data.code ~= nil then
+		if self:_joinLocked(userId) then
+			return false, "JoinLocked", nil
+		end
+		local joined = self:_join(userId, profile, { code = data.code })
+		if not joined.ok then
+			return false, joined.errorCode, nil
+		end
+		-- The code wins over data.saveId.
+		saveId = joined.data.saveId
+	end
+	return self:_play(userId, saveId, nil)
+end
+
+function SaveSlotService:arrive(userId: number, data): (boolean, string?, any)
+	if self._closing then
+		return false, "ServerShuttingDown", nil
+	end
+	if self._busy[userId] then
+		return false, "SaveActionBusy", nil
+	end
+	self._busy[userId] = true
+	local called, arrived, arriveError, result = pcall(self._arrive, self, userId, data)
+	self._busy[userId] = nil
+	self:_runPendingKick(userId)
+	if not called then
+		warn(string.format("[ChristmasMarket2] arrival failed for %d: %s", userId, tostring(arrived)))
+		return false, "InternalError", nil
+	end
+	return arrived, arriveError, result
+end
+
+-- Teammate finder (CM2-S3) -----------------------------------------------------------------------
+
+-- A listing stays valid while its owner plays the owned co-op save here with a free seat.
+-- An invalid listing is removed. Returns (listing, info) or nil.
+function SaveSlotService:_validListing(ownerUserId: number)
+	local listing = self._listings[ownerUserId]
+	if listing == nil then
+		return nil, nil
+	end
+	local companyId = listing.companyId
+	local info = nil
+	if
+		self._active[ownerUserId] == companyId
+		and self._companies:isAvailable(companyId)
+		and self._companies:memberRole(companyId, ownerUserId) == "Owner"
+	then
+		info = self._companies:teamInfo(companyId)
+	end
+	if
+		info == nil
+		or info.saveSize == "Solo"
+		or BusinessState.memberCount(info) >= (SAVES.Seats[info.saveSize] or 0)
+	then
+		self._listings[ownerUserId] = nil
+		self:_listingsChanged()
+		return nil, nil
+	end
+	return listing, info
+end
+
+-- The active save qualifies for a listing: owned, healthy, co-op, with a free seat.
+function SaveSlotService:_listableActive(userId: number): string?
+	local companyId = self._active[userId]
+	if companyId == nil or not self._companies:isAvailable(companyId) then
+		return nil
+	end
+	if self._companies:memberRole(companyId, userId) ~= "Owner" then
+		return nil
+	end
+	local info = self._companies:teamInfo(companyId)
+	if
+		info == nil
+		or info.saveSize == "Solo"
+		or BusinessState.memberCount(info) >= (SAVES.Seats[info.saveSize] or 0)
+	then
+		return nil
+	end
+	return companyId
+end
+
+function SaveSlotService:_list(userId: number, companyId: string)
+	self._listings[userId] = { saveId = saveIdOf(companyId), companyId = companyId, createdAt = self._clock() }
+	self:_listingsChanged()
+end
+
+function SaveSlotService:_finderStart(userId: number, payload)
+	local own = self:_validListing(userId)
+	if own ~= nil then
+		return { ok = true, data = { saveId = own.saveId, created = false } }
+	end
+	local active = self:_listableActive(userId)
+	if active ~= nil then
+		self:_list(userId, active)
+		return { ok = true, data = { saveId = saveIdOf(active), created = false } }
+	end
+	self._finderSeq += 1
+	local created = self:_create(userId, {
+		requestId = string.format("finder_%d_%d_%d", userId, self._clock(), self._finderSeq),
+		payload = { size = payload.size or SAVES.FinderDefaultSize },
+	})
+	if not created.ok then
+		return created
+	end
+	local newSaveId = created.data.saveId
+	local played, playError = self:_play(userId, newSaveId, nil)
+	if not played then
+		return failure(playError)
+	end
+	self:_list(userId, companyIdOf(newSaveId))
+	return { ok = true, data = { saveId = newSaveId, created = true } }
+end
+
+function SaveSlotService:_finderStop(userId: number)
+	if self._listings[userId] ~= nil then
+		self._listings[userId] = nil
+		self:_listingsChanged()
+	end
+	return { ok = true, data = { stopped = true } }
+end
+
+-- Listings on this server without save names; the requester's own listing and saves the
+-- requester already sits on are left out.
+function SaveSlotService:_finderList(userId: number)
+	local requesterKey = SaveProfile.userIdText(userId)
+	local rows = {}
+	local ownSaveId = nil
+	for _, ownerUserId in ipairs(sortedKeys(self._listings)) do
+		local listing, info = self:_validListing(ownerUserId)
+		if listing ~= nil and info ~= nil then
+			if ownerUserId == userId then
+				ownSaveId = listing.saveId
+			elseif info.members[requesterKey] == nil then
+				table.insert(rows, {
+					saveId = listing.saveId,
+					ownerUserId = ownerUserId,
+					ownerName = self:_nameOf(ownerUserId),
+					size = info.saveSize,
+					seats = SAVES.Seats[info.saveSize],
+					taken = BusinessState.memberCount(info),
+					createdAt = listing.createdAt,
+				})
+			end
+		end
+	end
+	table.sort(rows, function(a, b)
+		if a.createdAt ~= b.createdAt then
+			return a.createdAt < b.createdAt
+		end
+		return a.ownerUserId < b.ownerUserId
+	end)
+	for _, row in ipairs(rows) do
+		row.createdAt = nil
+	end
+	return { ok = true, data = { listings = rows, ownSaveId = ownSaveId } }
+end
+
+function SaveSlotService:_finderJoin(userId: number, profile, payload)
+	local saveId = payload.saveId
+	local ownerUserId = nil
+	for listedOwner, listing in pairs(self._listings) do
+		if listing.saveId == saveId then
+			ownerUserId = listedOwner
+		end
+	end
+	if ownerUserId == nil or self:_validListing(ownerUserId) == nil then
+		return failure("ListingGone")
+	end
+	if ownerUserId == userId then
+		return failure("OwnListing")
+	end
+	local joined = self:_joinSave(userId, profile, saveId, nil)
+	if not joined.ok then
+		return joined
+	end
+	local played, playError, data = self:_play(userId, saveId, nil)
+	if not played then
+		return failure(playError)
+	end
+	-- A full save stops being listed.
+	self:_validListing(ownerUserId)
+	return { ok = true, data = { saveId = saveId, plotId = data.plotId } }
+end
+
 function SaveSlotService:_handle(userId: number, request)
 	local action = request.action
 	local payload = request.payload
@@ -989,7 +1401,7 @@ function SaveSlotService:_handle(userId: number, request)
 		return {
 			ok = true,
 			data = {
-				saves = self:_listView(profile, activeSaveId),
+				saves = self:_listView(profile, activeSaveId, true),
 				activeSaveId = activeSaveId,
 				maxSaves = SAVES.MaxSavesPerPlayer,
 			},
@@ -1003,7 +1415,7 @@ function SaveSlotService:_handle(userId: number, request)
 	elseif action == Protocol.SaveActions.Play then
 		local played, playError, data = self:_play(userId, payload.saveId, nil)
 		if not played then
-			return failure(playError)
+			return { ok = false, errorCode = playError or "InternalError", data = data }
 		end
 		return { ok = true, data = data }
 	elseif action == Protocol.SaveActions.Join then
@@ -1018,6 +1430,16 @@ function SaveSlotService:_handle(userId: number, request)
 		return self:_regenerateCode(userId)
 	elseif action == Protocol.SaveActions.SetSize then
 		return self:_setSize(userId, payload)
+	elseif action == Protocol.SaveActions.Teleport then
+		return self:_teleportToSave(userId, profile, payload)
+	elseif action == Protocol.SaveActions.FinderStart then
+		return self:_finderStart(userId, payload)
+	elseif action == Protocol.SaveActions.FinderStop then
+		return self:_finderStop(userId)
+	elseif action == Protocol.SaveActions.FinderList then
+		return self:_finderList(userId)
+	elseif action == Protocol.SaveActions.FinderJoin then
+		return self:_finderJoin(userId, profile, payload)
 	end
 	return failure("UnknownAction")
 end
@@ -1113,6 +1535,14 @@ function SaveSlotService:_attach(userId: number, saveId: string, companyId: stri
 	return true, nil, { saveId = saveId, plotId = plotId }
 end
 
+-- Nobody plays, loads or unloads the save here and it has no session (Amendment A1.1).
+function SaveSlotService:_idle(companyId: string): boolean
+	return self._members[companyId] == nil
+		and (self._pendingLoads[companyId] or 0) == 0
+		and not self._unloading[companyId]
+		and not self._companies:hasSession(companyId)
+end
+
 function SaveSlotService:_endLoad(companyId: string)
 	local count = (self._pendingLoads[companyId] or 0) - 1
 	self._pendingLoads[companyId] = if count > 0 then count else nil
@@ -1159,7 +1589,11 @@ function SaveSlotService:_play(userId: number, saveId: string, options): (boolea
 		return self:_attach(userId, saveId, companyId, entry)
 	end
 
-	-- e. Claim the plot and load (Amendment A3).
+	-- e. Claim the save-to-server map entry (CM2-S3), then the plot, and load (Amendment A3).
+	local claimed, claimError, claimData = self:_claimLocation(saveId, companyId, userId, entry.size)
+	if not claimed then
+		return false, claimError, claimData
+	end
 	self._pendingLoads[companyId] = (self._pendingLoads[companyId] or 0) + 1
 	local ownerUserId = SaveProfile.ownerUserIdOf(saveId) :: number
 	local loadName = if entry.role == "Owner" then entry.name else nil
@@ -1178,6 +1612,11 @@ function SaveSlotService:_play(userId: number, saveId: string, options): (boolea
 			plotId = self._plots:claim(companyId, preferred)
 			if not plotId then
 				self:_endLoad(companyId)
+				-- Amendment A1.1: free the map entry before the player is sent on, so the next
+				-- server's Play can claim it.
+				if self:_idle(companyId) then
+					self:_releaseLocation(saveId)
+				end
 				local teleportAttempt = settings.attempt or 0
 				if attempt == 1 and teleportAttempt < SAVES.MaxPlotTeleports then
 					local teleported = self._teleport(userId, { saveId = saveId, attempt = teleportAttempt + 1 })
@@ -1198,13 +1637,9 @@ function SaveSlotService:_play(userId: number, saveId: string, options): (boolea
 	end
 	if not state then
 		self:_endLoad(companyId)
-		if
-			self._members[companyId] == nil
-			and (self._pendingLoads[companyId] or 0) == 0
-			and not self._unloading[companyId]
-			and not self._companies:hasSession(companyId)
-		then
+		if self:_idle(companyId) then
 			self._plots:release(companyId)
+			self:_releaseLocation(saveId)
 		end
 		if loadError == "SaveDeleted" then
 			local _, removeError = self:_removeEntry(userId, saveId)
@@ -1296,6 +1731,11 @@ function SaveSlotService:leave(userId: number, final: boolean?): (boolean, strin
 		end
 		self._pendingKicks[userId] = nil
 		local left, err = self:_leaveActive(userId)
+		-- CM2-S3: a listing never outlives its owner on this server.
+		if self._listings[userId] ~= nil then
+			self._listings[userId] = nil
+			self:_listingsChanged()
+		end
 		for _, limiter in pairs(self._limiters) do
 			Protocol.forgetUser(limiter, userId)
 		end
