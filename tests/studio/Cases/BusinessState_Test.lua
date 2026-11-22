@@ -129,6 +129,21 @@ return function(t)
 		expect.truthy(migrated.pendingOrders["order:open"])
 	end)
 
+	-- CM2-N1: no walking customer survives a reload, so neither does a reservation.
+	t.test("a reload clears reservations", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.layout.placements.fir = {
+			speciesId = "FrasierFir",
+			sizeId = "Medium",
+			transform = { x = 0, y = 0, z = 0, rotation = 0 },
+		}
+		state.reservations.fir = { customerId = "visit:3", expiresAt = 500, salePrice = 160 }
+		local migrated = BusinessState.migrate(state, "personal:42", 42)
+		expect.truthy(migrated)
+		expect.equal(next(migrated.reservations), nil)
+		expect.truthy(migrated.layout.placements.fir)
+	end)
+
 	t.test("rejects impossible employee counts", function()
 		local state = BusinessState.new("personal:42", 42)
 		state.staff.Cashier = 2

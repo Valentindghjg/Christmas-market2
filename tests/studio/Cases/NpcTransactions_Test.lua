@@ -1,0 +1,197 @@
+--!strict
+-- CM2-N1: the server-trusted company transactions of walking customers.
+return function(t)
+	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+	local BusinessState = require(Shared:WaitForChild("BusinessState"))
+	local GameConfig = require(Shared:WaitForChild("GameConfig"))
+	local Service = require(
+		game:GetService("ServerScriptService")
+			:WaitForChild("Server")
+			:WaitForChild("Services")
+			:WaitForChild("CompanyStateService")
+	)
+	local expect = t.expect
+	local COMPANY = "save:npc"
+	local NOW = 1000
+	local Npc = GameConfig.Customers.Npc
+
+	local function fakePersistence()
+		local records = {}
+		return {
+			load = function(_, companyId, ownerUserId)
+				records[companyId] = records[companyId] or BusinessState.new(companyId, ownerUserId)
+				return records[companyId], nil
+			end,
+			save = function(_, companyId, state)
+				records[companyId] = state
+				return true, nil
+			end,
+			release = function()
+				return true, nil
+			end,
+		}
+	end
+
+	local function douglas(state, id: string, x: number)
+		state.layout.placements[id] = {
+			speciesId = "DouglasFir",
+			sizeId = "Medium",
+			transform = { x = x, y = 0, z = -20, rotation = 0 },
+		}
+	end
+
+	local function setup(trees: number)
+		local service = Service.new(fakePersistence(), function()
+			return NOW
+		end, function()
+			return 0
+		end)
+		local state = service:loadCompany(COMPANY, 42)
+		for index = 1, trees do
+			douglas(state, "douglas_" .. index, -35 + 7 * index)
+		end
+		return service, state
+	end
+
+	local function claimCount(service): number
+		local count = 0
+		for _ in pairs(service:npcClaimsForTest(COMPANY)) do
+			count += 1
+		end
+		return count
+	end
+
+	t.test("npcArrive claims the lowest space and needs a tree", function()
+		local service, state = setup(0)
+		local noStock, code = service:npcArrive(COMPANY, "visit:1")
+		expect.falsy(noStock)
+		expect.equal(code, "NoStock")
+		douglas(state, "douglas_1", -28)
+		local revision = state.revision
+		local first, firstInfo = service:npcArrive(COMPANY, "visit:1")
+		expect.truthy(first)
+		expect.equal(firstInfo.space, 1)
+		expect.equal(firstInfo.token, service:sessionToken(COMPANY))
+		local second, secondInfo = service:npcArrive(COMPANY, "visit:2")
+		expect.truthy(second)
+		expect.equal(secondInfo.space, 2)
+		local third, thirdCode = service:npcArrive(COMPANY, "visit:3")
+		expect.falsy(third)
+		expect.equal(thirdCode, "NoParking")
+		expect.equal(state.drivePastCustomers, 1)
+		expect.equal(state.revision, revision)
+		-- Fix round 1 (F7): the playtest reads the server clock from the snapshot.
+		local snapshot = service:snapshotForTest(COMPANY) :: any
+		expect.equal(snapshot.clock, NOW)
+	end)
+
+	t.test("npcDecide reserves for ReservationSeconds", function()
+		local service, state = setup(1)
+		local synced = 0
+		service:setPlacementsChangedHandler(function()
+			synced += 1
+		end)
+		expect.truthy(service:npcArrive(COMPANY, "visit:1"))
+		local revision = state.revision
+		local ok, picked = service:npcDecide(COMPANY, "visit:1", 8, 0)
+		expect.truthy(ok)
+		expect.equal(picked.placementId, "douglas_1")
+		expect.equal(picked.sizeId, "Medium")
+		expect.equal(picked.x, -28)
+		expect.equal(picked.z, -20)
+		local reservation = state.reservations.douglas_1
+		expect.equal(reservation.customerId, "visit:1")
+		expect.equal(reservation.expiresAt, NOW + Npc.ReservationSeconds)
+		expect.equal(state.revision, revision + 1)
+		expect.equal(synced, 1)
+	end)
+
+	t.test("npcDecide failure counts an abandonment", function()
+		local service, state = setup(1)
+		expect.truthy(service:npcArrive(COMPANY, "visit:1"))
+		local visits, abandoned, revision = state.customerVisits, state.abandonedCustomers, state.revision
+		local ok, code = service:npcDecide(COMPANY, "visit:1", 5, 0)
+		expect.falsy(ok)
+		expect.equal(code, "NoEligibleStock")
+		expect.equal(state.customerVisits, visits + 1)
+		expect.equal(state.abandonedCustomers, abandoned + 1)
+		expect.equal(next(state.reservations), nil)
+		expect.equal(state.revision, revision)
+	end)
+
+	t.test("npcSettle settles exactly once in the visit's space", function()
+		local service, state = setup(1)
+		expect.truthy(service:npcArrive(COMPANY, "visit:1"))
+		expect.truthy(service:npcArrive(COMPANY, "visit:2"))
+		expect.truthy(service:npcDecide(COMPANY, "visit:2", 8, 0))
+		local cash, sales = state.cash, state.sales
+		local ok, sale = service:npcSettle(COMPANY, "visit:2", "douglas_1")
+		expect.truthy(ok)
+		expect.equal(sale.order.parkingSpace, 2)
+		local claims = service:npcClaimsForTest(COMPANY)
+		expect.equal(claims[2], nil)
+		expect.equal(claims[1], "visit:1")
+		local again, code = service:npcSettle(COMPANY, "visit:2", "douglas_1")
+		expect.falsy(again)
+		expect.equal(code, "ReservationRequired")
+		expect.equal(state.sales, sales + 1)
+		expect.equal(state.cash, cash + sale.salePrice)
+	end)
+
+	t.test("onSold runs before the orders notification", function()
+		local service = setup(1)
+		local log = {}
+		service:setCustomerOrdersChangedHandler(function()
+			table.insert(log, "ordersChanged")
+		end)
+		expect.truthy(service:npcArrive(COMPANY, "visit:1"))
+		expect.truthy(service:npcDecide(COMPANY, "visit:1", 8, 0))
+		expect.truthy(service:npcSettle(COMPANY, "visit:1", "douglas_1", function(sale)
+			expect.truthy(sale.order)
+			table.insert(log, "onSold")
+		end))
+		expect.equal(#log, 2)
+		expect.equal(log[1], "onSold")
+		expect.equal(log[2], "ordersChanged")
+	end)
+
+	t.test("npcCancel releases the tree once", function()
+		local service, state = setup(1)
+		expect.truthy(service:npcArrive(COMPANY, "visit:1"))
+		expect.truthy(service:npcDecide(COMPANY, "visit:1", 8, 0))
+		local abandoned = state.abandonedCustomers
+		expect.truthy(service:npcCancel(COMPANY, "visit:1", "douglas_1"))
+		expect.equal(state.reservations.douglas_1, nil)
+		expect.truthy(state.layout.placements.douglas_1)
+		expect.equal(state.abandonedCustomers, abandoned + 1)
+		expect.falsy(service:npcCancel(COMPANY, "visit:1", "douglas_1"))
+		expect.equal(state.abandonedCustomers, abandoned + 1)
+	end)
+
+	t.test("npcSweep removes orphans only", function()
+		local service, state = setup(3)
+		expect.truthy(service:npcArrive(COMPANY, "visit:1"))
+		expect.truthy(service:npcArrive(COMPANY, "visit:9"))
+		expect.truthy(service:npcDecide(COMPANY, "visit:1", 8, 0))
+		state.reservations.douglas_2 = { customerId = "visit:9", expiresAt = NOW + 60, salePrice = 100 }
+		state.reservations.douglas_3 = { customerId = "npc:3", expiresAt = NOW + 60, salePrice = 100 }
+		local removed = service:npcSweep(COMPANY, { ["visit:1"] = true })
+		expect.equal(removed, 2)
+		expect.equal(state.reservations.douglas_2, nil)
+		expect.equal(state.reservations.douglas_1.customerId, "visit:1")
+		expect.equal(state.reservations.douglas_3.customerId, "npc:3")
+		local claims = service:npcClaimsForTest(COMPANY)
+		expect.equal(claimCount(service), 1)
+		expect.equal(claims[1], "visit:1")
+	end)
+
+	t.test("NPC calls refuse an unloaded session", function()
+		local service = setup(1)
+		expect.truthy(service:sessionToken(COMPANY))
+		expect.truthy(service:unloadCompany(COMPANY))
+		local ok, code = service:npcArrive(COMPANY, "visit:1")
+		expect.falsy(ok)
+		expect.equal(code, "CompanyUnavailable")
+		expect.equal(service:sessionToken(COMPANY), nil)
+	end)
+end

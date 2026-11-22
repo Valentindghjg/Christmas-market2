@@ -66,6 +66,22 @@ function CustomerService.reserve(state, placementId: string, customerId: string,
 	return true, { salePrice = salePrice, expiresAt = timestamp + reservationDuration }
 end
 
+-- Releases a customer's own reservation (CM2-N1 give-up paths). Never touches placements or cash.
+function CustomerService.cancelReservation(state, placementId: string, customerId: string): (boolean, string?)
+	local reservations = if type(state) == "table" then state.reservations else nil
+	local reservation = if type(reservations) == "table" and type(placementId) == "string"
+		then reservations[placementId]
+		else nil
+	if type(reservation) ~= "table" then
+		return false, "ReservationRequired"
+	end
+	if reservation.customerId ~= customerId then
+		return false, "ReservationOwnerMismatch"
+	end
+	reservations[placementId] = nil
+	return true, nil
+end
+
 -- Settles only the specific, unexpired reservation; replays cannot credit again.
 function CustomerService.completeReservedSale(state, placementId: string, customerId: string, timestamp: number)
 	if not BusinessState.validate(state) then

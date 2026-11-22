@@ -22,6 +22,28 @@ return function(t)
 		expect.falsy(CustomerService.completeReservedSale(state, "placement_sale", "customer:1", 101))
 	end)
 
+	-- CM2-N1: a walking customer who gives up releases only its own reservation.
+	t.test("cancels only the owner's reservation", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.layout.placements["placement_cancel"] =
+			{ speciesId = "FrasierFir", sizeId = "Medium", transform = { x = 0, y = 0, z = 0, rotation = 0 } }
+		expect.truthy(CustomerService.reserve(state, "placement_cancel", "visit:1", 100, 120))
+		local cash = state.cash
+		local ok, code = CustomerService.cancelReservation(state, "placement_cancel", "visit:2")
+		expect.falsy(ok)
+		expect.equal(code, "ReservationOwnerMismatch")
+		expect.truthy(state.reservations["placement_cancel"])
+		local released, none = CustomerService.cancelReservation(state, "placement_cancel", "visit:1")
+		expect.truthy(released)
+		expect.equal(none, nil)
+		expect.equal(state.reservations["placement_cancel"], nil)
+		expect.truthy(state.layout.placements["placement_cancel"])
+		expect.equal(state.cash, cash)
+		local again, againCode = CustomerService.cancelReservation(state, "placement_cancel", "visit:1")
+		expect.falsy(again)
+		expect.equal(againCode, "ReservationRequired")
+	end)
+
 	t.test("expires reservation without consuming display inventory", function()
 		local state = BusinessState.new("personal:42", 42)
 		state.layout.placements["placement_expire"] =

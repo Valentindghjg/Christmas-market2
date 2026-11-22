@@ -233,6 +233,7 @@ Localization.Strings = {
 		promptStock = "Stock %s",
 		promptStockObject = "%d Small · %d Medium · %d Large",
 		treeReserved = "RESERVED",
+		npcThanks = "Thanks so much!",
 		supplierStockingHint = "Deliveries land in a receiving bay by themselves. Walk to the bay to stock the trees.",
 	},
 	de = {
@@ -465,6 +466,7 @@ Localization.Strings = {
 		promptStock = "%s einräumen",
 		promptStockObject = "%d klein · %d mittel · %d groß",
 		treeReserved = "RESERVIERT",
+		npcThanks = "Vielen Dank!",
 		supplierStockingHint = "Lieferungen landen von selbst auf einem Abladeplatz. Geh zum Abladeplatz, um die Bäume einzuräumen.",
 	},
 }

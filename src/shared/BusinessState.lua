@@ -97,6 +97,13 @@ function BusinessState.clearCarried(state)
 	end
 end
 
+-- No customer NPC survives a reload (CM2-N1), so a freshly loaded session holds no reservation.
+function BusinessState.clearReservations(state)
+	if type(state.reservations) == "table" then
+		state.reservations = {}
+	end
+end
+
 -- Every configured species starts at its catalog default (validate() requires one price per species).
 local function defaultMediumPrices(): { [string]: number }
 	local prices = {}
@@ -269,6 +276,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		end
 		Receiving.normalize(state)
 		BusinessState.clearCarried(state)
+		BusinessState.clearReservations(state)
 		normalizeSchema10(state)
 		return validated(state)
 	end

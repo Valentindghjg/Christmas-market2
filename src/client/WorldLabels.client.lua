@@ -59,6 +59,8 @@ local function localizeLabel(label: TextLabel)
 		label.Text = UiKit.localizedFormat("pickupOrder", number(label, "OrderNumber"))
 	elseif kind == "CarNumber" then
 		label.Text = UiKit.localizedFormat("carNumber", number(label, "OrderNumber"))
+	elseif kind == "NpcThanks" then
+		label.Text = UiKit.localized("npcThanks")
 	end
 end
 

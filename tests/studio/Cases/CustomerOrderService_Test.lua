@@ -145,6 +145,32 @@ return function(t)
 		expect.equal(migrated.customerOrders[tostring(order.orderNumber)].carriedBy, nil)
 	end)
 
+	-- CM2-N1: a walking customer's order waits in the space its car parked in.
+	t.test("an order takes the given parking space", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.progression.parkingSpaces = 4
+		local sale = { placementId = "placement:a", speciesId = "FrasierFir", sizeId = "Medium", salePrice = 82 }
+		local created, order = Orders.createFromSale(state, sale, 100, 3)
+		expect.truthy(created)
+		expect.equal(order.parkingSpace, 3)
+		local again = { placementId = "placement:b", speciesId = "FrasierFir", sizeId = "Medium", salePrice = 82 }
+		local createdAgain, second = Orders.createFromSale(state, again, 100, 3)
+		expect.truthy(createdAgain)
+		expect.equal(second.parkingSpace, 1)
+	end)
+
+	t.test("claimed spaces count and are skipped", function()
+		local state = BusinessState.new("personal:42", 42)
+		local claims = { [1] = "visit:1" }
+		expect.equal(Orders.parkingSpaces(state), 2)
+		expect.equal(Orders.activeCustomers(state, claims), 1)
+		expect.equal(Orders.freeParking(state, claims), 1)
+		local sale = { placementId = "placement:a", speciesId = "FrasierFir", sizeId = "Medium", salePrice = 82 }
+		local created, order = Orders.createFromSale(state, sale, 100, nil, claims)
+		expect.truthy(created)
+		expect.equal(order.parkingSpace, 2)
+	end)
+
 	t.test("parking limits waiting customers and full lots make cars drive past", function()
 		local service = CompanyStateService.new(fakePersistence(), function()
 			return 100

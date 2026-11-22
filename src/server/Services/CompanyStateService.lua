@@ -19,6 +19,7 @@ local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
 local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
+local CustomerService = require(script.Parent:WaitForChild("CustomerService"))
 local CustomerSimulationService = require(script.Parent:WaitForChild("CustomerSimulationService"))
 local SupplierStockService = require(script.Parent:WaitForChild("SupplierStockService"))
 local EmployeeService = require(script.Parent:WaitForChild("EmployeeService"))
@@ -57,6 +58,9 @@ function CompanyStateService.new(persistence, clock, randomRoll, wait)
 	-- Caps a player's total request volume across all actions.
 	self._globalLimiter = Protocol.newRateLimiter(40, 10)
 	self._customerSequence = 0
+	-- Each loaded session gets a fresh token (CM2-N1): a walking customer from an earlier
+	-- session of the same company never acts on a reloaded one.
+	self._nextToken = 1
 	self._placementsChanged = nil
 	self._ordersChanged = nil
 	self._receivingChanged = nil
@@ -128,8 +132,14 @@ function CompanyStateService:loadCompany(companyId: string, ownerUserId: number,
 	if not state then
 		return nil, errorCode
 	end
+	local token = self._nextToken
+	self._nextToken += 1
 	self._sessions[companyId] = {
 		state = state,
+		-- Runtime only (CM2-N1): the session token and the walking customers' parking claims
+		-- { [space] = visitId }. Neither is saved.
+		token = token,
+		npcClaims = {},
 		busy = false,
 		healthy = true,
 		corrupt = false,
@@ -520,7 +530,7 @@ end
 function CompanyStateService:_notifyOrders(companyId: string, session, loadedNumbers: { number }?)
 	local handler = self._ordersChanged
 	if handler and self._sessions[companyId] == session then
-		local summary = CustomerOrderService.summary(session.state)
+		local summary = CustomerOrderService.summary(session.state, session.npcClaims)
 		summary.loadedNumbers = loadedNumbers or {}
 		local ok, err = pcall(handler, companyId, summary)
 		if not ok then
@@ -530,7 +540,7 @@ function CompanyStateService:_notifyOrders(companyId: string, session, loadedNum
 end
 
 -- Runs one server-owned pass over every available session under its critical section.
--- step(state) returns the number of changes, whether displayed trees changed, whether
+-- step(state, session) returns the number of changes, whether displayed trees changed, whether
 -- customer orders changed and (optionally) whether the receiving bays should be re-synced.
 function CompanyStateService:_runPass(filter, step)
 	local failures = 0
@@ -539,7 +549,7 @@ function CompanyStateService:_runPass(filter, step)
 		local session = self._sessions[companyId]
 		if session and session.healthy and not session.unloading and (filter == nil or filter(session.state)) then
 			local ok, changes, flags = self:_withSession(companyId, session, function(state)
-				local changed, displayChanged, ordersChanged, receivingChanged = step(state)
+				local changed, displayChanged, ordersChanged, receivingChanged = step(state, session)
 				if changed > 0 then
 					state.revision += 1
 					session.dirty = true
@@ -582,10 +592,11 @@ end
 
 -- Performs bounded logical NPC visits per company; a completed sale is one atomic change.
 -- Customers arrive by car: with every parking space taken the next car drives past.
+-- CM2-N1: a headless and test path only; live customers walk (CustomerNpcService).
 function CompanyStateService:simulateCustomerVisits()
-	return self:_runPass(nil, function(state)
+	return self:_runPass(nil, function(state, session)
 		local completedSales = 0
-		local freeParking = CustomerOrderService.freeParking(state)
+		local freeParking = CustomerOrderService.freeParking(state, session.npcClaims)
 		if freeParking < 1 then
 			-- Counted for analytics only; it is saved with the next real change or lock renewal.
 			if next(state.layout.placements) ~= nil then
@@ -598,7 +609,10 @@ function CompanyStateService:simulateCustomerVisits()
 			self._customerSequence += 1
 			local started, visit =
 				CustomerSimulationService.beginVisit(state, self._customerSequence, self._clock(), self._randomRoll())
-			if started and CustomerSimulationService.completeVisit(state, visit, self._clock()) then
+			if
+				started
+				and CustomerSimulationService.completeVisit(state, visit, self._clock(), nil, session.npcClaims)
+			then
 				completedSales += 1
 			end
 		end
@@ -660,7 +674,7 @@ function CompanyStateService:getCustomerOrders(companyId: string)
 	if not session or not session.healthy then
 		return nil
 	end
-	return CustomerOrderService.summary(session.state)
+	return CustomerOrderService.summary(session.state, session.npcClaims)
 end
 
 -- Due deliveries land in their bay (CM2-G14). Every company with an open order is synced each
@@ -800,7 +814,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 				placementCount = placementCount(state),
 				receiving = BusinessState.receivingSummary(state, self._clock()),
 				supplier = SupplierStockService.summary(state, self._clock()),
-				customers = CustomerOrderService.summary(state),
+				customers = CustomerOrderService.summary(state, session.npcClaims),
 				pricing = PricingService.summary(state),
 			},
 		}
@@ -938,7 +952,271 @@ function CompanyStateService:getPlacements(companyId: string)
 	return session.state.layout.placements
 end
 
+-- Walking customer NPCs (CM2-N1). Server-trusted callers only (CustomerNpcService); no
+-- client request reaches these methods. Each runs inside the company's critical section.
+
+-- The parking space a visit claims, or nil.
+local function claimOf(session, visitId: string): number?
+	for space, claimant in pairs(session.npcClaims) do
+		if claimant == visitId then
+			return space
+		end
+	end
+	return nil
+end
+
+-- Sorted IDs of the sessions that accept mutations.
+function CompanyStateService:liveCompanyIds(): { string }
+	local ids = {}
+	for _, companyId in ipairs(self:_companyIds()) do
+		if self:isAvailable(companyId) then
+			table.insert(ids, companyId)
+		end
+	end
+	return ids
+end
+
+-- The token of the live session, or nil when it is not available.
+function CompanyStateService:sessionToken(companyId: string): number?
+	if not self:isAvailable(companyId) then
+		return nil
+	end
+	return self._sessions[companyId].token
+end
+
+-- A customer car arrives: needs an unreserved displayed tree and a free parking space, then
+-- claims the lowest free space. A full lot with trees counts a drive-past. No revision.
+function CompanyStateService:npcArrive(companyId: string, visitId: string, forcedNumber: number?)
+	local session = self._sessions[companyId]
+	if not session or type(visitId) ~= "string" then
+		return false, "CompanyUnavailable"
+	end
+	local entered, ok, result = self:_withSession(companyId, session, function(state)
+		local unreserved = false
+		for placementId in pairs(state.layout.placements) do
+			if state.reservations[placementId] == nil then
+				unreserved = true
+				break
+			end
+		end
+		if not unreserved then
+			return false, "NoStock"
+		end
+		if CustomerOrderService.freeParking(state, session.npcClaims) < 1 then
+			-- Counted for analytics only; it is saved with the next real change or lock renewal.
+			if next(state.layout.placements) ~= nil then
+				state.drivePastCustomers += 1
+			end
+			return false, "NoParking"
+		end
+		local space = CustomerOrderService.freeParkingSpace(state, session.npcClaims)
+		session.npcClaims[space] = visitId
+		local customerNumber = forcedNumber
+		if customerNumber == nil then
+			self._customerSequence += 1
+			customerNumber = self._customerSequence
+		end
+		return true,
+			{
+				space = space,
+				customerNumber = customerNumber,
+				lotExpansion = state.progression.lotExpansion,
+				token = session.token,
+			}
+	end)
+	if not entered then
+		return false, ok
+	end
+	return ok, result
+end
+
+-- The browsing customer picks a tree: it is reserved for Npc.ReservationSeconds under the
+-- visit ID. A failed pick only changes beginVisit's visit and abandonment counters.
+function CompanyStateService:npcDecide(companyId: string, visitId: string, customerNumber: number, roll: number?)
+	local session = self._sessions[companyId]
+	if not session then
+		return false, "CompanyUnavailable"
+	end
+	local entered, ok, result = self:_withSession(companyId, session, function(state)
+		if claimOf(session, visitId) == nil then
+			return false, "NoClaim"
+		end
+		local started, visit = CustomerSimulationService.beginVisit(
+			state,
+			customerNumber,
+			self._clock(),
+			if roll ~= nil then roll else self._randomRoll(),
+			{ duration = GameConfig.Customers.Npc.ReservationSeconds, customerId = visitId }
+		)
+		if not started then
+			return false, visit
+		end
+		state.revision += 1
+		session.dirty = true
+		local placement = state.layout.placements[visit.placementId]
+		local transform = if type(placement) == "table" and type(placement.transform) == "table"
+			then placement.transform
+			else {}
+		return true,
+			{
+				placementId = visit.placementId,
+				salePrice = visit.salePrice,
+				sizeId = if type(placement) == "table" then placement.sizeId else nil,
+				x = transform.x,
+				z = transform.z,
+			}
+	end)
+	if not entered then
+		return false, ok
+	end
+	if ok then
+		self:_notifyPlacements(companyId, session)
+	end
+	return ok, result
+end
+
+-- A customer gives up: its reservation is released and the visit counts as abandoned.
+function CompanyStateService:npcCancel(companyId: string, visitId: string, placementId: string): boolean
+	local session = self._sessions[companyId]
+	if not session then
+		return false
+	end
+	local entered, cancelled = self:_withSession(companyId, session, function(state)
+		local released = CustomerService.cancelReservation(state, placementId, visitId)
+		if released then
+			state.abandonedCustomers += 1
+			state.revision += 1
+			session.dirty = true
+		end
+		return released
+	end)
+	if not entered or not cancelled then
+		return false
+	end
+	self:_notifyPlacements(companyId, session)
+	return true
+end
+
+-- The customer pays at the counter: the reservation settles exactly once and the order waits
+-- in the visit's parking space. onSold(sale) runs after the section and before the orders
+-- notification (it adopts the visit car). A failed settle counts the visit as abandoned.
+function CompanyStateService:npcSettle(companyId: string, visitId: string, placementId: string, onSold)
+	local session = self._sessions[companyId]
+	if not session then
+		return false, "CompanyUnavailable"
+	end
+	local entered, ok, result = self:_withSession(companyId, session, function(state)
+		local space = claimOf(session, visitId)
+		local sold, sale = CustomerSimulationService.completeVisit(
+			state,
+			{ placementId = placementId, customerId = visitId },
+			self._clock(),
+			space,
+			session.npcClaims
+		)
+		state.revision += 1
+		session.dirty = true
+		if not sold then
+			state.abandonedCustomers += 1
+			return false, sale
+		end
+		if space ~= nil then
+			session.npcClaims[space] = nil
+		end
+		return true, sale
+	end)
+	if not entered then
+		return false, ok
+	end
+	if ok then
+		if onSold then
+			local called, err = pcall(onSold, result)
+			if not called then
+				warn(string.format("[ChristmasMarket2] NPC sale hook failed for %s: %s", companyId, tostring(err)))
+			end
+		end
+		self:_notifyPlacements(companyId, session)
+		self:_notifyOrders(companyId, session)
+	else
+		self:_notifyPlacements(companyId, session)
+	end
+	return ok, result
+end
+
+-- The customer's car has left: its parking claim, if any, is dropped.
+function CompanyStateService:npcDepart(companyId: string, visitId: string)
+	local session = self._sessions[companyId]
+	if not session then
+		return
+	end
+	self:_withSession(companyId, session, function()
+		local space = claimOf(session, visitId)
+		if space ~= nil then
+			session.npcClaims[space] = nil
+		end
+		return true
+	end)
+end
+
+-- Removes reservations of walking customers (customer ID "visit:...") and parking claims
+-- whose visit is no longer live. Returns the number removed.
+function CompanyStateService:npcSweep(companyId: string, live: { [string]: boolean }): number
+	local session = self._sessions[companyId]
+	if not session or type(live) ~= "table" then
+		return 0
+	end
+	local entered, removed, reservationsRemoved = self:_withSession(companyId, session, function(state)
+		local count, released = 0, 0
+		for placementId, reservation in pairs(state.reservations) do
+			local customerId = if type(reservation) == "table" then reservation.customerId else nil
+			if
+				type(customerId) == "string"
+				and string.sub(customerId, 1, 6) == "visit:"
+				and live[customerId] ~= true
+			then
+				state.reservations[placementId] = nil
+				released += 1
+			end
+		end
+		for space, claimant in pairs(session.npcClaims) do
+			if live[claimant] ~= true then
+				session.npcClaims[space] = nil
+				count += 1
+			end
+		end
+		if released > 0 then
+			state.revision += 1
+			session.dirty = true
+		end
+		return count + released, released
+	end)
+	if not entered then
+		return 0
+	end
+	if reservationsRemoved > 0 then
+		self:_notifyPlacements(companyId, session)
+	end
+	return removed
+end
+
+-- Re-syncs displayed trees (a walking customer picked up or put down its tree).
+function CompanyStateService:refreshPlacements(companyId: string)
+	local session = self._sessions[companyId]
+	if session then
+		self:_notifyPlacements(companyId, session)
+	end
+end
+
 -- Studio test instruments only (StudioTestService); never called by gameplay code.
+
+-- Copy of the walking customers' parking claims; nil without a session.
+function CompanyStateService:npcClaimsForTest(companyId: string): { [number]: string }?
+	local session = self._sessions[companyId]
+	if not session then
+		return nil
+	end
+	return table.clone(session.npcClaims)
+end
 
 -- One forced, converting customer visit (roll 0) for the given profile number.
 -- Returns true plus the new order number, or false plus the reason.
@@ -951,7 +1229,7 @@ function CompanyStateService:visitForTest(companyId: string, customerNumber: num
 		return false, "CompanyUnavailable"
 	end
 	local entered, success, result = self:_withSession(companyId, session, function(state)
-		if CustomerOrderService.freeParking(state) < 1 then
+		if CustomerOrderService.freeParking(state, session.npcClaims) < 1 then
 			return false, "NoParking"
 		end
 		local timestamp = self._clock()
@@ -962,7 +1240,7 @@ function CompanyStateService:visitForTest(companyId: string, customerNumber: num
 		if not started then
 			return false, visit
 		end
-		local sold, sale = CustomerSimulationService.completeVisit(state, visit, timestamp)
+		local sold, sale = CustomerSimulationService.completeVisit(state, visit, timestamp, nil, session.npcClaims)
 		if not sold then
 			return false, sale
 		end
@@ -1051,10 +1329,13 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		loadedOrders = state.loadedOrders,
 		missedPickups = state.missedPickups,
 		drivePastCustomers = state.drivePastCustomers,
+		customerVisits = state.customerVisits,
+		abandonedCustomers = state.abandonedCustomers,
 		placementCount = placementCount(state),
 		receiving = BusinessState.receivingSummary(state, clock),
 		pendingOrders = pending,
-		customerOrders = CustomerOrderService.summary(state).orders,
+		customerOrders = CustomerOrderService.summary(state, session.npcClaims).orders,
+		clock = clock, -- Fix round 1 (F7): lets a playtest expire orders from the server's clock
 	}
 end
 

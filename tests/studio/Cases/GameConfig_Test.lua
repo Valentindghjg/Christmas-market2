@@ -137,6 +137,46 @@ return function(t)
 		end
 	end)
 
+	-- CM2-N1: walking customers fill the parking, and a reservation outlasts the longest walk.
+	t.test("NPC budget matches plots and parking", function()
+		local Npc = GameConfig.Customers.Npc
+		expect.equal(Npc.MaxPerPlot, GameConfig.Progression.Parking.maxSpaces)
+		expect.equal(#GameConfig.PersonalPlotIds, 6)
+		expect.equal(Npc.MaxPerServer, 6 * 4)
+		expect.truthy(
+			Npc.ReservationSeconds
+				>= 2 * Npc.LegTimeoutSeconds
+					+ Npc.PickUpSeconds
+					+ Npc.QueuePatienceSeconds
+					+ Npc.AutoCheckoutSeconds
+		)
+		expect.truthy(Npc.LoadSeconds >= 10 and Npc.LoadSeconds <= 120)
+		-- Fix round 1: the aisle and queue clear the inflated boxes, and corners keep a margin.
+		local stand
+		for _, box in ipairs(GameConfig.Placement.KeepClear) do
+			if box.id == "Stand" then
+				stand = box
+			end
+		end
+		expect.truthy(stand ~= nil)
+		expect.truthy(Npc.Path.AisleDepth > stand.maxZ + Npc.Clearance)
+		expect.truthy(Npc.Path.QueueFirstDepth > Npc.Path.Counter.maxZ + Npc.CounterClearance)
+		expect.truthy(Npc.CornerRadius < Npc.ArriveRadius)
+		expect.truthy(Npc.Clearance - Npc.CornerRadius >= 2)
+		local function checkRgb(rgb)
+			expect.equal(#rgb, 3)
+			for _, value in ipairs(rgb) do
+				expect.truthy(type(value) == "number" and value == math.floor(value) and value >= 0 and value <= 255)
+			end
+		end
+		for _, listName in ipairs({ "Skin", "Coat", "Pants", "Scarf", "Beanie" }) do
+			for _, rgb in ipairs(Npc.Look[listName]) do
+				checkRgb(rgb)
+			end
+		end
+		checkRgb(Npc.Look.Boots)
+	end)
+
 	-- CM2-R5: main's BindToClose waits SHUTDOWN_WAIT_SECONDS = 25.
 	t.test("unload retries fit the fail-closed window and the shutdown budget", function()
 		local sum = 0

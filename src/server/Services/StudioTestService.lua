@@ -7,8 +7,10 @@ local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
+local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
 local PersistenceService = require(script.Parent:WaitForChild("PersistenceService"))
@@ -411,6 +413,116 @@ function StudioTestService.install(context)
 	function commands.renewLocations()
 		local ok, renewed, failures = saveSlots:renewLocations()
 		return success({ ok = ok, renewed = renewed, failures = failures })
+	end
+
+	-- Walking customer NPCs (CM2-N1).
+	local npc = context.npc
+
+	-- One forced walking customer (roll 0) with the given profile number.
+	function commands.npcVisit(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" or type(arg.profile) ~= "number" then
+			return failure("BadArgument")
+		end
+		local companyId = companyIdFor(arg.userId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		local ok, result = npc:spawnForTest(companyId, arg.profile)
+		if not ok then
+			return failure(tostring(result))
+		end
+		return success(result)
+	end
+
+	function commands.npcSnapshot()
+		return success(npc:snapshot())
+	end
+
+	function commands.npcGiveUp(arg)
+		if type(arg) ~= "string" or not npc:giveUpForTest(arg) then
+			return failure("NotGivingUp")
+		end
+		return success()
+	end
+
+	-- Hard-removes every NPC visit at once, then sweeps and re-syncs each live company
+	-- (Fix round 1, F8).
+	function commands.npcReset()
+		return success({ removed = npc:resetForTest() })
+	end
+
+	-- The company's next live arrival gets this profile number (Fix round 1, F8).
+	function commands.npcNextArrival(arg)
+		if
+			type(arg) ~= "table"
+			or type(arg.userId) ~= "number"
+			or type(arg.profile) ~= "number"
+			or arg.profile ~= math.floor(arg.profile)
+			or arg.profile < 1
+			or arg.profile == math.huge
+		then
+			return failure("BadArgument")
+		end
+		local companyId = companyIdFor(arg.userId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		npc:setArrivalOverrideForTest(companyId, arg.profile)
+		return success()
+	end
+
+	-- Fills every plot to its NPC budget with load-test NPCs, counts Heartbeat frames in 5-s
+	-- windows, then removes what is left.
+	function commands.npcLoadTest(arg)
+		local Npc = GameConfig.Customers.Npc
+		local seconds = 60
+		if type(arg) == "table" and type(arg.seconds) == "number" and arg.seconds == arg.seconds then
+			seconds = math.clamp(math.floor(arg.seconds), 10, 120)
+		end
+		local before = npc:snapshot().loadSnaps
+		local spawned = 0
+		for _, plotId in ipairs(GameConfig.PersonalPlotIds) do
+			spawned += npc:spawnLoad(plotId, Npc.MaxPerPlot - npc:countOnPlot(plotId), seconds)
+		end
+		local windows = math.floor(seconds / 5)
+		local peakLive = 0
+		local minFps = math.huge
+		local fpsSum = 0
+		for _ = 1, windows do
+			local frames = 0
+			local connection = RunService.Heartbeat:Connect(function()
+				frames += 1
+			end)
+			local started = os.clock()
+			task.wait(5)
+			connection:Disconnect()
+			local fps = frames / math.max(os.clock() - started, 1e-3)
+			minFps = math.min(minFps, fps)
+			fpsSum += fps
+			peakLive = math.max(peakLive, npc:count())
+		end
+		local function loadLeft(): boolean
+			for _, visit in npc:snapshot().visits do
+				if visit.loadTest then
+					return true
+				end
+			end
+			return false
+		end
+		local deadline = os.clock() + Npc.DepartSeconds + 1
+		while loadLeft() and os.clock() < deadline do
+			task.wait(0.1)
+		end
+		local left = npc:clearLoad()
+		return success({
+			spawned = spawned,
+			peakLive = peakLive,
+			windows = windows,
+			minFps = if windows > 0 then minFps else 0,
+			meanFps = if windows > 0 then fpsSum / windows else 0,
+			snaps = npc:snapshot().loadSnaps - before,
+			left = left,
+		})
 	end
 
 	function commands.runPlaytest(arg)

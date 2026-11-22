@@ -10,7 +10,15 @@ local CustomerSimulationService = {}
 
 -- A deterministic server visit reserves at most one eligible tree; callers own scheduling.
 -- A customer only arrives when a parking space is free (callers check freeParking).
-function CustomerSimulationService.beginVisit(state, customerNumber: number, timestamp: number, roll: number)
+-- options (CM2-N1): duration replaces the profile's patience as the reservation length and
+-- customerId replaces the profile ID as the reservation owner (a walking NPC's visit ID).
+function CustomerSimulationService.beginVisit(
+	state,
+	customerNumber: number,
+	timestamp: number,
+	roll: number,
+	options: { duration: number?, customerId: string? }?
+)
 	if type(roll) ~= "number" or roll < 0 or roll > 1 then
 		return false, "InvalidRoll"
 	end
@@ -29,15 +37,16 @@ function CustomerSimulationService.beginVisit(state, customerNumber: number, tim
 		state.abandonedCustomers += 1
 		return false, "NoConversion"
 	end
-	local reserved, reservation =
-		CustomerService.reserve(state, candidate.placementId, profile.id, timestamp, profile.patienceSeconds)
+	local duration = if options ~= nil and options.duration ~= nil then options.duration else profile.patienceSeconds
+	local customerId = if options ~= nil and options.customerId ~= nil then options.customerId else profile.id
+	local reserved, reservation = CustomerService.reserve(state, candidate.placementId, customerId, timestamp, duration)
 	if not reserved then
 		state.abandonedCustomers += 1
 		return false, reservation
 	end
 	return true,
 		{
-			customerId = profile.id,
+			customerId = customerId,
 			placementId = candidate.placementId,
 			salePrice = candidate.salePrice,
 			expiresAt = reservation.expiresAt,
@@ -45,7 +54,9 @@ function CustomerSimulationService.beginVisit(state, customerNumber: number, tim
 end
 
 -- Settles the sale, then leaves the customer waiting at the car for the tree.
-function CustomerSimulationService.completeVisit(state, visit, timestamp: number)
+-- parkingSpace and claims (CM2-N1): the walking customer's car keeps its space, and runtime
+-- parking claims are skipped when the order needs a free one.
+function CustomerSimulationService.completeVisit(state, visit, timestamp: number, parkingSpace: number?, claims)
 	if type(visit) ~= "table" or type(visit.placementId) ~= "string" or type(visit.customerId) ~= "string" then
 		return false, "InvalidVisit"
 	end
@@ -53,7 +64,7 @@ function CustomerSimulationService.completeVisit(state, visit, timestamp: number
 	if not sold then
 		return false, sale
 	end
-	local _, order = CustomerOrderService.createFromSale(state, sale, timestamp)
+	local _, order = CustomerOrderService.createFromSale(state, sale, timestamp, parkingSpace, claims)
 	sale.order = order
 	return true, sale
 end

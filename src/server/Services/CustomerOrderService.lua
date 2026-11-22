@@ -39,41 +39,68 @@ function CustomerOrderService.parkingSpaces(state): number
 	return math.max(GameConfig.Customers.BaseParkingSpaces, state.progression.parkingSpaces)
 end
 
--- Every browsing (reserved) or waiting (paid) customer occupies one parked car.
-function CustomerOrderService.activeCustomers(state): number
-	local count = orderCount(state)
-	for _ in pairs(state.reservations) do
-		count += 1
+-- Runtime parking claims of walking customers (CM2-N1): { [space] = visitId }, never saved.
+local function claimCount(claims): number
+	local count = 0
+	if type(claims) == "table" then
+		for _ in pairs(claims) do
+			count += 1
+		end
 	end
 	return count
 end
 
-function CustomerOrderService.freeParking(state): number
-	local free = CustomerOrderService.parkingSpaces(state) - CustomerOrderService.activeCustomers(state)
+-- Every browsing (reserved or claimed) or waiting (paid) customer occupies one parked car. A
+-- walking customer's reservation and parking claim are the same car, hence the max.
+function CustomerOrderService.activeCustomers(state, claims): number
+	local reservations = 0
+	for _ in pairs(state.reservations) do
+		reservations += 1
+	end
+	return orderCount(state) + math.max(reservations, claimCount(claims))
+end
+
+function CustomerOrderService.freeParking(state, claims): number
+	local free = CustomerOrderService.parkingSpaces(state) - CustomerOrderService.activeCustomers(state, claims)
 	local orderRoom = GameConfig.Customers.MaxOpenCustomerOrders - orderCount(state)
 	return math.max(0, math.min(free, orderRoom))
 end
 
-local function freeParkingSpace(state): number
+local function spacesUsedByOrders(state): { [number]: boolean }
 	local used = {}
 	for _, order in pairs(state.customerOrders) do
 		used[order.parkingSpace] = true
 	end
+	return used
+end
+
+-- The lowest space no order uses and no walking customer claims.
+function CustomerOrderService.freeParkingSpace(state, claims): number
+	local used = spacesUsedByOrders(state)
 	for index = 1, CustomerOrderService.parkingSpaces(state) do
-		if not used[index] then
+		if not used[index] and not (type(claims) == "table" and claims[index] ~= nil) then
 			return index
 		end
 	end
 	return CustomerOrderService.parkingSpaces(state) + 1
 end
 
--- Turns a settled sale into an order waiting at the customer's car.
-function CustomerOrderService.createFromSale(state, sale, timestamp: number)
+-- Turns a settled sale into an order waiting at the customer's car. parkingSpace (CM2-N1) is
+-- the walking customer's own space; it is used when valid and free of orders.
+function CustomerOrderService.createFromSale(state, sale, timestamp: number, parkingSpace: number?, claims)
 	if type(sale) ~= "table" or type(sale.placementId) ~= "string" then
 		return false, "InvalidSale"
 	end
 	if orderCount(state) >= GameConfig.Customers.MaxOpenCustomerOrders then
 		return false, "TooManyCustomerOrders"
+	end
+	local space = CustomerOrderService.freeParkingSpace(state, claims)
+	if
+		isPositiveInteger(parkingSpace)
+		and (parkingSpace :: number) <= CustomerOrderService.parkingSpaces(state)
+		and not spacesUsedByOrders(state)[parkingSpace :: number]
+	then
+		space = parkingSpace :: number
 	end
 	local orderNumber = state.nextOrderNumber
 	local order = {
@@ -84,7 +111,7 @@ function CustomerOrderService.createFromSale(state, sale, timestamp: number)
 		salePrice = sale.salePrice,
 		soldAt = timestamp,
 		expiresAt = timestamp + GameConfig.Customers.PickupPatienceSeconds,
-		parkingSpace = freeParkingSpace(state),
+		parkingSpace = space,
 	}
 	state.nextOrderNumber += 1
 	state.customerOrders[tostring(orderNumber)] = order
@@ -210,7 +237,7 @@ function CustomerOrderService.autoLoad(state, timestamp: number): number
 end
 
 -- Client-safe projection for HUD and world visuals.
-function CustomerOrderService.summary(state)
+function CustomerOrderService.summary(state, claims)
 	local orders = {}
 	for _, order in ipairs(sortedOrders(state)) do
 		table.insert(orders, {
@@ -226,7 +253,7 @@ function CustomerOrderService.summary(state)
 	return {
 		orders = orders,
 		parkingSpaces = CustomerOrderService.parkingSpaces(state),
-		activeCustomers = CustomerOrderService.activeCustomers(state),
+		activeCustomers = CustomerOrderService.activeCustomers(state, claims),
 		loadedOrders = state.loadedOrders,
 		missedPickups = state.missedPickups,
 		drivePastCustomers = state.drivePastCustomers,

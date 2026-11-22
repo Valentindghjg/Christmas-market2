@@ -63,4 +63,16 @@ function ArtLibrary.prepareClone(template: Model): Model
 	return model
 end
 
+-- Returns the Y rotation in radians that turns a part with this RightVector to the
+-- nearest half turn (CM2-N1 fix round 2). A half turn keeps the part's local X along
+-- lot X, the axis KeepClear `Stand` was drawn for. CFrame.Angles(0, θ, 0).RightVector
+-- is (cos θ, 0, -sin θ).
+function ArtLibrary.levelYaw(rightX: number, rightZ: number): number
+	if math.sqrt(rightX * rightX + rightZ * rightZ) < 1e-3 then
+		return 0
+	end
+	local yaw = math.atan2(-rightZ, rightX)
+	return math.floor(yaw / math.pi + 0.5) * math.pi - yaw
+end
+
 return ArtLibrary

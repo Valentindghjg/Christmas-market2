@@ -1,5 +1,6 @@
 --!strict
 -- Original low-poly winter graybox built from Roblox primitives; no external assets.
+local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArtLibrary = require(Shared:WaitForChild("ArtLibrary"))
@@ -18,6 +19,7 @@ local BAY_DEPTH_STEP = 6
 local TRUCK_X = 46
 local TRUCK_START_DEPTH = 66
 local MAX_BUNDLES = 9
+local STRUCTURE_GROUP = GameConfig.Customers.Npc.CollisionGroups.Structure
 
 local CAR_DRIVE_SECONDS = 2
 local CAR_COLORS = {
@@ -80,6 +82,16 @@ local function tree(parent: Instance, name: string, position: Vector3, scale: nu
 	return model
 end
 
+-- Lot trees pass through walking customers (CM2-N1, collision group LotTree), and so do the
+-- lot structures: stand, counter and receiving bays (Fix round 1, collision group LotStructure).
+local function setCollisionGroup(model: Instance, group: string)
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.CollisionGroup = group
+		end
+	end
+end
+
 local function tent(parent: Instance, position: Vector3): Model
 	local model = Instance.new("Model")
 	model.Name = "StarterSalesTent"
@@ -130,6 +142,34 @@ local function reportMissing(artPath: string, code: string)
 	warn(string.format("[ART] %s %s", code, artPath))
 end
 
+-- Levels the art's yaw to the nearest half turn of its largest part (CM2-N1 fix round 2),
+-- so a Studio-only template's rotation cannot tilt the stall out of KeepClear `Stand`.
+local function levelArt(model: Model)
+	local ref: BasePart? = nil
+	local bestArea = -math.huge
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			local area = descendant.Size.X * descendant.Size.Z
+			if area > bestArea then
+				bestArea = area
+				ref = descendant
+			end
+		end
+	end
+	if ref == nil then
+		return
+	end
+	local right = ref.CFrame.RightVector
+	local delta = ArtLibrary.levelYaw(right.X, right.Z)
+	if math.abs(delta) > 1e-4 then
+		local c = model:GetBoundingBox().Position
+		model:PivotTo(CFrame.new(c) * CFrame.Angles(0, delta, 0) * CFrame.new(c):Inverse() * model:GetPivot())
+	end
+	if model.PrimaryPart == nil then
+		model.WorldPivot = CFrame.new(model:GetPivot().Position)
+	end
+end
+
 -- Uses the approved art model when ArtAssets has it, while retaining a primitive
 -- fallback for source-only and automated test environments.
 local function salesStand(parent: Instance, position: Vector3, assetId: string?): Model
@@ -138,15 +178,19 @@ local function salesStand(parent: Instance, position: Vector3, assetId: string?)
 	local template, code = ArtLibrary.find(ReplicatedStorage:FindFirstChild("ArtAssets"), artPath)
 	if not template then
 		reportMissing(artPath, code or "MissingArtAsset")
-		return tent(parent, position)
+		local fallback = tent(parent, position)
+		setCollisionGroup(fallback, STRUCTURE_GROUP)
+		return fallback
 	end
 
 	local model = ArtLibrary.prepareClone(template)
 	model.Name = "StarterSalesTent"
 	model.Parent = parent
+	levelArt(model)
 	local box, size = model:GetBoundingBox()
 	local targetCenter = position + Vector3.new(0, size.Y / 2, 0)
 	model:PivotTo(model:GetPivot() + (targetCenter - box.Position))
+	setCollisionGroup(model, STRUCTURE_GROUP)
 	return model
 end
 
@@ -187,6 +231,7 @@ local function checkout(parent: Instance, position: Vector3): Model
 		Enum.Material.Metal
 	)
 	model.PrimaryPart = base
+	setCollisionGroup(model, STRUCTURE_GROUP)
 	return model
 end
 
@@ -323,6 +368,7 @@ local function buildReceiving(plot: Model)
 		stockPrompt:SetAttribute("BayIndex", index)
 		stockPrompt.Parent = bay
 	end
+	setCollisionGroup(folder, STRUCTURE_GROUP)
 end
 
 function WorldService.build()
@@ -515,8 +561,9 @@ end
 
 -- Parking sits on the road-facing edge of the lot (plots south of the road face +Z).
 local function parkingOffset(plot: Model, index: number): Vector3
+	local path = GameConfig.Customers.Npc.Path
 	local towardRoad = if (plot.PrimaryPart :: BasePart).Position.Z < 0 then 1 else -1
-	return Vector3.new(-24 + (index - 1) * 12, 0, towardRoad * 20)
+	return Vector3.new(path.ParkingFirstX + (index - 1) * path.ParkingStep, 0, towardRoad * path.ParkingDepth)
 end
 
 function WorldService.applyParkingVisual(plotId: string, spaces: number)
@@ -598,8 +645,10 @@ local function finiteNumber(value: unknown): boolean
 end
 
 -- Displayed trees carry a stable height and their current price (G3). Positions are in the
--- lot frame (CM2-G14); a reserved tree shows RESERVED.
-function WorldService.syncDisplayedTrees(plotId: string, placements, mediumPrices, reservations)
+-- lot frame (CM2-G14); a reserved tree shows RESERVED. A tree a walking customer carries
+-- (hidden[placementId], CM2-N1) keeps its model, invisible and without a label, so the
+-- displayed count still equals the placement count.
+function WorldService.syncDisplayedTrees(plotId: string, placements, mediumPrices, reservations, hidden)
 	local plot = findPlot(plotId)
 	if not plot or type(placements) ~= "table" then
 		return false
@@ -627,6 +676,18 @@ function WorldService.syncDisplayedTrees(plotId: string, placements, mediumPrice
 			model:SetAttribute("LotX", transform.x)
 			model:SetAttribute("LotZ", transform.z)
 			model:SetAttribute("Reserved", reserved)
+			setCollisionGroup(model, GameConfig.Customers.Npc.CollisionGroups.Tree)
+			if type(hidden) == "table" and hidden[placementId] == true then
+				model:SetAttribute("NpcCarried", true)
+				for _, descendant in model:GetDescendants() do
+					if descendant:IsA("BasePart") then
+						descendant.Transparency = 1
+						descendant.CanCollide = false
+						descendant.CanQuery = false
+					end
+				end
+				continue
+			end
 			local tenths = TreeHeight.tenthsFor(placementId, placement.sizeId) or 0
 			local medium = type(mediumPrices) == "table" and mediumPrices[placement.speciesId]
 			local price = if type(medium) == "number" then Economy.priceForSize(medium, placement.sizeId) else 0
@@ -836,6 +897,32 @@ local function roadEntry(parked: CFrame): CFrame
 	return CFrame.new(parked.Position.X, parked.Position.Y, 0) * parked.Rotation
 end
 
+-- The parked pose of a car on parking space `space` (1..4).
+local function parkedAt(plot: Model, space: number): CFrame
+	local center = (plot.PrimaryPart :: BasePart).Position
+	return CFrame.new(center + parkingOffset(plot, math.clamp(space, 1, 4)) + Vector3.new(0, 0.6, 0))
+end
+
+-- The "#n HERE" billboard and the LoadOrder prompt of an order car; added only when missing,
+-- so an adopted visit car (CM2-N1) is decorated once.
+local function decorateCar(carModel: Model, orderNumber: number, callbacks)
+	local body = carModel.PrimaryPart
+	if not body then
+		return
+	end
+	if body:FindFirstChild("Label") == nil then
+		billboard(body, "CarNumber", "#" .. orderNumber, 6, { OrderNumber = orderNumber })
+	end
+	if body:FindFirstChild("LoadOrder") == nil then
+		local loadPrompt = prompt(body, "LoadOrder", "Load tree", orderNumber)
+		loadPrompt.Triggered:Connect(function(player)
+			if callbacks and callbacks.load then
+				callbacks.load(player, orderNumber, body)
+			end
+		end)
+	end
+end
+
 -- Mirrors customer orders into the world: a numbered car per order on its parking space
 -- and the sold tree with an "Order #n – PICK UP" label until someone carries it.
 -- callbacks.carry(orderNumber, part) and callbacks.load(orderNumber, part) receive the
@@ -893,20 +980,15 @@ function WorldService.syncCustomerOrders(plotId: string, summary, callbacks)
 	for orderNumber, order in pairs(wanted) do
 		local carName = "CustomerCar_" .. orderNumber
 		local carModel = folder:FindFirstChild(carName)
-		if not carModel then
-			local slot = math.clamp(order.parkingSpace, 1, 4)
-			local parked = CFrame.new(center + parkingOffset(plot, slot) + Vector3.new(0, 0.6, 0))
+		if carModel and carModel:IsA("Model") then
+			-- A walking customer's adopted visit car (CM2-N1) or an existing order car.
+			decorateCar(carModel, orderNumber, callbacks)
+		elseif not carModel then
+			local parked = parkedAt(plot, order.parkingSpace)
 			local color = CAR_COLORS[(orderNumber - 1) % #CAR_COLORS + 1]
 			local newCar = car(folder, carName, roadEntry(parked), color)
 			newCar:SetAttribute("OrderNumber", orderNumber)
-			local body = newCar.PrimaryPart :: BasePart
-			billboard(body, "CarNumber", "#" .. orderNumber, 6, { OrderNumber = orderNumber })
-			local loadPrompt = prompt(body, "LoadOrder", "Load tree", orderNumber)
-			loadPrompt.Triggered:Connect(function(player)
-				if callbacks and callbacks.load then
-					callbacks.load(player, orderNumber, body)
-				end
-			end)
+			decorateCar(newCar, orderNumber, callbacks)
 			drive(newCar, roadEntry(parked), parked, CAR_DRIVE_SECONDS)
 		end
 
@@ -924,6 +1006,7 @@ function WorldService.syncCustomerOrders(plotId: string, summary, callbacks)
 			local scales = { Small = 0.6, Medium = 0.8, Large = 1.0 }
 			local pickupTree = tree(folder, treeName, position, scales[order.sizeId] or 0.8)
 			pickupTree:SetAttribute("OrderNumber", orderNumber)
+			setCollisionGroup(pickupTree, GameConfig.Customers.Npc.CollisionGroups.Tree)
 			local trunk = pickupTree.PrimaryPart :: BasePart
 			billboard(trunk, "PickupOrder", string.format("Order #%d · PICK UP", orderNumber), 9, {
 				OrderNumber = orderNumber,
@@ -986,6 +1069,129 @@ function WorldService.detachCarriedTree(character: Model?)
 	if existing then
 		existing:Destroy()
 	end
+end
+
+-- Walking customers (CM2-N1) ----------------------------------------------------------------
+
+-- The top centre of the plot's lot ground (lot-frame origin at ground height), or nil.
+function WorldService.plotCenter(plotId: string): Vector3?
+	local plot = findPlot(plotId)
+	if not plot then
+		return nil
+	end
+	local ground = plot.PrimaryPart :: BasePart
+	return ground.Position + Vector3.new(0, ground.Size.Y / 2, 0)
+end
+
+-- `<plot>.Customers`, where the walking customers' avatars live; nil without the plot.
+function WorldService.customersFolder(plotId: string): Folder?
+	local plot = findPlot(plotId)
+	if not plot then
+		return nil
+	end
+	local folder = plot:FindFirstChild("Customers")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "Customers"
+		folder.Parent = plot
+	end
+	return folder :: Folder
+end
+
+local function ordersFolder(plot: Model): Folder
+	local folder = plot:FindFirstChild("CustomerOrders")
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "CustomerOrders"
+		folder.Parent = plot
+	end
+	return folder :: Folder
+end
+
+-- A walking customer's car `VisitCar_<seq>` drives onto parking space `space`.
+function WorldService.spawnVisitCar(plotId: string, seq: number, space: number): Model?
+	local plot = findPlot(plotId)
+	if not plot then
+		return nil
+	end
+	local parked = parkedAt(plot, space)
+	local color = CAR_COLORS[(seq - 1) % #CAR_COLORS + 1]
+	local visitCar = car(ordersFolder(plot), "VisitCar_" .. seq, roadEntry(parked), color)
+	drive(visitCar, roadEntry(parked), parked, CAR_DRIVE_SECONDS)
+	return visitCar
+end
+
+-- At the sale the visit car becomes the order's car; syncCustomerOrders then decorates it
+-- instead of spawning a second one.
+function WorldService.adoptVisitCar(visitCar: Model, orderNumber: number)
+	if visitCar.Parent == nil then
+		return
+	end
+	visitCar.Name = "CustomerCar_" .. orderNumber
+	visitCar:SetAttribute("OrderNumber", orderNumber)
+end
+
+-- A visit car without a sale leaves as LeavingCar and is destroyed off the lot.
+function WorldService.dismissVisitCar(visitCar: Model)
+	if visitCar.Parent == nil then
+		return
+	end
+	visitCar.Name = "LeavingCar"
+	local parked = visitCar:GetPivot()
+	drive(visitCar, parked, roadEntry(parked), CAR_DRIVE_SECONDS, function()
+		visitCar:Destroy()
+	end)
+end
+
+function WorldService.destroyVisitCar(visitCar: Model)
+	visitCar:Destroy()
+end
+
+local NPC_TREE_SCALES = { Small = 0.35, Medium = 0.4, Large = 0.45 }
+
+-- The tree a walking customer carries: welded to the root, massless and non-colliding.
+function WorldService.attachNpcTree(model: Model, sizeId: string?)
+	WorldService.detachNpcTree(model)
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if not (root and root:IsA("BasePart")) then
+		return
+	end
+	local carried = tree(model, "NpcCarriedTree", Vector3.zero, NPC_TREE_SCALES[sizeId or ""] or 0.4)
+	for _, descendant in carried:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = false
+			descendant.CanCollide = false
+			descendant.CanQuery = false
+			descendant.CanTouch = false
+			descendant.Massless = true
+			descendant.CollisionGroup = GameConfig.Customers.Npc.CollisionGroups.Tree
+		end
+	end
+	carried:PivotTo(root.CFrame * CFrame.new(0, 0.2, -1.4) * CFrame.Angles(0, 0, math.rad(-15)))
+	for _, descendant in carried:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = root
+			weld.Part1 = descendant
+			weld.Parent = descendant
+		end
+	end
+end
+
+function WorldService.detachNpcTree(model: Model)
+	local existing = model:FindFirstChild("NpcCarriedTree")
+	if existing then
+		existing:Destroy()
+	end
+end
+
+-- A short speech billboard ("Thanks so much!", OBSERVED) removed after `seconds`.
+function WorldService.speech(adornee: BasePart, kind: string, text: string, seconds: number)
+	local label = billboard(adornee, kind, text, 3, {})
+	local gui = label.Parent :: BillboardGui
+	gui.Name = "Speech"
+	gui.Size = UDim2.fromOffset(170, 40)
+	Debris:AddItem(gui, seconds)
 end
 
 return WorldService

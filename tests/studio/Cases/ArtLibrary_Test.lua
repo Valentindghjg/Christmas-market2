@@ -77,4 +77,15 @@ return function(t)
 			end
 		end
 	end)
+
+	t.test("levelYaw snaps a part's yaw to the nearest half turn", function()
+		local function rv(deg)
+			return math.cos(math.rad(deg)), -math.sin(math.rad(deg))
+		end
+		for _, case in ipairs({ { -44.4, 44.4 }, { 135.6, 44.4 }, { 0, 0 }, { 180, 0 }, { -170, -10 }, { 100, 80 } }) do
+			local degrees = math.deg(ArtLibrary.levelYaw(rv(case[1])))
+			expect.truthy(math.abs(degrees - case[2]) < 1e-6)
+		end
+		expect.equal(ArtLibrary.levelYaw(0, 0), 0)
+	end)
 end

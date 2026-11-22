@@ -225,6 +225,70 @@ GameConfig.Customers = {
 	-- Server-side reach check for carry/load interactions, in studs.
 	InteractDistance = 16,
 	MaxOpenCustomerOrders = 8,
+	-- Walking customer NPCs (CM2-N1). All values are PROVISIONAL unless marked. Every point
+	-- is in the lot frame (x from the plot centre, z toward the road).
+	Npc = {
+		MaxPerPlot = 4, -- = Progression.Parking.maxSpaces
+		MaxPerServer = 24, -- = 6 plots x 4
+		ArrivalIntervalSeconds = 5,
+		TickSeconds = 0.2,
+		WalkSpeed = 10,
+		ArriveRadius = 1.5,
+		ReissueSeconds = 2,
+		Clearance = 3, -- Fix round 1: covers the ~2.1-stud half-width of a scaled R15 avatar
+		CounterClearance = 1.5, -- keeps queue slot 1 (z -11) outside the counter box (maxZ -11.5)
+		CornerRadius = 1, -- intermediate waypoints advance within this radius (Fix round 1)
+		CarArriveSeconds = 2.5,
+		LegTimeoutSeconds = 20,
+		BrowseSeconds = 6,
+		PickUpSeconds = 1,
+		QueuePatienceSeconds = 60,
+		AutoCheckoutSeconds = 3,
+		WaitAtCarExtraSeconds = 10,
+		DepartSeconds = 2.5,
+		MaxVisitSeconds = 360,
+		ReservationSeconds = 120,
+		ThanksSeconds = 3, -- the "Thanks so much!" text is OBSERVED
+		LoadSeconds = 60, -- default length of a load-test run (Amendment 1)
+		Path = {
+			ParkingFirstX = -24,
+			ParkingStep = 12,
+			ParkingDepth = 20,
+			DoorOffsetX = 3.5,
+			AisleDepth = 12, -- Fix round 1: the inflated Stand box ends at z 11
+			QueueX = 16,
+			QueueFirstDepth = -11,
+			QueueSpacing = 2.2,
+			StaffDepth = -16.5,
+			ApproachGap = 0.8,
+			Counter = { minX = 13.5, maxX = 18.5, minZ = -15, maxZ = -13 }, -- counter body 5 x 2 at (16, -14)
+		},
+		Look = { -- RGB, own palette
+			Skin = { { 255, 220, 190 }, { 234, 184, 146 }, { 198, 140, 98 }, { 141, 94, 62 }, { 96, 64, 44 } },
+			Coat = {
+				{ 170, 46, 46 },
+				{ 46, 107, 69 },
+				{ 57, 96, 150 },
+				{ 214, 170, 72 },
+				{ 122, 78, 44 },
+				{ 232, 220, 196 },
+				{ 88, 60, 120 },
+			},
+			Pants = { { 52, 58, 64 }, { 70, 70, 76 }, { 40, 52, 84 }, { 96, 72, 52 } },
+			Scarf = { { 226, 222, 210 }, { 170, 46, 46 }, { 46, 107, 69 }, { 214, 170, 72 }, { 57, 96, 150 } }, -- also mittens
+			Beanie = { { 170, 46, 46 }, { 240, 244, 248 }, { 46, 107, 69 }, { 57, 96, 150 }, { 214, 170, 72 } },
+			Boots = { 78, 50, 32 },
+			Scales = { 0.92, 0.96, 1.0, 1.04 },
+		},
+		-- Roblox's first-party default R15 animations.
+		Animations = { Walk = "rbxassetid://507777826", Idle = "rbxassetid://507766388" },
+		CollisionGroups = {
+			Npc = "CustomerNpc",
+			Tree = "LotTree",
+			Player = "PlayerCharacter",
+			Structure = "LotStructure", -- stand, counter and receiving bays (Fix round 1)
+		},
+	},
 }
 
 -- Receiving bays hold delivered stock until it is stocked onto the lot.

@@ -16,7 +16,10 @@ local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
 local PersistenceService = require(script.Parent.Services:WaitForChild("PersistenceService"))
 local CompanyStateService = require(script.Parent.Services:WaitForChild("CompanyStateService"))
+local CustomerNpcService = require(script.Parent.Services:WaitForChild("CustomerNpcService"))
+local CustomerNpcWorld = require(script.Parent.Services:WaitForChild("CustomerNpcWorld"))
 local InviteCodeService = require(script.Parent.Services:WaitForChild("InviteCodeService"))
+local NpcAvatar = require(script.Parent.Services:WaitForChild("NpcAvatar"))
 local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
 local SaveLocatorService = require(script.Parent.Services:WaitForChild("SaveLocatorService"))
 local SaveSlotService = require(script.Parent.Services:WaitForChild("SaveSlotService"))
@@ -68,7 +71,19 @@ end
 local persistence = PersistenceService.new()
 local companies = CompanyStateService.new(persistence, businessClock, businessRoll, task.wait)
 local plots = PlotService.new(config.PersonalPlotIds)
+-- Walking customers pass through each other, lot trees and players (CM2-N1).
+NpcAvatar.registerCollisionGroups()
 WorldService.build()
+
+-- Walking customer NPCs (CM2-N1): arrive by car, browse, pick, queue, pay, wait at the car.
+local npc = CustomerNpcService.new({
+	companies = companies,
+	plotOf = function(companyId: string): string?
+		return plots:getPlot(companyId)
+	end,
+	world = CustomerNpcWorld.new(),
+	now = os.clock,
+})
 
 -- Save IDs: `<userId>_<16 lowercase hex>` (GUID chars 17-32), at most 36 chars, so every
 -- save key fits the 50-char DataStore key limit (CM2-S1 Fix round 2, R1).
@@ -211,11 +226,18 @@ local function effectiveParking(spaces: number): number
 	return math.max(config.Customers.BaseParkingSpaces, spaces)
 end
 
--- Displayed trees follow authoritative placements, including NPC sales and reservations.
+-- Displayed trees follow authoritative placements, including NPC sales and reservations. A
+-- tree a walking customer carries stays hidden (CM2-N1).
 companies:setPlacementsChangedHandler(function(companyId: string, placements, mediumPrices, reservations)
 	local plotId = plots:getPlot(companyId)
 	if plotId then
-		WorldService.syncDisplayedTrees(plotId, placements, mediumPrices, reservations)
+		WorldService.syncDisplayedTrees(
+			plotId,
+			placements,
+			mediumPrices,
+			reservations,
+			npc:carriedPlacements(companyId)
+		)
 	end
 end)
 
@@ -255,6 +277,8 @@ companies:setCustomerOrdersChangedHandler(function(companyId: string, summary)
 	if plotId then
 		WorldService.syncCustomerOrders(plotId, summary, orderCallbacks)
 	end
+	-- Customers waiting for a loaded or expired order leave (CM2-N1).
+	npc:onOrdersChanged(companyId, summary)
 	for _, userId in saveSlots:playersOn(companyId) do
 		local player = Players:GetPlayerByUserId(userId)
 		if player then
@@ -401,11 +425,13 @@ end
 every(config.SaveFlushSeconds, "save flush", function()
 	return companies:flushDirty()
 end)
-every(config.CustomerVisitIntervalSeconds, "customer visits", function()
-	if customersPaused then
-		return true, 0, 0
-	end
-	return companies:simulateCustomerVisits()
+-- CM2-N1: customers walk; simulateCustomerVisits stays a headless and test path only.
+every(config.Customers.Npc.ArrivalIntervalSeconds, "customer arrivals", function()
+	return true, npc:arrivalPass(customersPaused), 0
+end)
+every(config.Customers.Npc.TickSeconds, "customer npcs", function()
+	npc:tick()
+	return true, 0, 0
 end)
 every(config.CustomerVisitIntervalSeconds, "customer orders", function()
 	return companies:serviceCustomerOrdersAll()
@@ -469,7 +495,8 @@ saveSlots:setActivationHandlers(function(userId: number, companyId: string, plot
 	end
 end, function(userId: number, _companyId: string, plotId: string?, plotReleased: boolean)
 	if plotReleased and plotId then
-		-- The next claimant must not inherit the previous owner's stand, lot or trees.
+		-- The next claimant must not inherit the previous owner's stand, lot, trees or customers.
+		npc:clearPlot(plotId)
 		clearPlotVisuals(plotId)
 	end
 	local player = Players:GetPlayerByUserId(userId)
@@ -568,6 +595,7 @@ end
 
 local function onPlayerAdded(player: Player)
 	player.CharacterAdded:Connect(function(character)
+		CustomerNpcWorld.assignPlayerCharacter(character)
 		-- A respawn drops the carried tree back at the pickup spot.
 		local companyId = companyIdFor(player.UserId)
 		if companyId then
@@ -575,6 +603,10 @@ local function onPlayerAdded(player: Player)
 		end
 		spawnAtClaimedPlot(player, character)
 	end)
+	-- A character that spawned before this handler ran still joins PlayerCharacter (F6).
+	if player.Character then
+		CustomerNpcWorld.assignPlayerCharacter(player.Character)
+	end
 	player:SetAttribute("CompanyReady", false)
 	local profile, profileError = saveSlots:openProfile(player.UserId)
 	if not isInGame(player) then
@@ -688,6 +720,7 @@ if RunService:IsStudio() then
 		require(module).install({
 			companies = companies,
 			plots = plots,
+			npc = npc,
 			saveSlots = saveSlots,
 			orderCallbacks = orderCallbacks,
 			companyIdFor = companyIdFor,
@@ -720,6 +753,8 @@ for _, player in Players:GetPlayers() do
 end
 
 game:BindToClose(function()
+	-- No customer survives the server: avatars, cars and carried trees go first (CM2-N1).
+	npc:shutdown()
 	-- Refuse new save work first, so no save can start loading after this point.
 	saveSlots:beginShutdown()
 	-- Unload in parallel: sequential saves with retry backoff can exceed the shutdown budget.
