@@ -66,7 +66,8 @@ Owner decision 2026-11-21 (PRODUCT_SPEC). Every task that changes code, tests, m
 
 - The main session only orchestrates. It does not write plans, code, models or commits itself.
 - Start the agents with `subagent_type` only. Never pass `model` or `effort` to the Agent tool, because that overrides the agent file.
-- Implementers stop with a report on any ambiguity; the planner amends the plan.
+- Implementers decide only minor details themselves (names of locals and private helpers, formatting, lint fixes; rule 3 in `.claude/agents/implementer.md`) and stop with a report on any other ambiguity; the planner amends the plan.
+- Studio playtests are batched: now for tier L or MODEL, saves, money, inventory, purchases, world geometry or a milestone's last task, otherwise every third task through the queue "Studio-Test ausstehend" in `docs/CLAUDE_BACKLOG.md` (skill `cm2-task`, step 3). Headless checks still run for every task.
 - **Automatic model switch in the chat:** decide from each message whether it is planning or work.
   - Planning (design, decisions, spec, backlog, priorities, balancing, "how should this work"): invoke the skill `cm2-plan` first. It switches the chat to Opus 5.5, high effort.
   - Work (implement, fix, build models, playtest, carry out a plan): invoke the skill `cm2-task`. It switches the chat to Sonnet 5.5 for orchestrating, and each agent then runs on its own model from the table.

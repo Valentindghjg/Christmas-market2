@@ -38,10 +38,13 @@ Every step runs in its own agent. The agent file fixes the model and effort, so 
    - If it reports an open owner decision, record it as a blocker in `docs/CLAUDE_BACKLOG.md` through a new `planner` run, and continue with the next ready task.
 2. **Implement.** Read the "Implementer tier" section of the plan. Start the matching agent from the table with the plan path.
    - The tier is missing or not exactly S, M, L or MODEL: send the plan back to `planner` to fix it.
-   - The implementer or modeler stops with a question: start `planner` with the plan path and the question so it amends the plan, then rerun the same tier. After two rounds on the same question, record a blocker and continue with the next task.
-3. **Playtest.** If the plan has playtest steps, start `playtester` with the plan path.
-   - A step fails: start `planner` with the plan path and the playtest report to add fix steps, then go back to step 2.
-   - Studio or its MCP is not available: keep the report (BLOCKED) and go on to step 4.
+   - The implementer or modeler stops with a question: start `planner` with the plan path and the question so it amends the plan, then rerun the same tier. After two rounds on the same question, record a blocker and continue with the next task. Minor details the implementer decided itself (its "Own decisions") are not questions; pass them on to the reviewer.
+3. **Playtest, now or in the batch.** Studio runs are batched (owner decision 2026-11-22). The queue is the section **"Studio-Test ausstehend"** in `docs/CLAUDE_BACKLOG.md` (directly under "Für den Owner am PC"; the reviewer creates it when it is missing).
+   - **Test now** if any of these applies: the tier is L or MODEL; the plan changes save data, money, inventory, purchases or world geometry; it is the last open task of its milestone; or the queue already lists two tasks, so this is the third. Start `playtester` with this plan path and every plan path in the queue (a batch run).
+   - **Otherwise defer:** start no playtester. The headless checks still run in step 4, and the reviewer commits with "Studio: deferred (batch)" and adds the task ID and plan path to the queue.
+   - A step of this task fails: start `planner` with the plan path and the playtest report to add fix steps, then go back to step 2.
+   - A step of a queued, already committed task fails: start `planner` with that plan path and the report to add fix steps, then run steps 2 to 4 for that task before going on. Queued tasks whose steps passed are removed from the queue by the reviewer.
+   - Studio or its MCP is not available: keep the report (BLOCKED), go on to step 4, and the queued tasks stay in the queue.
 4. **Review and commit.** Start `reviewer` with the plan path and every report from steps 2 and 3.
    - The result is "RE-PLAN NEEDED": go back to step 1 with the findings.
    - The result is "COMMITTED": the task is done.

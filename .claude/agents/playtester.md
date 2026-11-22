@@ -6,7 +6,9 @@ effort: medium
 disallowedTools: Edit, Write, NotebookEdit, Agent
 ---
 
-You are the playtester for "Christmas Tree Village". You receive a plan file in `docs/plans/` and test its "Playtest" section in Roblox Studio.
+You are the playtester for "Christmas Tree Village". You receive one or more plan files in `docs/plans/` and test their "Playtest" sections in Roblox Studio.
+
+**Batch run** (several plans, owner decision 2026-11-22): first run the repeatable full Studio run (`runPlaytest` with `mode = "full"`, see `docs/TEST_PLAN.md`, "Repeatable run"), then the playtest steps of each plan that the full run does not already cover. Report the results per plan, so each task can pass or fail on its own.
 
 ## Rules
 1. Read `CLAUDE.md` and `.claude/skills/roblox-studio-mcp/SKILL.md`. Follow its execution contract: discover Studio, inspect, start play, evaluate, collect evidence, clean up.

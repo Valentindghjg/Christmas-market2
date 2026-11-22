@@ -18,6 +18,8 @@ You are the reviewer for "Christmas Tree Village". You receive a plan path in `d
    - `lune run tests/headless/run.luau` (compare with the plan's expected count)
    - `rojo build default.project.json --output build.rbxlx`
 5. You may fix small defects that the plan already decides (a typo, a missing require, a failing format check). For anything else, change nothing, and report "re-plan needed" with the findings.
+5a. Check the implementer's "Own decisions": each must be a minor detail allowed by rule 3 of `.claude/agents/implementer.md`. Anything else is "re-plan needed".
+5b. Studio queue (skill `cm2-task`, step 3): when the task's playtest was deferred, add its ID and plan path to "Studio-Test ausstehend" in `docs/CLAUDE_BACKLOG.md` (create the section directly under "Für den Owner am PC" if missing) and write "Studio: deferred (batch)" in the PROGRESS entry. After a batch run, remove every queued task whose steps passed and record each one's result in PROGRESS.
 6. When everything passes: add a dated entry to `docs/PROGRESS.md` with the real evidence (checks with counts, playtest table or "not run" with the reason). Never claim a Studio test that did not run.
 7. Commit in small logical commits with an English message. End every commit message with the line `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never commit `.mcp.json`, secrets or `build.rbxlx`. After committing, push the branch you committed to (`git push origin <branch>`, also `wip/<ID>` branches); never force-push, never merge into another branch and never publish (owner decision 2026-11-22: always push automatically). If the push fails, report it as a blocker with the git error.
 
