@@ -110,7 +110,9 @@ local validSizes = { Small = true, Medium = true, Large = true }
 
 -- Price benchmark and pricing panel (CM2-G7, docs/REFERENCE_GAME_LIVE_TEST.md §4.3).
 GameConfig.Pricing = {
-	BenchmarkMultiplier = 5, -- OBSERVED: the "typical" price is about 5 x medium wholesale
+	BenchmarkMultiplier = 5, -- OBSERVED for Douglas, Fraser and Blue Spruce (exactly 5 x medium wholesale); PROVISIONAL extrapolation for species without an observed card
+	-- OBSERVED typical medium prices that differ from the 5 x rule (REFERENCE_GAME_LIVE_TEST §4.3, CM2-G7a).
+	TypicalMediumOverride = { NobleFir = 184 } :: { [string]: number },
 	Steps = { -5, -1, 1, 5 }, -- OBSERVED price buttons
 	SentimentPercent = { Bargain = 85, Fair = 110, Pricey = 130 }, -- PROVISIONAL, above Pricey = TooHigh
 	BudgetPercent = { Min = 85, Max = 155 }, -- PROVISIONAL customer budget vs the size benchmark
@@ -122,7 +124,7 @@ GameConfig.SpeciesOrder = { "DouglasFir", "FrasierFir", "NobleFir", "BlueSpruce"
 
 GameConfig.Trees = {
 	-- Wholesale per species and size and the rarity are OBSERVED (docs/REFERENCE_GAME_LIVE_TEST.md §4.1).
-	-- The typical retail price is derived: GameConfig.typicalMediumFor (CM2-G7).
+	-- The typical retail price: GameConfig.typicalMediumFor (5 x medium wholesale, or an OBSERVED override; CM2-G7, CM2-G7a).
 	-- Species IDs are stable save keys: "FrasierFir" keeps its ID; only the display name is "Fraser Fir".
 	DouglasFir = {
 		displayName = "Douglas Fir",
@@ -161,6 +163,10 @@ function GameConfig.typicalMediumFor(speciesId: unknown): number?
 	local tree = GameConfig.Trees[speciesId]
 	if not tree then
 		return nil
+	end
+	local override = GameConfig.Pricing.TypicalMediumOverride[speciesId]
+	if override ~= nil then
+		return override
 	end
 	return tree.wholesale.Medium * GameConfig.Pricing.BenchmarkMultiplier
 end
