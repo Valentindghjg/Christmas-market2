@@ -23,7 +23,8 @@ local localized = UiKit.localized
 local localizedFormat = UiKit.localizedFormat
 
 local BUTTON_HEIGHT = UiTheme.MinTouch
-local ROW_HEIGHT = 120
+local SAVE_ROW = UiTheme.SaveRow
+local ROW_HEIGHT = SAVE_ROW.height
 local CREAM = UiKit.Colors.Cream
 local PANEL = UiKit.Colors.Panel
 local ROW = UiKit.Colors.Row
@@ -64,9 +65,9 @@ picker.Visible = false
 local title = textLabel(picker, "Title", localized("savePickerTitle"), 22)
 title.Size = UDim2.new(0.6, -4, 0, 30)
 
-local hint = textLabel(picker, "Hint", localized("savePickerHint"), 14)
-hint.Position = UDim2.fromOffset(0, 32)
-hint.Size = UDim2.new(0.6, -4, 0, 22)
+local hint = textLabel(picker, "Hint", localized("savePickerHint"), UiTheme.TextSize.Small)
+hint.Position = UDim2.fromOffset(0, 30)
+hint.Size = UDim2.new(0.6, -4, 0, 28)
 hint.TextWrapped = true
 hint.TextTruncate = Enum.TextTruncate.AtEnd
 
@@ -76,8 +77,9 @@ findTeammates.AnchorPoint = Vector2.new(1, 0)
 findTeammates.Position = UDim2.fromScale(1, 0)
 findTeammates.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
 
--- Four footer rows: size toggles, new save, join by code, status and back. The Footer frame
--- (200 px high, see UiTheme.Dialogs.Picker) and the list are placed by UiKit.bindDialog.
+-- Four footer rows: size toggles, new save, join by code, back. The status line is the first
+-- entry of the save list (UiKit.listStatus). The Footer frame (200 px high, see
+-- UiTheme.Dialogs.Picker) and the list are placed by UiKit.bindDialog.
 local FOOTER_ROW = BUTTON_HEIGHT + 8
 local footer = Instance.new("Frame")
 footer.Name = "Footer"
@@ -97,6 +99,8 @@ local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0, 8)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = list
+
+local status = UiKit.listStatus(list, "PickerStatus")
 
 local empty = textLabel(list, "Empty", localized("savePickerEmpty"), 15)
 empty.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
@@ -149,13 +153,6 @@ local joinSave = textButton(footer, "JoinSave", localized("joinButton"), GOLD)
 joinSave.AnchorPoint = Vector2.new(1, 1)
 joinSave.Position = UDim2.new(1, 0, 1, -FOOTER_ROW)
 joinSave.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
-
-local status = textLabel(footer, "PickerStatus", "", UiTheme.TextSize.Small)
-status.AnchorPoint = Vector2.new(0, 1)
-status.Position = UDim2.fromScale(0, 1)
-status.Size = UDim2.new(0.6, -4, 0, BUTTON_HEIGHT)
-status.TextWrapped = true
-status.TextTruncate = Enum.TextTruncate.AtEnd
 
 local backToGame = textButton(footer, "BackToGame", localized("saveBack"), SAND)
 backToGame.AnchorPoint = Vector2.new(1, 1)
@@ -331,8 +328,8 @@ local function buildRow(index: number, entry)
 	row.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
 	corner(row, 10)
 	local padding = Instance.new("UIPadding")
-	padding.PaddingTop = UDim.new(0, 6)
-	padding.PaddingBottom = UDim.new(0, 6)
+	padding.PaddingTop = UDim.new(0, SAVE_ROW.padding)
+	padding.PaddingBottom = UDim.new(0, SAVE_ROW.padding)
 	padding.PaddingLeft = UDim.new(0, 8)
 	padding.PaddingRight = UDim.new(0, 8)
 	padding.Parent = row
@@ -351,17 +348,16 @@ local function buildRow(index: number, entry)
 			then entry.name
 			elseif type(entry.ownerName) == "string" then localizedFormat("sharedSaveName", entry.ownerName)
 			else localized("sharedSaveNameUnknown")
-		local nameLabel = textLabel(row, "SaveName", shownName, 18)
-		nameLabel.Size = UDim2.new(0.6, 0, 0, 34)
+		local nameLabel = textLabel(row, "SaveName", shownName, SAVE_ROW.nameTextSize)
+		nameLabel.Size = UDim2.new(1, 0, 0, SAVE_ROW.nameHeight)
+		nameLabel.TextWrapped = true
 		nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
 		-- Player-chosen names are never auto-translated.
 		nameLabel.AutoLocalize = false
 		local subKey = if entry.active then "saveRowActive" elseif entry.lastPlayed then "saveRowLastPlayed" else nil
-		local sub = textLabel(row, "SaveState", if subKey then localized(subKey) else "", 13)
-		sub.AnchorPoint = Vector2.new(1, 0)
-		sub.Position = UDim2.fromScale(1, 0)
-		sub.Size = UDim2.new(0.4, -4, 0, 34)
-		sub.TextXAlignment = Enum.TextXAlignment.Right
+		local sub = textLabel(row, "SaveState", if subKey then localized(subKey) else "", SAVE_ROW.textSize)
+		sub.Position = UDim2.fromOffset(0, SAVE_ROW.nameHeight + SAVE_ROW.kindHeight)
+		sub.Size = UDim2.new(1, 0, 0, SAVE_ROW.stateHeight)
 		sub.TextTruncate = Enum.TextTruncate.AtEnd
 		-- CM2-S3: another server plays this save.
 		if entry.elsewhere == true then
@@ -381,9 +377,10 @@ local function buildRow(index: number, entry)
 		then localized("saveRowSolo")
 		elseif member then localizedFormat("saveRowCoopMember", seats)
 		else localizedFormat("saveRowCoopOwner", seats)
-	local kind = textLabel(row, "SaveKind", kindText, 13)
-	kind.Position = UDim2.fromOffset(0, 34)
-	kind.Size = UDim2.new(1, 0, 0, 22)
+	local kind = textLabel(row, "SaveKind", kindText, SAVE_ROW.textSize)
+	kind.Position = UDim2.fromOffset(0, SAVE_ROW.nameHeight)
+	kind.Size = UDim2.new(1, 0, 0, SAVE_ROW.kindHeight)
+	kind.TextWrapped = true
 	kind.TextTruncate = Enum.TextTruncate.AtEnd
 
 	local function rowButton(name: string, text: string, color: Color3, column: number): TextButton
@@ -495,6 +492,8 @@ end
 close = function()
 	UiKit.setBaseLayer(nil)
 	picker.Visible = false
+	-- A closed picker keeps no message (CM2-UVF4 UVF4-D1).
+	status.Text = ""
 	closeDeleteConfirm()
 	renamingSaveId = nil
 	leaveArmedSaveId = nil
@@ -585,7 +584,6 @@ end)
 player:GetAttributeChangedSignal("CompanyReady"):Connect(function()
 	updateBackButton()
 	if player:GetAttribute("CompanyReady") == true and picker.Visible then
-		status.Text = ""
 		close()
 	end
 end)

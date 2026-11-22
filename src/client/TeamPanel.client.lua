@@ -19,7 +19,6 @@ local localizedFormat = UiKit.localizedFormat
 
 local BUTTON_HEIGHT = UiTheme.MinTouch
 local MEMBER_ROW_HEIGHT = 56
-local STATUS_HEIGHT = 36
 local SIZES = { "Solo", "Duo", "Trio", "Quad" }
 local CREAM = UiKit.Colors.Cream
 local PANEL = UiKit.Colors.Panel
@@ -59,18 +58,19 @@ seatsLine.Size = UDim2.new(1, 0, 0, 22)
 
 local codeLine = textLabel(panel, "CodeLine", "", 18)
 codeLine.Position = UDim2.fromOffset(0, 58)
-codeLine.Size = UDim2.new(1, 0, 0, 26)
+codeLine.Size = UDim2.new(1, 0, 0, 38)
+codeLine.TextWrapped = true
 -- The invite code is never auto-translated.
 codeLine.AutoLocalize = false
 
 local codeHint = textLabel(panel, "CodeHint", localized("teamCodeHint"), 13)
-codeHint.Position = UDim2.fromOffset(0, 86)
+codeHint.Position = UDim2.fromOffset(0, 98)
 codeHint.Size = UDim2.new(1, 0, 0, 20)
 codeHint.TextWrapped = true
 
--- Footer, bottom up: status, then New code / Leave save with Close, then the owner's sizes.
--- The Footer frame (140 px high, see UiTheme.Dialogs.Team) and the list are placed by
--- UiKit.bindDialog.
+-- Footer, bottom up: New code / Leave save with Close, then the owner's sizes (96 px, see
+-- UiTheme.Dialogs.Team). The status line is the first entry of the member list. The Footer
+-- frame and the list are placed by UiKit.bindDialog.
 local footer = Instance.new("Frame")
 footer.Name = "Footer"
 footer.BackgroundTransparency = 1
@@ -91,11 +91,13 @@ listLayout.Padding = UDim.new(0, 6)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = memberList
 
+local status = UiKit.listStatus(memberList, "TeamStatus")
+
 local sizeButtons: { [string]: TextButton } = {}
 for index, size in ipairs(SIZES) do
 	local button = textButton(footer, "Size_" .. size, localized("saveSize" .. size), SAND)
 	button.AnchorPoint = Vector2.new(0, 1)
-	button.Position = UDim2.new((index - 1) * 0.25, (index - 1) * 2, 1, -(STATUS_HEIGHT + 8 + BUTTON_HEIGHT + 8))
+	button.Position = UDim2.new((index - 1) * 0.25, (index - 1) * 2, 1, -(BUTTON_HEIGHT + 8))
 	button.Size = UDim2.new(0.25, -6, 0, BUTTON_HEIGHT)
 	button.Visible = false
 	sizeButtons[size] = button
@@ -103,28 +105,21 @@ end
 
 local newCode = textButton(footer, "NewCode", localized("teamNewCode"), GOLD)
 newCode.AnchorPoint = Vector2.new(0, 1)
-newCode.Position = UDim2.new(0, 0, 1, -(STATUS_HEIGHT + 8))
+newCode.Position = UDim2.fromScale(0, 1)
 newCode.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 newCode.Visible = false
 
 local leaveTeam = textButton(footer, "LeaveTeam", localized("teamLeave"), RED)
 leaveTeam.TextColor3 = CREAM
 leaveTeam.AnchorPoint = Vector2.new(0, 1)
-leaveTeam.Position = UDim2.new(0, 0, 1, -(STATUS_HEIGHT + 8))
+leaveTeam.Position = UDim2.fromScale(0, 1)
 leaveTeam.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 leaveTeam.Visible = false
 
 local closeButton = textButton(footer, "Close", localized("teamClose"), SAND)
 closeButton.AnchorPoint = Vector2.new(1, 1)
-closeButton.Position = UDim2.new(1, 0, 1, -(STATUS_HEIGHT + 8))
+closeButton.Position = UDim2.fromScale(1, 1)
 closeButton.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
-
-local status = textLabel(footer, "TeamStatus", "", UiTheme.TextSize.Small)
-status.AnchorPoint = Vector2.new(0, 1)
-status.Position = UDim2.fromScale(0, 1)
-status.Size = UDim2.new(1, 0, 0, STATUS_HEIGHT)
-status.TextWrapped = true
-status.TextTruncate = Enum.TextTruncate.AtEnd
 
 UiKit.bindDialog(gui, { frame = panel, list = memberList, footer = footer }, UiTheme.Dialogs.Team)
 

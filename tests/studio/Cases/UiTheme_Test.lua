@@ -258,4 +258,13 @@ return function(t)
 			end
 		end
 	end)
+
+	t.test("save row stacks name, kind, state and buttons", function()
+		local r = UiTheme.SaveRow
+		expect.truthy(r.nameHeight >= 2 * r.nameTextSize)
+		expect.truthy(r.kindHeight >= 2 * r.textSize)
+		expect.truthy(r.stateHeight >= r.textSize + 2)
+		expect.equal(r.nameHeight + r.kindHeight + r.stateHeight + UiTheme.MinTouch, r.height - 2 * r.padding)
+		expect.equal(r.textSize, UiTheme.TextSize.Small)
+	end)
 end

@@ -131,6 +131,26 @@ function UiKit.textBox(parent: Instance, name: string, placeholder: string): Tex
 	return value
 end
 
+-- CM2-UVF4: a dialog's status line is the first, wrapped, auto-sized entry of its list (hidden
+-- while empty) so long server messages fit; a new message scrolls the list to the top.
+function UiKit.listStatus(list: ScrollingFrame, name: string): TextLabel
+	local value = UiKit.label(list, name, "", UiTheme.TextSize.Small)
+	value.LayoutOrder = -1
+	value.Size = UDim2.new(1, -8, 0, 0)
+	value.AutomaticSize = Enum.AutomaticSize.Y
+	value.TextWrapped = true
+	value.TextTruncate = Enum.TextTruncate.None
+	value.TextYAlignment = Enum.TextYAlignment.Top
+	value.Visible = false
+	value:GetPropertyChangedSignal("Text"):Connect(function()
+		value.Visible = value.Text ~= ""
+		if value.Visible then
+			list.CanvasPosition = Vector2.zero
+		end
+	end)
+	return value
+end
+
 -- Requests ----------------------------------------------------------------------------------
 
 -- InvokeServer can throw (server error, disconnect); the UI must stay usable.

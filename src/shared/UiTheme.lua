@@ -184,8 +184,8 @@ UiTheme.Dialogs = {
 		contentHeight = 246,
 	},
 	Team = {
-		listTop = 110,
-		footerHeight = 140,
+		listTop = 120,
+		footerHeight = 96,
 		minList = 56,
 		maxWidth = 420,
 		maxHeight = 560,
@@ -194,7 +194,7 @@ UiTheme.Dialogs = {
 	},
 	Finder = {
 		listTop = 72,
-		footerHeight = 236,
+		footerHeight = 198,
 		minList = 64,
 		maxWidth = 420,
 		maxHeight = 560,
@@ -202,6 +202,26 @@ UiTheme.Dialogs = {
 		heightScale = 0.8,
 	},
 } :: { [string]: DialogSpec }
+
+-- Save picker row (CM2-UVF4): name, kind and state on their own lines above the buttons.
+export type SaveRowLayout = {
+	height: number,
+	padding: number,
+	nameTextSize: number,
+	nameHeight: number,
+	textSize: number,
+	kindHeight: number,
+	stateHeight: number,
+}
+UiTheme.SaveRow = {
+	height = 136,
+	padding = 6,
+	nameTextSize = 18,
+	nameHeight = 36,
+	textSize = UiTheme.TextSize.Small,
+	kindHeight = 28,
+	stateHeight = 16,
+} :: SaveRowLayout
 
 -- Layout constants.
 local GAP = 8

@@ -20,7 +20,6 @@ local localizedFormat = UiKit.localizedFormat
 
 local BUTTON_HEIGHT = UiTheme.MinTouch
 local LISTING_ROW_HEIGHT = 64
-local STATUS_HEIGHT = 32
 local HINT_HEIGHT = 48
 local GAP = 6
 local SIZES = { "Duo", "Trio", "Quad" }
@@ -60,19 +59,19 @@ UiKit.padding(panel, 12)
 local title = textLabel(panel, "Title", localized("finderTitle"), 22)
 title.Size = UDim2.new(1, 0, 0, 30)
 
-local hint = textLabel(panel, "Hint", localized("finderHint"), 14)
+local hint = textLabel(panel, "Hint", localized("finderHint"), UiTheme.TextSize.Small)
 hint.Position = UDim2.fromOffset(0, 32)
 hint.Size = UDim2.new(1, 0, 0, 36)
 hint.TextWrapped = true
 
--- Footer, bottom up: status, Close, then either the search controls (sizes, Start, hint) or
--- the own listing (text, Stop).
-local CLOSE_BOTTOM = STATUS_HEIGHT + GAP
+-- Footer, bottom up: Close, then either the search controls (sizes, Start, hint) or the own
+-- listing (text, Stop). The status line is the first entry of the listing list.
+local CLOSE_BOTTOM = 0
 local HINT_BOTTOM = CLOSE_BOTTOM + BUTTON_HEIGHT + GAP
 local START_BOTTOM = HINT_BOTTOM + HINT_HEIGHT + GAP
 local SIZES_BOTTOM = START_BOTTOM + BUTTON_HEIGHT + GAP
 
--- The Footer frame (236 px high, see UiTheme.Dialogs.Finder) and the list are placed by
+-- The Footer frame (198 px high, see UiTheme.Dialogs.Finder) and the list are placed by
 -- UiKit.bindDialog.
 local footer = Instance.new("Frame")
 footer.Name = "Footer"
@@ -93,6 +92,8 @@ local listLayout = Instance.new("UIListLayout")
 listLayout.Padding = UDim.new(0, GAP)
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Parent = listingList
+
+local status = UiKit.listStatus(listingList, "FinderStatus")
 
 local empty = textLabel(listingList, "Empty", localized("finderEmpty"), 15)
 empty.Size = UDim2.new(1, -8, 0, LISTING_ROW_HEIGHT)
@@ -121,7 +122,7 @@ startHint.Size = UDim2.new(1, 0, 0, HINT_HEIGHT)
 startHint.TextWrapped = true
 startHint.TextTruncate = Enum.TextTruncate.None
 
-local ownListing = textLabel(footer, "OwnListing", localized("finderOwnListing"), 15)
+local ownListing = textLabel(footer, "OwnListing", localized("finderOwnListing"), UiTheme.TextSize.Small)
 ownListing.AnchorPoint = Vector2.new(0, 1)
 ownListing.Position = UDim2.new(0, 0, 1, -(HINT_BOTTOM + BUTTON_HEIGHT + GAP))
 ownListing.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
@@ -138,13 +139,6 @@ local closeButton = textButton(footer, "Close", localized("teamClose"), SAND)
 closeButton.AnchorPoint = Vector2.new(0, 1)
 closeButton.Position = UDim2.new(0, 0, 1, -CLOSE_BOTTOM)
 closeButton.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
-
-local status = textLabel(footer, "FinderStatus", "", UiTheme.TextSize.Small)
-status.AnchorPoint = Vector2.new(0, 1)
-status.Position = UDim2.fromScale(0, 1)
-status.Size = UDim2.new(1, 0, 0, STATUS_HEIGHT)
-status.TextWrapped = true
-status.TextTruncate = Enum.TextTruncate.AtEnd
 
 UiKit.bindDialog(
 	gui,
