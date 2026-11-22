@@ -66,17 +66,40 @@ return function(t)
 		local function positiveInteger(value: unknown): boolean
 			return type(value) == "number" and value == math.floor(value) and value > 0
 		end
-		for _, tree in pairs(GameConfig.Trees) do
+		for speciesId, tree in pairs(GameConfig.Trees) do
 			expect.truthy(positiveInteger(tree.wholesale.Small))
 			expect.truthy(positiveInteger(tree.wholesale.Medium))
 			expect.truthy(positiveInteger(tree.wholesale.Large))
 			expect.truthy(tree.wholesale.Small < tree.wholesale.Medium)
 			expect.truthy(tree.wholesale.Medium < tree.wholesale.Large)
-			expect.truthy(positiveInteger(tree.typicalMedium))
-			expect.truthy(positiveInteger(tree.initialMediumPrice))
+			expect.truthy(positiveInteger(GameConfig.typicalMediumFor(speciesId)))
 			expect.equal(type(tree.displayName), "string")
 			expect.truthy(#tree.displayName > 0)
 		end
+	end)
+
+	-- CM2-G7: the "typical" price is about 5 x medium wholesale (REFERENCE_GAME_LIVE_TEST §4.3).
+	t.test("derives the typical price from wholesale x 5", function()
+		local Pricing = GameConfig.Pricing
+		expect.equal(Pricing.BenchmarkMultiplier, 5)
+		expect.equal(GameConfig.typicalMediumFor("DouglasFir"), 140)
+		expect.equal(GameConfig.typicalMediumFor("FrasierFir"), 160)
+		expect.equal(GameConfig.typicalMediumFor("NobleFir"), 185)
+		expect.equal(GameConfig.typicalMediumFor("BlueSpruce"), 210)
+		expect.equal(GameConfig.typicalMediumFor("Pine"), nil)
+		expect.equal(GameConfig.typicalMediumFor(5), nil)
+		expect.equal(#Pricing.Steps, 4)
+		expect.equal(Pricing.Steps[1], -5)
+		expect.equal(Pricing.Steps[2], -1)
+		expect.equal(Pricing.Steps[3], 1)
+		expect.equal(Pricing.Steps[4], 5)
+		expect.truthy(Pricing.SentimentPercent.Bargain == 85)
+		expect.truthy(Pricing.SentimentPercent.Bargain < Pricing.SentimentPercent.Fair)
+		expect.truthy(Pricing.SentimentPercent.Fair == 110)
+		expect.truthy(Pricing.SentimentPercent.Fair < Pricing.SentimentPercent.Pricey)
+		expect.truthy(Pricing.SentimentPercent.Pricey == 130)
+		expect.equal(Pricing.BudgetPercent.Min, 85)
+		expect.equal(Pricing.BudgetPercent.Max, 155)
 	end)
 
 	-- CM2-R5: main's BindToClose waits SHUTDOWN_WAIT_SECONDS = 25.

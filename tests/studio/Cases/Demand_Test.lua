@@ -15,4 +15,9 @@ return function(t)
 		expect.equal(Demand.score(0.01, 100000, 100, 100, 100), 0.95)
 		expect.equal(Demand.score(100, 0, 0, 0, 0), 0.02)
 	end)
+
+	-- CM2-G7: a sale at the benchmark (price ratio 1) keeps the price factor at 0.65.
+	t.test("scores the benchmark price at 0.65", function()
+		expect.truthy(math.abs(Demand.score(1, 500, 1, 1, 1) - 0.65) < 1e-9)
+	end)
 end

@@ -201,4 +201,31 @@ return function(t)
 			"Douglas Fir\n21 $ / 28 $ / 41 $"
 		)
 	end)
+
+	-- CM2-G7: the Pricing tab keys.
+	t.test("has every pricing key in English and German", function()
+		local keys = {
+			"pricingRule",
+			"pricingAutoOn",
+			"pricingAutoOff",
+			"pricingAutoHint",
+			"pricingWholesaleTypical",
+			"pricingMargin",
+			"pricingSizes",
+			"pricingPrice",
+			"pricingStep",
+			"pricingSaved",
+			"pricingErrorInvalid",
+			"pricingSentimentBargain",
+			"pricingSentimentFair",
+			"pricingSentimentPricey",
+			"pricingSentimentTooHigh",
+		}
+		for _, key in ipairs(keys) do
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+		expect.equal(Localization.format("en", "pricingStep", -5), "-5")
+		expect.equal(Localization.format("en", "pricingStep", 5), "+5")
+	end)
 end

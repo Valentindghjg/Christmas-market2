@@ -33,4 +33,18 @@ return function(t)
 		expect.equal(eight.preferredSpeciesId, "DouglasFir")
 		expect.equal(eight.preferredSizeId, "Medium")
 	end)
+
+	-- CM2-G7: budgets are 85-155 % of the benchmark of the preferred species and size.
+	t.test("budgets follow the size benchmark", function()
+		local Economy = require(game:GetService("ReplicatedStorage").Shared.Economy)
+		expect.equal(CustomerProfile.create(1).budget, 131)
+		expect.equal(CustomerProfile.create(8).budget, 210)
+		expect.equal(CustomerProfile.create(12).budget, 268)
+		for number = 1, 71 do
+			local profile = CustomerProfile.create(number)
+			local typical = Economy.typicalPrice(profile.preferredSpeciesId, profile.preferredSizeId) :: number
+			expect.truthy(profile.budget >= math.floor(typical * 0.85))
+			expect.truthy(profile.budget <= math.ceil(typical * 1.55))
+		end
+	end)
 end

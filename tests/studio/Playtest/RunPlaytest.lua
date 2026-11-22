@@ -6,7 +6,7 @@
 -- PASS/FAIL/SKIP per step prefixed with [PLAYTEST]. This module is not under Cases, so the
 -- unit-test runners never execute it. It touches no game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-40"
+RunPlaytest.BUILD = "cm2-g7"
 
 local PREFIX = "[PLAYTEST]"
 local SPECIES = "DouglasFir"
@@ -67,6 +67,8 @@ local function execute(hook: any, mode: string, minutes: number)
 	local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 	local Services = ServerScriptService:WaitForChild("Server"):WaitForChild("Services")
 	local SupplierStockService = require(Services:WaitForChild("SupplierStockService"))
+	local PricingService = require(Services:WaitForChild("PricingService"))
+	local PLAYTEST_PRICE = (PricingService.bounds(SPECIES)) :: number
 	local StudioTestService = require(Services:WaitForChild("StudioTestService"))
 	local Customers = GameConfig.Customers
 
@@ -148,6 +150,12 @@ local function execute(hook: any, mode: string, minutes: number)
 			)
 		)
 		return response.data
+	end
+
+	-- New saves start at the typical price (CM2-G7); the fixed visit profiles must always
+	-- afford the playtest tree, so the run sets the lowest allowed Douglas Fir price.
+	local function priceToSell(userId: number)
+		actOk(userId, "Pricing.SetMediumPrice", { speciesId = SPECIES, mediumPrice = PLAYTEST_PRICE })
 	end
 
 	local function poll(condition: () -> any, timeout: number): boolean
@@ -619,6 +627,7 @@ local function execute(hook: any, mode: string, minutes: number)
 		S.plotId = data.plotId
 		check(S.plotId ~= R.plotId, "shadow plot equals player plot " .. tostring(S.plotId))
 		call("setStaff", { employeeId = "LotWorker", count = lotWorker })
+		priceToSell(S.userId)
 	end
 
 	local function preflight(soak: boolean): string
@@ -648,9 +657,9 @@ local function execute(hook: any, mode: string, minutes: number)
 		unloadDelivered(S.userId)
 		local snapshot = snap(R.userId)
 		check(#snapshot.customerOrders == 0, "player still has customer orders")
+		priceToSell(R.userId)
 		if not soak then
 			check(snapshot.staff.LotWorker == 0, "player has a Lot Worker hired")
-			check(snapshot.mediumPrices[SPECIES] <= 125, "Douglas Fir medium price above 125")
 			check(snapshot.cash >= 2 * UNIT_PRICE, "cash below " .. 2 * UNIT_PRICE)
 		else
 			check(snapshot.cash >= UNIT_PRICE, "cash below " .. UNIT_PRICE)
@@ -738,7 +747,7 @@ local function execute(hook: any, mode: string, minutes: number)
 			local runner = require(ServerStorage:WaitForChild("UnitTest"):WaitForChild("RunUnitTest")) :: any
 			local totals = runner(nil, 10)
 			check(totals.failed == 0, totals.failed .. " unit test(s) failed")
-			check(totals.run >= 293, "only " .. totals.run .. " unit tests ran (expected >= 293)")
+			check(totals.run >= 308, "only " .. totals.run .. " unit tests ran (expected >= 308)")
 			return string.format("%d run, %d passed", totals.run, totals.passed)
 		end)
 

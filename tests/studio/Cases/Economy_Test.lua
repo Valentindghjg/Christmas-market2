@@ -18,4 +18,13 @@ return function(t)
 		end)
 		expect.falsy(Economy.canAfford(84, math.huge))
 	end)
+	-- CM2-G7: the size benchmarks follow the 80/130 rule on the medium benchmark.
+	t.test("derives size benchmarks from the medium benchmark", function()
+		expect.equal(Economy.typicalPrice("DouglasFir", "Small"), 112)
+		expect.equal(Economy.typicalPrice("DouglasFir", "Medium"), 140)
+		expect.equal(Economy.typicalPrice("DouglasFir", "Large"), 182)
+		expect.equal(Economy.typicalPrice("NobleFir", "Large"), 241)
+		expect.equal(Economy.typicalPrice("Pine", "Medium"), nil)
+		expect.equal(Economy.typicalPrice("DouglasFir", "Huge"), nil)
+	end)
 end

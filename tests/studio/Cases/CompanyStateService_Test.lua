@@ -96,7 +96,7 @@ return function(t)
 		local ok, updated = service:applyAutoPricingAll()
 		expect.truthy(ok)
 		expect.equal(updated, 1)
-		expect.equal(state.mediumPrices.FrasierFir, 78)
+		expect.equal(state.mediumPrices.FrasierFir, 155)
 		expect.equal(saves, 0)
 		expect.truthy(service:isDirty("personal:42"))
 		expect.truthy(service:flushDirty())
@@ -493,6 +493,37 @@ return function(t)
 		expect.equal(service:memberRole(SHARED, 42), "Owner")
 		expect.equal(service:memberRole(SHARED, BIG_MEMBER), "Member")
 		expect.equal(service:memberRole(SHARED, 44), nil)
+	end)
+
+	-- CM2-G7: the Pricing tab reads the server-derived pricing table from the summary.
+	t.test("the company summary carries the pricing table", function()
+		local service = sharedService(copyingPersistence())
+		local response = act(service, 43, "member_pricing_summary_1", "Company.GetSummary", {})
+		expect.truthy(response.ok)
+		local pricing = response.data.pricing
+		expect.equal(#pricing.species, 4)
+		expect.equal(pricing.species[1].speciesId, "DouglasFir")
+		expect.equal(pricing.species[1].mediumPrice, 140)
+		expect.equal(pricing.species[1].sentiment, "Fair")
+		expect.equal(pricing.automatic, false)
+	end)
+
+	t.test("a manual price and the auto flag survive a save and reload", function()
+		local persistence = copyingPersistence()
+		local service = sharedService(persistence)
+		expect.truthy(act(service, 43, "member_price_reload_1", "Pricing.SetMediumPrice", {
+			speciesId = "FrasierFir",
+			mediumPrice = 150,
+		}).ok)
+		expect.truthy(act(service, 43, "member_auto_reload_1", "Pricing.SetAuto", { enabled = true }).ok)
+		expect.truthy(service:unloadCompany(SHARED))
+		local reloaded = Service.new(persistence, function()
+			return 100
+		end)
+		local state = reloaded:loadCompany(SHARED, 42)
+		expect.truthy(state)
+		expect.equal(state.mediumPrices.FrasierFir, 150)
+		expect.equal(state.autoPricing, true)
 	end)
 
 	t.test("two members never double-spend the shared cash", function()

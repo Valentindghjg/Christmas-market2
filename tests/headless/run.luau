@@ -72,6 +72,7 @@ local sourcePaths = {
 	GameConfig = "src/shared/GameConfig.lua",
 	Inventory = "src/shared/Inventory.lua",
 	Localization = "src/shared/Localization.lua",
+	PricingView = "src/shared/PricingView.lua",
 	Protocol = "src/shared/Protocol.lua",
 	SaveProfile = "src/shared/SaveProfile.lua",
 	SupplierCatalog = "src/shared/SupplierCatalog.lua",
