@@ -624,3 +624,24 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Firs: `K.fir`'s top is 1.1003 x its height argument at tiers=3 (1.075 at tiers=4), so `map_common.fir` passes top / factor and the tabled heights are the tops (the size contract). Cluster A built 700 triangles with tiers=3, so its two tallest firs use tiers=4 (780). Cluster A's third fir moved y -6 -> -6.5 (latitude) because the hexagon footprints gave L 20.06 and centring 0.63. Cluster B's two ball rocks (centre z 0.5 / 0.4, radius 1.0 / 0.8) had their bottom pole flattened onto z 0, otherwise bboxMin y would be -0.5 instead of 0.
 - Rocks: the six axis vertices of the icosphere are not jittered, so the bbox equals the tabled half-extents exactly; meshes are created with `recalc=False` because `recalc=True` flipped 4 isolated faces of the small rock (the icosphere is wound outward, checked).
 - Mountains (render round 1): interior z jitter is clamped at the base (it pushed bboxMin to -14.8); rim vertices lie on the base -12 (the ridge's formula gave +13 / +11 studs at its ends, a visible open cut); snow lines lowered 15 % (peak 95 -> 81, ridge 60 -> 51) so the caps read as snow. Render rounds used: 2.
+
+## 2026-11-23 — Robux shop server, CM2-46a (engineering)
+- Plan: `docs/plans/CM2-46a.md` (part a of launch order 13; part b, `CM2-46b.md`, adds the Shop UI, the VIP chat tag and the owner checklist). Engineering creates, enables or publishes nothing on Roblox; every `ShopConfig` ID is 0.
+
+| Topic | Decision |
+|---|---|
+| Where records live | Company save (`purchases`, schema 17): receipt IDs (in the same record as the grant), owned counts, boost time. Player ledger (`ChristmasMarket2_Purchases_v1`, `purchases:<userId>`): purchase → save binding, finished purchases, `robuxSpent`, per-player unlocks, passes counted. The profile is unchanged; a member's cash pack goes into the shared save, Robux spent and unlocks belong to the buyer. |
+| Receipt rule | Grant only into the buyer's active save when it is available, else `NotProcessedYet`; while the buyer is in the server without one, poll every 2 s for up to 60 s first. |
+| Cross-save safety | Bind the purchase to the save in the ledger before the grant. Bound to another save X: X's record holds the receipt → finish without a grant; X has no unexpired `_session` → rebind to the current save; otherwise `NotProcessedYet` (safe because `SaveFailClosedSeconds` 90 < `SessionLockSeconds` 120). |
+| Acknowledge | `PurchaseGranted` only after the grant, a successful save of the company record and a successful ledger finish; any failure → `NotProcessedYet`, and a retry finds the receipt in the save. |
+| Unknown product ID | `NotProcessedYet` and a warning; never granted. |
+| Game passes in co-op | A pass effect applies to a save while at least one player playing that save on this server owns the pass. |
+| Robux spent | Receipts add `CurrencySpent` (Robux only); each owned pass adds its price once (live price, else the config price; PROVISIONAL) the first time this server sees it owned. |
+| Prompting | Only the server prompts (`Shop.Prompt`); no ID (0) or `ready = false` → `ComingSoon`, never a prompt. Receipts are always honoured, even a second starter pack bought through a race. |
+| No random items | No roll, gacha or random reward; the starter pack's tree roll is dropped (version 2), its 5 decor items wait for decor (owned count only), price stays 79. |
+| Stacking | Cash multiplier = pass ×2 × boost ×2 (×4 with both, PROVISIONAL), on customer sale cash only (not quests, not cash packs); the bonus also counts as revenue. |
+| Boost clock | `CashX2` seconds count down only while the save is loaded (no offline time), 5-s pass, no dirty flag. |
+| A1 Effect after a failed save | The purchase effect follows the live record: `grantPurchase` returns `applied = true` whenever it wrote the receipt into the live record (also `false, "SaveFailed", true`), `onApplied` runs before the `NotProcessedYet` return, a retry runs no second effect; a session that fails closed before any save discards the live grant and its effect, and a later receipt grants again with its own effect (accepted). |
+| A2 Step 52 boost fixture | Studio hook `shopClearBoosts` (`tickBoostsAll(BoostCapSeconds)`, then `flushDirty(true)`); step 52 calls it first and after the boost-only check, CLEANUP calls it with `shopPasses {S, {}}`. |
+
+- Schema 17: `purchases = {receipts, owned, boosts}`; migration 16 → 17 adds `Purchases.new()`. Schema-16 servers fail closed on schema-17 records; shut them down when this ships.
