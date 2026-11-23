@@ -678,3 +678,21 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 | Walls | Invisible, colliding, not queryable (`CanQuery`, `CanTouch` and `CastShadow` false), so camera and spatial scans ignore them. |
 | Reserve rows | Reserve firs jitter +-1.5 in x and +-0.6 in z. Rows are 10 studs apart, so 10 - 1.2 = 8.8 stays above the largest fir z extent (8.75) and no two reserve firs overlap; the first draft's +-1.5 in z overlapped 18 adjacent-row pairs by up to 1.41 studs. |
 | CM2-44 split | CM2-10W only removes the world placements of the CC0 scenery, the market alley (incl. `MarketGazebo`) and the primitive showcase and forest trees. CM2-44 keeps the remaining CC0 uses (stand, fence), the CC0 templates in `ArtAssets`, `AssetCatalog` and `assets/third_party/`. |
+
+## 2026-11-23 — Progression ladder, CM2-G9a (engineering)
+- Plan: `docs/plans/CM2-G9a.md`. Config `GameConfig.Progression` (replaces `GameConfig.HQ`), pure logic `src/shared/Progression.lua`, purchases `ProgressionService`, notify and test setter `CompanyProgression`.
+
+| Topic | Decision |
+|---|---|
+| Ladder values (O/P) | Lot levels 1–6 `BackLot` $1,200 (O), `SpruceCorner` $5,000 / 400 rep / HQ 2, `WoodlandEdge` $15,000 / 600 / HQ 2, `PineClearing` $100,000 / 1,200 / HQ 3, `SnowyMeadow` $250,000 / 2,000 / HQ 3, `ForestGlade` $1,000,000 / 3,500 / HQ 4 (P). HQ `SalesTent` (staff 2, O), `TimberPavilion` $2,500 / 250 / lot 1 / parking 2 / 4 species / 2 counters / staff 3 / +12% (all O), `AlpineHut` $50,000 / 1,000 / lot 3 (P; 2 counters and staff 5 O, +20% P), `MountainChalet` $600,000 / 3,000 / lot 5 / 3 counters / staff 6 / +30%, Lot Manager and Elf Workshop (P). Every entry carries its `evidence` tag. |
+| Parking 2 tiers | Tier 1 = 2 spaces (O), tier 2 = 4 spaces for $600 (O). Tier 2 is the last: the car lane (map K box `Cars`) and `Npc.MaxPerPlot` 4 hold 4 spaces; more tiers need a new parking layout (not observed). |
+| Depth 8 per level | `Placement.BackDepthPerLevel` 6 → 8, so the level-6 lot edge reaches depth −75, the map contract's reserve. |
+| Reserve hide levels | Derived by `MapLayout` from the depth: hide levels {1, 2, 3, 4}, hidden rows at levels 0–6: 0, 1, 2, 3, 4, 4, 4; levels 5–6 grow onto open snow. |
+| Target payloads (idempotency) | `{level}` / `{tier}` / `{level}` name the target; only current + 1 is accepted (`AlreadyOwned`, `NotNextLevel`), so a second request for the same level never charges twice, and a replayed request ID stays `DuplicateRequest`. The purchase check and the summary rows come from the same `Progression.rows`. |
+| Migration 19 (parking 3 → tier 2) | `{lotExpansion, parkingSpaces, hqTier}` → `{lotExpansion, parkingTier, hqLevel}`; a save that paid $200 for parking space 3 gets tier 2 (private builds only), the Christmas Pavilion becomes HQ 2; no money moves. |
+| Stand box fixed | `KeepClear.Stand` stays x −24..8, z −16..8 for every tier: the largest footprint (Mountain Chalet x −23.8..7.8, z −15.8..7.8) fits with 0.2 to spare, so an HQ upgrade never meets a displayed tree. HQ 1 art fitted by uniform scale (A1); widening Stand and the Part tent rejected. |
+| HQ visuals primitive | HQ 2–4 show Part primitives of the CM2-13a footprints (floor, posts, walls from HQ 3, counter, two wedge roof halves) until the art (CM2-13W); the model keeps the name `StarterSalesTent`. The lot fence is Parts from `Progression.fenceBoxes`. |
+| Patience per visit + ReservationSeconds 165 | Queue patience = 90 s × (1 + HQ bonus) rounded: 90, 101, 108, 117; fixed per visit when the car arrives (`npcArrive` info). `Npc.ReservationSeconds` 150 → 165 (≥ 20 + 1 + 20 + 117 + 3 = 161). |
+| Deferred (G9c, G9d) | CM2-G9c: the Lot Manager's avatar and computer job (it shows "Standby" until then). CM2-G9d: the new species per HQ tier and the 2nd/3rd checkout station; their unlocks show as inactive ("coming soon"). |
+
+- Schema 19: schema-18 servers fail closed on schema-19 records; shut them down when this ships.
