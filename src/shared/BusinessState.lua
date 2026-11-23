@@ -6,9 +6,10 @@ local Receiving = require(script.Parent.Receiving)
 local Reviews = require(script.Parent.Reviews)
 local SaveProfile = require(script.Parent.SaveProfile)
 local Staff = require(script.Parent.Staff)
+local Tutorial = require(script.Parent.Tutorial)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 17
+BusinessState.SCHEMA_VERSION = 18
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -162,6 +163,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		reviews = Reviews.newReviews(),
 		likes = Reviews.newLikes(),
 		purchases = Purchases.new(),
+		tutorial = Tutorial.new(false),
 	}
 end
 
@@ -310,6 +312,11 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		-- Schema 17 (CM2-46a): Robux purchase receipts, owned counts and boost time.
 		state.purchases = Purchases.new()
 	end
+	if state.schemaVersion == 17 then
+		state.schemaVersion = 18
+		-- Schema 18 (CM2-49): tutorial progress; existing saves count as finished.
+		state.tutorial = Tutorial.new(false)
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -353,6 +360,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.staffEnergy = Staff.newEnergy()
 	state.breakArea = Staff.defaultBreakArea(state)
 	state.purchases = Purchases.new()
+	state.tutorial = Tutorial.new(false)
 	return validated(state)
 end
 
@@ -736,6 +744,9 @@ function BusinessState.validate(state)
 	if not Reviews.isValid(state) or not Purchases.isValid(state) then
 		return false
 	end
+	if not Tutorial.isValid(state.tutorial) then
+		return false
+	end
 	for placementId, reservation in pairs(state.reservations) do
 		if
 			type(placementId) ~= "string"
@@ -833,6 +844,7 @@ function BusinessState.placeOrder(
 	}
 	state.bays[bay].speciesId = species
 	BusinessState.record(state, "OrderPlaced", -cost)
+	Tutorial.advance(state, "Ordered")
 	return true, { orderId = orderId, cost = cost, bay = bay }
 end
 

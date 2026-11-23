@@ -45,6 +45,7 @@ for name, path in pairs({
 	CompanyPurchases = "src/server/Services/CompanyPurchases.lua",
 	CompanyStaff = "src/server/Services/CompanyStaff.lua",
 	CompanyStateService = "src/server/Services/CompanyStateService.lua",
+	CompanyTutorial = "src/server/Services/CompanyTutorial.lua",
 	CustomerOrderService = "src/server/Services/CustomerOrderService.lua",
 	CustomerNpcService = "src/server/Services/CustomerNpcService.lua",
 	CustomerService = "src/server/Services/CustomerService.lua",
@@ -97,6 +98,7 @@ local sourcePaths = {
 	Stocking = "src/shared/Stocking.lua",
 	SupplierCatalog = "src/shared/SupplierCatalog.lua",
 	TreeHeight = "src/shared/TreeHeight.lua",
+	Tutorial = "src/shared/Tutorial.lua",
 	UiTheme = "src/shared/UiTheme.lua",
 }
 for name, path in pairs(sourcePaths) do

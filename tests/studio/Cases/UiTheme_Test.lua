@@ -282,4 +282,22 @@ return function(t)
 			expect.truthy(d.list.h < 3 * r.height + 2 * r.listGap)
 		end
 	end)
+
+	-- CM2-49: the tutorial hint bar sits below the toast row, between the rail columns.
+	t.test("places the tutorial bar clear of the HUD, toast, rail and stocking bar", function()
+		for _, size in ipairs({ { 667, 375 }, { 1024, 768 }, { 1564, 730 }, { 1920, 1080 } }) do
+			local w, h = size[1], size[2]
+			local m = UiTheme.metrics(w, h)
+			local bar = UiTheme.tutorialBarLayout(m)
+			local hud = UiTheme.hudLayout(m, 7)
+			expect.truthy(UiTheme.inside(bar.frame, w, h))
+			expect.falsy(UiTheme.overlaps(bar.frame, hud.hud))
+			expect.falsy(UiTheme.overlaps(bar.frame, hud.toast))
+			expect.falsy(UiTheme.overlaps(bar.frame, hud.rail))
+			expect.falsy(UiTheme.overlaps(bar.frame, UiTheme.stockingBarLayout(m).frame))
+			expect.truthy(bar.skip.w >= UiTheme.MinTouch)
+			expect.truthy(bar.skip.h >= UiTheme.MinTouch)
+			expect.truthy(bar.text.w > 0)
+		end
+	end)
 end

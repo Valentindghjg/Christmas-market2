@@ -352,6 +352,18 @@ Localization.Strings = {
 		shopErrorBoostFull = "Your boost is already at the 6-hour limit.",
 		shopErrorBusy = "Please wait a moment and try again.",
 		shopErrorUnavailable = "The shop is not available right now. Please try again.",
+		-- Guided tutorial (CM2-49).
+		tutorialOrder = "Open the Lot Manager and order a tree.",
+		tutorialDelivery = "Your trees are on the way to a bay.",
+		tutorialStock = "Go to the bay and use Stock.",
+		tutorialPlace = "Place the tree on your lot.",
+		tutorialCheckoutWait = "Wait at the counter for a customer.",
+		tutorialCheckout = "Check out the customer at the counter.",
+		tutorialDone = "Well done! Your tree lot is open.",
+		tutorialSkip = "Skip",
+		tutorialSkipConfirm = "Tap again",
+		tutorialSkipFailed = "Could not skip. Try again.",
+		tutorialArrow = "◀",
 	},
 	de = {
 		cash = "Geld",
@@ -701,6 +713,18 @@ Localization.Strings = {
 		shopErrorBoostFull = "Dein Boost ist schon am 6-Stunden-Limit.",
 		shopErrorBusy = "Bitte warte kurz und versuche es noch einmal.",
 		shopErrorUnavailable = "Der Shop ist gerade nicht verfügbar. Bitte versuche es noch einmal.",
+		-- Geführtes Tutorial (CM2-49).
+		tutorialOrder = "Öffne den Lot Manager und bestelle einen Baum.",
+		tutorialDelivery = "Deine Bäume sind unterwegs zu einer Bucht.",
+		tutorialStock = "Geh zur Bucht und nutze „Aufstellen“.",
+		tutorialPlace = "Stell den Baum auf deinem Platz auf.",
+		tutorialCheckoutWait = "Warte an der Kasse auf einen Kunden.",
+		tutorialCheckout = "Kassiere den Kunden an der Kasse ab.",
+		tutorialDone = "Gut gemacht! Dein Baumverkauf ist eröffnet.",
+		tutorialSkip = "Überspringen",
+		tutorialSkipConfirm = "Noch mal tippen",
+		tutorialSkipFailed = "Überspringen ging nicht. Versuch es noch mal.",
+		tutorialArrow = "◀",
 	},
 }
 

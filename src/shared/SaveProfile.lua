@@ -35,6 +35,8 @@ function SaveProfile.new(userId: number, now: number)
 		legacyState = "Pending",
 		legacySaveId = nil,
 		recentCreates = {},
+		-- CM2-49: the player was already offered the guided tutorial (no version bump).
+		tutorialOffered = false,
 	}
 end
 
@@ -194,6 +196,9 @@ function SaveProfile.validate(profile): boolean
 		then
 			return false
 		end
+	end
+	if profile.tutorialOffered ~= nil and type(profile.tutorialOffered) ~= "boolean" then
+		return false
 	end
 	return true
 end

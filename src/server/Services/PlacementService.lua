@@ -8,6 +8,7 @@ local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Receiving = require(Shared:WaitForChild("Receiving"))
 local Stocking = require(Shared:WaitForChild("Stocking"))
+local Tutorial = require(Shared:WaitForChild("Tutorial"))
 
 local PlacementService = {}
 
@@ -128,6 +129,7 @@ function PlacementService.stockFromBay(
 		bay = bayIndex,
 		remaining = Receiving.view(state, 0)[bayIndex].counts,
 	}
+	Tutorial.advance(state, "Stocked")
 	return true, result
 end
 

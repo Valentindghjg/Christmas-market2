@@ -222,6 +222,9 @@ return function(ctx: any)
 	ctx.rowOf = rowOf
 	ctx.memberOf = memberOf
 	ctx.SAVE_FAR = SAVE_FAR
+	-- Guided tutorial (CM2-49, steps 54 and 55).
+	ctx.SAVE_T = "Playtest T"
+	ctx.SAVE_T2 = "Playtest T2"
 	ctx.locatorEntry = locatorEntry
 	ctx.deleteFar = deleteFar
 	ctx.finderListings = finderListings

@@ -348,4 +348,25 @@ return function(t)
 		expect.equal(Localization.get("en", "shopPassActive"), "Thanks! Your game pass is now active.")
 		expect.equal(Localization.get("de", "shopPassActive"), "Danke! Dein Spielpass ist jetzt aktiv.")
 	end)
+
+	-- CM2-49: the guided tutorial's hints and Skip button.
+	t.test("has every tutorial key in English and German", function()
+		local keys = {
+			"tutorialOrder",
+			"tutorialDelivery",
+			"tutorialStock",
+			"tutorialPlace",
+			"tutorialCheckoutWait",
+			"tutorialCheckout",
+			"tutorialDone",
+			"tutorialSkip",
+			"tutorialSkipConfirm",
+			"tutorialSkipFailed",
+			"tutorialArrow",
+		}
+		for _, key in ipairs(keys) do
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+	end)
 end

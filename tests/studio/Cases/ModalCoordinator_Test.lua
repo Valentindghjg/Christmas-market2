@@ -122,4 +122,18 @@ return function(t)
 		expect.equal(ModalCoordinator.OverBase.LotManager, nil)
 		expect.equal(ModalCoordinator.OverBase.Team, nil)
 	end)
+
+	-- CM2-49: the tutorial hint bar reads the held modal and the base layer.
+	t.test("reports the held modal and the base layer", function()
+		local modals = ModalCoordinator.new()
+		expect.equal(modals.held(), nil)
+		expect.falsy(modals.hasBase())
+		modals.setBase(function() end)
+		expect.truthy(modals.hasBase())
+		modals.claim("Shop", function() end)
+		expect.equal(modals.held(), "Shop")
+		expect.falsy(modals.hasBase())
+		modals.release("Shop")
+		expect.equal(modals.held(), nil)
+	end)
 end

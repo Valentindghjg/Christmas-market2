@@ -666,6 +666,37 @@ function StudioTestService.install(context)
 		return success(ticked)
 	end
 
+	-- Guided tutorial (CM2-49): sets the save's step ({userId, step}), not skipped.
+	function commands.tutorialSet(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" or type(arg.step) ~= "string" then
+			return failure("BadArgument")
+		end
+		local companyId = companyIdFor(arg.userId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		if not companies:setTutorialForTest(companyId, arg.step) then
+			return failure("Refused")
+		end
+		return success(arg.step)
+	end
+
+	-- Reads ({userId}) or writes ({userId, offered}) the profile's tutorialOffered flag.
+	function commands.tutorialOffer(arg)
+		if
+			type(arg) ~= "table"
+			or type(arg.userId) ~= "number"
+			or (arg.offered ~= nil and type(arg.offered) ~= "boolean")
+		then
+			return failure("BadArgument")
+		end
+		local flag, flagError = saveSlots:tutorialOfferForTest(arg.userId, arg.offered)
+		if flag == nil then
+			return failure(tostring(flagError))
+		end
+		return success(flag)
+	end
+
 	function commands.runPlaytest(arg)
 		local unitTest = ServerStorage:FindFirstChild("UnitTest")
 		local folder = unitTest and unitTest:FindFirstChild("Playtest")

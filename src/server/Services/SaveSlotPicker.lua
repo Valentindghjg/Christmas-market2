@@ -223,6 +223,8 @@ end
 function SaveSlotService:_touch(userId: number, saveId: string, companyId: string)
 	local info = self._companies:teamInfo(companyId)
 	local now = self._clock()
+	-- CM2-49: every owner play marks the player as offered the guided tutorial.
+	local isOwner = self._companies:memberRole(companyId, userId) == "Owner"
 	local _, touchError = self:_updateProfile(userId, function(stored)
 		local currentProfile, storedError = storedProfile(stored)
 		if not currentProfile then
@@ -236,6 +238,9 @@ function SaveSlotService:_touch(userId: number, saveId: string, companyId: strin
 			end
 		end
 		currentProfile.lastSaveId = saveId
+		if isOwner then
+			currentProfile.tutorialOffered = true
+		end
 		return currentProfile, true
 	end)
 	if touchError then
@@ -342,7 +347,12 @@ function SaveSlotService:_play(userId: number, saveId: string, options): (boolea
 	self._pendingLoads[companyId] = (self._pendingLoads[companyId] or 0) + 1
 	local ownerUserId = SaveProfile.ownerUserIdOf(saveId) :: number
 	local loadName = if entry.role == "Owner" then entry.name else nil
-	local loadOptions = { saveSize = entry.size, requireExisting = entry.role == "Member" }
+	-- CM2-49: only a fresh record of the first save a player owns starts the guided tutorial.
+	local loadOptions = {
+		saveSize = entry.size,
+		requireExisting = entry.role == "Member",
+		tutorial = entry.role == "Owner" and profile.tutorialOffered ~= true,
+	}
 	local plotId = nil
 	local state, loadError = nil, nil
 	for attempt = 1, SAVES.LoadAttempts do
@@ -503,6 +513,30 @@ function SaveSlotService:leave(userId: number, final: boolean?): (boolean, strin
 		return false, "InternalError"
 	end
 	return ok, leaveError
+end
+
+-- Studio test instrument only (StudioTestService, CM2-49): writes the tutorialOffered flag when
+-- offered is a boolean and returns the resulting flag (the open profile's when offered is nil).
+function SaveSlotService:tutorialOfferForTest(userId: number, offered: boolean?): (boolean?, string?)
+	if type(offered) == "boolean" then
+		local updated, updateError = self:_updateProfile(userId, function(stored)
+			local currentProfile, storedError = storedProfile(stored)
+			if not currentProfile then
+				return nil, false, storedError
+			end
+			currentProfile.tutorialOffered = offered
+			return currentProfile, true
+		end)
+		if not updated then
+			return nil, updateError
+		end
+		return updated.tutorialOffered == true, nil
+	end
+	local profile, profileError = self:_openProfile(userId)
+	if not profile then
+		return nil, profileError
+	end
+	return profile.tutorialOffered == true, nil
 end
 
 return SaveSlotService

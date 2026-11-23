@@ -11,6 +11,8 @@ return function(ctx: any)
 	local SAVE_C = ctx.SAVE_C
 	local SAVE_DUO = ctx.SAVE_DUO
 	local SAVE_FAR = ctx.SAVE_FAR
+	local SAVE_T = ctx.SAVE_T
+	local SAVE_T2 = ctx.SAVE_T2
 	local UNIT_PRICE = ctx.UNIT_PRICE
 	local advance = ctx.advance
 	local call = ctx.call
@@ -234,7 +236,7 @@ return function(ctx: any)
 				playSave(entry.saveId)
 			end
 		end)
-		for _, name in { SAVE_B, SAVE_B2, SAVE_C, SAVE_DUO } do
+		for _, name in { SAVE_B, SAVE_B2, SAVE_C, SAVE_DUO, SAVE_T, SAVE_T2 } do
 			attempt("delete " .. name, function()
 				deleteLeftover(name)
 			end)

@@ -728,4 +728,37 @@ return function(t)
 		expect.equal(result[2], true)
 		expect.equal(env.service:pendingCount(), 0)
 	end)
+
+	-- CM2-49: only the first save a player ever plays starts the guided tutorial.
+	t.test("offers the tutorial on the first played save only", function()
+		local env = setup()
+		local first = starter(env)
+		local ok, reason = play(env, first)
+		expect.equal(reason, nil)
+		expect.truthy(ok)
+		expect.equal(env.companies:snapshotForTest("save:" .. first).tutorial.step, "Order")
+		expect.equal(recordOf(env, first).tutorial.step, "Order")
+		expect.equal(stored(env).tutorialOffered, true)
+		local second = create(env, "Second Lot")
+		local played, playError = play(env, second)
+		expect.equal(playError, nil)
+		expect.truthy(played)
+		expect.equal(env.companies:snapshotForTest("save:" .. second).tutorial.step, "Done")
+		expect.equal(env.companies:snapshotForTest("save:" .. second).tutorial.skipped, false)
+	end)
+
+	t.test("an existing record keeps its tutorial when first played", function()
+		local env = setup()
+		local saveId = starter(env)
+		env.service:closeProfile(USER)
+		stored(env).tutorialOffered = nil
+		local companyId = "save:" .. saveId
+		env.companyStore.records[PersistenceService.keyFor(companyId)] =
+			BusinessState.new(companyId, USER, "Tree Lot 1")
+		local ok, reason = play(env, saveId)
+		expect.equal(reason, nil)
+		expect.truthy(ok)
+		expect.equal(env.companies:snapshotForTest(companyId).tutorial.step, "Done")
+		expect.equal(stored(env).tutorialOffered, true)
+	end)
 end

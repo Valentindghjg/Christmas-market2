@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BusinessState = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BusinessState"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
+local Tutorial = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Tutorial"))
 
 local PersistenceService = {}
 PersistenceService.__index = PersistenceService
@@ -87,7 +88,8 @@ end
 -- Acquires a lock atomically. A lock held by another non-expired server never loads writable state.
 -- options (CM2-S2): saveSize for a fresh record (default Solo); requireExisting refuses a
 -- missing record with "SaveNotFound" and writes nothing (members never create a save).
--- saveName == nil keeps the stored name.
+-- saveName == nil keeps the stored name. tutorial (CM2-49) starts the guided tutorial on a fresh
+-- record only; existing records ignore it.
 function PersistenceService:load(companyId: string, ownerUserId: number, saveName: string?, options)
 	if type(companyId) ~= "string" or #companyId == 0 or type(ownerUserId) ~= "number" then
 		return nil, "InvalidIdentity"
@@ -110,6 +112,9 @@ function PersistenceService:load(companyId: string, ownerUserId: number, saveNam
 				end
 				loadedState = BusinessState.new(companyId, ownerUserId, saveName)
 				loadedState.saveSize = settings.saveSize or "Solo"
+				if settings.tutorial == true then
+					loadedState.tutorial = Tutorial.new(true)
+				end
 			elseif type(previous) ~= "table" then
 				error("CorruptRecord")
 			else

@@ -149,4 +149,20 @@ return function(t)
 		expect.truthy(SaveProfile.validate(profile))
 		expect.truthy(SaveProfile.nameTaken(profile, "shared lot"))
 	end)
+
+	-- CM2-49: the profile remembers that the player was offered the guided tutorial.
+	t.test("validates the tutorialOffered flag", function()
+		local profile = profileWith(1)
+		expect.equal(SaveProfile.new(42, 100).tutorialOffered, false)
+		for _, valid in { true, false } do
+			profile.tutorialOffered = valid
+			expect.truthy(SaveProfile.validate(profile))
+		end
+		profile.tutorialOffered = nil
+		expect.truthy(SaveProfile.validate(profile))
+		for _, bad in { "yes", 1 } do
+			profile.tutorialOffered = bad :: any
+			expect.falsy(SaveProfile.validate(profile))
+		end
+	end)
 end

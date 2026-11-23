@@ -4,6 +4,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local CustomerProfile = require(Shared:WaitForChild("CustomerProfile"))
 local CustomerSelection = require(Shared:WaitForChild("CustomerSelection"))
+local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local CustomerService = require(script.Parent:WaitForChild("CustomerService"))
 local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
 
@@ -85,6 +86,7 @@ function CustomerSimulationService.completeVisit(
 	end
 	local _, order = CustomerOrderService.createFromSale(state, sale, timestamp, parkingSpace, claims, queueSeconds)
 	sale.order = order
+	Tutorial.advance(state, "Sold")
 	return true, sale
 end
 

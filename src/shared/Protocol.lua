@@ -28,6 +28,8 @@ Protocol.Actions = {
 	LotLike = "Lot.Like",
 	-- CM2-25/26 part b: move the staff break area (any save member).
 	StaffMoveBreakArea = "Staff.MoveBreakArea",
+	-- CM2-49: skip the guided tutorial (any save member).
+	TutorialSkip = "Tutorial.Skip",
 }
 
 local actionSet = {
@@ -49,6 +51,7 @@ local actionSet = {
 	[Protocol.Actions.QuestClaim] = true,
 	[Protocol.Actions.LotLike] = true,
 	[Protocol.Actions.StaffMoveBreakArea] = true,
+	[Protocol.Actions.TutorialSkip] = true,
 }
 
 -- Save-slot actions travel through their own remote (Remotes.SaveAction).
@@ -384,6 +387,12 @@ function Protocol.validateRequest(request)
 		end
 		if table.find(GameConfig.PersonalPlotIds, request.payload.plotId) == nil then
 			return false, "InvalidPlotId"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.TutorialSkip then
+		if next(request.payload) ~= nil then
+			return false, "UnexpectedField"
 		end
 		return true, nil
 	end

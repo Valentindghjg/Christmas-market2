@@ -76,6 +76,12 @@ export type DialogLayout = {
 	rightHeader: Box?,
 }
 
+export type TutorialBarLayout = {
+	frame: Box,
+	text: Box,
+	skip: Box,
+}
+
 export type StockingBarLayout = {
 	frame: Box,
 	header: Box,
@@ -246,6 +252,22 @@ UiTheme.SaveRow = {
 	listGap = 8,
 } :: SaveRowLayout
 
+-- Guided tutorial hint bar, arrows and highlight (CM2-49). PROVISIONAL.
+UiTheme.TutorialBar = {
+	maxWidth = 560,
+	height = 56,
+	padding = 6,
+	skipWidth = 104,
+	textSize = 15,
+	arrowSize = 44,
+	highlightPad = 4,
+	worldArrowStuds = 6,
+	refreshSeconds = 0.25,
+	doneSeconds = 5,
+	confirmSeconds = 3,
+	displayOrder = 12,
+}
+
 -- Layout constants.
 local GAP = 8
 local BUTTON_HEIGHT = 44
@@ -336,6 +358,18 @@ function UiTheme.hudLayout(m: Metrics, railButtons: number): HudLayout
 		toast = toast,
 		actionBar = actionBar,
 		manager = manager,
+	}
+end
+
+-- CM2-49: the hint bar sits top-centre below the toast row, between the rail columns.
+function UiTheme.tutorialBarLayout(m: Metrics): TutorialBarLayout
+	local config = UiTheme.TutorialBar
+	local p = config.padding
+	local w = math.min(config.maxWidth, m.width - 2 * (m.margin + m.railWidth + RAIL_SIDE_PADDING))
+	return {
+		frame = box(math.floor((m.width - w) / 2), m.margin + HUD_HEIGHT + GAP + BUTTON_HEIGHT + GAP, w, config.height),
+		text = box(p, p, w - 3 * p - config.skipWidth, BUTTON_HEIGHT),
+		skip = box(w - p - config.skipWidth, p, config.skipWidth, BUTTON_HEIGHT),
 	}
 end
 

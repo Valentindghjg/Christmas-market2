@@ -22,6 +22,7 @@ local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
 local CompanyPurchases = require(script.Parent:WaitForChild("CompanyPurchases"))
 local CompanyStaff = require(script.Parent:WaitForChild("CompanyStaff"))
+local CompanyTutorial = require(script.Parent:WaitForChild("CompanyTutorial"))
 local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
 local CustomerService = require(script.Parent:WaitForChild("CustomerService"))
 local CustomerSimulationService = require(script.Parent:WaitForChild("CustomerSimulationService"))
@@ -34,12 +35,10 @@ local QuestService = require(script.Parent:WaitForChild("QuestService"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
--- Staff transactions (CM2-25/26): getStaffView, setStaffEnergy, staffPeekOrder, staffClaimOrder,
--- staffLoadOrder, staffReleaseOrder, staffPeekRestock, staffRestock, noteStaff,
--- setBreakAreaChangedHandler, _notifyBreakArea.
+-- Mixins: staff and break area (CM2-25/26), Robux purchases (CM2-46a), guided tutorial (CM2-49).
 CompanyStaff.install(CompanyStateService)
--- Robux purchases (CM2-46a): pass perks, Cash Rush boosts and grantPurchase.
 CompanyPurchases.install(CompanyStateService)
+CompanyTutorial.install(CompanyStateService)
 
 -- Persistence results that mean this server no longer owns a valid writable session.
 local FAIL_CLOSED_SAVE_ERRORS = { SessionLocked = true, NotLoaded = true }
@@ -274,6 +273,7 @@ function CompanyStateService:_withSession(companyId: string, session, fn)
 		self:_leave(session)
 		return false, "CompanyUnavailable", nil
 	end
+	local tutorialBefore = self:tutorialAttribute(companyId)
 	local ok, first, second = pcall(fn, session.state)
 	self:_leave(session)
 	if not ok then
@@ -285,6 +285,7 @@ function CompanyStateService:_withSession(companyId: string, session, fn)
 		self:_failSession(companyId, session, "InternalError")
 		return false, "InternalError", nil
 	end
+	self:_syncTutorial(companyId, session, tutorialBefore)
 	return true, first, second
 end
 
@@ -750,6 +751,7 @@ local MEMBER_ACTIONS = {
 	[Protocol.Actions.SupplierRequestQuote] = true,
 	[Protocol.Actions.CompanyGetSummary] = true,
 	[Protocol.Actions.StaffMoveBreakArea] = true,
+	[Protocol.Actions.TutorialSkip] = true,
 }
 
 local function canPerformAction(state, userId: number, action: string): boolean
@@ -925,6 +927,8 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 		succeeded, result = SupplierStockService.sellBack(state, payload.speciesId, payload.sizeId, payload.quantity)
 	elseif action == Protocol.Actions.StaffMoveBreakArea then
 		succeeded, result = Staff.moveBreakArea(state, payload.x, payload.z, payload.rotation)
+	elseif action == Protocol.Actions.TutorialSkip then
+		succeeded, result = self:_skipTutorial(state)
 	end
 	Protocol.finishRequest(record, succeeded and "Success" or tostring(result))
 	-- The request record changed even when the action was rejected.
@@ -1489,6 +1493,7 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		customerOrders = CustomerOrderService.summary(state, session.npcClaims).orders,
 		clock = clock, -- Fix round 1 (F7): lets a playtest expire orders from the server's clock
 		purchases = CompanyPurchases.snapshot(state), -- CM2-46a
+		tutorial = table.clone(state.tutorial), -- CM2-49
 	}
 end
 

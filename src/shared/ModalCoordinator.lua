@@ -8,6 +8,9 @@ export type Coordinator = {
 	release: (id: string) -> (),
 	closeAll: () -> (),
 	setBase: (close: (() -> ())?) -> (),
+	-- CM2-49: the id of a claimed modal (any holder) and whether a base layer is open.
+	held: () -> string?,
+	hasBase: () -> boolean,
 }
 
 -- Modal ids that open over the base layer without closing it. PROVISIONAL (CM2-S3 design).
@@ -55,7 +58,22 @@ function ModalCoordinator.new(): Coordinator
 		base = close
 	end
 
-	return { claim = claim, release = release, closeAll = closeAll, setBase = setBase }
+	local function held(): string?
+		return (next(holders))
+	end
+
+	local function hasBase(): boolean
+		return base ~= nil
+	end
+
+	return {
+		claim = claim,
+		release = release,
+		closeAll = closeAll,
+		setBase = setBase,
+		held = held,
+		hasBase = hasBase,
+	}
 end
 
 return ModalCoordinator

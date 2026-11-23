@@ -259,6 +259,15 @@ function UiKit.setBaseLayer(close: (() -> ())?)
 	modals.setBase(close)
 end
 
+-- CM2-49: the tutorial hint bar hides behind the base layer and most modals.
+function UiKit.heldModal(): string?
+	return modals.held()
+end
+
+function UiKit.baseLayerOpen(): boolean
+	return modals.hasBase()
+end
+
 -- Rail --------------------------------------------------------------------------------------
 
 local RAIL_BUTTON_HEIGHT = UiTheme.MinTouch

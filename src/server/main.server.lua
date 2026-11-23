@@ -394,6 +394,16 @@ companies:setBreakAreaChangedHandler(function(companyId: string, area)
 	end
 end)
 
+-- Tutorial hints follow the save's progress (CM2-49).
+companies:setTutorialChangedHandler(function(companyId: string, value: string?)
+	for _, userId in saveSlots:playersOn(companyId) do
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			player:SetAttribute("TutorialStep", value)
+		end
+	end
+end)
+
 -- Customer orders: prompts are validated like remote calls before any mutation.
 local orderCallbacks
 local performOrderAction
@@ -684,6 +694,7 @@ saveSlots:setActivationHandlers(function(userId: number, companyId: string, plot
 		player:SetAttribute("ActiveSaveName", view.saveName)
 		player:SetAttribute("ActiveSaveOwnerName", view.ownerName)
 		player:SetAttribute("CompanyError", nil)
+		player:SetAttribute("TutorialStep", companies:tutorialAttribute(companyId))
 		player:SetAttribute("CompanyReady", true)
 		if player.Character then
 			task.spawn(spawnAtClaimedPlot, player, player.Character)
@@ -711,6 +722,7 @@ end, function(userId: number, companyId: string, plotId: string?, plotReleased: 
 		player:SetAttribute("ActiveSaveRole", nil)
 		player:SetAttribute("ActiveSaveSize", nil)
 		player:SetAttribute("ActiveSaveOwnerName", nil)
+		player:SetAttribute("TutorialStep", nil)
 	end
 	monetization:refreshPerks(companyId, userId)
 end)
