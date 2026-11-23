@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Environment/MountainPeak",
+	"displayName": "Mountain Peak",
+	"tier": "B",
+	"version": 1,
+	"maxTriangles": 1000,
+	"maxMeshParts": 4,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

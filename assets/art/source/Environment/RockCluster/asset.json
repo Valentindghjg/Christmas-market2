@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Environment/RockCluster",
+	"displayName": "Rock Cluster",
+	"tier": "B",
+	"version": 1,
+	"maxTriangles": 300,
+	"maxMeshParts": 3,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

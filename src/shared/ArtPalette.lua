@@ -43,6 +43,9 @@ local ArtPalette: { [string]: PaletteEntry } = {
 	GlassBlue = { rgb = { 150, 186, 204 }, material = "SmoothPlastic" },
 	TruckGreen = { rgb = { 66, 124, 72 }, material = "SmoothPlastic" },
 	TruckGreenShade = { rgb = { 44, 90, 52 }, material = "SmoothPlastic" },
+	-- Map (CM2-10c, PROVISIONAL)
+	MountainRock = { rgb = { 116, 126, 140 }, material = "SmoothPlastic" },
+	MountainRockShade = { rgb = { 86, 96, 112 }, material = "SmoothPlastic" },
 }
 
 return ArtPalette
