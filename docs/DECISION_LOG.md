@@ -645,3 +645,21 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 | A2 Step 52 boost fixture | Studio hook `shopClearBoosts` (`tickBoostsAll(BoostCapSeconds)`, then `flushDirty(true)`); step 52 calls it first and after the boost-only check, CLEANUP calls it with `shopPasses {S, {}}`. |
 
 - Schema 17: `purchases = {receipts, owned, boosts}`; migration 16 → 17 adds `Purchases.new()`. Schema-16 servers fail closed on schema-17 records; shut them down when this ships.
+
+## 2026-11-23 — Guided tutorial, CM2-49 (engineering)
+- Plan: `docs/plans/CM2-49.md` (launch order 14). PROVISIONAL engineering design: the reference's own first-time tutorial is not observed and replaces this if an observation differs.
+
+| Topic | Decision |
+|---|---|
+| Where progress lives | Company save (`tutorial = {step, skipped}`, schema 18), one progress per save shared by every member; the player profile only records `tutorialOffered`. |
+| First save only | A new record starts the tutorial only if its owner's profile has `tutorialOffered ~= true`; every owner play sets it. Existing records migrate to finished, and players who owned saves before the update get none on new saves. |
+| Co-op | Members see the save's current step, also when joining mid-tutorial; any member's action advances it and any member may skip it for the whole save. |
+| Steps | `Order` → `Stock` → `Checkout` → `Done`, sent by `placeOrder` (`Ordered`), `stockFromBay` (`Stocked`, player or Lot Worker) and `completeVisit` (`Sold`, manual checkout, Cashier or simulation). |
+| Catch-up | An event completes its step and every earlier one; events for finished steps change nothing, so no state can get stuck. |
+| Cashier | A fresh save cannot afford one, so the first checkout is manual; a Cashier's sale also completes `Checkout`, without a special hint. |
+| Gameplay effect | None: hints only, no action is blocked or changed. |
+| Skip | `Tutorial.Skip` on `BusinessAction`: empty payload (`UnexpectedField` otherwise), any member, idempotent by request ID, the standard per-action and global limits, `TutorialDone` once finished; the client asks for a second tap within 3 s. |
+| Client channel | Player attribute `TutorialStep` (`Order`, `Stock`, `Checkout`, `Done`, `Skipped`, or nil without an active save), set on activation and after every change. |
+| Device | One layout for all devices: the hint bar sits top-centre below the toast row, between the rail columns; taps go through every overlay except Skip. |
+
+- Schema 18: migration 17 → 18 sets a finished tutorial. Schema-17 servers fail closed on schema-18 records; shut them down when this ships.
