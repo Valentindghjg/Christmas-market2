@@ -663,3 +663,18 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 | Device | One layout for all devices: the hint bar sits top-centre below the toast row, between the rail columns; taps go through every overlay except Skip. |
 
 - Schema 18: migration 17 → 18 sets a finished tutorial. Schema-17 servers fail closed on schema-18 records; shut them down when this ships.
+
+## 2026-11-23 — CM2-10W map in the world (engineering)
+- Plan: `docs/plans/CM2-10W.md`. PROVISIONAL engineering design on top of the CM2-10 contract; no gameplay, save or remote change.
+
+| Topic | Decision |
+|---|---|
+| Generation | `MapLayout.generate()` builds every piece from one Park-Miller stream (seed 1010), in the order reserve firs, plot-gap firs, then the zones; the same layout on every server. |
+| Zones | The forest and rock zones are disjoint subsets of the contract zones (counts 40 ForestClusterA, 30 ForestClusterB, 24 RockCluster); a piece is rejected when its footprint grown by 1 stud touches an earlier one. |
+| Missing art | Seven kinds get Part fallbacks (bridge, village tree, board, sign, fir, two clusters); six kinds are skipped (house, lamp, bench, rock, peak, ridge) until the `.rbxm` exists (PC-2). One `[ART]` warning per path. |
+| MeshPart budget | The contract's "<= 1047 MeshParts" was an arithmetic slip; its own table sums to 1051 (20 + 32 + 40 + 99 + 456 + 280 + 72 + 52). Corrected in MODEL_INTEGRATION. Its "298 models" leaves out the 4 benches (302 with them); `MapLayout_Test` allows 302. |
+| Empty `ArtAssets` | A leftover `ArtAssets` folder without assets in the Studio place (in neither project file; `rojo build` creates the real one) could hide the art. `ArtLibrary.root` prefers the folder with children; playtest step 21 fails when two such folders exist. The 2026-11-23 playtest found the leftover holding 6 empty subfolders (so it counts as having children) and deleted it unsaved; the owner deletes it in the place and saves (backlog PC-7 step 4). |
+| Streaming | `workspace.StreamingEnabled = true` in both project files, with the default radius. The server owns the map; clients read only their own nearby plot. |
+| Walls | Invisible, colliding, not queryable (`CanQuery`, `CanTouch` and `CastShadow` false), so camera and spatial scans ignore them. |
+| Reserve rows | Reserve firs jitter +-1.5 in x and +-0.6 in z. Rows are 10 studs apart, so 10 - 1.2 = 8.8 stays above the largest fir z extent (8.75) and no two reserve firs overlap; the first draft's +-1.5 in z overlapped 18 adjacent-row pairs by up to 1.41 studs. |
+| CM2-44 split | CM2-10W only removes the world placements of the CC0 scenery, the market alley (incl. `MarketGazebo`) and the primitive showcase and forest trees. CM2-44 keeps the remaining CC0 uses (stand, fence), the CC0 templates in `ArtAssets`, `AssetCatalog` and `assets/third_party/`. |
