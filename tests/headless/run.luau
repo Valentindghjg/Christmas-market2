@@ -84,6 +84,7 @@ local sourcePaths = {
 	Inventory = "src/shared/Inventory.lua",
 	LabelDeclutter = "src/shared/LabelDeclutter.lua",
 	Localization = "src/shared/Localization.lua",
+	MapLayout = "src/shared/MapLayout.lua",
 	ModalCoordinator = "src/shared/ModalCoordinator.lua",
 	NpcLook = "src/shared/NpcLook.lua",
 	NpcPath = "src/shared/NpcPath.lua",

@@ -469,9 +469,20 @@ return function(ctx: any)
 	end)
 
 	addStep("21", "ART_ASSETS", {}, function()
-		local art = ReplicatedStorage:FindFirstChild("ArtAssets")
+		local art = ctx.ArtLibrary.root(ReplicatedStorage)
 		check(art ~= nil, "ReplicatedStorage.ArtAssets is missing")
 		local container = art :: Instance
+		-- A Studio place can hold an empty duplicate next to the synced folder (CM2-10W).
+		local folders, nonEmpty = 0, 0
+		for _, child in ReplicatedStorage:GetChildren() do
+			if child.Name == "ArtAssets" then
+				folders += 1
+				if #child:GetChildren() > 0 then
+					nonEmpty += 1
+				end
+			end
+		end
+		check(nonEmpty <= 1, "two non-empty ArtAssets folders")
 		local duplicates: { string } = {}
 		local function scanNames(folder: Instance)
 			local seen: { [string]: boolean } = {}
@@ -507,6 +518,11 @@ return function(ctx: any)
 			end)
 		end
 		check(#failed == 0, "meshes failed to load: " .. table.concat(failed, ", "))
-		return string.format("%d blender models, %d meshes, 0 failed, 0 duplicates", models, #meshParts)
+		return string.format(
+			"%d blender models, %d meshes, 0 failed, 0 duplicates, %d ArtAssets folders",
+			models,
+			#meshParts,
+			folders
+		)
 	end)
 end

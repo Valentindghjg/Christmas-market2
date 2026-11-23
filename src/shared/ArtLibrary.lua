@@ -19,6 +19,27 @@ function ArtLibrary.isValidPath(path: string): boolean
 	return count >= 1
 end
 
+-- Returns the art root under a container: the first child named ArtAssets that has at least
+-- one child, else the first child named ArtAssets, else nil. A Studio place can hold an empty
+-- duplicate next to the synced folder (CM2-10W).
+function ArtLibrary.root(container: Instance?): Instance?
+	if container == nil then
+		return nil
+	end
+	local firstNamed: Instance? = nil
+	for _, child in (container :: Instance):GetChildren() do
+		if child.Name == "ArtAssets" then
+			if #child:GetChildren() > 0 then
+				return child
+			end
+			if firstNamed == nil then
+				firstNamed = child
+			end
+		end
+	end
+	return firstNamed
+end
+
 -- Returns the template Model, or nil and one of InvalidArtPath, MissingArtAsset,
 -- InvalidArtAsset. Legacy CC0 models may lack a PrimaryPart; Blender art needs one.
 function ArtLibrary.find(root: Instance?, artPath: string): (Model?, string?)

@@ -78,6 +78,34 @@ return function(t)
 		end
 	end)
 
+	t.test("root prefers the non-empty ArtAssets folder", function()
+		local function folder(name, childCount)
+			local value = { Name = name, kids = {} }
+			for _ = 1, childCount do
+				table.insert(value.kids, {})
+			end
+			function value:GetChildren()
+				return self.kids
+			end
+			return value
+		end
+		local function container(...)
+			local value = { kids = { ... } }
+			function value:GetChildren()
+				return self.kids
+			end
+			return value
+		end
+		local empty, full = folder("ArtAssets", 0), folder("ArtAssets", 2)
+		local other = folder("Other", 3)
+		expect.equal(ArtLibrary.root(container(empty, full)), full)
+		expect.equal(ArtLibrary.root(container(full, empty)), full)
+		expect.equal(ArtLibrary.root(container(other, empty)), empty)
+		expect.equal(ArtLibrary.root(container(other)), nil)
+		expect.equal(ArtLibrary.root(container()), nil)
+		expect.equal(ArtLibrary.root(nil), nil)
+	end)
+
 	t.test("levelYaw snaps a part's yaw to the nearest half turn", function()
 		local function rv(deg)
 			return math.cos(math.rad(deg)), -math.sin(math.rad(deg))

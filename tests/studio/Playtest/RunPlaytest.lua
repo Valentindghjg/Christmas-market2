@@ -9,7 +9,7 @@
 -- Playtest/Support and steps from Playtest/Steps (CM2-RF); none of them is under Cases, so the
 -- unit-test runners never execute them. Nothing touches a game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-49"
+RunPlaytest.BUILD = "cm2-10w"
 
 local PREFIX = "[PLAYTEST]"
 
@@ -103,7 +103,7 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 		installer("Support", name)(ctx)
 	end
 	if mode == "full" then
-		for _, name in { "Core", "Saves", "RowFill", "Npc", "Checkout", "Reviews", "Staff", "Shop", "Tutorial" } do
+		for _, name in { "Core", "Saves", "RowFill", "Npc", "Checkout", "Reviews", "Staff", "Shop", "Tutorial", "Map" } do
 			installer("Steps", name)(ctx)
 		end
 		addStep("22", "LEAK_CHECK", { "02" }, ctx.leakCheck)

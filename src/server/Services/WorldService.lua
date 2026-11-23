@@ -11,6 +11,7 @@ local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Stocking = require(Shared:WaitForChild("Stocking"))
 local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
+local MapWorld = require(script.Parent:WaitForChild("MapWorld"))
 
 local WorldService = {}
 
@@ -181,7 +182,7 @@ end
 local function salesStand(parent: Instance, position: Vector3, assetId: string?): Model
 	assetId = assetId or AssetCatalog.Buildings.MarketStarter
 	local artPath = "Buildings/" .. assetId
-	local template, code = ArtLibrary.find(ReplicatedStorage:FindFirstChild("ArtAssets"), artPath)
+	local template, code = ArtLibrary.find(ArtLibrary.root(ReplicatedStorage), artPath)
 	if not template then
 		reportMissing(artPath, code or "MissingArtAsset")
 		local fallback = tent(parent, position)
@@ -202,7 +203,7 @@ end
 
 local function cloneArt(parent: Instance, category: string, assetId: string, groundPosition: Vector3): Model?
 	local artPath = category .. "/" .. assetId
-	local template, code = ArtLibrary.find(ReplicatedStorage:FindFirstChild("ArtAssets"), artPath)
+	local template, code = ArtLibrary.find(ArtLibrary.root(ReplicatedStorage), artPath)
 	if not template then
 		reportMissing(artPath, code or "MissingArtAsset")
 		return nil
@@ -517,14 +518,6 @@ function WorldService.build()
 
 	part(
 		world,
-		"SnowGround",
-		Vector3.new(420, 2, 300),
-		Vector3.new(0, -1, 0),
-		Color3.fromRGB(238, 246, 250),
-		Enum.Material.Snow
-	)
-	part(
-		world,
 		"MainRoad",
 		Vector3.new(380, 0.3, 32),
 		Vector3.new(0, 0.2, 0),
@@ -586,62 +579,7 @@ function WorldService.build()
 		lotSign(plot)
 	end
 
-	local assets = Instance.new("Folder")
-	assets.Name = "OriginalGrayboxAssets"
-	assets.Parent = world
-	for speciesIndex, species in ipairs(GameConfig.SpeciesOrder) do
-		for sizeIndex, size in ipairs({ "Small", "Medium", "Large" }) do
-			tree(
-				assets,
-				species .. "_" .. size,
-				Vector3.new(-170 + speciesIndex * 20, 0, 80 + sizeIndex * 18),
-				0.6 + sizeIndex * 0.2
-			)
-		end
-	end
-	for index = 1, 24 do
-		local x = -190 + ((index * 37) % 370)
-		local z = index % 2 == 0 and -125 or 125
-		tree(world, "ForestTree" .. index, Vector3.new(x, 0, z), 0.8)
-	end
-
-	local scenery = Instance.new("Folder")
-	scenery.Name = "ImportedWinterScenery"
-	scenery.Parent = world
-	for _, position in ipairs({
-		Vector3.new(-150, 0, -120),
-		Vector3.new(-40, 0, -120),
-		Vector3.new(70, 0, -120),
-		Vector3.new(150, 0, -120),
-		Vector3.new(-150, 0, 120),
-		Vector3.new(-40, 0, 120),
-		Vector3.new(70, 0, 120),
-		Vector3.new(150, 0, 120),
-	}) do
-		cloneArt(scenery, "Environment", AssetCatalog.Environment.PineTreeGroup, position)
-	end
-	for _, position in ipairs({
-		Vector3.new(-180, 0, -104),
-		Vector3.new(180, 0, -104),
-		Vector3.new(-180, 0, 104),
-		Vector3.new(180, 0, 104),
-	}) do
-		cloneArt(scenery, "Environment", AssetCatalog.Environment.StylizedRocks, position)
-		cloneArt(scenery, "Environment", AssetCatalog.Environment.StylizedBushes, position + Vector3.new(8, 0, 6))
-		cloneArt(scenery, "Environment", AssetCatalog.Environment.WinterLogs, position + Vector3.new(-8, 0, -6))
-	end
-	local marketAlley = Instance.new("Folder")
-	marketAlley.Name = "ImportedMarketAlley"
-	marketAlley.Parent = world
-	-- The alley sits in the strip between the road (|z| <= 16) and the lots (|z| >= 48), in
-	-- the gap between the plot 4 and plot 5 car lanes, so no stall stands on a parking space.
-	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.MarketGazebo, Vector3.new(-62, 0, 30))
-	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.RusticMarketStand1, Vector3.new(-76, 0, 30))
-	cloneArt(marketAlley, "Buildings", AssetCatalog.Buildings.RusticMarketStand2, Vector3.new(-48, 0, 30))
-	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBench1, Vector3.new(-70, 0, 40))
-	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBench2, Vector3.new(-54, 0, 40))
-	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketCart, Vector3.new(-90, 0, 30))
-	cloneArt(marketAlley, "Props", AssetCatalog.Props.MarketBags, Vector3.new(-36, 0, 30))
+	MapWorld.build(world, { part = part, tree = tree, reportMissing = reportMissing })
 	return world
 end
 
@@ -676,7 +614,7 @@ function WorldService.applyLotExpansionVisual(plotId: string, level: number)
 	if existing then
 		existing:Destroy()
 	end
-	local growth = math.min(math.floor(level), 3)
+	local growth = math.clamp(math.floor(level), 0, GameConfig.Progression.LotExpansion.maxLevel)
 	-- CM2-G14: the lot grows backwards (away from the road) by BackDepthPerLevel per level.
 	local pad = part(
 		visuals,
@@ -688,6 +626,7 @@ function WorldService.applyLotExpansionVisual(plotId: string, level: number)
 	)
 	pad:SetAttribute("LotExpansionLevel", growth)
 	plot:SetAttribute("LotExpansionLevel", growth)
+	MapWorld.applyReserve(plotId, growth)
 	return true
 end
 

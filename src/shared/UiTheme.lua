@@ -170,6 +170,14 @@ UiTheme.LotSign = {
 	maxDistance = 120,
 }
 
+-- Map signs and leaderboard titles (CM2-10W, PROVISIONAL): SurfaceGui density, distance, text sizes.
+UiTheme.MapSign = {
+	pixelsPerStud = 40,
+	maxDistance = 150,
+	maxTextSize = 72,
+	minTextSize = 14,
+}
+
 -- The six Lot Manager tabs in the OBSERVED order (REFERENCE_GAME_LIVE_TEST section 4).
 UiTheme.LotManagerTabs = {
 	{ id = "Supplier", labelKey = "tabSupplier", module = "SupplierTab" },
