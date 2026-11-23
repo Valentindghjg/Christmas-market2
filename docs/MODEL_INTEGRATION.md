@@ -48,6 +48,7 @@ Larger models are Blender MeshParts; small items stay Parts. The `.blend` in `as
 - Colour and material come from `src/shared/ArtPalette.lua` through the object name `<PartName>__<PaletteKey>`; no textures. `COL_<Name>` boxes become `Collider_<Name>`; `ATT_<Name>` empties become Attachments under `ArtRoot` (`Trees/*` always has `TreeBase`).
 - Attributes on every normalized model: `ArtAssetId`, `ArtPath`, `ArtSource = "blender"`, `ArtVersion`, `ArtTier`. Budgets: tier A 4000 triangles / 10 MeshParts, tier B 1000 / 4.
 - `ArtLibrary.find/prepareClone` (`src/shared/ArtLibrary.lua`) look art up and clone it; a missing or broken path logs `[ART] <MissingArtAsset|InvalidArtAsset|InvalidArtPath> <path>` once per path and the primitive fallback stays.
+- `ArtLibrary.root` returns the first `ReplicatedStorage.ArtAssets` that holds a Model or MeshPart at any depth (`hasAssets`); a leftover folder of empty subfolders is ignored (CM2-ART2).
 - Paths handed to Blender: `art.luau` resolves `--root`, the probe root and the Blender scripts against the working directory, so every path Blender gets is absolute; `Blender.run` refuses a relative one with `ART_RELATIVE_PATH` before starting Blender, and the three Blender scripts apply `os.path.abspath` (CM2-ART1).
 - Checks: `tests/tools/art_pipeline.luau`, `art.luau verify <place>` (CI), playtest step `ART_ASSETS`.
 
