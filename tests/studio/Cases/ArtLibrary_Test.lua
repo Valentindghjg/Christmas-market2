@@ -160,4 +160,13 @@ return function(t)
 		end
 		expect.equal(ArtLibrary.levelYaw(0, 0), 0)
 	end)
+
+	-- CM2-G9a A2: the HQ 1 art shrinks uniformly into the Stand box; art that fits keeps scale 1.
+	t.test("fitScale shrinks only oversize art", function()
+		expect.truthy(math.abs(ArtLibrary.fitScale(32.42, 24.36, 31.8, 23.8) - 23.8 / 24.36) < 1e-9)
+		expect.equal(ArtLibrary.fitScale(18, 14, 31.8, 23.8), 1)
+		expect.equal(ArtLibrary.fitScale(64, 12, 32, 24), 0.5)
+		expect.equal(ArtLibrary.fitScale(0, 14, 31.8, 23.8), 1)
+		expect.equal(ArtLibrary.fitScale(0 / 0, 14, 31.8, 23.8), 1)
+	end)
 end

@@ -32,6 +32,7 @@ return function(ctx: any)
 	local strayHumanoids = ctx.strayHumanoids
 	local withNpcCleanup = ctx.withNpcCleanup
 	local Staff = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Staff")) :: any
+	local Progression = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression")) :: any
 
 	local StaffConfig = GameConfig.Staff
 	local POST_RADIUS = 1.5
@@ -454,10 +455,8 @@ return function(ctx: any)
 			hired += snapshot.staff[role] or 0
 		end
 		check(staff.hiredCount == hired, string.format("hiredCount %s, R has %d", tostring(staff.hiredCount), hired))
-		local hqTier = if type(data.plot) == "table" then data.plot.hqTier else nil
-		local capacity = if type(hqTier) == "string"
-			then GameConfig.HQ[hqTier].employeeCapacity
-			else GameConfig.Employees.BaseCapacity
+		-- CM2-G9a: the capacity of R's HQ tier (R and S are HQ 1, so the Lot Manager stays locked).
+		local capacity = Progression.employeeCapacity({ progression = data.plot })
 		check(staff.capacity == capacity, string.format("capacity %s, expected %d", tostring(staff.capacity), capacity))
 		local manager = staff.roles[3]
 		check(manager.locked == true and manager.hired == false, "the Lot Manager is not locked and unhired")

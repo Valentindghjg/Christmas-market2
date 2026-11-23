@@ -1,7 +1,14 @@
 --!strict
+-- Lot expansion, parking and HQ purchases (CM2-G9a). Each buys one explicit target through
+-- Progression.check, so a second request for an owned level is refused (AlreadyOwned) and the
+-- cash is debited exactly once. A replayed request ID never reaches these functions.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
-local BusinessState = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BusinessState"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local BusinessState = require(Shared:WaitForChild("BusinessState"))
+local Progression = require(Shared:WaitForChild("Progression"))
+
+local Config = GameConfig.Progression
 
 local ProgressionService = {}
 
@@ -15,57 +22,37 @@ local function spend(state, cost: number, event: string)
 	return true, nil
 end
 
-function ProgressionService.buyLotExpansion(state)
-	local config = GameConfig.Progression.LotExpansion
-	if state.progression.lotExpansion >= config.maxLevel then
-		return false, "MaxLevel"
-	end
-	if state.reputation < config.requiredReputation then
-		return false, "InsufficientReputation"
-	end
-	local ok, errorCode = spend(state, config.cashCost, "LotExpansion")
+-- Checks, debits cashCost once with `event` and sets the saved field to target.
+local function buy(state, kind: string, target: unknown, cost: (number) -> number, event: string, field: string)
+	local ok, code = Progression.check(state, kind, target)
 	if not ok then
-		return false, errorCode
+		return false, code
 	end
-	state.progression.lotExpansion += 1
-	return true, state.progression.lotExpansion
+	local level = target :: number
+	local spent, spendError = spend(state, cost(level), event)
+	if not spent then
+		return false, spendError
+	end
+	state.progression[field] = level
+	return true, level
 end
 
-function ProgressionService.buyParking(state)
-	local config = GameConfig.Progression.Parking
-	if state.progression.parkingSpaces >= config.maxSpaces then
-		return false, "MaxParking"
-	end
-	local ok, errorCode = spend(state, config.cashCost, "Parking")
-	if not ok then
-		return false, errorCode
-	end
-	-- Every lot starts with the base spaces, so the first purchase adds to those.
-	state.progression.parkingSpaces = math.max(state.progression.parkingSpaces, GameConfig.Customers.BaseParkingSpaces)
-		+ 1
-	return true, state.progression.parkingSpaces
+function ProgressionService.buyLotExpansion(state, level: unknown)
+	return buy(state, "LotExpansion", level, function(target)
+		return Config.LotExpansion.levels[target].cashCost
+	end, "LotExpansion", "lotExpansion")
 end
 
-function ProgressionService.buyHQ(state, hqId: string)
-	local config = GameConfig.HQ[hqId]
-	if not config or state.progression.hqTier ~= nil then
-		return false, "InvalidHQ"
-	end
-	if state.reputation < config.requiredReputation then
-		return false, "InsufficientReputation"
-	end
-	if
-		state.progression.lotExpansion < config.requiredLotExpansion
-		or state.progression.parkingSpaces < config.requiredParkingSpaces
-	then
-		return false, "PrerequisitesNotMet"
-	end
-	local ok, errorCode = spend(state, config.cashCost, "HQUpgrade")
-	if not ok then
-		return false, errorCode
-	end
-	state.progression.hqTier = hqId
-	return true, hqId
+function ProgressionService.buyParking(state, tier: unknown)
+	return buy(state, "Parking", tier, function(target)
+		return Config.Parking.tiers[target].cashCost
+	end, "Parking", "parkingTier")
+end
+
+function ProgressionService.buyHQ(state, level: unknown)
+	return buy(state, "HQ", level, function(target)
+		return Config.HQ.tiers[target].cashCost
+	end, "HQUpgrade", "hqLevel")
 end
 
 return ProgressionService

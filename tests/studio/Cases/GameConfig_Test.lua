@@ -1,6 +1,7 @@
 --!strict
 return function(t)
 	local GameConfig = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("GameConfig"))
+	local Progression = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Progression"))
 	local expect = t.expect
 
 	t.test("contains the observed size price rule", function()
@@ -12,7 +13,7 @@ return function(t)
 
 	t.test("marks observed trees and unlocks", function()
 		expect.equal(GameConfig.Trees.FrasierFir.evidence, GameConfig.Evidence.Observed)
-		expect.equal(GameConfig.HQ.ChristmasPavilion.evidence, GameConfig.Evidence.Observed)
+		expect.equal(GameConfig.Progression.HQ.tiers[2].evidence, GameConfig.Evidence.Observed)
 		expect.equal(GameConfig.Employees.Cashier.maxCount, 1)
 	end)
 
@@ -143,12 +144,11 @@ return function(t)
 		expect.equal(Npc.MaxPerPlot, GameConfig.Progression.Parking.maxSpaces)
 		expect.equal(#GameConfig.PersonalPlotIds, 6)
 		expect.equal(Npc.MaxPerServer, 6 * 4)
+		-- CM2-G9a: with the longest queue patience (HQ 4, 117 s).
+		local patience = Progression.queuePatienceFor(4)
 		expect.truthy(
 			Npc.ReservationSeconds
-				>= 2 * Npc.LegTimeoutSeconds
-					+ Npc.PickUpSeconds
-					+ Npc.QueuePatienceSeconds
-					+ Npc.CashierCheckoutSeconds
+				>= 2 * Npc.LegTimeoutSeconds + Npc.PickUpSeconds + patience + Npc.CashierCheckoutSeconds
 		)
 		-- CM2-N2: the visit cap outlasts the longest regular visit (312.5 <= 360).
 		expect.truthy(
@@ -157,7 +157,7 @@ return function(t)
 					+ 4 * Npc.LegTimeoutSeconds
 					+ Npc.BrowseSeconds
 					+ Npc.PickUpSeconds
-					+ Npc.QueuePatienceSeconds
+					+ patience
 					+ Npc.CashierCheckoutSeconds
 					+ GameConfig.Customers.PickupPatienceSeconds
 					+ Npc.WaitAtCarExtraSeconds

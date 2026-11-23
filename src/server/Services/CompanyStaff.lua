@@ -8,6 +8,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Progression = require(Shared:WaitForChild("Progression"))
 local Receiving = require(Shared:WaitForChild("Receiving"))
 local Stocking = require(Shared:WaitForChild("Stocking"))
 local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
@@ -72,7 +73,8 @@ local function findSpot(spots, spot): number?
 end
 
 -- The Employees tab's summary (CM2-25/26 part b): capacity, the break area and one row per role
--- in Staff.Roles order. status is nil when not hired, "Arriving" when hired without a live
+-- in Staff.Roles order. status is nil when not hired, "Standby" for a hired role outside
+-- Staff.WorkingRoles (the Lot Manager until CM2-G9c), "Arriving" when hired without a live
 -- record, else the director's status; energy comes from the live record, else the save.
 function CompanyStaff.summary(session, state)
 	local live = if type(session) == "table" and type(session.staffLive) == "table" then session.staffLive else {}
@@ -84,14 +86,16 @@ function CompanyStaff.summary(session, state)
 		local record = live[role]
 		local energy = if type(record) == "table" then record.energy else state.staffEnergy[role]
 		local status: string? = nil
-		if hired then
+		if hired and table.find(StaffConfig.WorkingRoles, role) == nil then
+			status = "Standby"
+		elseif hired then
 			status = if type(record) == "table" then record.status else "Arriving"
 		end
 		table.insert(roles, {
 			id = role,
 			hired = hired,
 			hireCost = definition.hireCost,
-			locked = definition.requiredHqTier ~= nil,
+			locked = definition.requiredHqTier ~= nil and Progression.hqLevel(state) < definition.requiredHqTier,
 			energy = math.floor(if finite(energy) then energy else StaffConfig.Energy.Max),
 			status = status,
 		})

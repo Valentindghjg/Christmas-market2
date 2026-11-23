@@ -75,4 +75,43 @@ return function(t)
 		expect.equal(staff.roles[3].locked, true)
 		expect.equal(staff.roles[3].hireCost, 1250000)
 	end)
+
+	-- CM2-G9a: the summary's ladder rows come from Progression.rows, as the purchase check does.
+	t.test("summary carries the ladder rows", function()
+		local BusinessState = require(game:GetService("ReplicatedStorage").Shared.BusinessState)
+		local Service = require(game:GetService("ServerScriptService").Server.Services.CompanyStateService)
+		local service = Service.new({
+			load = function(_, companyId, ownerUserId)
+				return BusinessState.new(companyId, ownerUserId), nil
+			end,
+			save = function()
+				return true, nil
+			end,
+			release = function()
+				return true, nil
+			end,
+		}, function()
+			return 100
+		end)
+		expect.truthy(service:loadCompany("personal:42", 42))
+		local response = service:handle(
+			"personal:42",
+			42,
+			{ version = 1, requestId = "ladder_summary_1", action = "Company.GetSummary", payload = {} }
+		)
+		expect.truthy(response.ok)
+		local ladder = response.data.progression
+		local lotNext = ladder.lotExpansion.next
+		expect.equal(lotNext.target, 1)
+		expect.equal(#lotNext.rows, 1)
+		expect.equal(lotNext.rows[1].id, "Cash")
+		expect.equal(lotNext.rows[1].have, 84)
+		expect.equal(lotNext.rows[1].need, 1200)
+		expect.equal(lotNext.rows[1].met, false)
+		local ids = {}
+		for _, row in ipairs(ladder.hq.next.rows) do
+			table.insert(ids, row.id)
+		end
+		expect.equal(table.concat(ids, ","), "LotExpansion,ParkingTier,Reputation,Cash")
+	end)
 end

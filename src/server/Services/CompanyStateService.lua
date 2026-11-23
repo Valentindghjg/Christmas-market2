@@ -1,18 +1,18 @@
 --!strict
 -- Serializes all authoritative company mutations behind one in-memory session per company.
 --
--- Persistence model: every mutation runs to completion inside the company's critical
--- section without yielding, then marks the session dirty. flushDirty() writes the whole
--- record atomically (at most once per GameConfig.SaveFlushSeconds when driven by the
--- server loop), and every healthy session is re-saved at least once per
--- GameConfig.AutosaveSeconds to renew its lock. Because balances, inventory, orders and
--- request IDs live in one record, a crash can only roll a company back to its last
--- consistent save; it can never persist a debit without its matching effect.
+-- Persistence model: every mutation runs to completion inside the company's critical section without yielding, then
+-- marks the session dirty. flushDirty() writes the whole record atomically (at most once per
+-- GameConfig.SaveFlushSeconds when driven by the server loop), and every healthy session is re-saved at least once per
+-- GameConfig.AutosaveSeconds to renew its lock. Because balances, inventory, orders and request IDs live in one record,
+-- a crash can only roll a company back to its last consistent save; it can never persist a debit without its matching
+-- effect.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Progression = require(Shared:WaitForChild("Progression"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
 local Receiving = require(Shared:WaitForChild("Receiving"))
 local Reviews = require(Shared:WaitForChild("Reviews"))
@@ -20,6 +20,7 @@ local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local Staff = require(Shared:WaitForChild("Staff"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
+local CompanyProgression = require(script.Parent:WaitForChild("CompanyProgression"))
 local CompanyPurchases = require(script.Parent:WaitForChild("CompanyPurchases"))
 local CompanyStaff = require(script.Parent:WaitForChild("CompanyStaff"))
 local CompanyTutorial = require(script.Parent:WaitForChild("CompanyTutorial"))
@@ -30,15 +31,15 @@ local SupplierStockService = require(script.Parent:WaitForChild("SupplierStockSe
 local EmployeeService = require(script.Parent:WaitForChild("EmployeeService"))
 local PlacementService = require(script.Parent:WaitForChild("PlacementService"))
 local PricingService = require(script.Parent:WaitForChild("PricingService"))
-local ProgressionService = require(script.Parent:WaitForChild("ProgressionService"))
 local QuestService = require(script.Parent:WaitForChild("QuestService"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
--- Mixins: staff and break area (CM2-25/26), Robux purchases (CM2-46a), guided tutorial (CM2-49).
+-- Mixins: staff and break area (CM2-25/26), Robux purchases (CM2-46a), tutorial (CM2-49), ladder (CM2-G9a).
 CompanyStaff.install(CompanyStateService)
 CompanyPurchases.install(CompanyStateService)
 CompanyTutorial.install(CompanyStateService)
+CompanyProgression.install(CompanyStateService)
 
 -- Persistence results that mean this server no longer owns a valid writable session.
 local FAIL_CLOSED_SAVE_ERRORS = { SessionLocked = true, NotLoaded = true }
@@ -367,13 +368,12 @@ function CompanyStateService:_unloadDeadline(session): number
 	return deadline
 end
 
--- Saves the session a final time and releases its lock (CM2-R5). A failed final save is
--- retried after each GameConfig.UnloadRetry delay until it succeeds, the lock is lost, the
--- delays are used up or the deadline passes. The lock is released only after a successful
--- save (or for a state that can never be saved); after giving up it expires on its own.
--- options.abortOnFailure calls the unload off after a first retryable failure of a healthy
--- session before shutdown: the session stays live and the result is "UnloadAborted".
--- options.onRetry(attempt) runs before every retry wait.
+-- Saves the session a final time and releases its lock (CM2-R5). A failed final save is retried after each
+-- GameConfig.UnloadRetry delay until it succeeds, the lock is lost, the delays are used up or the deadline passes. The
+-- lock is released only after a successful save (or for a state that can never be saved); after giving up it expires on
+-- its own. options.abortOnFailure calls the unload off after a first retryable failure of a healthy session before
+-- shutdown: the session stays live and the result is "UnloadAborted". options.onRetry(attempt) runs before every retry
+-- wait.
 function CompanyStateService:unloadCompany(
 	companyId: string,
 	options: { abortOnFailure: boolean?, onRetry: ((attempt: number) -> ())? }?
@@ -844,6 +844,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 				cash = state.cash,
 				reputation = state.reputation,
 				plot = table.clone(state.progression),
+				progression = Progression.summary(state),
 				analytics = AnalyticsService.summary(state),
 				deliveries = deliverySummary(state),
 				stock = Receiving.totals(state),
@@ -907,12 +908,8 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 		succeeded, result = PricingService.setAutomatic(state, payload.enabled)
 	elseif action == Protocol.Actions.EmployeeHire then
 		succeeded, result = EmployeeService.hire(state, payload.employeeId)
-	elseif action == Protocol.Actions.ProgressionBuyLotExpansion then
-		succeeded, result = ProgressionService.buyLotExpansion(state)
-	elseif action == Protocol.Actions.ProgressionBuyParking then
-		succeeded, result = ProgressionService.buyParking(state)
-	elseif action == Protocol.Actions.ProgressionBuyHQ then
-		succeeded, result = ProgressionService.buyHQ(state, payload.hqId)
+	elseif CompanyProgression.ACTIONS[action] then
+		succeeded, result = CompanyProgression.buy(state, action, payload)
 	elseif action == Protocol.Actions.QuestClaim then
 		succeeded, result = QuestService.claim(state, payload.questId)
 	elseif action == Protocol.Actions.OrderCarry then
@@ -945,6 +942,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 		ordersChanged = ORDER_ACTIONS[action] == true,
 		receivingChanged = RECEIVING_ACTIONS[action] == true,
 		breakAreaChanged = action == Protocol.Actions.StaffMoveBreakArea,
+		progressionChanged = CompanyProgression.ACTIONS[action] == true, -- CM2-G9a
 	}
 end
 
@@ -987,6 +985,7 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 	if response.breakAreaChanged then
 		self:_notifyBreakArea(companyId, session)
 	end
+	self:_syncProgression(companyId, session, response)
 	response.placementsChanged = nil
 	response.ordersChanged = nil
 	response.receivingChanged = nil
@@ -1112,6 +1111,7 @@ function CompanyStateService:npcArrive(companyId: string, visitId: string, force
 				space = space,
 				customerNumber = customerNumber,
 				lotExpansion = state.progression.lotExpansion,
+				queuePatience = Progression.queuePatienceSeconds(state),
 				token = session.token,
 			}
 	end)
@@ -1387,8 +1387,7 @@ function CompanyStateService:visitForTest(companyId: string, customerNumber: num
 	return success, result
 end
 
--- Sets the hired count of one employee type (GameConfig.Employees, Lot Manager included)
--- without touching cash.
+-- Sets the hired count of one employee type (GameConfig.Employees, Lot Manager included) without touching cash.
 function CompanyStateService:setStaffForTest(companyId: string, employeeId: string, count: number): boolean
 	local employee = GameConfig.Employees[employeeId]
 	if
@@ -1494,6 +1493,7 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		clock = clock, -- Fix round 1 (F7): lets a playtest expire orders from the server's clock
 		purchases = CompanyPurchases.snapshot(state), -- CM2-46a
 		tutorial = table.clone(state.tutorial), -- CM2-49
+		progression = table.clone(state.progression), -- CM2-G9a
 	}
 end
 

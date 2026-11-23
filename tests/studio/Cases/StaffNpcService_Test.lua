@@ -121,7 +121,7 @@ return function(t)
 
 	local function addCompany(h)
 		local state = h.service:loadCompany(A, 42)
-		state.progression.parkingSpaces = 4
+		state.progression.parkingTier = 2
 		h.plots[A] = PLOT_1
 		return state
 	end

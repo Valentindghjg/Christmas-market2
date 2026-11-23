@@ -44,13 +44,14 @@ return function(ctx: any)
 		return table.concat(names, ", ")
 	end
 
-	-- The lot box at expansion level L in world coordinates: x cx-40..cx+49, depth -(27 + 6L)..27.
+	-- The lot box at expansion level L in world coordinates: x cx-40..cx+49, depth
+	-- -(27 + BackDepthPerLevel * L)..27 (BackDepthPerLevel 8 since CM2-G9a).
 	local function lotBox(
 		plot: { x: number, z: number, facing: number },
 		level: number
 	): (number, number, number, number)
 		local near = plot.z + plot.facing * 27
-		local far = plot.z - plot.facing * (27 + 6 * level)
+		local far = plot.z - plot.facing * (27 + ctx.GameConfig.Placement.BackDepthPerLevel * level)
 		return plot.x - 40, plot.x + 49, math.min(near, far), math.max(near, far)
 	end
 

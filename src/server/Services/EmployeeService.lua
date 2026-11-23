@@ -3,18 +3,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
+local Progression = require(Shared:WaitForChild("Progression"))
 
 local EmployeeService = {}
 
--- How many employees the save may have: Employees.BaseCapacity, or its HQ's
--- employeeCapacity once an HQ is bought (CM2-25/26 part b).
+-- How many employees the save may have: its HQ tier's employeeCapacity (CM2-G9a).
 function EmployeeService.capacity(state): number
-	local hqTier = if type(state.progression) == "table" then state.progression.hqTier else nil
-	local hq = if type(hqTier) == "string" then GameConfig.HQ[hqTier] else nil
-	if type(hq) == "table" and type(hq.employeeCapacity) == "number" then
-		return hq.employeeCapacity
-	end
-	return GameConfig.Employees.BaseCapacity
+	return Progression.employeeCapacity(state)
 end
 
 -- Hired employees: Cashier + LotWorker + LotManager.
@@ -40,8 +35,8 @@ function EmployeeService.hire(state, employeeId: string)
 	if state.staff[employeeId] >= 1 then
 		return false, "AlreadyHired"
 	end
-	-- Until CM2-G9 adds the HQ ladder, an employee with requiredHqTier cannot be hired.
-	if definition.requiredHqTier ~= nil then
+	-- CM2-G9a: an employee with requiredHqTier needs that HQ level (the Lot Manager needs 4).
+	if definition.requiredHqTier ~= nil and Progression.hqLevel(state) < definition.requiredHqTier then
 		return false, "EmployeeLocked"
 	end
 	if EmployeeService.hiredCount(state) >= EmployeeService.capacity(state) then

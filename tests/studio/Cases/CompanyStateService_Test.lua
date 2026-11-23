@@ -1020,6 +1020,55 @@ return function(t)
 		expect.equal(state.staff.Cashier, 1)
 	end)
 
+	-- CM2-G9a: a lot expansion is charged once, whether replayed or requested twice.
+	t.test("a replayed purchase charges once", function()
+		local service, state = sharedService(copyingPersistence(), 1200)
+		local revision = state.revision
+		local first = act(service, 42, "lot_replay_1", "Progression.BuyLotExpansion", { level = 1 })
+		expect.truthy(first.ok)
+		expect.equal(first.data, 1)
+		local replay = act(service, 42, "lot_replay_1", "Progression.BuyLotExpansion", { level = 1 })
+		expect.falsy(replay.ok)
+		expect.equal(replay.errorCode, "DuplicateRequest")
+		expect.equal(replay.previousResult, "Success")
+		expect.equal(state.cash, 0)
+		expect.equal(state.progression.lotExpansion, 1)
+		expect.equal(state.revision, revision + 1)
+	end)
+
+	t.test("two requests for one level charge once", function()
+		local service, state = sharedService(copyingPersistence(), 5000)
+		expect.truthy(act(service, 42, "lot_twice_1", "Progression.BuyLotExpansion", { level = 1 }).ok)
+		local second = act(service, 43, "lot_twice_2", "Progression.BuyLotExpansion", { level = 1 })
+		expect.falsy(second.ok)
+		expect.equal(second.errorCode, "AlreadyOwned")
+		expect.equal(state.cash, 3800)
+		expect.equal(state.progression.lotExpansion, 1)
+	end)
+
+	t.test("purchases notify the progression handler", function()
+		local service = sharedService(copyingPersistence(), 1200)
+		local calls = {}
+		service:setProgressionChangedHandler(function(companyId, progression)
+			table.insert(calls, { companyId = companyId, progression = progression })
+		end)
+		local refused = act(service, 42, "hq_refused_1", "Progression.BuyHQ", { level = 2 })
+		expect.falsy(refused.ok)
+		expect.equal(refused.errorCode, "PrerequisitesNotMet")
+		expect.equal(#calls, 0)
+		expect.truthy(act(service, 42, "lot_notify_1", "Progression.BuyLotExpansion", { level = 1 }).ok)
+		expect.equal(#calls, 1)
+		expect.equal(calls[1].companyId, SHARED)
+		expect.equal(calls[1].progression.lotExpansion, 1)
+		expect.equal(calls[1].progression.parkingTier, 1)
+		expect.equal(calls[1].progression.hqLevel, 1)
+		local keys = 0
+		for _ in pairs(calls[1].progression) do
+			keys += 1
+		end
+		expect.equal(keys, 3)
+	end)
+
 	t.test("members may move the break area, others may not", function()
 		local persistence = copyingPersistence()
 		local service, state = sharedService(persistence)

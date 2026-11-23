@@ -144,6 +144,28 @@ local function hasExactKeys(payload, keys): boolean
 	return true
 end
 
+-- Progression purchases (CM2-G9a): the one payload key and its integer range per action.
+local PROGRESSION_TARGETS = {
+	[Protocol.Actions.ProgressionBuyLotExpansion] = {
+		key = "level",
+		min = 1,
+		max = GameConfig.Progression.LotExpansion.maxLevel,
+		code = "InvalidLevel",
+	},
+	[Protocol.Actions.ProgressionBuyParking] = {
+		key = "tier",
+		min = 2,
+		max = GameConfig.Progression.Parking.maxTier,
+		code = "InvalidTier",
+	},
+	[Protocol.Actions.ProgressionBuyHQ] = {
+		key = "level",
+		min = 2,
+		max = GameConfig.Progression.HQ.maxLevel,
+		code = "InvalidHQ",
+	},
+}
+
 -- Stock.Place (CM2-G14): coordinates in the lot frame, rotation and gap on their step grid.
 local function validStockPlace(payload): (boolean, string?)
 	local config = GameConfig.Placement
@@ -316,18 +338,15 @@ function Protocol.validateRequest(request)
 		end
 		return true, nil
 	end
-	if
-		request.action == Protocol.Actions.ProgressionBuyLotExpansion
-		or request.action == Protocol.Actions.ProgressionBuyParking
-	then
-		if not hasOnlyKeys(request.payload, {}) then
+	-- CM2-G9a: each purchase names its target level or tier; the server checks it is the next one.
+	local target = PROGRESSION_TARGETS[request.action]
+	if target then
+		if not hasExactKeys(request.payload, { [target.key] = true }) then
 			return false, "UnexpectedField"
 		end
-		return true, nil
-	end
-	if request.action == Protocol.Actions.ProgressionBuyHQ then
-		if not hasOnlyKeys(request.payload, { hqId = true }) or request.payload.hqId ~= "ChristmasPavilion" then
-			return false, "InvalidHQ"
+		local value = request.payload[target.key]
+		if not isFiniteInteger(value) or (value :: number) < target.min or (value :: number) > target.max then
+			return false, target.code
 		end
 		return true, nil
 	end

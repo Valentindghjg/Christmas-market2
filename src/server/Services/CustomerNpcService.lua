@@ -364,7 +364,7 @@ end
 
 -- Queue patience runs from entering Queued and covers Queued and CheckingOut (CM2-N2).
 function CustomerNpcService:_patienceOut(visit, now: number): boolean
-	return elapsed(now, visit.queuedAt or visit.enteredAt, Npc.QueuePatienceSeconds)
+	return elapsed(now, visit.queuedAt or visit.enteredAt, visit.queuePatience or Npc.QueuePatienceSeconds)
 end
 
 -- The customer's patience ran out: it walks out and counts as walked out (CM2-N2).
@@ -694,6 +694,8 @@ function CustomerNpcService:_arrive(companyId: string, plotId: string, forcedNum
 	visit.token = info.token
 	visit.customerNumber = info.customerNumber
 	visit.level = if type(info.lotExpansion) == "number" then info.lotExpansion else 0
+	-- CM2-G9a: the HQ tier's patience bonus, fixed for this visit when its car arrives.
+	visit.queuePatience = if type(info.queuePatience) == "number" then info.queuePatience else Npc.QueuePatienceSeconds
 	visit.roll = roll
 	self._visits[visitId] = visit
 	self:_enter(visit, "Arriving")

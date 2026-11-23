@@ -102,4 +102,15 @@ function ArtLibrary.levelYaw(rightX: number, rightZ: number): number
 	return math.floor(yaw / math.pi + 0.5) * math.pi - yaw
 end
 
+-- Uniform scale (<= 1) that fits a sizeX x sizeZ footprint into maxX x maxZ (CM2-G9a A2); 1 when
+-- the art already fits or any argument is non-finite or <= 0.
+function ArtLibrary.fitScale(sizeX: number, sizeZ: number, maxX: number, maxZ: number): number
+	for _, value in { sizeX, sizeZ, maxX, maxZ } do
+		if type(value) ~= "number" or value ~= value or value == math.huge or value <= 0 then
+			return 1
+		end
+	end
+	return math.min(1, maxX / sizeX, maxZ / sizeZ)
+end
+
 return ArtLibrary

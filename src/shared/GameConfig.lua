@@ -190,7 +190,7 @@ GameConfig.Employees = {
 		maxCount = 1,
 		evidence = GameConfig.Evidence.Observed,
 	},
-	-- CM2-25/26: config and save slot only; hire, avatar and computer job come with CM2-G9.
+	-- CM2-25/26: hireable at HQ 4 since CM2-G9a; avatar and computer job come with CM2-G9c.
 	LotManager = {
 		hireCost = 1250000,
 		role = "OrderingAtComputer",
@@ -240,23 +240,114 @@ GameConfig.Staff = {
 	},
 }
 
-GameConfig.HQ = {
-	ChristmasPavilion = {
-		evidence = GameConfig.Evidence.Observed,
-		cashCost = 2500,
-		requiredReputation = 250,
-		requiredLotExpansion = 1,
-		requiredParkingSpaces = 4,
-		unlockedTreeCount = 4,
-		checkoutStations = 2,
-		employeeCapacity = 3,
-		customerPatienceBonus = 0.12,
-	},
-}
-
+-- Progression ladder (CM2-G9a, docs/plans/CM2-G9a.md): lot expansion, parking and HQ tiers.
+-- O = OBSERVED (REFERENCE_GAME_LIVE_TEST §4.4/§4.5), P = PROVISIONAL; unmarked values are P.
+local O, P = GameConfig.Evidence.Observed, GameConfig.Evidence.Provisional
 GameConfig.Progression = {
-	LotExpansion = { cashCost = 750, requiredReputation = 50, maxLevel = 3, evidence = GameConfig.Evidence.Provisional },
-	Parking = { cashCost = 200, maxSpaces = 4, evidence = GameConfig.Evidence.Provisional },
+	-- Index = level bought; level 0 is the Starter Lot (O). Each level adds
+	-- Placement.BackDepthPerLevel of depth and Receiving.StoragePerLotExpansion storage.
+	LotExpansion = {
+		maxLevel = 6,
+		levels = {
+			{ id = "BackLot", cashCost = 1200, requiredReputation = 0, requiredHqLevel = 1, evidence = O },
+			{ id = "SpruceCorner", cashCost = 5000, requiredReputation = 400, requiredHqLevel = 2, evidence = P },
+			{ id = "WoodlandEdge", cashCost = 15000, requiredReputation = 600, requiredHqLevel = 2, evidence = P },
+			{ id = "PineClearing", cashCost = 100000, requiredReputation = 1200, requiredHqLevel = 3, evidence = P },
+			{ id = "SnowyMeadow", cashCost = 250000, requiredReputation = 2000, requiredHqLevel = 3, evidence = P },
+			{ id = "ForestGlade", cashCost = 1000000, requiredReputation = 3500, requiredHqLevel = 4, evidence = P },
+		},
+	},
+	-- Tier 2 is the last: the car lane and Npc.MaxPerPlot hold 4 spaces.
+	Parking = {
+		maxTier = 2,
+		maxSpaces = 4,
+		tiers = {
+			{ spaces = 2, cashCost = 0, requiredReputation = 0, evidence = O },
+			{ spaces = 4, cashCost = 600, requiredReputation = 0, evidence = O },
+		},
+	},
+	-- Footprints and heights are the CM2-13a art targets (lot frame), centred on the stand (-8, -4).
+	-- Tiers 3 and 4 map the reference's "Christmas Market Chalet" and "Christmas Lodge" (costs unseen).
+	HQ = {
+		maxLevel = 4,
+		tiers = {
+			{
+				id = "SalesTent",
+				cashCost = 0,
+				requiredReputation = 0,
+				requiredLotExpansion = 0,
+				requiredParkingTier = 1,
+				newSpecies = 0,
+				checkoutStations = 1,
+				employeeCapacity = 2, -- O
+				customerPatienceBonus = 0,
+				unlocksLotManager = false,
+				unlocksWorkshop = false,
+				footprint = { minX = -18, maxX = 2, minZ = -11, maxZ = 3 },
+				eave = 7.5,
+				height = 10,
+				evidence = O,
+			},
+			{
+				id = "TimberPavilion",
+				cashCost = 2500, -- O
+				requiredReputation = 250, -- O
+				requiredLotExpansion = 1, -- O
+				requiredParkingTier = 2, -- O
+				newSpecies = 4, -- O
+				checkoutStations = 2, -- O
+				employeeCapacity = 3, -- O
+				customerPatienceBonus = 0.12, -- O
+				unlocksLotManager = false,
+				unlocksWorkshop = false,
+				footprint = { minX = -20, maxX = 4, minZ = -13, maxZ = 5 },
+				eave = 8,
+				height = 13,
+				evidence = O,
+			},
+			{
+				id = "AlpineHut",
+				cashCost = 50000,
+				requiredReputation = 1000,
+				requiredLotExpansion = 3,
+				requiredParkingTier = 2,
+				newSpecies = 4,
+				checkoutStations = 2, -- O
+				employeeCapacity = 5, -- O
+				customerPatienceBonus = 0.20,
+				unlocksLotManager = false,
+				unlocksWorkshop = false,
+				footprint = { minX = -22, maxX = 6, minZ = -14, maxZ = 6 },
+				eave = 8.5,
+				height = 16,
+				evidence = P,
+			},
+			{
+				id = "MountainChalet",
+				cashCost = 600000,
+				requiredReputation = 3000,
+				requiredLotExpansion = 5,
+				requiredParkingTier = 2,
+				newSpecies = 4,
+				checkoutStations = 3,
+				employeeCapacity = 6,
+				customerPatienceBonus = 0.30,
+				unlocksLotManager = true,
+				unlocksWorkshop = true,
+				footprint = { minX = -23.8, maxX = 7.8, minZ = -15.8, maxZ = 7.8 },
+				eave = 13,
+				height = 20,
+				evidence = P,
+			},
+		},
+	},
+	-- Content is "Coming soon" (PRODUCT_SPEC): no cost, no action.
+	Workshop = {
+		id = "ElfWorkshop",
+		requiredHqLevel = 4,
+		requiresLotManager = true,
+		evidence = GameConfig.Evidence.OwnerDecided,
+	},
 }
 
 -- Customer cars, parking and order pickup (docs/REFERENCE_GAME_LIVE_TEST.md §3).
@@ -294,7 +385,7 @@ GameConfig.Customers = {
 		WaitAtCarExtraSeconds = 10,
 		DepartSeconds = 2.5,
 		MaxVisitSeconds = 360,
-		ReservationSeconds = 150, -- >= 20 + 1 + 20 + 90 + 3 = 134 (CM2-N2)
+		ReservationSeconds = 165, -- >= 20 + 1 + 20 + 117 + 3 = 161 with the HQ 4 patience (CM2-G9a)
 		ThanksSeconds = 3, -- the "Thanks so much!" text is OBSERVED
 		LoadSeconds = 60, -- default length of a load-test run (Amendment 1)
 		Path = {
@@ -388,7 +479,7 @@ GameConfig.TreeHeightTenths = {
 GameConfig.Placement = {
 	LotHalfWidth = 40,
 	LotHalfDepth = 27, -- the 80 x 54 LotGround
-	BackDepthPerLevel = 6, -- PROVISIONAL until CM2-G9 (lot grows backwards)
+	BackDepthPerLevel = 8, -- PROVISIONAL (CM2-G9a): 6 levels x 8 = the map reserve to depth -75
 	FootprintRadius = { Small = 2.1, Medium = 2.8, Large = 3.5 }, -- display scales 0.6/0.8/1.0 x 7-stud needles
 	SpacingTolerance = 0.01,
 	RotationStep = 45, -- PROVISIONAL
@@ -396,7 +487,7 @@ GameConfig.Placement = {
 	RowMax = 10, -- PROVISIONAL
 	CoordinateLimit = 200, -- protocol sanity bound
 	KeepClear = { -- PROVISIONAL, lot frame {minX, maxX, minZ, maxZ}
-		{ id = "Stand", minX = -24, maxX = 8, minZ = -16, maxZ = 8 }, -- starter stand box (G3)
+		{ id = "Stand", minX = -24, maxX = 8, minZ = -16, maxZ = 8 }, -- every HQ tier (G3, CM2-G9a)
 		{ id = "Checkout", minX = 11, maxX = 21, minZ = -18, maxZ = 1 }, -- counter, staff side, queue to slot 4 (CM2-N2)
 		{ id = "Parking", minX = -29, maxX = 17, minZ = 13, maxZ = 27 }, -- 4 spaces
 		{ id = "Pickup", minX = 20, maxX = 39, minZ = 10, maxZ = 16 }, -- G1 pickup row
@@ -404,6 +495,7 @@ GameConfig.Placement = {
 		{ id = "Bays", minX = 30, maxX = 40, minZ = -26, maxZ = 0 },
 		{ id = "Sign", minX = 18, maxX = 28, minZ = 21, maxZ = 25 }, -- lot sign (CM2-G15)
 	},
+	StandFitMargin = 0.1, -- PROVISIONAL (CM2-G9a A1): HQ art fits KeepClear Stand minus this per side
 	DecorFences = { { x = -34, z = 24 }, { x = 34, z = 24 } }, -- decorative FenceWooden clones, lot frame (WorldService)
 	DecorFenceRadius = 5.5, -- covers the FenceWooden footprint (10.28 x 0.34) from its centre at any yaw
 }

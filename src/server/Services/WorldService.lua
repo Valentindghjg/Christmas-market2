@@ -11,6 +11,7 @@ local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Stocking = require(Shared:WaitForChild("Stocking"))
 local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
+local LotFenceWorld = require(script.Parent:WaitForChild("LotFenceWorld"))
 local MapWorld = require(script.Parent:WaitForChild("MapWorld"))
 
 local WorldService = {}
@@ -194,6 +195,15 @@ local function salesStand(parent: Instance, position: Vector3, assetId: string?)
 	model.Name = "StarterSalesTent"
 	model.Parent = parent
 	levelArt(model)
+	-- CM2-G9a A1/A3: art larger than KeepClear Stand minus StandFitMargin per side shrinks uniformly.
+	local stand, margin = LotFenceWorld.keepClearBox("Stand"), GameConfig.Placement.StandFitMargin
+	local sizeX, sizeZ = LotFenceWorld.worldExtents(model)
+	local maxX, maxZ = stand.maxX - stand.minX - 2 * margin, stand.maxZ - stand.minZ - 2 * margin
+	local scale = ArtLibrary.fitScale(sizeX, sizeZ, maxX, maxZ)
+	if scale < 1 then
+		model:ScaleTo(model:GetScale() * scale)
+	end
+	model:SetAttribute("FitScale", scale)
 	local box, size = model:GetBoundingBox()
 	local targetCenter = position + Vector3.new(0, size.Y / 2, 0)
 	model:PivotTo(model:GetPivot() + (targetCenter - box.Position))
@@ -583,28 +593,102 @@ function WorldService.build()
 	return world
 end
 
-function WorldService.applyHQVisual(plotId: string, hqTier: string?)
+local function findPlot(plotId: string): Model?
 	local world = workspace:FindFirstChild("ChristmasMarketWorld")
 	local plots = world and world:FindFirstChild("Plots")
 	local plot = plots and plots:FindFirstChild(plotId)
-	if not (plot and plot:IsA("Model") and plot.PrimaryPart) then
+	if plot and plot:IsA("Model") and plot.PrimaryPart then
+		return plot
+	end
+	return nil
+end
+
+-- The lot fence's builders (CM2-G9a, LotFenceWorld).
+local FENCE_HELPERS = {
+	part = part,
+	lotPosition = lotPosition,
+	paletteColor = paletteColor,
+	setCollisionGroup = setCollisionGroup,
+	group = STRUCTURE_GROUP,
+}
+
+-- HQ tiers 2-4 (CM2-G9a): Part primitives of the CM2-13a footprints until their art (CM2-13W).
+-- Palette keys floor, frame, roof per level.
+local HQ_COLORS = {
+	[2] = { "StoneGray", "WoodWarmShade", "RoofGreen" },
+	[3] = { "StoneGray", "BarkBrown", "RoofSlate" },
+	[4] = { "StoneGrayShade", "WoodWarm", "RoofRed" },
+}
+
+-- Built in the lot frame with lotPosition, so it needs no faceRoad: the counter and the front
+-- roof half face the road on every plot.
+local function hqPrimitive(plot: Model, level: number): Model
+	local tier = GameConfig.Progression.HQ.tiers[level]
+	local f = tier.footprint
+	local w, d = f.maxX - f.minX, f.maxZ - f.minZ
+	local cx, cz = (f.minX + f.maxX) / 2, (f.minZ + f.maxZ) / 2
+	local colors = HQ_COLORS[level]
+	local model = Instance.new("Model")
+	model.Name = "StarterSalesTent" -- step 37 and CM2-13W read this name for every tier
+	model.Parent = plot
+	local function add(name: string, size: Vector3, x: number, z: number, y: number, key: string): Part
+		return part(model, name, size, lotPosition(plot, x, z, y), paletteColor(key), Enum.Material.SmoothPlastic)
+	end
+	model.PrimaryPart = add("HqFloor", Vector3.new(w, 0.6, d), cx, cz, 0.9, colors[1])
+	local wall = tier.eave - 1.2
+	local wallY = 1.2 + wall / 2
+	for _, x in { f.minX + 0.4, f.maxX - 0.4 } do
+		for _, z in { f.minZ + 0.4, f.maxZ - 0.4 } do
+			add("Post", Vector3.new(0.8, wall, 0.8), x, z, wallY, colors[2])
+		end
+	end
+	if level >= 3 then
+		add("WallBack", Vector3.new(w - 1.6, wall, 0.6), cx, f.minZ + 0.3, wallY, colors[2])
+		add("WallLeft", Vector3.new(0.6, wall, d - 1.6), f.minX + 0.3, cz, wallY, colors[2])
+		add("WallRight", Vector3.new(0.6, wall, d - 1.6), f.maxX - 0.3, cz, wallY, colors[2])
+	end
+	add("Counter", Vector3.new(w / 2, 3.6, 1.2), cx, f.maxZ - 0.6, 3, "WoodWarm")
+	local rise = tier.height - tier.eave
+	local facing = plotFacing(plot)
+	for _, half in { { name = "RoofFront", side = 1 }, { name = "RoofBack", side = -1 } } do
+		local roof =
+			add(half.name, Vector3.new(w, rise, d / 2), cx, cz + half.side * d / 4, tier.eave + rise / 2, colors[3])
+		roof.Shape = Enum.PartType.Wedge
+		local c = roof.Position
+		roof.CFrame = CFrame.lookAt(c, c + Vector3.new(0, 0, facing * half.side))
+		roof.CanCollide = false
+	end
+	setCollisionGroup(model, STRUCTURE_GROUP)
+	return model
+end
+
+-- The stand of HQ level 1-4 (CM2-G9a): the sales tent art at 1, a Part primitive above.
+function WorldService.applyHQVisual(plotId: string, level: number): boolean
+	local plot = findPlot(plotId)
+	if not plot then
 		return false
 	end
 	local existing = plot:FindFirstChild("StarterSalesTent")
 	if existing then
 		existing:Destroy()
 	end
-	local assetId = hqTier == "ChristmasPavilion" and AssetCatalog.Buildings.MarketPavilion
-		or AssetCatalog.Buildings.MarketStarter
-	faceRoad(salesStand(plot, lotPosition(plot, -8, -4, 0.6), assetId), plotFacing(plot))
+	local hq = math.clamp(math.floor(if level == level then level else 1), 1, GameConfig.Progression.HQ.maxLevel)
+	local model: Model
+	if hq == 1 then
+		model = salesStand(plot, lotPosition(plot, -8, -4, 0.6))
+		faceRoad(model, plotFacing(plot))
+	else
+		model = hqPrimitive(plot, hq)
+	end
+	model:SetAttribute("HqLevel", hq)
+	model:SetAttribute("HqTier", GameConfig.Progression.HQ.tiers[hq].id)
+	plot:SetAttribute("HqLevel", hq)
 	return true
 end
 
 function WorldService.applyLotExpansionVisual(plotId: string, level: number)
-	local world = workspace:FindFirstChild("ChristmasMarketWorld")
-	local plots = world and world:FindFirstChild("Plots")
-	local plot = plots and plots:FindFirstChild(plotId)
-	if not (plot and plot:IsA("Model") and plot.PrimaryPart) or level < 0 then
+	local plot = findPlot(plotId)
+	if not plot or level < 0 then
 		return false
 	end
 	local visuals = plot:FindFirstChild("ProgressionVisuals") or Instance.new("Folder")
@@ -615,29 +699,21 @@ function WorldService.applyLotExpansionVisual(plotId: string, level: number)
 		existing:Destroy()
 	end
 	local growth = math.clamp(math.floor(level), 0, GameConfig.Progression.LotExpansion.maxLevel)
+	local depth = GameConfig.Placement.BackDepthPerLevel
 	-- CM2-G14: the lot grows backwards (away from the road) by BackDepthPerLevel per level.
 	local pad = part(
 		visuals,
 		"LotExpansionPad",
-		Vector3.new(80, 0.18, 54 + 6 * growth),
-		plot.PrimaryPart.Position + Vector3.new(0, -0.05, plotFacing(plot) * (-3 * growth)),
+		Vector3.new(80, 0.18, 54 + depth * growth),
+		(plot.PrimaryPart :: BasePart).Position + Vector3.new(0, -0.05, plotFacing(plot) * (-(depth / 2) * growth)),
 		Color3.fromRGB(224, 239, 244),
 		Enum.Material.Snow
 	)
 	pad:SetAttribute("LotExpansionLevel", growth)
 	plot:SetAttribute("LotExpansionLevel", growth)
+	LotFenceWorld.build(plot, visuals, growth, FENCE_HELPERS)
 	MapWorld.applyReserve(plotId, growth)
 	return true
-end
-
-local function findPlot(plotId: string): Model?
-	local world = workspace:FindFirstChild("ChristmasMarketWorld")
-	local plots = world and world:FindFirstChild("Plots")
-	local plot = plots and plots:FindFirstChild(plotId)
-	if plot and plot:IsA("Model") and plot.PrimaryPart then
-		return plot
-	end
-	return nil
 end
 
 -- Parking sits on the road-facing edge of the lot (plots south of the road face +Z).

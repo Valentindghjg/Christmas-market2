@@ -155,7 +155,7 @@ return function(t)
 
 	local function addCompany(h, companyId: string, plotId: string, trees: number)
 		local state = h.service:loadCompany(companyId, 42)
-		state.progression.parkingSpaces = 4
+		state.progression.parkingTier = 2
 		-- CM2-N2: a hired Cashier serves the counter after 3 s.
 		state.staff.Cashier = 1
 		for index = 1, trees do
@@ -304,6 +304,24 @@ return function(t)
 		expect.equal(state.abandonedCustomers, abandoned + 1)
 		expect.equal(state.walkedOutCustomers, walkedOut + 1)
 		expect.equal(next(h.npc:carriedPlacements(A)), nil)
+	end)
+
+	-- CM2-G9a: the HQ's patience bonus reaches the visit through npcArrive (HQ 4: 117 s).
+	t.test("queue patience follows the HQ tier", function()
+		local h = harness()
+		local state = addCompany(h, A, PLOT_1, 1)
+		state.staff.Cashier = 0
+		state.progression.hqLevel = 4
+		local visitId = spawn(h, A, 8)
+		runUntil(h, visitId, "Queued", 100)
+		local walkedOut = state.walkedOutCustomers
+		run(h, 100)
+		expect.truthy(stateOf(h, visitId) == "Queued" or stateOf(h, visitId) == "CheckingOut")
+		expect.equal(state.walkedOutCustomers, walkedOut)
+		run(h, 18)
+		local visit = visitOf(h, visitId)
+		expect.truthy(table.find(visit.history, "WalkingOut") ~= nil)
+		expect.equal(state.walkedOutCustomers, walkedOut + 1)
 	end)
 
 	t.test("giving up on the way to the tree releases it", function()

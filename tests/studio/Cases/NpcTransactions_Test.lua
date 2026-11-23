@@ -102,7 +102,7 @@ return function(t)
 		expect.equal(picked.z, -20)
 		local reservation = state.reservations.douglas_1
 		expect.equal(reservation.customerId, "visit:1")
-		expect.equal(Npc.ReservationSeconds, 150)
+		expect.equal(Npc.ReservationSeconds, 165)
 		expect.equal(reservation.expiresAt, NOW + Npc.ReservationSeconds)
 		expect.equal(state.revision, revision + 1)
 		expect.equal(synced, 1)

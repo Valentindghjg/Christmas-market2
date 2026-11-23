@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Progression = require(Shared:WaitForChild("Progression"))
 local Reviews = require(Shared:WaitForChild("Reviews"))
 local ShopConfig = require(Shared:WaitForChild("ShopConfig"))
 local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
@@ -36,9 +37,9 @@ local function sortedOrders(state)
 	return orders
 end
 
--- Parking tier 1 always offers the observed base spaces; upgrades add more.
+-- The spaces of the save's parking tier (CM2-G9a): tier 1 has the observed 2, tier 2 has 4.
 function CustomerOrderService.parkingSpaces(state): number
-	return math.max(GameConfig.Customers.BaseParkingSpaces, state.progression.parkingSpaces)
+	return Progression.parkingSpaces(state)
 end
 
 -- Runtime parking claims of walking customers (CM2-N1): { [space] = visitId }, never saved.

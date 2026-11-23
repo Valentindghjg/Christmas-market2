@@ -181,7 +181,7 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(BusinessState.SCHEMA_VERSION, 18)
+		expect.equal(BusinessState.SCHEMA_VERSION, 19)
 		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(migrated.cash, 777)
 		expect.equal(migrated.reputation, 120)
@@ -189,6 +189,30 @@ return function(t)
 		expect.equal(migrated.bays[1].counts.Small, 4)
 		expect.equal(migrated.saveName, "Tree Lot 1")
 		expect.equal(migrated.saveSize, "Solo")
+	end)
+
+	-- CM2-G9a: schema 19 replaces parkingSpaces and hqTier with parkingTier and hqLevel.
+	t.test("migrates schema 18 records to 19", function()
+		local legacy = BusinessState.new("save:42_x", 42)
+		legacy.schemaVersion = 18
+		legacy.progression = { lotExpansion = 2, parkingSpaces = 3, hqTier = "ChristmasPavilion" }
+		legacy.cash = 4321
+		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(migrated.schemaVersion, 19)
+		expect.equal(migrated.progression.lotExpansion, 2)
+		expect.equal(migrated.progression.parkingTier, 2)
+		expect.equal(migrated.progression.hqLevel, 2)
+		expect.equal(migrated.progression.parkingSpaces, nil)
+		expect.equal(migrated.progression.hqTier, nil)
+		expect.equal(migrated.cash, 4321)
+		expect.truthy(BusinessState.validate(migrated))
+		local broken = BusinessState.new("save:42_x", 42)
+		broken.progression.hqLevel = 5
+		expect.falsy(BusinessState.validate(broken))
+		broken.progression = { lotExpansion = 7, parkingTier = 1, hqLevel = 1 }
+		expect.falsy(BusinessState.validate(broken))
 	end)
 
 	t.test("rejects an invalid save name or size", function()

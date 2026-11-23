@@ -198,7 +198,7 @@ return function(t)
 	-- CM2-N1: a walking customer's order waits in the space its car parked in.
 	t.test("an order takes the given parking space", function()
 		local state = BusinessState.new("personal:42", 42)
-		state.progression.parkingSpaces = 4
+		state.progression.parkingTier = 2
 		local sale = { placementId = "placement:a", speciesId = "FrasierFir", sizeId = "Medium", salePrice = 82 }
 		local created, order = Orders.createFromSale(state, sale, 100, 3)
 		expect.truthy(created)
@@ -244,7 +244,7 @@ return function(t)
 		expect.equal(state.sales, GameConfig.Customers.BaseParkingSpaces)
 		expect.equal(state.drivePastCustomers, 1)
 		-- Parking upgrades raise the number of cars that can wait.
-		state.progression.parkingSpaces = 4
+		state.progression.parkingTier = 2
 		expect.equal(Orders.freeParking(state), 2)
 	end)
 
@@ -349,18 +349,20 @@ return function(t)
 		expect.equal(migrated.supplier.stock["FrasierFir:Small"], 1000)
 	end)
 
+	-- CM2-G9a: parking tier 2 holds 4 cars and is bought once.
 	t.test("parking purchases add to the base spaces", function()
 		local Progression = require(Services:WaitForChild("ProgressionService"))
 		local state = BusinessState.new("personal:42", 42)
-		state.cash = 10000
-		local ok, spaces = Progression.buyParking(state)
+		state.cash = 600
+		expect.equal(Orders.parkingSpaces(state), GameConfig.Customers.BaseParkingSpaces)
+		local ok, tier = Progression.buyParking(state, 2)
 		expect.truthy(ok)
-		expect.equal(spaces, GameConfig.Customers.BaseParkingSpaces + 1)
-		expect.equal(Orders.parkingSpaces(state), GameConfig.Customers.BaseParkingSpaces + 1)
-		expect.truthy(Progression.buyParking(state))
-		local maxed, reason = Progression.buyParking(state)
-		expect.falsy(maxed)
-		expect.equal(reason, "MaxParking")
+		expect.equal(tier, 2)
+		expect.equal(state.cash, 0)
+		expect.equal(Orders.parkingSpaces(state), 4)
+		local again, reason = Progression.buyParking(state, 2)
+		expect.falsy(again)
+		expect.equal(reason, "AlreadyOwned")
 	end)
 
 	-- CM2-46a: Shining Star doubles the review's reputation; Evergreen VIP adds a star (max 5).

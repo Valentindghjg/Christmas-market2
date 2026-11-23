@@ -13,6 +13,7 @@ local TextService = game:GetService("TextService")
 
 local config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local BusinessState = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BusinessState"))
+local Progression = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
 local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ShopConfig"))
@@ -358,10 +359,6 @@ companies:setReviewsHandler(function(companyId: string, reviews: { any })
 	refreshLotSign(companyId)
 end)
 
-local function effectiveParking(spaces: number): number
-	return math.max(config.Customers.BaseParkingSpaces, spaces)
-end
-
 -- Displayed trees follow authoritative placements, including NPC sales and reservations. A
 -- tree a walking customer carries stays hidden (CM2-N1).
 companies:setPlacementsChangedHandler(function(companyId: string, placements, mediumPrices, reservations)
@@ -391,6 +388,17 @@ companies:setBreakAreaChangedHandler(function(companyId: string, area)
 	local plotId = plots:getPlot(companyId)
 	if plotId then
 		StaffNpcWorld.syncBreakArea(plotId, area)
+	end
+end)
+
+-- The stand, lot pad, fence, reserve and parking follow the saved ladder (CM2-G9a): a purchase
+-- by any member of the save, or the Studio test setter, updates the save's plot.
+companies:setProgressionChangedHandler(function(companyId: string, progression)
+	local plotId = plots:getPlot(companyId)
+	if plotId then
+		WorldService.applyHQVisual(plotId, progression.hqLevel)
+		WorldService.applyLotExpansionVisual(plotId, progression.lotExpansion)
+		WorldService.applyParkingVisual(plotId, config.Progression.Parking.tiers[progression.parkingTier].spaces)
 	end
 end)
 
@@ -656,9 +664,9 @@ end
 
 -- Mirrors a loaded company into its plot: stand, lot, parking, displayed trees and orders.
 local function syncPlotWorld(plotId: string, companyId: string, state)
-	WorldService.applyHQVisual(plotId, state.progression.hqTier)
-	WorldService.applyLotExpansionVisual(plotId, state.progression.lotExpansion)
-	WorldService.applyParkingVisual(plotId, effectiveParking(state.progression.parkingSpaces))
+	WorldService.applyHQVisual(plotId, Progression.hqLevel(state))
+	WorldService.applyLotExpansionVisual(plotId, Progression.lotLevel(state))
+	WorldService.applyParkingVisual(plotId, Progression.parkingSpaces(state))
 	WorldService.syncDisplayedTrees(plotId, state.layout.placements, state.mediumPrices)
 	WorldService.syncCustomerOrders(plotId, companies:getCustomerOrders(companyId), orderCallbacks)
 	WorldService.syncReceiving(plotId, companies:getReceivingView(companyId))
@@ -666,7 +674,7 @@ local function syncPlotWorld(plotId: string, companyId: string, state)
 end
 
 local function clearPlotVisuals(plotId: string)
-	WorldService.applyHQVisual(plotId, nil)
+	WorldService.applyHQVisual(plotId, 1)
 	WorldService.applyLotExpansionVisual(plotId, 0)
 	WorldService.applyParkingVisual(plotId, 0)
 	WorldService.syncDisplayedTrees(plotId, {})
@@ -944,19 +952,9 @@ local function handleBusinessAction(player: Player, request)
 	if not response.ok then
 		return response
 	end
-	-- handle() succeeded, so request passed validation and is a table.
+	-- handle() succeeded, so request passed validation and is a table. Progression purchases
+	-- update the plot through the progression handler (CM2-G9a).
 	afterOrderAction(player, request.action, response, request.payload)
-	local plotId = player:GetAttribute("PlotId")
-	if type(plotId) ~= "string" then
-		return response
-	end
-	if request.action == Protocol.Actions.ProgressionBuyHQ then
-		WorldService.applyHQVisual(plotId, response.data)
-	elseif request.action == Protocol.Actions.ProgressionBuyLotExpansion and type(response.data) == "number" then
-		WorldService.applyLotExpansionVisual(plotId, response.data)
-	elseif request.action == Protocol.Actions.ProgressionBuyParking and type(response.data) == "number" then
-		WorldService.applyParkingVisual(plotId, effectiveParking(response.data))
-	end
 	return response
 end
 businessAction.OnServerInvoke = handleBusinessAction

@@ -1,6 +1,7 @@
 --!strict
 local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
+local Progression = require(script.Parent.Progression)
 local Purchases = require(script.Parent.Purchases)
 local Receiving = require(script.Parent.Receiving)
 local Reviews = require(script.Parent.Reviews)
@@ -9,7 +10,7 @@ local Staff = require(script.Parent.Staff)
 local Tutorial = require(script.Parent.Tutorial)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 18
+BusinessState.SCHEMA_VERSION = 19
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -33,6 +34,19 @@ local function isFiniteInteger(value: unknown): boolean
 		and value ~= math.huge
 		and value ~= -math.huge
 		and value == math.floor(value)
+end
+
+local function inRange(value: unknown, minimum: number, maximum: number): boolean
+	return isFiniteInteger(value) and (value :: number) >= minimum and (value :: number) <= maximum
+end
+
+-- Schema 19 (CM2-G9a): the ladder levels, each an integer in its configured range.
+local function validProgression(progression): boolean
+	local config = GameConfig.Progression
+	return type(progression) == "table"
+		and inRange(progression.lotExpansion, 0, config.LotExpansion.maxLevel)
+		and inRange(progression.parkingTier, 1, config.Parking.maxTier)
+		and inRange(progression.hqLevel, 1, config.HQ.maxLevel)
 end
 
 -- Schema 12 member map with only the owner. A record without a valid owner ID gets an empty
@@ -152,7 +166,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		staff = { Cashier = 0, LotWorker = 0, LotManager = 0 },
 		staffEnergy = Staff.newEnergy(),
 		breakArea = Staff.defaultBreakArea({ layout = { placements = {} } }),
-		progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil },
+		progression = Progression.new(),
 		questClaims = {},
 		customerOrders = {},
 		nextOrderNumber = 1,
@@ -317,6 +331,11 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		-- Schema 18 (CM2-49): tutorial progress; existing saves count as finished.
 		state.tutorial = Tutorial.new(false)
 	end
+	if state.schemaVersion == 18 then
+		state.schemaVersion = 19
+		-- Schema 19 (CM2-G9a): the ladder { lotExpansion, parkingTier, hqLevel }; no money moves.
+		state.progression = Progression.migrate18(state.progression)
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -347,7 +366,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.layout = { placements = {} }
 	state.reservations = {}
 	state.staff = { Cashier = 0, LotWorker = 0, LotManager = 0 }
-	state.progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil }
+	state.progression = Progression.new()
 	state.customerVisits = sales(state)
 	state.abandonedCustomers = 0
 	state.walkedOutCustomers = 0
@@ -671,14 +690,7 @@ function BusinessState.validate(state)
 			return false
 		end
 	end
-	if
-		type(state.progression) ~= "table"
-		or not isFiniteInteger(state.progression.lotExpansion)
-		or state.progression.lotExpansion < 0
-		or not isFiniteInteger(state.progression.parkingSpaces)
-		or state.progression.parkingSpaces < 0
-		or (state.progression.hqTier ~= nil and type(state.progression.hqTier) ~= "string")
-	then
+	if not validProgression(state.progression) then
 		return false
 	end
 	if type(state.questClaims) ~= "table" then

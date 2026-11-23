@@ -118,12 +118,12 @@ return function(t)
 		for row = 1, 4 do
 			table.insert(levels, MapLayout.hideLevel(row))
 		end
-		expect.equal(table.concat(levels, ","), "1,2,4,6")
+		expect.equal(table.concat(levels, ","), "1,2,3,4")
 		local hidden = {}
 		for level = 0, MapLayout.MAX_LEVEL do
 			table.insert(hidden, MapLayout.hiddenRowCount(level))
 		end
-		expect.equal(table.concat(hidden, ","), "0,1,2,2,3,3,4")
+		expect.equal(table.concat(hidden, ","), "0,1,2,3,4,4,4")
 		expect.equal(MapLayout.hiddenRowCount(2.9), 2)
 		for _, piece in ipairs(MapLayout.pieces()) do
 			if piece.group == "Reserve" then
@@ -133,7 +133,7 @@ return function(t)
 					math.max(plot.facing * (footprint.minZ - plot.z), plot.facing * (footprint.maxZ - plot.z))
 				for level = 0, MapLayout.MAX_LEVEL do
 					if (piece.row :: number) > MapLayout.hiddenRowCount(level) then
-						assert(nearEdge <= -(27 + 6 * level) - 3 + 1e-9, piece.id .. " too close at level " .. level)
+						assert(nearEdge <= -(27 + 8 * level) - 3 + 1e-9, piece.id .. " too close at level " .. level)
 					end
 				end
 			end

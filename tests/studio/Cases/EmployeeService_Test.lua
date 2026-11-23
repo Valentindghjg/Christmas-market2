@@ -25,12 +25,27 @@ return function(t)
 		expect.equal(state.staff.LotManager, 0)
 	end)
 
+	-- CM2-G9a: HQ 4 (Mountain Chalet) unlocks the Lot Manager hire.
+	t.test("the Lot Manager hires once at HQ 4", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.progression.hqLevel = 4
+		state.cash = 2000000
+		expect.truthy(EmployeeService.hire(state, "LotManager"))
+		expect.equal(state.cash, 750000)
+		expect.equal(state.staff.LotManager, 1)
+		local again, code = EmployeeService.hire(state, "LotManager")
+		expect.falsy(again)
+		expect.equal(code, "AlreadyHired")
+		expect.equal(state.cash, 750000)
+		expect.equal(EmployeeService.capacity(state), 6)
+	end)
+
 	t.test("hiring respects the employee capacity", function()
 		local state = BusinessState.new("personal:42", 42)
 		expect.equal(EmployeeService.capacity(state), 2)
-		state.progression.hqTier = "ChristmasPavilion"
+		state.progression.hqLevel = 2
 		expect.equal(EmployeeService.capacity(state), 3)
-		state.progression.hqTier = nil
+		state.progression.hqLevel = 1
 		expect.equal(EmployeeService.hiredCount(state), 0)
 		state.staff.Cashier = 1
 		state.staff.LotManager = 1

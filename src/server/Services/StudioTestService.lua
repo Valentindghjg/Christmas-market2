@@ -282,6 +282,25 @@ function StudioTestService.install(context)
 		return success()
 	end
 
+	-- CM2-G9a: sets cash, reputation, the ladder fields and the Lot Manager of a save without a
+	-- purchase ({userId?, cash?, reputation?, lotExpansion?, parkingTier?, hqLevel?, lotManager?}).
+	-- userId picks that user's active save (R or S), else the shadow's.
+	function commands.setProgression(arg)
+		if type(arg) ~= "table" or (arg.userId ~= nil and type(arg.userId) ~= "number") then
+			return failure("BadProgression")
+		end
+		local companyId = companyIdFor(if arg.userId ~= nil then arg.userId else shadowUserId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		local fields = table.clone(arg)
+		fields.userId = nil
+		if not companies:setProgressionForTest(companyId, fields) then
+			return failure("BadProgression")
+		end
+		return success()
+	end
+
 	-- Visible staff (CM2-25/26).
 	local staff = context.staff
 

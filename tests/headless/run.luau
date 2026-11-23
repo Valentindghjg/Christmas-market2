@@ -42,6 +42,7 @@ local server = child(serverScriptService, "Server")
 local services = child(server, "Services")
 for name, path in pairs({
 	AnalyticsService = "src/server/Services/AnalyticsService.lua",
+	CompanyProgression = "src/server/Services/CompanyProgression.lua",
 	CompanyPurchases = "src/server/Services/CompanyPurchases.lua",
 	CompanyStaff = "src/server/Services/CompanyStaff.lua",
 	CompanyStateService = "src/server/Services/CompanyStateService.lua",
@@ -89,6 +90,7 @@ local sourcePaths = {
 	NpcLook = "src/shared/NpcLook.lua",
 	NpcPath = "src/shared/NpcPath.lua",
 	PricingView = "src/shared/PricingView.lua",
+	Progression = "src/shared/Progression.lua",
 	Protocol = "src/shared/Protocol.lua",
 	Purchases = "src/shared/Purchases.lua",
 	Reviews = "src/shared/Reviews.lua",
