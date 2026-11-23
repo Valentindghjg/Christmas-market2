@@ -605,6 +605,10 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 | Wages | None. No code path debits cash for staff after the one-time hire (headless test 9). |
 
 - Schema 16: `staff.LotManager`, `staffEnergy`, `breakArea`; migration 15 → 16 adds the defaults. Schema-15 servers fail closed on schema-16 records; shut them down when this ships.
+- Part b (`docs/plans/CM2-25-26b.md`): Employees tab (tab contract, reads only `summary.staff`), two-tap hire, `N / 2 hired`, no-wages line, locked Lot Manager row.
+- Part b: capacity `Employees.BaseCapacity` 2 (OBSERVED), with an HQ its `employeeCapacity` (Pavilion 3); hired count = Cashier + Lot Worker + Lot Manager. Hire checks in order `UnknownEmployee`, `AlreadyHired`, `EmployeeLocked` (while the config has `requiredHqTier`; CM2-G9 replaces it), `EmployeeCapacity`, `InsufficientFunds`; then one debit, `spent`, history `EmployeeHired`, energy 100. Idempotent by request ID and by `AlreadyHired`.
+- Part b: new member action `Staff.MoveBreakArea {x, z, rotation}` (0.5 grid, quarter turns, `InvalidBreakArea`), checked by `Staff.checkBreakArea`; the same spot again is ok. Client `BreakAreaMode` is a modal preview (ghost, Rotate R, Place Enter, Cancel Q); the server decides. Staff walking to or resting at the old spot re-route to the new seat (`record.breakKey`).
+- Part b: the director writes `session.staffLive[role] = {status, energy}` (runtime only, never saved, no dirty flag); the summary maps hired roles without a live record to `Arriving`.
 
 ## 2026-11-23 — CM2-10b village props art (engineering)
 - Plan: `docs/plans/CM2-10b.md`. Branch N: `art.luau doctor` exit 2 (Blender 5.2.2 found, API key and creator missing); upload and normalize BLOCKED by PC-2, no `.rbxm`, `verify` 0 integrated, 35 pending (30 + 5).
