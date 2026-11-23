@@ -40,6 +40,7 @@ local STATUS_KEYS: { [string]: string } = {
 	OnTheWay = "staffOnTheWay",
 	Resting = "staffResting",
 	Arriving = "staffArriving",
+	Standby = "staffStandby",
 }
 
 -- Hire refusals and the sentence shown for each (inside errorStatus).

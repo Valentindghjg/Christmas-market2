@@ -56,6 +56,7 @@ Cash + reputation + explicit prerequisites gate land, parking and HQ (CM2-G9a, `
 - **HQ**: 1 Sales Tent (staff 2, O); 2 Timber Pavilion $2,500, 250 reputation, lot 1, parking tier 2 (all O), unlocks 4 new tree types, 2 checkout stations, staff 3 and customer patience +12% (O); 3 Alpine Hut $50,000, 1,000 reputation, lot 3, parking 2, staff 5 (O), patience +20%; 4 Mountain Chalet $600,000, 3,000 reputation, lot 5, parking 2, 3 checkout stations, staff 6, patience +30%, unlocks the Lot Manager hire and the Elf Workshop (tiers 3 and 4 P; they map the reference's "Christmas Market Chalet" and "Christmas Lodge", whose costs are unseen). Staff capacity and patience apply at once (patience is fixed per customer when its car arrives); the new tree types and the extra checkout stations come with CM2-G9d and show as "coming soon" until then.
 - **Lot Manager**: hireable once at HQ 4 for $1,250,000 (O); it shows "Standby" until its computer job (CM2-G9c).
 - **Elf Workshop**: unlocked with HQ 4 and a hired Lot Manager; no cost and no action, its content is "Coming soon" (OWNER DECIDED).
+The Land tab (CM2-G9b) shows four cards (lot expansion, parking, HQ, Elf Workshop) with the server's requirement rows as Done/Missing, the unlock lines and a two-tap Buy; the workshop card has no button.
 No reset of long-term progress. Cosmetics/decoration influence appeal without becoming mandatory for basic progression.
 
 ## 8. Multiplayer

@@ -84,6 +84,7 @@ local sourcePaths = {
 	GameConfig = "src/shared/GameConfig.lua",
 	Inventory = "src/shared/Inventory.lua",
 	LabelDeclutter = "src/shared/LabelDeclutter.lua",
+	LandView = "src/shared/LandView.lua",
 	Localization = "src/shared/Localization.lua",
 	MapLayout = "src/shared/MapLayout.lua",
 	ModalCoordinator = "src/shared/ModalCoordinator.lua",
