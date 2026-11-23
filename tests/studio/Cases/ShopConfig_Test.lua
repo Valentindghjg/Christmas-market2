@@ -105,6 +105,25 @@ return function(t)
 		end
 	end)
 
+	t.test("names and describes every product", function()
+		local Localization =
+			require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("Localization"))
+		for _, product in ipairs(ShopConfig.Products) do
+			local nameKey, descKey = ShopConfig.textKeys(product)
+			expect.equal(type(Localization.Strings.en[nameKey]), "string")
+			expect.equal(type(Localization.Strings.en[descKey]), "string")
+		end
+		local cash = ShopConfig.byKey("CashPinecone") :: ShopConfig.Product
+		local _, cashDesc = ShopConfig.textKeys(cash)
+		expect.equal(cashDesc, "shopDescCash")
+		local event = ShopConfig.byKey("EventTreeStarlight") :: ShopConfig.Product
+		local _, eventDesc = ShopConfig.textKeys(event)
+		expect.equal(eventDesc, "shopDescEventTree")
+		local pack = ShopConfig.byKey("EventDecorPack") :: ShopConfig.Product
+		local _, packDesc = ShopConfig.textKeys(pack)
+		expect.equal(packDesc, "shopDescEventDecorPack")
+	end)
+
 	t.test("keeps the observed prices", function()
 		for _, product in ipairs(ShopConfig.Products) do
 			expect.equal(product.price, PRICES[product.key])

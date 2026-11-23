@@ -23,6 +23,54 @@ return function(t)
 		end
 	end)
 
+	-- CM2-46b: the shop chrome, every product name and every description in both languages.
+	t.test("has every shop key in English and German", function()
+		local ShopConfig =
+			require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("ShopConfig"))
+		local keys = {
+			"shopButton",
+			"shopTitle",
+			"shopPrice",
+			"shopBuy",
+			"shopOwned",
+			"shopComingSoon",
+			"shopBoostActive",
+			"shopLoading",
+			"shopClose",
+			"shopPromptOpen",
+			"shopErrorComingSoon",
+			"shopErrorOwned",
+			"shopErrorNoSave",
+			"shopErrorBoostFull",
+			"shopErrorBusy",
+			"shopErrorUnavailable",
+			"shopDescStarterPack",
+			"shopDescPassCashX2",
+			"shopDescPassReputationX2",
+			"shopDescPassInstantDelivery",
+			"shopDescPassVip",
+			"shopDescCash",
+			"shopDescBoostCashX2",
+			"shopDescBoostRested",
+			"shopDescSpecialTree",
+			"shopDescEventTree",
+			"shopDescEventDecorPack",
+			"shopDescPremiumDecor",
+		}
+		for _, id in ipairs(ShopConfig.Categories) do
+			table.insert(keys, "shopCategory" .. id)
+		end
+		for _, product in ipairs(ShopConfig.Products) do
+			local nameKey, descKey = ShopConfig.textKeys(product)
+			table.insert(keys, nameKey)
+			table.insert(keys, descKey)
+		end
+		for _, key in ipairs(keys) do
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+	end)
+
 	t.test("formats templates and tolerates bad arguments", function()
 		expect.equal(Localization.format("de", "orderAccepted", 32), "Bestellung angenommen: 32 $")
 		expect.equal(Localization.format("en", "orderAccepted", "not a number"), "Order accepted: $%d")

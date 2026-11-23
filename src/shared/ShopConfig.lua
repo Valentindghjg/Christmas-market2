@@ -142,6 +142,23 @@ function ShopConfig.byPassId(id: unknown): Product?
 	return nil
 end
 
+-- The localization keys of a product's name and description (CM2-46b).
+function ShopConfig.textKeys(entry: Product): (string, string)
+	local descKey
+	if entry.category == "Cash" then
+		descKey = "shopDescCash"
+	elseif entry.category == "SpecialTrees" then
+		descKey = "shopDescSpecialTree"
+	elseif string.sub(entry.key, 1, 9) == "EventTree" then
+		descKey = "shopDescEventTree"
+	elseif entry.category == "PremiumDecor" then
+		descKey = "shopDescPremiumDecor"
+	else
+		descKey = "shopDesc" .. entry.key
+	end
+	return "shopName" .. entry.key, descKey
+end
+
 -- A product key: a letter, then letters or digits, at most 32 bytes.
 function ShopConfig.isKey(value: unknown): boolean
 	return type(value) == "string" and #value <= 32 and string.match(value, "^%a%w*$") ~= nil

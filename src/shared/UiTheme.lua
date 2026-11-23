@@ -204,6 +204,15 @@ UiTheme.Dialogs = {
 		widthScale = 0.92,
 		heightScale = 0.8,
 	},
+	Shop = {
+		listTop = 92,
+		footerHeight = 52,
+		minList = 120,
+		maxWidth = 560,
+		maxHeight = 600,
+		widthScale = 0.94,
+		heightScale = 0.86,
+	},
 	Finder = {
 		listTop = 72,
 		footerHeight = 198,
