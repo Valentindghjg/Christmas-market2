@@ -180,6 +180,9 @@ function GameConfig.wholesaleFor(species: unknown, size: unknown): number?
 end
 
 GameConfig.Employees = {
+	-- Employees a save may hire without an HQ (OBSERVED "0 / 2 hired"); an HQ sets its own
+	-- employeeCapacity (CM2-25/26 part b).
+	BaseCapacity = 2,
 	Cashier = { hireCost = 1200, role = "Checkout", maxCount = 1, evidence = GameConfig.Evidence.Observed },
 	LotWorker = {
 		hireCost = 1800,

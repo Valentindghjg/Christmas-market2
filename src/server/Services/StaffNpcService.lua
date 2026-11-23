@@ -49,6 +49,19 @@ StaffNpcService.Fsm = {
 } :: { [string]: FsmEntry }
 local Fsm = StaffNpcService.Fsm
 
+-- The Employees tab's status of each state (CM2-25/26 part b); load-test states have none.
+local UI_STATUS: { [string]: string } = {
+	OnDuty = "Working",
+	Idle = "Working",
+	WalkingToPickup = "Working",
+	CarryingToCar = "Working",
+	WalkingToBay = "Working",
+	CarryingToSpot = "Working",
+	WalkingToPost = "OnTheWay",
+	WalkingToBreak = "Resting",
+	Resting = "Resting",
+}
+
 local function validPoint(value: any): Point?
 	if type(value) == "table" and type(value.x) == "number" and type(value.z) == "number" then
 		return { x = value.x, z = value.z }
@@ -76,6 +89,11 @@ end
 
 local function areaCentre(area): Point
 	return { x = area.x, z = area.z }
+end
+
+-- Identifies a break-area spot; a changed key means the area was moved.
+local function breakKey(area): string
+	return tostring(area.x) .. ":" .. tostring(area.z) .. ":" .. tostring(area.rotation)
 end
 
 -- The break area every load-test record uses: candidate 1, rotation 0.
@@ -395,6 +413,24 @@ function StaffNpcService:_step(record, now: number)
 	if step then
 		step(self, record, now)
 	end
+	-- The Employees tab follows the record (runtime only, never saved).
+	local status = UI_STATUS[record.state]
+	if not record.loadTest and status ~= nil and self._records[record.id] == record then
+		self._companies:noteStaff(record.companyId, record.role, status, math.floor(record.energy))
+	end
+end
+
+-- A moved break area: staff walking to or resting at the old spot walk to the new seat.
+function StaffNpcService:_followArea(record, area, now: number)
+	record.area = area
+	local key = breakKey(area)
+	if key == record.breakKey then
+		return
+	end
+	record.breakKey = key
+	if record.state == "WalkingToBreak" or record.state == "Resting" then
+		self:_toBreak(record, now)
+	end
 end
 
 -- Records -------------------------------------------------------------------------------------
@@ -415,6 +451,7 @@ local function newRecord(id: string, plotId: string, role: string, area, at: Poi
 		energy = energy,
 		level = 0,
 		area = area,
+		breakKey = breakKey(area),
 		waypoints = {} :: { Point },
 		waypointIndex = 1,
 		issuedAt = now,
@@ -426,7 +463,7 @@ local function newRecord(id: string, plotId: string, role: string, area, at: Poi
 	}
 end
 
--- Despawns the avatar; a claimed order is released.
+-- Despawns the avatar; a claimed order is released and the live status cleared.
 function StaffNpcService:_remove(record)
 	self:_call("despawn", record.id)
 	if self._records[record.id] == record then
@@ -436,6 +473,9 @@ function StaffNpcService:_remove(record)
 	record.job = nil
 	if not record.loadTest and type(job) == "table" and job.kind == "Load" and job.claimed then
 		self._companies:staffReleaseOrder(record.companyId, job.orderNumber)
+	end
+	if not record.loadTest and record.companyId ~= nil then
+		self._companies:noteStaff(record.companyId, record.role, nil, nil)
 	end
 end
 
@@ -530,7 +570,7 @@ function StaffNpcService:tick()
 			then
 				self:_remove(record)
 			else
-				record.area = entry.view.breakArea
+				self:_followArea(record, entry.view.breakArea, now)
 				record.level = if type(entry.view.lotExpansion) == "number" then entry.view.lotExpansion else 0
 			end
 		end

@@ -3,13 +3,15 @@
 -- that CompanyStateService installs. Server-trusted callers only (StaffNpcService); no client
 -- request reaches these methods. Each runs inside the company's critical section, never
 -- yields and returns false/nil when the session is not available. Staff never cost money
--- after the one-time hire: nothing here debits cash.
+-- after the one-time hire: nothing here debits cash. Part b (docs/plans/CM2-25-26b.md) adds
+-- the runtime staff status (noteStaff), the Employees tab summary and the break-area notify.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Receiving = require(Shared:WaitForChild("Receiving"))
 local Stocking = require(Shared:WaitForChild("Stocking"))
 local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
+local EmployeeService = require(script.Parent:WaitForChild("EmployeeService"))
 local PlacementService = require(script.Parent:WaitForChild("PlacementService"))
 
 local StaffConfig = GameConfig.Staff
@@ -69,7 +71,75 @@ local function findSpot(spots, spot): number?
 	return nil
 end
 
+-- The Employees tab's summary (CM2-25/26 part b): capacity, the break area and one row per role
+-- in Staff.Roles order. status is nil when not hired, "Arriving" when hired without a live
+-- record, else the director's status; energy comes from the live record, else the save.
+function CompanyStaff.summary(session, state)
+	local live = if type(session) == "table" and type(session.staffLive) == "table" then session.staffLive else {}
+	local roles = {}
+	for _, role in ipairs(StaffConfig.Roles) do
+		local definition = GameConfig.Employees[role]
+		local count = state.staff[role]
+		local hired = type(count) == "number" and count >= 1
+		local record = live[role]
+		local energy = if type(record) == "table" then record.energy else state.staffEnergy[role]
+		local status: string? = nil
+		if hired then
+			status = if type(record) == "table" then record.status else "Arriving"
+		end
+		table.insert(roles, {
+			id = role,
+			hired = hired,
+			hireCost = definition.hireCost,
+			locked = definition.requiredHqTier ~= nil,
+			energy = math.floor(if finite(energy) then energy else StaffConfig.Energy.Max),
+			status = status,
+		})
+	end
+	return {
+		hiredCount = EmployeeService.hiredCount(state),
+		capacity = EmployeeService.capacity(state),
+		breakArea = table.clone(state.breakArea),
+		roles = roles,
+	}
+end
+
 function CompanyStaff.install(CompanyStateService)
+	-- Trusted server code (the break-area model, main.server.lua) follows Staff.MoveBreakArea.
+	function CompanyStateService:setBreakAreaChangedHandler(handler: (companyId: string, area: any) -> ())
+		self._breakAreaChanged = handler
+	end
+
+	function CompanyStateService:_notifyBreakArea(companyId: string, session)
+		local handler = self._breakAreaChanged
+		if handler and self._sessions[companyId] == session then
+			local ok, err = pcall(handler, companyId, table.clone(session.state.breakArea))
+			if not ok then
+				warn(string.format("[ChristmasMarket2] break area sync failed for %s: %s", companyId, tostring(err)))
+			end
+		end
+	end
+
+	-- The director's live status and energy of one role (runtime only: never saved, no dirty
+	-- flag, no section). A nil status removes the role's live record.
+	function CompanyStateService:noteStaff(companyId: string, role: string, status: string?, energy: number?)
+		local session = self._sessions[companyId]
+		if session == nil or table.find(StaffConfig.Roles, role) == nil then
+			return
+		end
+		local live = session.staffLive
+		if live == nil then
+			live = {}
+			session.staffLive = live
+		end
+		if type(status) == "string" and finite(energy) then
+			live[role] =
+				{ status = status, energy = math.floor(math.clamp(energy :: number, 0, StaffConfig.Energy.Max)) }
+		else
+			live[role] = nil
+		end
+	end
+
 	-- Runs fn(state, session) in the critical section of an available session.
 	local function withLive(self, companyId: string, fn): (boolean, any, any)
 		local session = self._sessions[companyId]

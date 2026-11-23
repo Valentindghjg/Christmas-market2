@@ -124,4 +124,38 @@ return function(t)
 		expect.equal(reason(input(), 0 / 0, 0), "InvalidBreakArea")
 		expect.equal(reason(input(), -32, math.huge), "InvalidBreakArea")
 	end)
+
+	-- CM2-25/26 part b: Staff.MoveBreakArea's rule.
+	t.test("moveBreakArea saves a valid spot and refuses others", function()
+		local state = BusinessState.new("save:42_x", 42)
+		local ok, area = Staff.moveBreakArea(state, -32, -4, 90)
+		expect.truthy(ok)
+		expect.equal(area.x, -32)
+		expect.equal(area.z, -4)
+		expect.equal(area.rotation, 90)
+		expect.equal(state.breakArea.x, -32)
+		expect.equal(state.breakArea.z, -4)
+		expect.equal(state.breakArea.rotation, 90)
+		expect.truthy(area ~= state.breakArea)
+		local saved = state.breakArea
+		local function refused(x: number, z: number, expected: string)
+			local moved, code = Staff.moveBreakArea(state, x, z, 180)
+			expect.falsy(moved)
+			expect.equal(code, expected)
+			expect.truthy(state.breakArea == saved)
+			expect.equal(state.breakArea.x, -32)
+			expect.equal(state.breakArea.z, -4)
+			expect.equal(state.breakArea.rotation, 90)
+		end
+		refused(0, 0, "KeepClear")
+		refused(37, 0, "OutsideLot")
+		state.layout.placements.blocker = {
+			speciesId = "DouglasFir",
+			sizeId = "Medium",
+			transform = { x = -32, y = 0, z = -13.5, rotation = 0 },
+		}
+		refused(-32, -20, "TooClose")
+		-- The same spot again is fine.
+		expect.truthy(Staff.moveBreakArea(state, -32, -4, 90))
+	end)
 end

@@ -25,6 +25,8 @@ Protocol.Actions = {
 	SupplierSellBack = "Supplier.SellBack",
 	-- CM2-G15: like another save's lot at its sign (main.server.lua, never companies:handle).
 	LotLike = "Lot.Like",
+	-- CM2-25/26 part b: move the staff break area (any save member).
+	StaffMoveBreakArea = "Staff.MoveBreakArea",
 }
 
 local actionSet = {
@@ -45,6 +47,7 @@ local actionSet = {
 	[Protocol.Actions.CompanyGetSummary] = true,
 	[Protocol.Actions.QuestClaim] = true,
 	[Protocol.Actions.LotLike] = true,
+	[Protocol.Actions.StaffMoveBreakArea] = true,
 }
 
 -- Save-slot actions travel through their own remote (Remotes.SaveAction).
@@ -166,6 +169,30 @@ local function validStockPlace(payload): (boolean, string?)
 	return true, nil
 end
 
+local BREAK_AREA_KEYS = { x = true, z = true, rotation = true }
+local BREAK_AREA_ROTATIONS = { [0] = true, [90] = true, [180] = true, [270] = true }
+
+-- Staff.MoveBreakArea (CM2-25/26 part b): x and z on the 0.5 grid within the coordinate
+-- bound, rotation a quarter turn. Whether the spot is free is the server's check.
+local function validBreakArea(payload): (boolean, string?)
+	if not hasExactKeys(payload, BREAK_AREA_KEYS) then
+		return false, "InvalidBreakArea"
+	end
+	for _, value in { payload.x, payload.z } do
+		if
+			not isFiniteNumber(value)
+			or math.abs(value) > GameConfig.Placement.CoordinateLimit
+			or value * 2 ~= math.floor(value * 2)
+		then
+			return false, "InvalidBreakArea"
+		end
+	end
+	if not isFiniteInteger(payload.rotation) or not BREAK_AREA_ROTATIONS[payload.rotation] then
+		return false, "InvalidBreakArea"
+	end
+	return true, nil
+end
+
 -- Envelope checks shared by business and save requests.
 local function validateEnvelope(request, actions): (boolean, string?)
 	if type(request) ~= "table" then
@@ -264,7 +291,11 @@ function Protocol.validateRequest(request)
 	if request.action == Protocol.Actions.EmployeeHire then
 		if
 			not hasOnlyKeys(request.payload, { employeeId = true })
-			or (request.payload.employeeId ~= "Cashier" and request.payload.employeeId ~= "LotWorker")
+			or (
+				request.payload.employeeId ~= "Cashier"
+				and request.payload.employeeId ~= "LotWorker"
+				and request.payload.employeeId ~= "LotManager"
+			)
 		then
 			return false, "UnknownEmployee"
 		end
@@ -331,6 +362,9 @@ function Protocol.validateRequest(request)
 			return false, "InvalidQuest"
 		end
 		return true, nil
+	end
+	if request.action == Protocol.Actions.StaffMoveBreakArea then
+		return validBreakArea(request.payload)
 	end
 	if request.action == Protocol.Actions.LotLike then
 		if not hasOnlyKeys(request.payload, { plotId = true }) then

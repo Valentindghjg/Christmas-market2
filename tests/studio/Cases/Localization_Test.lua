@@ -246,4 +246,48 @@ return function(t)
 		expect.equal(Localization.format("en", "pricingStep", -5), "-5")
 		expect.equal(Localization.format("en", "pricingStep", 5), "+5")
 	end)
+
+	-- CM2-25/26 part b: the Employees tab and the break-area mode.
+	t.test("has every staff and break-area key in English and German", function()
+		local keys = {
+			"staffHiredCount",
+			"staffCashier",
+			"staffLotWorker",
+			"staffLotManager",
+			"staffCashierRole",
+			"staffLotWorkerRole",
+			"staffLotManagerRole",
+			"staffCost",
+			"staffHire",
+			"staffHireConfirm",
+			"staffHired",
+			"staffLocked",
+			"staffLockedShort",
+			"staffCapacityFull",
+			"staffStatus",
+			"staffWorking",
+			"staffOnTheWay",
+			"staffResting",
+			"staffArriving",
+			"staffNoCashier",
+			"staffNoWages",
+			"breakAreaTitle",
+			"breakAreaMove",
+			"breakAreaHint",
+			"breakAreaRotate",
+			"breakAreaPlace",
+			"breakAreaCancel",
+			"breakAreaMoved",
+			"breakAreaTrees",
+		}
+		for _, key in ipairs(keys) do
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+		expect.equal(Localization.format("en", "staffHiredCount", 0, 2), "0 / 2 hired")
+		expect.equal(Localization.format("en", "staffCost", "1,200"), "One-time cost: $1,200")
+		expect.equal(Localization.format("en", "staffHireConfirm", "1,200"), "Confirm $1,200")
+		expect.equal(Localization.format("en", "staffStatus", 85, "Working"), "Energy 85% · Working")
+		expect.equal(Localization.format("de", "staffStatus", 85, "Arbeitet"), "Energie 85% · Arbeitet")
+	end)
 end

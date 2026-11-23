@@ -13,6 +13,17 @@ return function(t)
 		expect.truthy(ok)
 	end)
 
+	-- CM2-25/26 part b: the Lot Manager passes the protocol; the server refuses it while locked.
+	t.test("accepts the Lot Manager id", function()
+		local ok = Protocol.validateRequest({
+			version = 1,
+			requestId = "hire_lotmanager_1",
+			action = Protocol.Actions.EmployeeHire,
+			payload = { employeeId = "LotManager" },
+		})
+		expect.truthy(ok)
+	end)
+
 	t.test("rejects unknown employee", function()
 		local ok, reason = Protocol.validateRequest({
 			version = 1,

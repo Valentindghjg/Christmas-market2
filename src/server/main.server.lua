@@ -323,6 +323,15 @@ companies:setReceivingChangedHandler(function(companyId: string, bays)
 	end
 end)
 
+-- The break-area model follows Staff.MoveBreakArea (CM2-25/26 part b); staff follow it on their
+-- own through the director's view.
+companies:setBreakAreaChangedHandler(function(companyId: string, area)
+	local plotId = plots:getPlot(companyId)
+	if plotId then
+		StaffNpcWorld.syncBreakArea(plotId, area)
+	end
+end)
+
 -- Customer orders: prompts are validated like remote calls before any mutation.
 local orderCallbacks
 local performOrderAction

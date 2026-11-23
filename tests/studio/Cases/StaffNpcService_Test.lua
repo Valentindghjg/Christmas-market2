@@ -654,4 +654,72 @@ return function(t)
 		expect.equal(h.staff:count(), 0)
 		expect.equal(h.staff:snapshot().loadSnaps, 0)
 	end)
+
+	-- CM2-25/26 part b: one request of the owner (user 42) of save A.
+	local function ownerAct(h, requestId: string, action: string, payload)
+		return h.service:handle(A, 42, { version = 1, requestId = requestId, action = action, payload = payload })
+	end
+
+	t.test("resting staff walk to the moved break area", function()
+		local h = harness()
+		local state = addCompany(h)
+		hire(h, "Cashier")
+		runUntil(h, CASHIER, "OnDuty", 30)
+		expect.truthy(h.staff:setEnergyForTest(A, "Cashier", 20))
+		runUntil(h, CASHIER, "Resting", 30)
+		local oldSeat = Staff.restPoint(state.breakArea, "Cashier")
+		samePoint(h.world.positions[CASHIER], oldSeat.x, oldSeat.z)
+		-- The fake world arrives at once, so the states are recorded as they are entered.
+		local seen: { string } = {}
+		local setState = h.world.setState
+		h.world.setState = function(world, staffId, value)
+			if staffId == CASHIER then
+				table.insert(seen, value)
+			end
+			setState(world, staffId, value)
+		end
+		local moved = ownerAct(h, "move_break_1", "Staff.MoveBreakArea", { x = -32, z = -4, rotation = 90 })
+		expect.truthy(moved.ok)
+		tick(h)
+		expect.equal(seen[1], "WalkingToBreak")
+		runUntil(h, CASHIER, "Resting", 30)
+		expect.equal(table.concat(seen, ","), "WalkingToBreak,Resting")
+		local newSeat = Staff.restPoint({ x = -32, z = -4, rotation = 90 }, "Cashier")
+		samePoint(h.world.positions[CASHIER], newSeat.x, newSeat.z)
+		local faced = lastCall(h, "face", CASHIER) :: any
+		samePoint(faced.args[2], -32, -4)
+		-- An unchanged area does not send resting staff walking again.
+		tick(h)
+		expect.equal(stateOf(h, CASHIER), "Resting")
+	end)
+
+	t.test("noteStaff reports status and energy", function()
+		local h = harness()
+		addCompany(h)
+		local count = 0
+		local function cashierRow()
+			count += 1
+			local response = ownerAct(h, "staff_summary_" .. count, "Company.GetSummary", {})
+			expect.truthy(response.ok)
+			return response.data.staff.roles[1]
+		end
+		expect.equal(cashierRow().status, nil)
+		hire(h, "Cashier")
+		expect.equal(cashierRow().status, "Arriving")
+		tick(h)
+		expect.equal(cashierRow().status, "OnTheWay")
+		runUntil(h, CASHIER, "OnDuty", 30)
+		local working = cashierRow()
+		expect.equal(working.status, "Working")
+		expect.equal(working.energy, math.floor((entryOf(h, CASHIER) :: any).energy))
+		expect.truthy(h.staff:setEnergyForTest(A, "Cashier", 20))
+		runUntil(h, CASHIER, "Resting", 30)
+		local resting = cashierRow()
+		expect.equal(resting.status, "Resting")
+		expect.truthy(resting.energy <= 21)
+		h.world.positions[CASHIER] = nil
+		tick(h)
+		expect.equal(entryOf(h, CASHIER), nil)
+		expect.equal(cashierRow().status, "Arriving")
+	end)
 end

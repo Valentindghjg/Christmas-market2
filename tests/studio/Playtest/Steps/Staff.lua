@@ -1,14 +1,19 @@
 --!strict
--- Playtest steps 44-47 (full mode): visible staff, energy and the break area (CM2-25/26).
+-- Playtest steps 44-50 (full mode): visible staff, energy and the break area (CM2-25/26).
 -- Installed by RunPlaytest.execute after Steps/Reviews. Only the shadow S gets staff fixtures
--- (setStaff, setStaffEnergy); the real company R changes only through normal actions.
+-- (setStaff, setStaffEnergy); the real company R changes only through normal actions. Steps
+-- 48 and 50 (part b) check the server side here; their client UI checks (Employees tab, the
+-- break-area bar and ghost) are done by the playtester in the client (docs/plans/CM2-25-26b.md).
 return function(ctx: any)
 	local DELIVERY_WAIT = ctx.DELIVERY_WAIT
 	local GameConfig = ctx.GameConfig
+	local R = ctx.R
 	local NpcPath = ctx.NpcPath
 	local ReplicatedStorage = ctx.ReplicatedStorage
 	local S = ctx.S
 	local SIZE = ctx.SIZE
+	local act = ctx.act
+	local actOk = ctx.actOk
 	local addStep = ctx.addStep
 	local advance = ctx.advance
 	local awaitDelivery = ctx.awaitDelivery
@@ -379,8 +384,216 @@ return function(ctx: any)
 		)
 	end
 
+	-- Part b (CM2-25-26b) --------------------------------------------------------------------
+
+	local ROLE_ORDER = { "Cashier", "LotWorker", "LotManager" }
+	local MOVE_SYNC_SECONDS = 2
+	local MOVE_REST_SECONDS = 20
+
+	local function snapHalf(value: number): number
+		return math.floor(value * 2 + 0.5) / 2
+	end
+
+	-- The break-area check input of a company: its displayed trees and its plot's lot level.
+	local function layoutOf(plotId: string?, snapshot: any): any
+		local trees = {}
+		for _, placement in snapshot.placements do
+			if type(placement.x) == "number" and type(placement.z) == "number" then
+				table.insert(trees, { x = placement.x, z = placement.z, sizeId = placement.sizeId })
+			end
+		end
+		local plot = plotFolder(plotId)
+		local level = plot and plot:GetAttribute("LotExpansionLevel")
+		return { lotExpansion = if type(level) == "number" then level else 0, trees = trees }
+	end
+
+	-- The first break-area candidate that differs from `current` and is free in `input`.
+	local function otherCandidate(input: any, current: any): any
+		for _, spot in StaffConfig.BreakArea.Candidates do
+			if (spot.x ~= current.x or spot.z ~= current.z) and Staff.checkBreakArea(input, spot.x, spot.z) then
+				return { x = spot.x, z = spot.z, rotation = 0 }
+			end
+		end
+		return nil
+	end
+
+	local function sameArea(a: any, b: any): boolean
+		return type(a) == "table" and type(b) == "table" and a.x == b.x and a.z == b.z and a.rotation == b.rotation
+	end
+
+	local function areaText(area: any): string
+		return string.format("(%s, %s, %s)", tostring(area.x), tostring(area.z), tostring(area.rotation))
+	end
+
+	-- The plot's BreakArea attributes show `area`.
+	local function plotShows(plotId: string?, area: any): boolean
+		local plot = plotFolder(plotId)
+		return plot ~= nil
+			and plot:GetAttribute("BreakAreaX") == area.x
+			and plot:GetAttribute("BreakAreaZ") == area.z
+			and plot:GetAttribute("BreakAreaRotation") == area.rotation
+	end
+
+	-- Step 48 (server side): R's summary carries the Employees tab's staff table.
+	local function employeesTabStep(): string
+		local data = actOk(R.userId, "Company.GetSummary", {})
+		local staff = data.staff
+		check(type(staff) == "table" and type(staff.roles) == "table", "summary has no staff table")
+		check(#staff.roles == #ROLE_ORDER, #staff.roles .. " staff roles, expected 3")
+		for index, id in ROLE_ORDER do
+			local entry = staff.roles[index]
+			check(entry.id == id, string.format("staff role %d is %s, expected %s", index, tostring(entry.id), id))
+			check(
+				entry.hireCost == GameConfig.Employees[id].hireCost,
+				string.format("%s hireCost %s", id, tostring(entry.hireCost))
+			)
+		end
+		local snapshot = snap(R.userId)
+		local hired = 0
+		for _, role in StaffConfig.Roles do
+			hired += snapshot.staff[role] or 0
+		end
+		check(staff.hiredCount == hired, string.format("hiredCount %s, R has %d", tostring(staff.hiredCount), hired))
+		local hqTier = if type(data.plot) == "table" then data.plot.hqTier else nil
+		local capacity = if type(hqTier) == "string"
+			then GameConfig.HQ[hqTier].employeeCapacity
+			else GameConfig.Employees.BaseCapacity
+		check(staff.capacity == capacity, string.format("capacity %s, expected %d", tostring(staff.capacity), capacity))
+		local manager = staff.roles[3]
+		check(manager.locked == true and manager.hired == false, "the Lot Manager is not locked and unhired")
+		local cashier = staff.roles[1]
+		check(
+			(cashier.hired == true) == ((snapshot.staff.Cashier or 0) >= 1),
+			"Cashier hired flag differs from the snapshot"
+		)
+		check(sameArea(staff.breakArea, snapshot.breakArea), "summary breakArea differs from the snapshot")
+		return string.format(
+			"%d / %d hired, Cashier %s, Lot Manager locked (client UI checks by the playtester)",
+			hired,
+			capacity,
+			if cashier.hired then "hired" else "not hired"
+		)
+	end
+
+	-- Step 49: S moves its break area; the resting Cashier walks to the new seat; refusals change
+	-- nothing; the area moves back.
+	local function breakAreaMoveStep(): string
+		call("setStaff", { employeeId = "Cashier", count = 1 })
+		check(
+			poll(function()
+				return staffEntry("Cashier") ~= nil
+			end, 10),
+			"S's Cashier did not appear within 10 s"
+		)
+		call("setStaffEnergy", { employeeId = "Cashier", energy = 21 })
+		check(
+			poll(function()
+				return staffState("Cashier") == "Resting"
+			end, 45),
+			"S's Cashier not Resting within 45 s (" .. tostring(staffState("Cashier")) .. ")"
+		)
+		local before = snap(S.userId)
+		local start = before.breakArea
+		local input = layoutOf(S.plotId, before)
+		local area = otherCandidate(input, start)
+		check(area ~= nil, "no other free break-area candidate on S")
+		actOk(S.userId, "Staff.MoveBreakArea", area)
+		check(
+			poll(function()
+				return plotShows(S.plotId, area)
+			end, MOVE_SYNC_SECONDS),
+			"S's BreakArea attributes do not show " .. areaText(area) .. " within 2 s"
+		)
+		check(sameArea(snap(S.userId).breakArea, area), "S breakArea is not " .. areaText(area))
+		local seat = worldPoint(S.plotId, Staff.restPoint(area, "Cashier"))
+		local rests = poll(function()
+			local root = rootOf(findStaff(S.plotId, "Cashier"))
+			return staffState("Cashier") == "Resting"
+				and root ~= nil
+				and flatDistance((root :: BasePart).Position, seat) <= SEAT_RADIUS
+		end, MOVE_REST_SECONDS)
+		check(rests, "Cashier not Resting at the new seat within 20 s (" .. tostring(staffState("Cashier")) .. ")")
+		local function refused(x: number, z: number, code: string)
+			local response = act(S.userId, "Staff.MoveBreakArea", { x = x, z = z, rotation = 0 })
+			local got = if type(response) == "table" then response.errorCode else response
+			check(
+				type(response) == "table" and response.ok ~= true and got == code,
+				string.format(
+					"move to (%s, %s) returned %s, expected %s",
+					tostring(x),
+					tostring(z),
+					tostring(got),
+					code
+				)
+			)
+			check(sameArea(snap(S.userId).breakArea, area), "breakArea changed by a refused move (" .. code .. ")")
+		end
+		refused(16, -14, "KeepClear")
+		refused(60, 0, "OutsideLot")
+		local probe = nil
+		for _, tree in input.trees do
+			local x, z = snapHalf(tree.x), snapHalf(tree.z)
+			local _, code = Staff.checkBreakArea(input, x, z)
+			if code == "TooClose" then
+				probe = { x = x, z = z }
+				break
+			end
+		end
+		check(probe ~= nil, "no S tree for the TooClose probe (" .. #input.trees .. " trees)")
+		refused(probe.x, probe.z, "TooClose")
+		actOk(S.userId, "Staff.MoveBreakArea", { x = start.x, z = start.z, rotation = start.rotation })
+		check(sameArea(snap(S.userId).breakArea, start), "S breakArea not restored to " .. areaText(start))
+		check(
+			poll(function()
+				return plotShows(S.plotId, start)
+			end, MOVE_SYNC_SECONDS),
+			"S's BreakArea attributes not restored within 2 s"
+		)
+		call("setStaff", { employeeId = "Cashier", count = 0 })
+		return string.format(
+			"moved %s -> %s, Cashier rested there; KeepClear, OutsideLot, TooClose at (%.1f, %.1f) refused; restored",
+			areaText(start),
+			areaText(area),
+			probe.x,
+			probe.z
+		)
+	end
+
+	-- Step 50 (server side): R moves its break area to a free candidate and back through the
+	-- normal action; the plot follows. The bar, the ghost and Cancel are client UI checks.
+	local function breakAreaModeStep(): string
+		local snapshot = snap(R.userId)
+		local start = snapshot.breakArea
+		local area = otherCandidate(layoutOf(R.plotId, snapshot), start)
+		check(area ~= nil, "no other free break-area candidate on R")
+		actOk(R.userId, "Staff.MoveBreakArea", area)
+		check(sameArea(snap(R.userId).breakArea, area), "R breakArea is not " .. areaText(area))
+		check(
+			poll(function()
+				return plotShows(R.plotId, area)
+			end, MOVE_SYNC_SECONDS),
+			"R's BreakArea attributes do not show " .. areaText(area) .. " within 2 s"
+		)
+		actOk(R.userId, "Staff.MoveBreakArea", { x = start.x, z = start.z, rotation = start.rotation })
+		check(sameArea(snap(R.userId).breakArea, start), "R breakArea not restored to " .. areaText(start))
+		check(
+			poll(function()
+				return plotShows(R.plotId, start)
+			end, MOVE_SYNC_SECONDS),
+			"R's BreakArea attributes not restored within 2 s"
+		)
+		return string.format(
+			"R moved %s -> %s and back (client UI checks by the playtester)",
+			areaText(start),
+			areaText(area)
+		)
+	end
+
 	addStep("44", "STAFF_CASHIER", { "03" }, withNpcCleanup(staffCashierStep))
 	addStep("45", "STAFF_BREAK", { "44" }, staffBreakStep)
 	addStep("46", "STAFF_LOT_WORKER", { "44" }, withNpcCleanup(staffLotWorkerStep))
 	addStep("47", "STAFF_SAVE_CLEAN", { "44" }, staffSaveCleanStep)
+	addStep("48", "EMPLOYEES_TAB", { "02a" }, employeesTabStep)
+	addStep("49", "BREAK_AREA_MOVE", { "03" }, breakAreaMoveStep)
+	addStep("50", "BREAK_AREA_MODE", { "02a" }, breakAreaModeStep)
 end

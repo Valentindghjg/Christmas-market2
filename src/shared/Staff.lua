@@ -95,6 +95,18 @@ function Staff.checkBreakArea(input: Stocking.LayoutInput, x: number, z: number)
 	return true, nil
 end
 
+-- Moves the save's break area (Staff.MoveBreakArea, CM2-25/26 part b). The same checks as
+-- checkBreakArea against the save's lot, keep-clear boxes, fences and trees; a refusal leaves
+-- state.breakArea unchanged. Returns (true, copy of the new area) or (false, code).
+function Staff.moveBreakArea(state, x: number, z: number, rotation: number): (boolean, any)
+	local ok, code = Staff.checkBreakArea(Stocking.layoutInput(state), x, z)
+	if not ok then
+		return false, code
+	end
+	state.breakArea = { x = x, z = z, rotation = rotation }
+	return true, table.clone(state.breakArea)
+end
+
 -- The first candidate spot that is free in this save, else candidate 1; rotation 0.
 function Staff.defaultBreakArea(state): BreakArea
 	local candidates = config().BreakArea.Candidates

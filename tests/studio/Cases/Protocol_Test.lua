@@ -369,4 +369,33 @@ return function(t)
 		expect.falsy(extra)
 		expect.equal(extraReason, "UnexpectedField")
 	end)
+
+	-- CM2-25/26 part b: x and z on the 0.5 grid within the bound, rotation a quarter turn.
+	t.test("validates Staff.MoveBreakArea payloads", function()
+		local function move(payload)
+			return Protocol.validateRequest({
+				version = 1,
+				requestId = "break_0001",
+				action = Protocol.Actions.StaffMoveBreakArea,
+				payload = payload,
+			})
+		end
+		expect.equal(Protocol.Actions.StaffMoveBreakArea, "Staff.MoveBreakArea")
+		expect.truthy(move({ x = -32, z = -4, rotation = 90 }))
+		expect.truthy(move({ x = 12.5, z = -0.5, rotation = 0 }))
+		local refused = {
+			{ x = -32, z = -4, rotation = 90, cash = 1 },
+			{ x = 0 / 0, z = -4, rotation = 90 },
+			{ x = 0.3, z = -4, rotation = 90 },
+			{ x = 201, z = -4, rotation = 90 },
+			{ x = -32, z = -4, rotation = 45 },
+			{ x = -32, z = -4 },
+			{ x = "-32", z = -4, rotation = 90 },
+		}
+		for _, payload in ipairs(refused) do
+			local ok, reason = move(payload)
+			expect.falsy(ok)
+			expect.equal(reason, "InvalidBreakArea")
+		end
+	end)
 end

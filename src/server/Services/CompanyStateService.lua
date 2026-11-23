@@ -17,6 +17,7 @@ local Protocol = require(Shared:WaitForChild("Protocol"))
 local Receiving = require(Shared:WaitForChild("Receiving"))
 local Reviews = require(Shared:WaitForChild("Reviews"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
+local Staff = require(Shared:WaitForChild("Staff"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
 local CompanyStaff = require(script.Parent:WaitForChild("CompanyStaff"))
@@ -33,7 +34,8 @@ local QuestService = require(script.Parent:WaitForChild("QuestService"))
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
 -- Staff transactions (CM2-25/26): getStaffView, setStaffEnergy, staffPeekOrder, staffClaimOrder,
--- staffLoadOrder, staffReleaseOrder, staffPeekRestock, staffRestock.
+-- staffLoadOrder, staffReleaseOrder, staffPeekRestock, staffRestock, noteStaff,
+-- setBreakAreaChangedHandler, _notifyBreakArea.
 CompanyStaff.install(CompanyStateService)
 
 -- Persistence results that mean this server no longer owns a valid writable session.
@@ -744,6 +746,7 @@ local MEMBER_ACTIONS = {
 	[Protocol.Actions.SupplierSellBack] = true,
 	[Protocol.Actions.SupplierRequestQuote] = true,
 	[Protocol.Actions.CompanyGetSummary] = true,
+	[Protocol.Actions.StaffMoveBreakArea] = true,
 }
 
 local function canPerformAction(state, userId: number, action: string): boolean
@@ -844,6 +847,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 				supplier = SupplierStockService.summary(state, self._clock()),
 				customers = CustomerOrderService.summary(state, session.npcClaims),
 				pricing = PricingService.summary(state),
+				staff = CompanyStaff.summary(session, state),
 			},
 		}
 	end
@@ -913,6 +917,8 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 		succeeded, result = CustomerOrderService.release(state, userId, payload.orderNumber)
 	elseif action == Protocol.Actions.SupplierSellBack then
 		succeeded, result = SupplierStockService.sellBack(state, payload.speciesId, payload.sizeId, payload.quantity)
+	elseif action == Protocol.Actions.StaffMoveBreakArea then
+		succeeded, result = Staff.moveBreakArea(state, payload.x, payload.z, payload.rotation)
 	end
 	Protocol.finishRequest(record, succeeded and "Success" or tostring(result))
 	-- The request record changed even when the action was rejected.
@@ -928,6 +934,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 		placementsChanged = PLACEMENT_ACTIONS[action] == true,
 		ordersChanged = ORDER_ACTIONS[action] == true,
 		receivingChanged = RECEIVING_ACTIONS[action] == true,
+		breakAreaChanged = action == Protocol.Actions.StaffMoveBreakArea,
 	}
 end
 
@@ -967,9 +974,13 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 	if response.receivingChanged then
 		self:_notifyReceiving(companyId, session)
 	end
+	if response.breakAreaChanged then
+		self:_notifyBreakArea(companyId, session)
+	end
 	response.placementsChanged = nil
 	response.ordersChanged = nil
 	response.receivingChanged = nil
+	response.breakAreaChanged = nil
 	return response
 end
 
@@ -1367,7 +1378,7 @@ end
 function CompanyStateService:setStaffForTest(companyId: string, employeeId: string, count: number): boolean
 	local employee = GameConfig.Employees[employeeId]
 	if
-		not employee
+		type(employee) ~= "table"
 		or type(count) ~= "number"
 		or count ~= math.floor(count)
 		or count < 0
