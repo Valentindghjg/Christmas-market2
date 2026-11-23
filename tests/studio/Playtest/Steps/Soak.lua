@@ -70,6 +70,8 @@ return function(ctx: any)
 		local served, refused = 0, 0
 		local firstRefusal = "-"
 		local forced, tries = 0, 0
+		-- CM2-25/26 Amendment 2: forced visits without a free space become the next arrival.
+		local nextArrivals = 0
 
 		local function summaryOf(userId: number): any
 			return invoke("customerOrders", userId)
@@ -192,17 +194,16 @@ return function(ctx: any)
 			if tick % 4 == 0 then
 				for _, userId in companies do
 					local summary = summaryOf(userId)
-					if
-						summary
-						and summary.parkingSpaces - summary.activeCustomers >= 1
-						and hasDisplayedMedium(plotOf(userId))
-					then
+					if summary and hasDisplayedMedium(plotOf(userId)) then
 						local profile = 8 + 24 * (visitCounter % 9)
 						visitCounter += 1
 						local response = invoke("visit", { userId = userId, profile = profile })
 						tries += 1
 						if type(response) == "table" and response.ok == true then
 							forced += 1
+						elseif type(response) == "table" and response.errorCode == "NoParking" then
+							call("npcNextArrival", { userId = userId, profile = profile })
+							nextArrivals += 1
 						end
 					end
 				end
@@ -280,7 +281,7 @@ return function(ctx: any)
 			return count
 		end
 		detail ..= string.format(
-			" | R sales %d visits %d abandoned %d walked out %d drive-pasts %d at counter %d served %d refused %d (%s) | S sales %d visits %d abandoned %d walked out %d drive-pasts %d at counter %d cashier %d | forced %d/%d",
+			" | R sales %d visits %d abandoned %d walked out %d drive-pasts %d at counter %d served %d refused %d (%s) | S sales %d visits %d abandoned %d walked out %d drive-pasts %d at counter %d cashier %d | forced %d/%d next-arrival %d",
 			endR.sales - startR.sales,
 			endR.customerVisits - startR.customerVisits,
 			endR.abandonedCustomers - startR.abandonedCustomers,
@@ -298,7 +299,8 @@ return function(ctx: any)
 			seenOn(S.plotId),
 			endS.staff.Cashier,
 			forced,
-			tries
+			tries,
+			nextArrivals
 		)
 		ctx.emit("DETAIL 03 " .. detail)
 		if npcSnaps > 0 then
@@ -321,16 +323,19 @@ return function(ctx: any)
 		return detail
 	end)
 
-	-- CM2-N1: 24 NPCs on plots 1-6 (including the mirrored ones) keep >= 55 FPS.
+	-- CM2-N1: 24 NPCs on plots 1-6 (including the mirrored ones) keep >= 55 FPS; CM2-25/26
+	-- adds 12 walking load staff (2 per plot).
 	addStep("03a", "NPC_LOAD", { "01" }, function()
 		call("pauseCustomers", true)
 		-- Fix round 1 (P2): real visits still live from soak 03 would take budget room.
 		resetCustomers()
-		local result = call("npcLoadTest", { seconds = 60 })
+		local result = call("npcLoadTest", { seconds = 60, staff = true })
 		local detail = string.format(
-			"spawned %d, peak %d, %d windows, min %.1f FPS, mean %.1f FPS, snaps %d, left %d",
+			"spawned %d, peak %d, staff %d (peak %d), %d windows, min %.1f FPS, mean %.1f FPS, snaps %d, left %d",
 			result.spawned,
 			result.peakLive,
+			result.staffSpawned,
+			result.peakStaff,
 			result.windows,
 			result.minFps,
 			result.meanFps,
@@ -339,6 +344,8 @@ return function(ctx: any)
 		)
 		check(result.spawned == 24, "spawned is not 24 | " .. detail)
 		check(result.peakLive == 24, "peak live is not 24 | " .. detail)
+		check(result.staffSpawned == 12, "staff spawned is not 12 | " .. detail)
+		check(result.peakStaff >= 12, "staff peak is below 12 | " .. detail)
 		check(result.minFps >= 55, "a window ran below 55 FPS | " .. detail)
 		check(result.snaps == 0, "load NPCs snapped | " .. detail)
 		check(result.left == 0, "load NPCs left over | " .. detail)

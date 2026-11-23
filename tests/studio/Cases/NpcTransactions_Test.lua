@@ -184,13 +184,50 @@ return function(t)
 		expect.equal(state.walkedOutCustomers, walkedOut + 1)
 	end)
 
-	t.test("hasCashier follows the hired count", function()
-		local service = setup(0)
-		expect.falsy(service:hasCashier(COMPANY))
+	-- CM2-25/26: the staff director's view of a live company.
+	t.test("getStaffView follows hires, energy and break area", function()
+		local service, state = setup(0)
+		local view = service:getStaffView(COMPANY)
+		expect.truthy(view ~= nil)
+		expect.equal(view.token, service:sessionToken(COMPANY))
+		expect.falsy(view.hired.Cashier)
+		expect.falsy(view.hired.LotWorker)
+		expect.equal(view.hired.LotManager, nil)
+		expect.equal(view.energy.Cashier, 100)
+		expect.equal(view.breakArea.x, state.breakArea.x)
+		expect.equal(view.breakArea.z, state.breakArea.z)
+		expect.equal(view.lotExpansion, 0)
 		expect.truthy(service:setStaffForTest(COMPANY, "Cashier", 1))
-		expect.truthy(service:hasCashier(COMPANY))
+		expect.truthy(service:setStaffEnergy(COMPANY, { Cashier = 42.7, Unknown = 5 }))
+		state.breakArea = { x = -32, z = -4, rotation = 90 }
+		view = service:getStaffView(COMPANY)
+		expect.truthy(view.hired.Cashier)
+		expect.equal(view.energy.Cashier, 42)
+		expect.equal(view.energy.Unknown, nil)
+		expect.equal(view.breakArea.z, -4)
+		expect.equal(view.breakArea.rotation, 90)
+		-- A detached copy: changing the view changes nothing in the record.
+		view.energy.Cashier = 1
+		view.breakArea.x = 0
+		expect.equal(state.staffEnergy.Cashier, 42)
+		expect.equal(state.breakArea.x, -32)
 		expect.truthy(service:unloadCompany(COMPANY))
-		expect.falsy(service:hasCashier(COMPANY))
+		expect.equal(service:getStaffView(COMPANY), nil)
+	end)
+
+	-- CM2-25/26 Amendment 2: the playtest reads the sold spots from the test snapshot.
+	t.test("the test snapshot lists the sold spots", function()
+		local service = setup(1)
+		local first = service:snapshotForTest(COMPANY) :: any
+		expect.equal(#first.vacatedSpots, 0)
+		expect.truthy(service:npcArrive(COMPANY, "visit:1"))
+		expect.truthy(service:npcDecide(COMPANY, "visit:1", 8, 0))
+		expect.truthy(service:npcSettle(COMPANY, "visit:1", "douglas_1"))
+		local spots = (service:snapshotForTest(COMPANY) :: any).vacatedSpots
+		expect.equal(#spots, 1)
+		expect.equal(spots[1].x, -28)
+		expect.equal(spots[1].z, -20)
+		expect.equal(spots[1].sizeId, "Medium")
 	end)
 
 	t.test("npcSweep removes orphans only", function()

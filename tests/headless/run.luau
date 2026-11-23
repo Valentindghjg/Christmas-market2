@@ -42,6 +42,7 @@ local server = child(serverScriptService, "Server")
 local services = child(server, "Services")
 for name, path in pairs({
 	AnalyticsService = "src/server/Services/AnalyticsService.lua",
+	CompanyStaff = "src/server/Services/CompanyStaff.lua",
 	CompanyStateService = "src/server/Services/CompanyStateService.lua",
 	CustomerOrderService = "src/server/Services/CustomerOrderService.lua",
 	CustomerNpcService = "src/server/Services/CustomerNpcService.lua",
@@ -62,6 +63,7 @@ for name, path in pairs({
 	SaveSlotService = "src/server/Services/SaveSlotService.lua",
 	SaveSlotShared = "src/server/Services/SaveSlotShared.lua",
 	SaveSlotTeam = "src/server/Services/SaveSlotTeam.lua",
+	StaffNpcService = "src/server/Services/StaffNpcService.lua",
 }) do
 	child(services, name, path)
 end
@@ -86,6 +88,7 @@ local sourcePaths = {
 	Reviews = "src/shared/Reviews.lua",
 	Receiving = "src/shared/Receiving.lua",
 	SaveProfile = "src/shared/SaveProfile.lua",
+	Staff = "src/shared/Staff.lua",
 	Stocking = "src/shared/Stocking.lua",
 	SupplierCatalog = "src/shared/SupplierCatalog.lua",
 	TreeHeight = "src/shared/TreeHeight.lua",

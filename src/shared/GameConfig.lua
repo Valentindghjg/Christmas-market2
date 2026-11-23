@@ -187,6 +187,54 @@ GameConfig.Employees = {
 		maxCount = 1,
 		evidence = GameConfig.Evidence.Observed,
 	},
+	-- CM2-25/26: config and save slot only; hire, avatar and computer job come with CM2-G9.
+	LotManager = {
+		hireCost = 1250000,
+		role = "OrderingAtComputer",
+		maxCount = 1,
+		requiredHqTier = 4,
+		evidence = GameConfig.Evidence.Observed,
+	},
+}
+
+-- Visible staff at work, energy and the break area (CM2-25/26, docs/plans/CM2-25-26a.md). All
+-- values are PROVISIONAL unless marked. Points are in the lot frame (x from the plot centre, z
+-- toward the road). No wages: staff cost only the one-time hire.
+GameConfig.Staff = {
+	Roles = { "Cashier", "LotWorker", "LotManager" }, -- index = rest seat
+	WorkingRoles = { "Cashier", "LotWorker" },
+	-- The Lot Worker's carrier ID on customer orders; Roblox UserIds are >= 1 live, Studio test
+	-- players <= -1 and the playtest shadows 999999999001/2.
+	CarrierUserId = 0,
+	MaxPerPlot = 3,
+	MaxPerServer = 18, -- = 6 plots x 3
+	TickSeconds = 0.25,
+	EnergySaveSeconds = 15,
+	RespawnSeconds = 5,
+	RestMaxSeconds = 60,
+	-- "Gentle" fatigue: work ~6.7 min, break ~40 s plus walks.
+	Energy = { Max = 100, DrainPerSecond = 0.2, RestPerSecond = 2, TiredAt = 20, RestedAt = 100 },
+	VacatedSpotCap = 20,
+	LotWorkerPost = { x = 26, z = 5 }, -- faces { x = 0, z = 5 }
+	BayApproachX = 26.5, -- bay z = -22 + 6 (i - 1) (WorldService BAY_FIRST_DEPTH / BAY_DEPTH_STEP)
+	Pickup = { FirstX = 23, Step = 4.5, ApproachZ = 9 }, -- WorldService pickup row x 23 + 4.5 (space - 1), z 13
+	-- Square HalfSize * 2 on a side; Logs and RestPoints in the area frame.
+	BreakArea = {
+		HalfSize = 4,
+		Candidates = { { x = -32, z = -20 }, { x = -32, z = -4 }, { x = 25.5, z = -22 }, { x = -32, z = 4 } },
+		Logs = { { x = 0, z = 2.4 }, { x = -2.4, z = 0 }, { x = 2.4, z = 0 } },
+		RestPoints = { { x = 0, z = 3.6 }, { x = -3.6, z = 0 }, { x = 3.6, z = 0 } },
+	},
+	-- Uniform in our palette (ArtPalette RoofGreen, MetalDark, GoldAccent, FabricCream, RoofRed).
+	Uniform = {
+		Coat = { 58, 104, 88 },
+		Pants = { 52, 58, 64 },
+		Scarf = { 214, 170, 72 },
+		Apron = { 232, 220, 196 },
+		Boots = { 78, 50, 32 },
+		Skin = { 234, 184, 146 },
+		Beanie = { Cashier = { 214, 170, 72 }, LotWorker = { 170, 46, 46 }, LotManager = { 52, 58, 64 } },
+	},
 }
 
 GameConfig.HQ = {
@@ -217,8 +265,6 @@ GameConfig.Customers = {
 	-- OBSERVED by arithmetic (REFERENCE header table)
 	SaleReputation = 0,
 	MissedPickupReputationPenalty = 1,
-	-- PROVISIONAL: a hired Lot Worker needs this long to carry a tree to the car.
-	WorkerLoadSeconds = 15,
 	-- Server-side reach check for carry/load interactions, in studs.
 	InteractDistance = 16,
 	MaxOpenCustomerOrders = 8,

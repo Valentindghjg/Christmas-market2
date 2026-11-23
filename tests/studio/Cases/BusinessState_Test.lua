@@ -181,7 +181,7 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(BusinessState.SCHEMA_VERSION, 15)
+		expect.equal(BusinessState.SCHEMA_VERSION, 16)
 		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(migrated.cash, 777)
 		expect.equal(migrated.reputation, 120)
@@ -472,7 +472,7 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(migrated.schemaVersion, 15)
+		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(migrated.reviews.count, 0)
 		expect.equal(#migrated.reviews.recent, 0)
 		expect.equal(migrated.likes.total, 0)
@@ -514,6 +514,88 @@ return function(t)
 		expect.truthy(BusinessState.validate(valid))
 		for _, mutate in ipairs(mutations) do
 			local state = BusinessState.new("save:42_x", 42)
+			mutate(state)
+			expect.falsy(BusinessState.validate(state))
+		end
+	end)
+
+	-- CM2-25/26: schema 16 adds the Lot Manager slot, staff energy and the break area.
+	t.test("migrates v15 to v16 with staff energy and a break area", function()
+		local legacy = BusinessState.new("save:42_x", 42)
+		legacy.schemaVersion = 15
+		legacy.staff = { Cashier = 1, LotWorker = 0 }
+		legacy.staffEnergy = nil
+		legacy.breakArea = nil
+		legacy.cash = 777
+		legacy.reputation = 120
+		legacy.spent = 1200
+		-- A tree on candidate 1 moves the default break area to candidate 2.
+		legacy.layout.placements.blocker = {
+			speciesId = "DouglasFir",
+			sizeId = "Medium",
+			transform = { x = -32, y = 0, z = -20, rotation = 0 },
+		}
+		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(migrated.schemaVersion, 16)
+		expect.equal(migrated.staff.Cashier, 1)
+		expect.equal(migrated.staff.LotWorker, 0)
+		expect.equal(migrated.staff.LotManager, 0)
+		for _, role in ipairs(GameConfig.Staff.Roles) do
+			expect.equal(migrated.staffEnergy[role], 100)
+		end
+		local second = GameConfig.Staff.BreakArea.Candidates[2]
+		expect.equal(migrated.breakArea.x, second.x)
+		expect.equal(migrated.breakArea.z, second.z)
+		expect.equal(migrated.breakArea.rotation, 0)
+		expect.equal(migrated.cash, 777)
+		expect.equal(migrated.reputation, 120)
+		expect.equal(migrated.spent, 1200)
+		expect.truthy(BusinessState.validate(migrated))
+		local fresh = BusinessState.new("save:42_y", 42)
+		expect.equal(fresh.staff.LotManager, 0)
+		expect.equal(fresh.staffEnergy.LotWorker, 100)
+		expect.equal(fresh.breakArea.x, GameConfig.Staff.BreakArea.Candidates[1].x)
+		expect.truthy(BusinessState.validate(fresh))
+	end)
+
+	t.test("rejects invalid staff energy, break area and Lot Manager count", function()
+		local mutations = {
+			function(state)
+				state.staffEnergy.Cashier = 101
+			end,
+			function(state)
+				state.staffEnergy.LotWorker = 0 / 0
+			end,
+			function(state)
+				state.staffEnergy.LotManager = 50.5
+			end,
+			function(state)
+				state.staffEnergy = nil
+			end,
+			function(state)
+				state.breakArea.rotation = 45
+			end,
+			function(state)
+				state.breakArea.x = 0 / 0
+			end,
+			function(state)
+				state.breakArea.z = GameConfig.Placement.CoordinateLimit + 1
+			end,
+			function(state)
+				state.breakArea = nil
+			end,
+			function(state)
+				state.staff.LotManager = 2
+			end,
+			function(state)
+				state.staff.LotManager = nil
+			end,
+		}
+		for _, mutate in ipairs(mutations) do
+			local state = BusinessState.new("save:42_x", 42)
+			expect.truthy(BusinessState.validate(state))
 			mutate(state)
 			expect.falsy(BusinessState.validate(state))
 		end

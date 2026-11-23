@@ -110,6 +110,8 @@ return function(t)
 	-- STK-02: a row is validated as a whole before anything changes.
 	t.test("a row fill places all trees or none", function()
 		local state = stateWithBays({ { "DouglasFir", { Medium = 5 } } })
+		-- CM2-25/26: the default break area (candidate 1) covers this row; it stands elsewhere here.
+		state.breakArea = { x = 25.5, z = -22, rotation = 0 }
 		local blocked, reason = placeAt(state, "placement:blocked", 1, "DouglasFir", -10.6, -20, 5)
 		expect.falsy(blocked)
 		expect.equal(reason, "KeepClear")

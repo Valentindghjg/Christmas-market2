@@ -19,6 +19,7 @@ local Reviews = require(Shared:WaitForChild("Reviews"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
+local CompanyStaff = require(script.Parent:WaitForChild("CompanyStaff"))
 local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
 local CustomerService = require(script.Parent:WaitForChild("CustomerService"))
 local CustomerSimulationService = require(script.Parent:WaitForChild("CustomerSimulationService"))
@@ -31,6 +32,9 @@ local QuestService = require(script.Parent:WaitForChild("QuestService"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
+-- Staff transactions (CM2-25/26): getStaffView, setStaffEnergy, staffPeekOrder, staffClaimOrder,
+-- staffLoadOrder, staffReleaseOrder, staffPeekRestock, staffRestock.
+CompanyStaff.install(CompanyStateService)
 
 -- Persistence results that mean this server no longer owns a valid writable session.
 local FAIL_CLOSED_SAVE_ERRORS = { SessionLocked = true, NotLoaded = true }
@@ -644,16 +648,15 @@ function CompanyStateService:simulateCustomerVisits()
 	end)
 end
 
--- Customers whose patience ran out leave; a Lot Worker loads waiting orders.
+-- Customers whose patience ran out leave. The walking Lot Worker loads orders through
+-- CompanyStaff (CM2-25/26); there is no timer load any more.
 function CompanyStateService:serviceCustomerOrdersAll()
 	return self:_runPass(function(state)
 		return next(state.customerOrders) ~= nil
 	end, function(state)
 		local reviews = {}
-		local expired = CustomerOrderService.expire(state, self._clock(), reviews)
-		local loadedCount, loadedNumbers = CustomerOrderService.autoLoad(state, self._clock(), reviews)
-		local changed = expired + loadedCount
-		return changed, false, if changed > 0 then { loaded = loadedNumbers, reviews = reviews } else false
+		local changed = CustomerOrderService.expire(state, self._clock(), reviews)
+		return changed, false, if changed > 0 then { loaded = {}, reviews = reviews } else false
 	end)
 end
 
@@ -1190,6 +1193,19 @@ function CompanyStateService:npcSettle(
 	end
 	local entered, ok, result = self:_withSession(companyId, session, function(state)
 		local space = claimOf(session, visitId)
+		-- The sold spot, copied before the sale removes the placement (CM2-25/26 restock).
+		local placement = state.layout.placements[placementId]
+		local transform = if type(placement) == "table" then placement.transform else nil
+		local vacated = nil
+		if type(transform) == "table" and type(transform.x) == "number" and type(transform.z) == "number" then
+			vacated = {
+				x = transform.x,
+				z = transform.z,
+				rotation = if type(transform.rotation) == "number" then transform.rotation else 0,
+				sizeId = placement.sizeId,
+				speciesId = placement.speciesId,
+			}
+		end
 		local sold, sale = CustomerSimulationService.completeVisit(
 			state,
 			{ placementId = placementId, customerId = visitId },
@@ -1206,6 +1222,9 @@ function CompanyStateService:npcSettle(
 		end
 		if space ~= nil then
 			session.npcClaims[space] = nil
+		end
+		if vacated ~= nil then
+			CompanyStaff.noteVacated(session, vacated)
 		end
 		return true, sale
 	end)
@@ -1291,15 +1310,6 @@ function CompanyStateService:refreshPlacements(companyId: string)
 	end
 end
 
--- Whether the company has a Cashier hired (CM2-N2: it serves the counter); read-only.
-function CompanyStateService:hasCashier(companyId: string): boolean
-	local session = self._sessions[companyId]
-	if not session or not session.healthy then
-		return false
-	end
-	return session.state.staff.Cashier >= 1
-end
-
 -- Studio test instruments only (StudioTestService); never called by gameplay code.
 
 -- Copy of the walking customers' parking claims; nil without a session.
@@ -1352,7 +1362,8 @@ function CompanyStateService:visitForTest(companyId: string, customerNumber: num
 	return success, result
 end
 
--- Sets the hired count of one employee type without touching cash.
+-- Sets the hired count of one employee type (GameConfig.Employees, Lot Manager included)
+-- without touching cash.
 function CompanyStateService:setStaffForTest(companyId: string, employeeId: string, count: number): boolean
 	local employee = GameConfig.Employees[employeeId]
 	if
@@ -1420,6 +1431,11 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 	table.sort(placements, function(a, b)
 		return a.placementId < b.placementId
 	end)
+	-- CM2-25/26 Amendment 2: the sold spots the Lot Worker may restock, oldest first.
+	local vacatedSpots = {}
+	for _, spot in ipairs(session.vacatedSpots or {}) do
+		table.insert(vacatedSpots, { x = spot.x, z = spot.z, sizeId = spot.sizeId })
+	end
 	local clock = self._clock()
 	return {
 		saveName = state.saveName,
@@ -1433,6 +1449,9 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		placements = placements,
 		mediumPrices = table.clone(state.mediumPrices),
 		staff = table.clone(state.staff),
+		staffEnergy = table.clone(state.staffEnergy),
+		breakArea = table.clone(state.breakArea),
+		vacatedSpots = vacatedSpots,
 		loadedOrders = state.loadedOrders,
 		missedPickups = state.missedPickups,
 		drivePastCustomers = state.drivePastCustomers,

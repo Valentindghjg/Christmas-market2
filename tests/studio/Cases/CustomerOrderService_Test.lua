@@ -127,21 +127,25 @@ return function(t)
 		expect.equal(state.reputation, reputation - 1)
 	end)
 
-	t.test("Lot Worker loads leave reviews", function()
-		local state, first = stateWithSale()
-		local second = addOrder(state, "placement:second", 100)
-		state.staff.LotWorker = 1
-		local reviews = {}
-		local timestamp = first.soldAt + GameConfig.Customers.WorkerLoadSeconds
-		local count = Orders.autoLoad(state, timestamp, reviews)
-		expect.equal(count, 2)
-		expect.equal(#reviews, 2)
-		local stars = Reviews.starsFor(timestamp - first.soldAt)
-		expect.equal(reviews[1].orderNumber, first.orderNumber)
-		expect.equal(reviews[2].orderNumber, second.orderNumber)
-		expect.equal(reviews[1].stars, stars)
-		expect.equal(reviews[2].stars, stars)
-		expect.equal(state.reviews.count, 2)
+	-- CM2-25/26: the walking Lot Worker carries and loads with the staff carrier ID.
+	t.test("the staff carrier loads like a player and leaves a review", function()
+		local state, order = stateWithSale()
+		local carrier = GameConfig.Staff.CarrierUserId
+		local reputation = state.reputation
+		expect.truthy(Orders.carry(state, carrier, order.orderNumber))
+		local taken, reason = Orders.carry(state, 42, order.orderNumber)
+		expect.falsy(taken)
+		expect.equal(reason, "AlreadyCarried")
+		local timestamp = order.soldAt + 20
+		local loaded, review = Orders.load(state, carrier, order.orderNumber, order.orderNumber, timestamp)
+		expect.truthy(loaded)
+		local stars = Reviews.starsFor(timestamp - order.soldAt)
+		expect.equal(review.orderNumber, order.orderNumber)
+		expect.equal(review.stars, stars)
+		expect.equal(state.reputation, reputation + GameConfig.Reviews.ReputationByStars[stars])
+		expect.equal(state.loadedOrders, 1)
+		expect.equal(state.reviews.count, 1)
+		expect.equal(state.customerOrders[tostring(order.orderNumber)], nil)
 	end)
 
 	t.test("rejects the wrong car without completing", function()
@@ -181,15 +185,6 @@ return function(t)
 		expect.equal(state.customerOrders[tostring(order.orderNumber)], nil)
 		expect.equal(state.missedPickups, 1)
 		expect.equal(state.reputation, reputation - GameConfig.Customers.MissedPickupReputationPenalty)
-	end)
-
-	t.test("a lot worker loads uncarried orders after the walk", function()
-		local state, order = stateWithSale()
-		expect.equal(Orders.autoLoad(state, 200), 0)
-		state.staff.LotWorker = 1
-		expect.equal(Orders.autoLoad(state, order.soldAt + GameConfig.Customers.WorkerLoadSeconds - 1), 0)
-		expect.equal(Orders.autoLoad(state, order.soldAt + GameConfig.Customers.WorkerLoadSeconds), 1)
-		expect.equal(state.loadedOrders, 1)
 	end)
 
 	t.test("a reload clears carried trees", function()
@@ -327,14 +322,6 @@ return function(t)
 		local order = addOrder(state, "placement:carried", 100)
 		expect.truthy(Orders.carry(state, 42, order.orderNumber))
 		expect.equal(service:getCarriedOrderNumber("personal:42", 42), order.orderNumber)
-	end)
-
-	t.test("reports which orders a lot worker loaded", function()
-		local state, order = stateWithSale()
-		state.staff.LotWorker = 1
-		local count, numbers = Orders.autoLoad(state, order.soldAt + GameConfig.Customers.WorkerLoadSeconds)
-		expect.equal(count, 1)
-		expect.equal(numbers[1], order.orderNumber)
 	end)
 
 	t.test("a reload trims orders beyond the configured maximum", function()

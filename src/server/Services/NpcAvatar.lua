@@ -179,6 +179,16 @@ function NpcAvatar.build(look): Model?
 		torso.CFrame * CFrame.new(torsoSize.X * 0.2, torsoSize.Y * 0.15, -torsoSize.Z * 0.58),
 		rgb(look.scarf)
 	)
+	-- Staff (CM2-25/26): a welded apron over the uniform coat.
+	if look.apron then
+		cloth(
+			torso,
+			"Apron",
+			Vector3.new(torsoSize.X * 0.8, torsoSize.Y * 0.9, 0.12),
+			torso.CFrame * CFrame.new(0, -torsoSize.Y * 0.05, -torsoSize.Z * 0.55),
+			rgb(look.apron)
+		)
+	end
 
 	pcall(function()
 		model:ScaleTo(look.scale)

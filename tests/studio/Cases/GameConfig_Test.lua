@@ -253,4 +253,38 @@ return function(t)
 			expect.truthy(distance > Placement.DecorFenceRadius)
 		end
 	end)
+
+	-- CM2-25/26: visible staff, energy and the break area.
+	t.test("staff config is consistent", function()
+		local Staff = GameConfig.Staff
+		expect.equal(Staff.MaxPerServer, #GameConfig.PersonalPlotIds * Staff.MaxPerPlot)
+		expect.equal(Staff.MaxPerPlot, #Staff.Roles)
+		expect.truthy(Staff.Energy.TiredAt < Staff.Energy.RestedAt)
+		expect.truthy(Staff.Energy.RestedAt <= Staff.Energy.Max)
+		expect.equal(Staff.CarrierUserId, 0)
+		expect.equal(GameConfig.Customers.WorkerLoadSeconds, nil)
+		for _, role in ipairs(Staff.Roles) do
+			expect.truthy(GameConfig.Employees[role] ~= nil)
+			expect.equal(GameConfig.Employees[role].maxCount, 1)
+		end
+		expect.equal(GameConfig.Employees.LotManager.hireCost, 1250000)
+		expect.equal(GameConfig.Employees.LotManager.requiredHqTier, 4)
+		expect.equal(#Staff.BreakArea.Logs, #Staff.Roles)
+		expect.equal(#Staff.BreakArea.RestPoints, #Staff.Roles)
+		local function colour(rgb)
+			expect.equal(#rgb, 3)
+			for _, channel in ipairs(rgb) do
+				expect.truthy(channel >= 0 and channel <= 255 and channel == math.floor(channel))
+			end
+		end
+		for key, value in pairs(Staff.Uniform) do
+			if key == "Beanie" then
+				for _, role in ipairs(Staff.Roles) do
+					colour(value[role])
+				end
+			else
+				colour(value)
+			end
+		end
+	end)
 end

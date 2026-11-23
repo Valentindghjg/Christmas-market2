@@ -53,4 +53,26 @@ return function(t)
 			expect.truthy(table.find(Look.Scales, look.scale) ~= nil)
 		end
 	end)
+
+	-- CM2-25/26: staff wear the uniform; the beanie shows the role.
+	t.test("staff wear the uniform with an apron", function()
+		local Uniform = GameConfig.Staff.Uniform
+		local cashier = NpcLook.forStaff("Cashier")
+		local worker = NpcLook.forStaff("LotWorker")
+		for _, look in ipairs({ cashier, worker }) do
+			expect.equal(look.coat, Uniform.Coat)
+			expect.equal(look.pants, Uniform.Pants)
+			expect.equal(look.scarf, Uniform.Scarf)
+			expect.equal(look.skin, Uniform.Skin)
+			expect.equal(look.boots, Uniform.Boots)
+			expect.equal(look.apron, Uniform.Apron)
+			expect.equal(look.pompom, false)
+			expect.equal(look.scale, 1)
+		end
+		expect.equal(cashier.beanie, Uniform.Beanie.Cashier)
+		expect.equal(worker.beanie, Uniform.Beanie.LotWorker)
+		expect.equal(NpcLook.forStaff("LotManager").beanie, Uniform.Beanie.LotManager)
+		expect.truthy(key(cashier.beanie) ~= key(worker.beanie))
+		expect.equal(NpcLook.forVisit(1).apron, nil)
+	end)
 end

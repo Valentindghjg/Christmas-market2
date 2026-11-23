@@ -79,12 +79,14 @@ local function elapsed(now: number, since: number, seconds: number): boolean
 	return now - since >= seconds - EPSILON
 end
 
--- deps = {companies, plotOf(companyId) -> plotId?, world, now() -> seconds}
+-- deps = {companies, plotOf(companyId) -> plotId?, world, now() -> seconds, staff?}; staff
+-- (CM2-25/26, StaffNpcService) answers cashierReady(companyId).
 -- options = {maxPerServer?, maxPerPlot?, maxVisitSeconds?}
 function CustomerNpcService.new(deps, options)
 	local self = setmetatable({}, CustomerNpcService)
 	local opts = if type(options) == "table" then options else {}
 	self._companies = deps.companies
+	self._staff = deps.staff
 	self._plotOf = deps.plotOf
 	self._worldAdapter = deps.world
 	self._now = deps.now
@@ -550,18 +552,24 @@ function STEP.Queued(self, visit, now: number)
 	end
 end
 
--- The counter waits for the player's prompt (checkout) or a hired Cashier; without a
--- Cashier the customer walks out once its patience ran out.
+-- The counter waits for the player's prompt (checkout) or the visible Cashier on duty
+-- (CM2-25/26): it serves CashierCheckoutSeconds after the first tick it stands at the counter
+-- while this customer waits. Without a Cashier on duty (none hired, walking, resting) the
+-- customer walks out once its patience ran out.
 function STEP.CheckingOut(self, visit, now: number)
 	if visit.settling then
 		return
 	end
-	if self._companies:hasCashier(visit.companyId) then
-		if elapsed(now, visit.enteredAt, Npc.CashierCheckoutSeconds) then
+	if self._staff ~= nil and self._staff:cashierReady(visit.companyId) then
+		visit.cashierSince = visit.cashierSince or now
+		if elapsed(now, visit.cashierSince, Npc.CashierCheckoutSeconds) then
 			self:_serve(visit)
 		end
-	elseif self:_patienceOut(visit, now) then
-		self:_walkOut(visit)
+	else
+		visit.cashierSince = nil
+		if self:_patienceOut(visit, now) then
+			self:_walkOut(visit)
+		end
 	end
 end
 
@@ -664,6 +672,7 @@ local function newVisit(id: string, seq: number, plotId: string, space: number, 
 		queuedAt = nil :: number?,
 		settling = false,
 		walkedOut = false,
+		cashierSince = nil :: number?,
 	}
 end
 

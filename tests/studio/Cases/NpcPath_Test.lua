@@ -122,4 +122,20 @@ return function(t)
 			samePoint(NpcPath.fromWorld(c, w.x, w.z), slot.x, slot.z)
 		end
 	end)
+
+	-- CM2-25/26 Amendment 3: the queue legs end on the slots; from the left the route to slot 2
+	-- passes the counter corner first.
+	t.test("routes end exactly at queue slots 1 and 2", function()
+		local starts = { { -35, -9.4 }, { 25.5, -11.4 }, { 26.4, -22 }, { 11.5, 9.6 }, { 25.5, 2.6 } }
+		for _, from in ipairs(starts) do
+			for slotIndex = 1, 2 do
+				local slot = NpcPath.queueSlot(slotIndex)
+				local route = NpcPath.route({ x = from[1], z = from[2] }, slot, 0)
+				samePoint(route[#route], slot.x, slot.z)
+			end
+		end
+		local left = NpcPath.route({ x = -35, z = -9.4 }, NpcPath.queueSlot(2), 0)
+		expect.truthy(#left >= 2)
+		samePoint(left[#left - 1], 12, -11.5)
+	end)
 end

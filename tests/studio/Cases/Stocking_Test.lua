@@ -60,4 +60,26 @@ return function(t)
 		expect.equal(Stocking.facing(-75), 1)
 		expect.equal(Stocking.facing(75), -1)
 	end)
+
+	-- CM2-25/26: the staff break area is a keep-clear square for trees.
+	t.test("a tree may not stand in the break area", function()
+		local layout = { lotExpansion = 0, trees = {}, breakArea = { x = -32, z = -20 } }
+		expect.equal(reason(layout, -32, -20), "KeepClear")
+		expect.equal(reason(layout, -35, -13.4), "KeepClear")
+		expect.equal(reason(layout, -35, -13), nil)
+		expect.equal(reason(input(), -32, -20), nil)
+		local box = Stocking.breakAreaBox({ x = -32, z = -20 })
+		expect.truthy(box ~= nil)
+		expect.equal((box :: any).minX, -36)
+		expect.equal((box :: any).maxZ, -16)
+		expect.equal(Stocking.breakAreaBox({ x = 0 / 0, z = 0 }), nil)
+		expect.equal(Stocking.breakAreaBox(nil), nil)
+		local fromState = Stocking.layoutInput({
+			layout = { placements = {} },
+			progression = { lotExpansion = 1 },
+			breakArea = { x = 25.5, z = -22, rotation = 90 },
+		})
+		expect.equal((fromState.breakArea :: any).x, 25.5)
+		expect.equal((fromState.breakArea :: any).z, -22)
+	end)
 end

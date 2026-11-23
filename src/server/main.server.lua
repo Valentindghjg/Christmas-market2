@@ -23,6 +23,8 @@ local NpcAvatar = require(script.Parent.Services:WaitForChild("NpcAvatar"))
 local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
 local SaveLocatorService = require(script.Parent.Services:WaitForChild("SaveLocatorService"))
 local SaveSlotService = require(script.Parent.Services:WaitForChild("SaveSlotService"))
+local StaffNpcService = require(script.Parent.Services:WaitForChild("StaffNpcService"))
+local StaffNpcWorld = require(script.Parent.Services:WaitForChild("StaffNpcWorld"))
 local WorldService = require(script.Parent.Services:WaitForChild("WorldService"))
 
 local SHUTDOWN_WAIT_SECONDS = 25
@@ -75,6 +77,17 @@ local plots = PlotService.new(config.PersonalPlotIds)
 NpcAvatar.registerCollisionGroups()
 WorldService.build()
 
+-- Visible staff (CM2-25/26): the Cashier serves the counter, the Lot Worker loads cars and
+-- restocks; both rest at the break area. No wages.
+local staff = StaffNpcService.new({
+	companies = companies,
+	plotOf = function(companyId: string): string?
+		return plots:getPlot(companyId)
+	end,
+	world = StaffNpcWorld.new(),
+	now = os.clock,
+})
+
 -- Walking customer NPCs (CM2-N1): arrive by car, browse, pick, queue, pay, wait at the car.
 local npc = CustomerNpcService.new({
 	companies = companies,
@@ -83,6 +96,7 @@ local npc = CustomerNpcService.new({
 	end,
 	world = CustomerNpcWorld.new(),
 	now = os.clock,
+	staff = staff,
 })
 
 -- Save IDs: `<userId>_<16 lowercase hex>` (GUID chars 17-32), at most 36 chars, so every
@@ -528,6 +542,10 @@ every(config.Customers.Npc.TickSeconds, "customer npcs", function()
 	npc:tick()
 	return true, 0, 0
 end)
+every(config.Staff.TickSeconds, "staff", function()
+	staff:tick()
+	return true, 0, 0
+end)
 every(config.CustomerVisitIntervalSeconds, "customer orders", function()
 	return companies:serviceCustomerOrdersAll()
 end)
@@ -556,6 +574,7 @@ local function syncPlotWorld(plotId: string, companyId: string, state)
 	WorldService.syncDisplayedTrees(plotId, state.layout.placements, state.mediumPrices)
 	WorldService.syncCustomerOrders(plotId, companies:getCustomerOrders(companyId), orderCallbacks)
 	WorldService.syncReceiving(plotId, companies:getReceivingView(companyId))
+	StaffNpcWorld.syncBreakArea(plotId, state.breakArea)
 end
 
 local function clearPlotVisuals(plotId: string)
@@ -566,6 +585,7 @@ local function clearPlotVisuals(plotId: string)
 	WorldService.syncCustomerOrders(plotId, nil, nil)
 	WorldService.syncReceiving(plotId, nil)
 	WorldService.setLotSign(plotId, nil)
+	StaffNpcWorld.syncBreakArea(plotId, nil)
 end
 
 -- A played save mirrors into its plot and marks the player ready. A player joining a live
@@ -598,6 +618,7 @@ end, function(userId: number, companyId: string, plotId: string?, plotReleased: 
 	if plotReleased and plotId then
 		-- The next claimant must not inherit the previous owner's stand, lot, trees or customers.
 		npc:clearPlot(plotId)
+		staff:clearPlot(plotId)
 		clearPlotVisuals(plotId)
 	end
 	local player = Players:GetPlayerByUserId(userId)
@@ -852,6 +873,7 @@ if RunService:IsStudio() then
 			companies = companies,
 			plots = plots,
 			npc = npc,
+			staff = staff,
 			saveSlots = saveSlots,
 			orderCallbacks = orderCallbacks,
 			checkoutAt = checkoutAt,
@@ -887,6 +909,8 @@ end
 game:BindToClose(function()
 	-- No customer survives the server: avatars, cars and carried trees go first (CM2-N1).
 	npc:shutdown()
+	-- Staff avatars go too (CM2-25/26).
+	staff:shutdown()
 	-- Refuse new save work first, so no save can start loading after this point.
 	saveSlots:beginShutdown()
 	-- Unload in parallel: sequential saves with retry backoff can exceed the shutdown budget.

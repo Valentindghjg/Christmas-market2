@@ -4,9 +4,10 @@ local Inventory = require(script.Parent.Inventory)
 local Receiving = require(script.Parent.Receiving)
 local Reviews = require(script.Parent.Reviews)
 local SaveProfile = require(script.Parent.SaveProfile)
+local Staff = require(script.Parent.Staff)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 15
+BusinessState.SCHEMA_VERSION = 16
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -146,7 +147,9 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		updatedAt = 0,
 		layout = { placements = {} },
 		reservations = {},
-		staff = { Cashier = 0, LotWorker = 0 },
+		staff = { Cashier = 0, LotWorker = 0, LotManager = 0 },
+		staffEnergy = Staff.newEnergy(),
+		breakArea = Staff.defaultBreakArea({ layout = { placements = {} } }),
 		progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil },
 		questClaims = {},
 		customerOrders = {},
@@ -291,6 +294,15 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 			end
 		end
 	end
+	if state.schemaVersion == 15 then
+		state.schemaVersion = 16
+		-- Schema 16 (CM2-25/26): the Lot Manager slot, staff energy and the break area.
+		if type(state.staff) == "table" then
+			state.staff.LotManager = 0
+		end
+		state.staffEnergy = Staff.newEnergy()
+		state.breakArea = Staff.defaultBreakArea(state)
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -319,7 +331,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.updatedAt = 0
 	state.layout = { placements = {} }
 	state.reservations = {}
-	state.staff = { Cashier = 0, LotWorker = 0 }
+	state.staff = { Cashier = 0, LotWorker = 0, LotManager = 0 }
 	state.progression = { lotExpansion = 0, parkingSpaces = 0, hqTier = nil }
 	state.customerVisits = sales(state)
 	state.abandonedCustomers = 0
@@ -330,10 +342,48 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.likes = Reviews.newLikes()
 	backfillMediumPrices(state)
 	applyStockMigration(state)
+	state.staffEnergy = Staff.newEnergy()
+	state.breakArea = Staff.defaultBreakArea(state)
 	return validated(state)
 end
 
 local DEMAND_TAGS = { High = true, Low = true }
+local BREAK_AREA_ROTATIONS = { [0] = true, [90] = true, [180] = true, [270] = true }
+
+-- Schema 16 (CM2-25/26): hired counts 0..maxCount and whole-number energy 0..Max per role.
+local function validStaff(state): boolean
+	if type(state.staff) ~= "table" or type(state.staffEnergy) ~= "table" then
+		return false
+	end
+	for _, role in ipairs(GameConfig.Staff.Roles) do
+		local count = state.staff[role]
+		local energy = state.staffEnergy[role]
+		if
+			not isFiniteInteger(count)
+			or count < 0
+			or count > GameConfig.Employees[role].maxCount
+			or not isFiniteInteger(energy)
+			or energy < 0
+			or energy > GameConfig.Staff.Energy.Max
+		then
+			return false
+		end
+	end
+	return true
+end
+
+-- The break area is not re-checked against the layout here; a save is never locked out.
+local function validBreakArea(area): boolean
+	local limit = GameConfig.Placement.CoordinateLimit
+	return type(area) == "table"
+		and type(area.x) == "number"
+		and type(area.z) == "number"
+		and area.x == area.x
+		and area.z == area.z
+		and math.abs(area.x) <= limit
+		and math.abs(area.z) <= limit
+		and BREAK_AREA_ROTATIONS[area.rotation] == true
+end
 
 local function validSupplier(supplier): boolean
 	if
@@ -628,15 +678,7 @@ function BusinessState.validate(state)
 	if type(state.reservations) ~= "table" then
 		return false
 	end
-	if
-		type(state.staff) ~= "table"
-		or not isFiniteInteger(state.staff.Cashier)
-		or not isFiniteInteger(state.staff.LotWorker)
-		or state.staff.Cashier < 0
-		or state.staff.LotWorker < 0
-		or state.staff.Cashier > GameConfig.Employees.Cashier.maxCount
-		or state.staff.LotWorker > GameConfig.Employees.LotWorker.maxCount
-	then
+	if not validStaff(state) or not validBreakArea(state.breakArea) then
 		return false
 	end
 	if #state.recentRequests > GameConfig.MaxHistoryEntries then

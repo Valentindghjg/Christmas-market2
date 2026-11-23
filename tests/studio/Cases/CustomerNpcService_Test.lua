@@ -128,6 +128,13 @@ return function(t)
 			return 0
 		end)
 		h.plots = {}
+		-- CM2-25/26: a stand-in for the visible Cashier, on duty whenever one is hired.
+		h.staff = {
+			cashierReady = function(_, companyId)
+				local view = h.service:getStaffView(companyId)
+				return view ~= nil and view.hired.Cashier == true
+			end,
+		}
 		h.npc = CustomerNpcService.new({
 			companies = h.service,
 			plotOf = function(companyId)
@@ -137,6 +144,7 @@ return function(t)
 			now = function()
 				return h.ticks / 5
 			end,
+			staff = h.staff,
 		}, options)
 		h.service:setCustomerOrdersChangedHandler(function(companyId, summary)
 			table.insert(h.world.calls, { name = "ordersChanged", args = { companyId } })

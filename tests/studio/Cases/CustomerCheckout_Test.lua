@@ -1,7 +1,7 @@
 --!strict
 -- CM2-N2: the counter of the walking customer director, headless. The player checks out the
--- customer at the counter (checkout), a hired Cashier serves it after CashierCheckoutSeconds,
--- and settlement happens exactly once. Same harness as CustomerNpcService_Test: the fake
+-- customer at the counter (checkout), the Cashier on duty serves it after CashierCheckoutSeconds
+-- (CM2-25/26: a fake staff director answers cashierReady), and settlement happens exactly once. Same harness as CustomerNpcService_Test: the fake
 -- world records every call and moveTo puts the avatar on the target at once; ticks run in
 -- 0.2-s steps of a fake clock; the company service has its own (integer) clock.
 return function(t)
@@ -106,6 +106,8 @@ return function(t)
 			return 0
 		end)
 		h.plots = {}
+		-- CM2-25/26: the staff director's answer per company (true = a Cashier on duty).
+		h.cashierReady = {}
 		h.npc = CustomerNpcService.new({
 			companies = h.service,
 			plotOf = function(companyId)
@@ -115,6 +117,11 @@ return function(t)
 			now = function()
 				return h.ticks / 5
 			end,
+			staff = {
+				cashierReady = function(_, companyId)
+					return h.cashierReady[companyId] == true
+				end,
+			},
 		})
 		h.service:setCustomerOrdersChangedHandler(function(companyId, summary)
 			table.insert(h.world.calls, { name = "ordersChanged", args = { companyId } })
@@ -127,6 +134,7 @@ return function(t)
 		local state = h.service:loadCompany(companyId, 42)
 		state.progression.parkingSpaces = 4
 		state.staff.Cashier = cashier
+		h.cashierReady[companyId] = cashier >= 1
 		for index = 1, trees do
 			state.layout.placements["douglas_" .. index] = {
 				speciesId = "DouglasFir",
@@ -354,6 +362,23 @@ return function(t)
 		local first, second = numbers[joined[1]], numbers[joined[2]]
 		expect.truthy(first ~= nil and second ~= nil)
 		expect.truthy(first < second)
+	end)
+
+	-- CM2-25/26: a hired Cashier away from the counter (walking, resting) serves nobody.
+	t.test("a customer walks out while the Cashier rests", function()
+		local h = harness()
+		local state = addCompany(h, A, PLOT_1, 1, 1)
+		h.cashierReady[A] = false
+		local visitId = spawn(h, A, 8)
+		local visit = runUntil(h, visitId, "Queued", 100)
+		expect.truthy(visit ~= nil)
+		local walkedOut, sales = state.walkedOutCustomers, state.sales
+		run(h, 89.8)
+		expect.equal(stateOf(h, visitId), "CheckingOut")
+		run(h, 0.4)
+		expect.equal(stateOf(h, visitId), "WalkingOut")
+		expect.equal(state.walkedOutCustomers, walkedOut + 1)
+		expect.equal(state.sales, sales)
 	end)
 
 	t.test("a lost avatar at the counter is not a walk-out", function()

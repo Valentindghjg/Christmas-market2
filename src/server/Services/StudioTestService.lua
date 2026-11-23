@@ -281,6 +281,37 @@ function StudioTestService.install(context)
 		return success()
 	end
 
+	-- Visible staff (CM2-25/26).
+	local staff = context.staff
+
+	function commands.staffSnapshot()
+		return success(staff:snapshot())
+	end
+
+	-- Sets one role's energy of the shadow's company: the live record and the saved value.
+	function commands.setStaffEnergy(arg)
+		if
+			type(arg) ~= "table"
+			or type(arg.employeeId) ~= "string"
+			or table.find(GameConfig.Staff.Roles, arg.employeeId) == nil
+			or type(arg.energy) ~= "number"
+			or arg.energy ~= math.floor(arg.energy)
+			or arg.energy < 0
+			or arg.energy > GameConfig.Staff.Energy.Max
+		then
+			return failure("BadStaff")
+		end
+		local companyId = companyIdFor(shadowUserId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		local live = staff:setEnergyForTest(companyId, arg.employeeId, arg.energy)
+		if not companies:setStaffEnergy(companyId, { [arg.employeeId] = arg.energy }) then
+			return failure("NoSession")
+		end
+		return success({ live = live })
+	end
+
 	-- One Save.* request: through the remote handler for a real player, directly for the shadow.
 	function commands.saveAction(arg)
 		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
@@ -493,18 +524,28 @@ function StudioTestService.install(context)
 	end
 
 	-- Fills every plot to its NPC budget with load-test NPCs, counts Heartbeat frames in 5-s
-	-- windows, then removes what is left.
+	-- windows, then removes what is left. arg.staff == true (CM2-25/26) also walks 2 load
+	-- staff per plot; their snaps count in `snaps`.
 	function commands.npcLoadTest(arg)
 		local Npc = GameConfig.Customers.Npc
 		local seconds = 60
 		if type(arg) == "table" and type(arg.seconds) == "number" and arg.seconds == arg.seconds then
 			seconds = math.clamp(math.floor(arg.seconds), 10, 120)
 		end
+		local withStaff = type(arg) == "table" and arg.staff == true
 		local before = npc:snapshot().loadSnaps
+		local staffBefore = staff:snapshot().loadSnaps
 		local spawned = 0
 		for _, plotId in ipairs(GameConfig.PersonalPlotIds) do
 			spawned += npc:spawnLoad(plotId, Npc.MaxPerPlot - npc:countOnPlot(plotId), seconds)
 		end
+		local staffSpawned = 0
+		if withStaff then
+			for _, plotId in ipairs(GameConfig.PersonalPlotIds) do
+				staffSpawned += staff:spawnLoad(plotId, 2, seconds)
+			end
+		end
+		local peakStaff = 0
 		local windows = math.floor(seconds / 5)
 		local peakLive = 0
 		local minFps = math.huge
@@ -521,6 +562,7 @@ function StudioTestService.install(context)
 			minFps = math.min(minFps, fps)
 			fpsSum += fps
 			peakLive = math.max(peakLive, npc:count())
+			peakStaff = math.max(peakStaff, staff:count())
 		end
 		local function loadLeft(): boolean
 			for _, visit in npc:snapshot().visits do
@@ -535,14 +577,18 @@ function StudioTestService.install(context)
 			task.wait(0.1)
 		end
 		local left = npc:clearLoad()
+		staff:clearLoad()
+		local staffSnaps = staff:snapshot().loadSnaps - staffBefore
 		return success({
 			spawned = spawned,
 			peakLive = peakLive,
 			windows = windows,
 			minFps = if windows > 0 then minFps else 0,
 			meanFps = if windows > 0 then fpsSum / windows else 0,
-			snaps = npc:snapshot().loadSnaps - before,
+			snaps = npc:snapshot().loadSnaps - before + staffSnaps,
 			left = left,
+			staffSpawned = staffSpawned,
+			peakStaff = peakStaff,
 		})
 	end
 

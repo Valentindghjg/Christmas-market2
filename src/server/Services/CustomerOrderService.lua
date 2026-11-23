@@ -259,25 +259,6 @@ function CustomerOrderService.expire(state, timestamp: number, reviews: { any }?
 	return expired
 end
 
--- A hired Lot Worker loads uncarried orders once the walk to the car is done. Each review is
--- appended to reviews when the caller passes a list (CM2-G15).
-function CustomerOrderService.autoLoad(state, timestamp: number, reviews: { any }?): number
-	if state.staff.LotWorker < 1 then
-		return 0, {}
-	end
-	local loaded = {}
-	for _, order in ipairs(sortedOrders(state)) do
-		if order.carriedBy == nil and timestamp - order.soldAt >= GameConfig.Customers.WorkerLoadSeconds then
-			local review = complete(state, order, timestamp)
-			if reviews ~= nil then
-				table.insert(reviews, review)
-			end
-			table.insert(loaded, order.orderNumber)
-		end
-	end
-	return #loaded, loaded
-end
-
 -- Client-safe projection for HUD and world visuals.
 function CustomerOrderService.summary(state, claims)
 	local orders = {}

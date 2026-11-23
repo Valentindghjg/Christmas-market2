@@ -7,8 +7,10 @@ local GameConfig = require(script.Parent.GameConfig)
 local Stocking = {}
 
 export type Tree = { x: number, z: number, sizeId: string }
-export type LayoutInput = { lotExpansion: number, trees: { Tree } }
 export type Position = { x: number, z: number }
+-- breakArea (CM2-25/26): the centre of the staff break area; trees may not stand in it.
+export type LayoutInput = { lotExpansion: number, trees: { Tree }, breakArea: Position? }
+export type Box = { minX: number, maxX: number, minZ: number, maxZ: number }
 
 -- Error codes of stocking actions and the localization key that explains each one.
 Stocking.ErrorKeys = {
@@ -80,7 +82,21 @@ function Stocking.layoutInput(state): LayoutInput
 	local level = if type(progression) == "table" and finite(progression.lotExpansion)
 		then progression.lotExpansion
 		else 0
-	return { lotExpansion = level, trees = trees }
+	local area = state.breakArea
+	local breakArea: Position? = nil
+	if type(area) == "table" and finite(area.x) and finite(area.z) then
+		breakArea = { x = area.x, z = area.z }
+	end
+	return { lotExpansion = level, trees = trees, breakArea = breakArea }
+end
+
+-- The break area's square (CM2-25/26) for a table with finite x and z, else nil.
+function Stocking.breakAreaBox(area: any): Box?
+	if type(area) ~= "table" or not finite(area.x) or not finite(area.z) then
+		return nil
+	end
+	local half = GameConfig.Staff.BreakArea.HalfSize
+	return { minX = area.x - half, maxX = area.x + half, minZ = area.z - half, maxZ = area.z + half }
 end
 
 local function level(input: LayoutInput): number
@@ -100,7 +116,8 @@ local function tooClose(x: number, z: number, r: number, otherX: number, otherZ:
 	return math.sqrt(dx * dx + dz * dz) < r + otherR - GameConfig.Placement.SpacingTolerance
 end
 
--- Checks one spot in the fixed order OutsideLot -> KeepClear -> TooClose.
+-- Checks one spot in the fixed order OutsideLot -> KeepClear (static boxes, then the break
+-- area) -> TooClose.
 function Stocking.check(input: LayoutInput, x: number, z: number, sizeId: string): (boolean, string?)
 	local config = GameConfig.Placement
 	local r = Stocking.radius(sizeId)
@@ -117,6 +134,10 @@ function Stocking.check(input: LayoutInput, x: number, z: number, sizeId: string
 		if hitsBox(x, z, r, box) then
 			return false, "KeepClear"
 		end
+	end
+	local breakBox = Stocking.breakAreaBox(input.breakArea)
+	if breakBox ~= nil and hitsBox(x, z, r, breakBox) then
+		return false, "KeepClear"
 	end
 	for _, tree in ipairs(input.trees) do
 		if tooClose(x, z, r, tree.x, tree.z, Stocking.radius(tree.sizeId)) then

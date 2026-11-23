@@ -15,7 +15,6 @@ return function(ctx: any)
 	local ServerStorage = ctx.ServerStorage
 	local SupplierStockService = ctx.SupplierStockService
 	local UNIT_PRICE = ctx.UNIT_PRICE
-	local WORKER_WAIT = ctx.WORKER_WAIT
 	local act = ctx.act
 	local activeSave = ctx.activeSave
 	local addStep = ctx.addStep
@@ -341,12 +340,12 @@ return function(ctx: any)
 		local ok, message = pcall(function()
 			local orderD = visit(S.userId, 32)
 			local first = snap(S.userId)
-			advance(WORKER_WAIT)
+			-- CM2-25/26: the visible Lot Worker walks to the tree and carries it to the car.
 			local done = poll(function()
 				local snapshot = snap(S.userId)
 				return findOrder(snapshot, orderD) == nil and snapshot.loadedOrders == first.loadedOrders + 1
-			end, 8)
-			check(done, "Lot Worker did not load order " .. orderD .. " within 8 s")
+			end, 45)
+			check(done, "Lot Worker did not load order " .. orderD .. " within 45 s")
 			local clean = poll(function()
 				return plotClean(S.plotId)
 			end, 4)
@@ -438,11 +437,11 @@ return function(ctx: any)
 				local mid = snap(S.userId)
 				if cycle % 2 == 1 then
 					call("setStaff", { employeeId = "LotWorker", count = 1 })
-					advance(WORKER_WAIT)
+					-- CM2-25/26: the visible Lot Worker walks the order to the car.
 					local done = poll(function()
 						local snapshot = snap(S.userId)
 						return findOrder(snapshot, number) == nil and snapshot.loadedOrders == mid.loadedOrders + 1
-					end, 8)
+					end, 45)
 					check(done, string.format("cycle %d: worker did not load order %d", cycle, number))
 					workerLoads += 1
 				else

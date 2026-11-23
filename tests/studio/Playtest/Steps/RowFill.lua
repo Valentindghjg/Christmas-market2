@@ -13,6 +13,7 @@ return function(ctx: any)
 	local advance = ctx.advance
 	local awaitDelivery = ctx.awaitDelivery
 	local bayWith = ctx.bayWith
+	local breakAreaCovers = ctx.breakAreaCovers
 	local check = ctx.check
 	local displayedCount = ctx.displayedCount
 	local douglasTotal = ctx.douglasTotal
@@ -20,6 +21,11 @@ return function(ctx: any)
 	local poll = ctx.poll
 	local snap = ctx.snap
 	local stockPayload = ctx.stockPayload
+
+	-- CM2-25/26 Amendment 1: the row line clears every break-area candidate and the Stand box.
+	local ROW_X = -24.4
+	local ROW_Z = -20
+	local PROBE_X = -19.3
 
 	-- CM2-G14: the three spot reasons, a row fill of 5 (all or none), replay protection and
 	-- store mode without duplication. The trees stay in R's bay for the next run.
@@ -64,6 +70,9 @@ return function(ctx: any)
 		local bayIndex = bay :: number
 		local start = snap(R.userId)
 		local startTotal = douglasTotal(start)
+		for _, x in { -24.4, -18.3, -12.2, -6.1, 0, PROBE_X } do
+			check(not breakAreaCovers(start.breakArea, x, ROW_Z), "R's break area covers the row line at x " .. x)
+		end
 
 		-- 3. The three reasons; nothing changes after a refusal.
 		refused(stockPayload(bayIndex, 39.5, 0, 1), "OutsideLot")
@@ -73,7 +82,7 @@ return function(ctx: any)
 		-- 4. A row of 5 lands as a whole; its replay places nothing.
 		local requestId = "playtest_row_" .. HttpService:GenerateGUID(false)
 		local beforeRow = snap(R.userId)
-		local response = act(R.userId, "Stock.Place", stockPayload(bayIndex, -35, -20, 5), requestId)
+		local response = act(R.userId, "Stock.Place", stockPayload(bayIndex, ROW_X, ROW_Z, 5), requestId)
 		check(
 			type(response) == "table" and response.ok == true,
 			"row fill failed: " .. tostring(type(response) == "table" and response.errorCode or response)
@@ -90,18 +99,18 @@ return function(ctx: any)
 			return displayedCount(R.plotId) == snap(R.userId).placementCount
 		end, 4)
 		check(shown, "DisplayedTrees differs from placementCount after the row fill")
-		local replay = act(R.userId, "Stock.Place", stockPayload(bayIndex, -35, -20, 5), requestId)
+		local replay = act(R.userId, "Stock.Place", stockPayload(bayIndex, ROW_X, ROW_Z, 5), requestId)
 		check(
 			type(replay) == "table" and replay.errorCode == "DuplicateRequest",
 			"row replay returned " .. tostring(type(replay) == "table" and replay.errorCode or replay)
 		)
 		check(snap(R.userId).placementCount == afterRow.placementCount, "the replay placed trees")
 
-		-- 5. With the first tree stored back, its neighbour blocks a spot 1 stud away.
+		-- 5. With the first tree (x -24.4) stored back, the second (x -18.3) blocks PROBE_X, 1 stud away.
 		storeOk(ids[1])
 		local storedIn = bayWith(R.userId, 1)
 		check(storedIn ~= nil, "the stored tree is in no bay")
-		refused(stockPayload(storedIn :: number, -27.9, -20, 1), "TooClose")
+		refused(stockPayload(storedIn :: number, PROBE_X, ROW_Z, 1), "TooClose")
 		for index = 2, 5 do
 			storeOk(ids[index])
 		end

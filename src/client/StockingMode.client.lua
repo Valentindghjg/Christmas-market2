@@ -46,6 +46,7 @@ type Session = {
 	pointer: { x: number, z: number },
 	trees: { Stocking.Tree },
 	level: number,
+	breakArea: Stocking.Position?,
 	lastPreviewAt: number,
 	inFlight: boolean,
 	closing: boolean,
@@ -232,6 +233,9 @@ local function refreshTrees(current: Session)
 	current.trees = trees
 	local level = current.plot:GetAttribute("LotExpansionLevel")
 	current.level = if type(level) == "number" then level else 0
+	-- CM2-25/26: trees may not stand in the staff break area.
+	local areaX, areaZ = current.plot:GetAttribute("BreakAreaX"), current.plot:GetAttribute("BreakAreaZ")
+	current.breakArea = if type(areaX) == "number" and type(areaZ) == "number" then { x = areaX, z = areaZ } else nil
 end
 
 local function nearestTree(current: Session): Model?
@@ -321,7 +325,8 @@ local function render(current: Session)
 			end
 		end
 	elseif available > 0 then
-		local input: Stocking.LayoutInput = { lotExpansion = current.level, trees = current.trees }
+		local input: Stocking.LayoutInput =
+			{ lotExpansion = current.level, trees = current.trees, breakArea = current.breakArea }
 		local wanted = if current.rowOn then math.min(available, PLACEMENT.RowMax) else 1
 		local positions = Stocking.rowPositions(
 			current.pointer.x,
@@ -601,6 +606,7 @@ local function start(prompt: ProximityPrompt)
 		pointer = pointer,
 		trees = {},
 		level = 0,
+		breakArea = nil,
 		lastPreviewAt = 0,
 		inFlight = false,
 		closing = false,

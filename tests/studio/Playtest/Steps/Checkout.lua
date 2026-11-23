@@ -108,15 +108,48 @@ return function(ctx: any)
 		)
 		local counter, waiting = counterId :: string, waitingId :: string
 
-		-- 5. CM2-UVF3: the queued customer stands at slot 2, clear of the counter customer, and
-		-- the counter customer stands upright.
+		-- 5. CM2-UVF3: once both have stopped (CM2-25/26 Amendment 3), the queued customer stands
+		-- at slot 2, clear of the counter customer, and the counter customer stands upright.
 		local c = plotCenter()
 		local slot2 = NpcPath.toWorld(c, NpcPath.queueSlot(2))
-		local atSlot = poll(function()
-			local root = rootOf(waiting)
-			return root ~= nil and horizontal(root.Position, slot2.x, slot2.z) <= 1.5
+		local slot1 = NpcPath.toWorld(c, NpcPath.queueSlot(1))
+		local function planarSpeed(root: BasePart): number
+			local velocity = root.AssemblyLinearVelocity
+			return math.sqrt(velocity.X * velocity.X + velocity.Z * velocity.Z)
+		end
+		local function restDetail(): string
+			local waitingRoot, counterRoot = rootOf(waiting), rootOf(counter)
+			if waitingRoot == nil or counterRoot == nil then
+				return "no root"
+			end
+			return string.format(
+				"slot2 %.2f slot1 %.2f speed %.2f/%.2f",
+				horizontal(waitingRoot.Position, slot2.x, slot2.z),
+				horizontal(counterRoot.Position, slot1.x, slot1.z),
+				planarSpeed(waitingRoot),
+				planarSpeed(counterRoot)
+			)
+		end
+		local still = 0
+		local settled = poll(function()
+			local waitingRoot, counterRoot = rootOf(waiting), rootOf(counter)
+			local atRest = waitingRoot ~= nil
+				and counterRoot ~= nil
+				and horizontal(waitingRoot.Position, slot2.x, slot2.z) <= 1.5
+				and horizontal(counterRoot.Position, slot1.x, slot1.z) <= 1.5
+				and planarSpeed(waitingRoot) < 0.5
+				and planarSpeed(counterRoot) < 0.5
+			if atRest then
+				still += 1
+			else
+				still = 0
+			end
+			return still >= 2
 		end, 10)
-		check(atSlot, waiting .. " not at queue slot 2 within 10 s")
+		check(
+			settled,
+			string.format("%s/%s not at rest at queue slots 2/1 within 10 s (%s)", waiting, counter, restDetail())
+		)
 		local counterRoot, waitingRoot = rootOf(counter), rootOf(waiting)
 		check(counterRoot ~= nil and waitingRoot ~= nil, "a queued customer has no HumanoidRootPart")
 		local counterPosition = (counterRoot :: BasePart).Position

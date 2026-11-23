@@ -218,6 +218,8 @@ return function(t)
 		end)
 		local state = service:loadCompany("personal:42", 42)
 		state.bays[1] = { speciesId = "DouglasFir", counts = { Medium = 9 } }
+		-- CM2-25/26: the default break area (candidate 1) covers this row; it stands elsewhere here.
+		state.breakArea = { x = 25.5, z = -22, rotation = 0 }
 		local first = service:handle("personal:42", 42, stockPlace("row_fill_01", -35, -20, 5))
 		expect.truthy(first.ok)
 		expect.equal(#first.data.placementIds, 5)

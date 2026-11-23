@@ -24,6 +24,7 @@ return function(ctx: any)
 
 	local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 	local NpcPath = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("NpcPath"))
+	local Stocking = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Stocking"))
 	local ArtLibrary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ArtLibrary"))
 	local Services = ServerScriptService:WaitForChild("Server"):WaitForChild("Services")
 	local SupplierStockService = require(Services:WaitForChild("SupplierStockService"))
@@ -34,7 +35,6 @@ return function(ctx: any)
 
 	local DELIVERY_WAIT = GameConfig.DeliverySeconds + 1
 	local EXPIRY_WAIT = Customers.PickupPatienceSeconds + 1
-	local WORKER_WAIT = Customers.WorkerLoadSeconds + 1
 	local UNIT_PRICE = GameConfig.wholesaleFor(SPECIES, SIZE) :: number
 
 	-- Result helpers -----------------------------------------------------------------------
@@ -254,6 +254,19 @@ return function(ctx: any)
 		return count
 	end
 
+	-- CM2-25/26: true for an instance inside a plot's Staff folder (live staff and the tree a
+	-- Lot Worker carries are not leaks).
+	local function inStaffFolder(instance: Instance): boolean
+		local parent = instance.Parent
+		while parent ~= nil do
+			if parent.Name == "Staff" and parent:IsA("Folder") then
+				return true
+			end
+			parent = parent.Parent
+		end
+		return false
+	end
+
 	-- NPC objects left behind: avatars in a plot's Customers folder, visit cars, carried trees.
 	local function npcObjectsLeft(plotIds: { string? }): string?
 		for _, plotId in plotIds do
@@ -264,15 +277,31 @@ return function(ctx: any)
 			end
 		end
 		for _, descendant in workspace:GetDescendants() do
-			if string.sub(descendant.Name, 1, 9) == "VisitCar_" or descendant.Name == "NpcCarriedTree" then
+			if
+				(string.sub(descendant.Name, 1, 9) == "VisitCar_" or descendant.Name == "NpcCarriedTree")
+				and not inStaffFolder(descendant)
+			then
 				return descendant.Name .. " left in the world"
 			end
 		end
 		return nil
 	end
 
+	-- Staff (CM2-25/26) ---------------------------------------------------------------------------
+	local function staffSnapshot(): any
+		return call("staffSnapshot", nil)
+	end
+
+	-- The staff avatar `Staff_<role>` in a plot's Staff folder, or nil.
+	local function findStaff(plotId: string?, role: string): Model?
+		local plot = plotFolder(plotId)
+		local folder = plot and plot:FindFirstChild("Staff")
+		local model = folder and folder:FindFirstChild("Staff_" .. role)
+		return if model and model:IsA("Model") then model else nil
+	end
+
 	-- Humanoids in the world that belong neither to a connected player nor to a live walking
-	-- customer (leaks).
+	-- customer nor to live staff (leaks).
 	local function strayHumanoids(): number
 		local live: { [string]: boolean } = {}
 		local response = invoke("npcSnapshot", nil)
@@ -281,12 +310,22 @@ return function(ctx: any)
 				live[visit.visitId] = true
 			end
 		end
+		local liveStaff: { [string]: boolean } = {}
+		local staffResponse = invoke("staffSnapshot", nil)
+		if type(staffResponse) == "table" and staffResponse.ok == true then
+			for _, entry in staffResponse.data.staff do
+				liveStaff[entry.staffId] = true
+			end
+		end
 		local count = 0
 		for _, descendant in workspace:GetDescendants() do
 			if descendant:IsA("Humanoid") and Players:GetPlayerFromCharacter(descendant.Parent) == nil then
 				local owner = descendant.Parent
 				local visitId = owner and owner:GetAttribute("NpcVisitId")
-				if not (type(visitId) == "string" and live[visitId]) then
+				local staffId = owner and owner:GetAttribute("StaffId")
+				local isLive = (type(visitId) == "string" and live[visitId])
+					or (type(staffId) == "string" and liveStaff[staffId])
+				if not isLive then
 					count += 1
 				end
 			end
@@ -493,10 +532,22 @@ return function(ctx: any)
 	end
 
 	-- The first slot at least SLOT_SPACING from every displayed tree.
+	-- CM2-25/26 Amendment 1: whether a Medium tree at (x, z) would touch the save's break area
+	-- (a conservative superset of Stocking's circle test).
+	local function breakAreaCovers(area: any, x: number, z: number): boolean
+		local box = Stocking.breakAreaBox(area)
+		if box == nil then
+			return false
+		end
+		local r = GameConfig.Placement.FootprintRadius[SIZE]
+		return x + r > box.minX and x - r < box.maxX and z + r > box.minZ and z - r < box.maxZ
+	end
+
 	local function freeSlot(userId: number): { x: number, z: number }?
-		local placements = snap(userId).placements
+		local snapshot = snap(userId)
+		local placements = snapshot.placements
 		for _, slot in SLOTS do
-			local free = true
+			local free = not breakAreaCovers(snapshot.breakArea, slot.x, slot.z)
 			for _, placement in placements do
 				if type(placement.x) == "number" and type(placement.z) == "number" then
 					local dx, dz = placement.x - slot.x, placement.z - slot.z
@@ -596,7 +647,6 @@ return function(ctx: any)
 	ctx.Customers = Customers
 	ctx.DELIVERY_WAIT = DELIVERY_WAIT
 	ctx.EXPIRY_WAIT = EXPIRY_WAIT
-	ctx.WORKER_WAIT = WORKER_WAIT
 	ctx.UNIT_PRICE = UNIT_PRICE
 	ctx.check = check
 	ctx.emit = emit
@@ -624,6 +674,8 @@ return function(ctx: any)
 	ctx.findNpc = findNpc
 	ctx.npcOnPlot = npcOnPlot
 	ctx.npcObjectsLeft = npcObjectsLeft
+	ctx.staffSnapshot = staffSnapshot
+	ctx.findStaff = findStaff
 	ctx.strayHumanoids = strayHumanoids
 	ctx.carriedTreeOnAnyCharacter = carriedTreeOnAnyCharacter
 	ctx.player = player
@@ -647,6 +699,7 @@ return function(ctx: any)
 	ctx.isPending = isPending
 	ctx.awaitDelivery = awaitDelivery
 	ctx.bayWith = bayWith
+	ctx.breakAreaCovers = breakAreaCovers
 	ctx.freeSlot = freeSlot
 	ctx.stockPayload = stockPayload
 	ctx.placeOne = placeOne
