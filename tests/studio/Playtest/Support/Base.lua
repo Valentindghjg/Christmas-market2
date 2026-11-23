@@ -494,7 +494,8 @@ return function(ctx: any)
 		local payload = { speciesId = SPECIES, sizeId = SIZE, quantity = quantity }
 		local response = act(userId, "Supplier.PlaceOrder", payload)
 		if type(response) == "table" and response.errorCode == "SupplierOutOfStock" then
-			advance(240)
+			-- a saved refreshAt can lie past +240 s in a new Play session (CM2-ART2 A1)
+			advance(math.clamp(actOk(userId, "Company.GetSummary", {}).supplier.refreshIn + 1, 1, 86400))
 			response = act(userId, "Supplier.PlaceOrder", payload)
 		end
 		check(

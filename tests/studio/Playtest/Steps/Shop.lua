@@ -12,6 +12,7 @@ return function(ctx: any)
 	local SIZE = ctx.SIZE
 	local SPECIES = ctx.SPECIES
 	local act = ctx.act
+	local actOk = ctx.actOk
 	local addStep = ctx.addStep
 	local advance = ctx.advance
 	local awaitDelivery = ctx.awaitDelivery
@@ -178,9 +179,15 @@ return function(ctx: any)
 		end, INSTANT_SECONDS)
 		call("shopPasses", { userId = S.userId, passes = {} })
 		check(landed, "Express Sleigh order not in bay " .. tostring(bay) .. " within 3 s")
+		actOk(S.userId, "Supplier.SellBack", { speciesId = SPECIES, sizeId = "Small", quantity = 1 })
+		local emptied = poll(function()
+			local entry = snap(S.userId).bays[bay]
+			return type(entry) == "table" and entry.total == 0 and entry.arriving == 0
+		end, 3)
+		check(emptied, "bay " .. tostring(bay) .. " not empty after the sell-back")
 		clearOrders()
 		return string.format(
-			"x4 sale %d, x2 sale %d (price %d), Cashier rested, express delivery in bay %d",
+			"x4 sale %d, x2 sale %d (price %d), Cashier rested, express delivery in bay %d, sold back",
 			both,
 			boostOnly,
 			price,

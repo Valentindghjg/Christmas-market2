@@ -78,32 +78,76 @@ return function(t)
 		end
 	end)
 
-	t.test("root prefers the non-empty ArtAssets folder", function()
-		local function folder(name, childCount)
-			local value = { Name = name, kids = {} }
-			for _ = 1, childCount do
-				table.insert(value.kids, {})
-			end
-			function value:GetChildren()
-				return self.kids
-			end
-			return value
+	-- A fake instance with the members hasAssets and root read.
+	local function inst(className, name, children)
+		local kids = children or {}
+		local value = { Name = name, ClassName = className }
+		function value:GetChildren()
+			return kids
 		end
-		local function container(...)
-			local value = { kids = { ... } }
-			function value:GetChildren()
-				return self.kids
-			end
-			return value
+		function value:IsA(c)
+			return c == className
 		end
-		local empty, full = folder("ArtAssets", 0), folder("ArtAssets", 2)
-		local other = folder("Other", 3)
+		function value:FindFirstChildWhichIsA(c, recursive)
+			for _, kid in ipairs(kids) do
+				if kid:IsA(c) then
+					return kid
+				end
+				if recursive then
+					local deeper = kid:FindFirstChildWhichIsA(c, true)
+					if deeper ~= nil then
+						return deeper
+					end
+				end
+			end
+			return nil
+		end
+		return value
+	end
+
+	local function container(...)
+		local value = { kids = { ... } }
+		function value:GetChildren()
+			return self.kids
+		end
+		return value
+	end
+
+	t.test("root prefers the ArtAssets folder with assets", function()
+		local empty = inst("Folder", "ArtAssets")
+		local full = inst("Folder", "ArtAssets", { inst("Folder", "Buildings", { inst("Model", "MarketStarter") }) })
+		local other = inst("Folder", "Other", { inst("Model", "X") })
 		expect.equal(ArtLibrary.root(container(empty, full)), full)
 		expect.equal(ArtLibrary.root(container(full, empty)), full)
 		expect.equal(ArtLibrary.root(container(other, empty)), empty)
 		expect.equal(ArtLibrary.root(container(other)), nil)
 		expect.equal(ArtLibrary.root(container()), nil)
 		expect.equal(ArtLibrary.root(nil), nil)
+	end)
+
+	local function leftoverFolder()
+		local kids = {}
+		for _, name in ipairs({ "NPCs", "Vehicles", "Trees", "Buildings", "Environment", "Props" }) do
+			table.insert(kids, inst("Folder", name))
+		end
+		return inst("Folder", "ArtAssets", kids)
+	end
+
+	t.test("hasAssets counts Models and MeshParts at any depth", function()
+		expect.falsy(ArtLibrary.hasAssets(leftoverFolder()))
+		expect.falsy(ArtLibrary.hasAssets(inst("Folder", "ArtAssets")))
+		expect.truthy(ArtLibrary.hasAssets(inst("Folder", "A", { inst("Folder", "B", { inst("Model", "M") }) })))
+		expect.truthy(ArtLibrary.hasAssets(inst("Folder", "A", { inst("MeshPart", "P") })))
+		expect.falsy(ArtLibrary.hasAssets(inst("Folder", "A", { inst("Part", "P"), inst("Folder", "F") })))
+	end)
+
+	t.test("root skips an ArtAssets folder with only empty subfolders", function()
+		local leftover, leftover2 = leftoverFolder(), leftoverFolder()
+		local real = inst("Folder", "ArtAssets", { inst("Folder", "Buildings", { inst("Model", "MarketStarter") }) })
+		expect.equal(ArtLibrary.root(container(leftover, real)), real)
+		expect.equal(ArtLibrary.root(container(real, leftover)), real)
+		expect.equal(ArtLibrary.root(container(leftover)), leftover)
+		expect.equal(ArtLibrary.root(container(leftover, leftover2)), leftover)
 	end)
 
 	t.test("levelYaw snaps a part's yaw to the nearest half turn", function()

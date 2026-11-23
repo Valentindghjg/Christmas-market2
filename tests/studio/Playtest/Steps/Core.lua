@@ -472,17 +472,29 @@ return function(ctx: any)
 		local art = ctx.ArtLibrary.root(ReplicatedStorage)
 		check(art ~= nil, "ReplicatedStorage.ArtAssets is missing")
 		local container = art :: Instance
-		-- A Studio place can hold an empty duplicate next to the synced folder (CM2-10W).
-		local folders, nonEmpty = 0, 0
+		-- A Studio place can hold a leftover ArtAssets with only empty subfolders (CM2-10W);
+		-- folders without assets are ignored, as in ArtLibrary.root (CM2-ART2).
+		local folders, withAssets, ignored = 0, 0, 0
 		for _, child in ReplicatedStorage:GetChildren() do
 			if child.Name == "ArtAssets" then
 				folders += 1
-				if #child:GetChildren() > 0 then
-					nonEmpty += 1
+				if ctx.ArtLibrary.hasAssets(child) then
+					withAssets += 1
+				else
+					ignored += 1
 				end
 			end
 		end
-		check(nonEmpty <= 1, "two non-empty ArtAssets folders")
+		check(withAssets <= 1, "two ArtAssets folders with assets")
+		if folders > 1 and ignored > 0 then
+			warn(
+				string.format(
+					"%s 21 ART_ASSETS ignoring %d ArtAssets folder(s) without assets; delete the leftover in Studio and save (PC-7 step 4)",
+					ctx.PREFIX,
+					ignored
+				)
+			)
+		end
 		local duplicates: { string } = {}
 		local function scanNames(folder: Instance)
 			local seen: { [string]: boolean } = {}
@@ -519,10 +531,11 @@ return function(ctx: any)
 		end
 		check(#failed == 0, "meshes failed to load: " .. table.concat(failed, ", "))
 		return string.format(
-			"%d blender models, %d meshes, 0 failed, 0 duplicates, %d ArtAssets folders",
+			"%d blender models, %d meshes, 0 failed, 0 duplicates, %d ArtAssets folders, %d without assets ignored",
 			models,
 			#meshParts,
-			folders
+			folders,
+			ignored
 		)
 	end)
 end

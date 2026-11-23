@@ -19,9 +19,15 @@ function ArtLibrary.isValidPath(path: string): boolean
 	return count >= 1
 end
 
--- Returns the art root under a container: the first child named ArtAssets that has at least
--- one child, else the first child named ArtAssets, else nil. A Studio place can hold an empty
--- duplicate next to the synced folder (CM2-10W).
+-- True when the folder holds at least one Model or MeshPart at any depth (CM2-ART2).
+-- Folders alone do not count, so a leftover tree of empty subfolders is ignored.
+function ArtLibrary.hasAssets(folder: Instance): boolean
+	return folder:FindFirstChildWhichIsA("Model", true) ~= nil or folder:FindFirstChildWhichIsA("MeshPart", true) ~= nil
+end
+
+-- Returns the art root under a container: the first child named ArtAssets that holds assets
+-- (hasAssets), else the first child named ArtAssets, else nil. A Studio place can hold a
+-- leftover ArtAssets with only empty subfolders next to the synced folder (CM2-10W, CM2-ART2).
 function ArtLibrary.root(container: Instance?): Instance?
 	if container == nil then
 		return nil
@@ -29,7 +35,7 @@ function ArtLibrary.root(container: Instance?): Instance?
 	local firstNamed: Instance? = nil
 	for _, child in (container :: Instance):GetChildren() do
 		if child.Name == "ArtAssets" then
-			if #child:GetChildren() > 0 then
+			if ArtLibrary.hasAssets(child) then
 				return child
 			end
 			if firstNamed == nil then

@@ -14,6 +14,8 @@ return function(ctx: any)
 	local SAVE_T = ctx.SAVE_T
 	local SAVE_T2 = ctx.SAVE_T2
 	local UNIT_PRICE = ctx.UNIT_PRICE
+	local GameConfig = ctx.GameConfig
+	local actOk = ctx.actOk
 	local advance = ctx.advance
 	local call = ctx.call
 	local carriedTreeOnAnyCharacter = ctx.carriedTreeOnAnyCharacter
@@ -129,8 +131,68 @@ return function(ctx: any)
 		end
 	end
 
+	-- CM2-ART2 A1: lands the in-flight deliveries of one company by advancing the server clock
+	-- past the latest arrival. Returns how many bays had a delivery on the way.
+	local function settleDeliveries(userId: number): number
+		local count, latest = 0, 0
+		for _, bay in snap(userId).bays do
+			if bay.arriving > 0 then
+				count += 1
+				latest = math.max(latest, bay.arrivesIn)
+			end
+		end
+		if count == 0 then
+			return 0
+		end
+		advance(math.clamp(latest + 1, 1, 86400))
+		local landed = poll(function()
+			for _, bay in snap(userId).bays do
+				if bay.arriving > 0 then
+					return false
+				end
+			end
+			return true
+		end, 8)
+		check(landed, "deliveries still arriving 8 s after the clock advance")
+		return count
+	end
+
+	-- CM2-ART2 A1: sells back every tree in the shadow's bays so each run starts with 0 bays
+	-- used. Never touches R. Returns the sold-back list or "none".
+	local function drainShadowBays(): string
+		local stock = snap(S.userId).stock
+		local keys: { string } = {}
+		for key, count in stock do
+			if count > 0 then
+				table.insert(keys, key)
+			end
+		end
+		table.sort(keys)
+		local parts: { string } = {}
+		for _, key in keys do
+			local count = stock[key]
+			local speciesId, sizeId = string.match(key, "^(.-):(.+)$")
+			check(speciesId ~= nil and sizeId ~= nil, "unreadable stock key " .. key)
+			local left = count
+			while left > 0 do
+				local chunk = math.min(left, GameConfig.MaxOrderQuantity)
+				actOk(S.userId, "Supplier.SellBack", { speciesId = speciesId, sizeId = sizeId, quantity = chunk })
+				left -= chunk
+			end
+			table.insert(parts, string.format("%s x%d", key, count))
+		end
+		return if #parts == 0 then "none" else table.concat(parts, ", ")
+	end
+
 	local function preflight(soak: boolean): string
 		resetCustomers()
+		settleDeliveries(R.userId)
+		local drained = "none"
+		if shadowJoined then
+			settleDeliveries(S.userId)
+			drained = drainShadowBays()
+			check(snap(S.userId).receiving.baysUsed == 0, "shadow bays not empty after the drain")
+		end
 		check(#Players:GetPlayers() == 1, "expected exactly 1 player, got " .. #Players:GetPlayers())
 		local current = realPlayer()
 		check(current:GetAttribute("CompanyReady") == true, "CompanyReady is not true")
@@ -146,11 +208,21 @@ return function(ctx: any)
 		end
 		check(snapshot.receiving.baysUsed < snapshot.receiving.bayCount, "no free receiving bay")
 		check(snapshot.receiving.storageCapacity - snapshot.receiving.storageUsed >= 3, "storage room below 3")
+		if not shadowJoined then
+			return string.format(
+				"cash %d, bays %d/%d, no shadow",
+				snapshot.cash,
+				snapshot.receiving.baysUsed,
+				snapshot.receiving.bayCount
+			)
+		end
 		return string.format(
-			"cash %d, bays %d/%d",
+			"cash %d, bays %d/%d, shadow bays 0/%d, sold back %s",
 			snapshot.cash,
 			snapshot.receiving.baysUsed,
-			snapshot.receiving.bayCount
+			snapshot.receiving.bayCount,
+			snapshot.receiving.bayCount,
+			drained
 		)
 	end
 
