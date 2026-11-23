@@ -2,6 +2,7 @@
 -- Shared validation for untrusted client actions. The server owns all prices and state changes.
 local GameConfig = require(script.Parent.GameConfig)
 local SaveProfile = require(script.Parent.SaveProfile)
+local ShopConfig = require(script.Parent.ShopConfig)
 
 local Protocol = {}
 Protocol.VERSION = 1
@@ -75,6 +76,17 @@ Protocol.SaveActions = {
 local saveActionSet = {}
 for _, action in pairs(Protocol.SaveActions) do
 	saveActionSet[action] = true
+end
+
+-- Robux shop actions (CM2-46a) travel through their own remote (Remotes.ShopAction).
+Protocol.ShopActions = {
+	Catalog = "Shop.Catalog",
+	Prompt = "Shop.Prompt",
+}
+
+local shopActionSet = {}
+for _, action in pairs(Protocol.ShopActions) do
+	shopActionSet[action] = true
 end
 
 local function isFiniteInteger(value: unknown): boolean
@@ -478,6 +490,29 @@ function Protocol.validateSaveRequest(request)
 		if not isNameText(payload.confirmName) then
 			return false, "InvalidName"
 		end
+	end
+	return true, nil
+end
+
+-- Shop requests (CM2-46a) use the same envelope. Shop.Catalog has no payload fields;
+-- Shop.Prompt carries exactly a product key (whether it exists is the server's check).
+function Protocol.validateShopRequest(request)
+	local envelopeOk, envelopeError = validateEnvelope(request, shopActionSet)
+	if not envelopeOk then
+		return false, envelopeError
+	end
+	local payload = request.payload
+	if request.action == Protocol.ShopActions.Catalog then
+		if not hasOnlyKeys(payload, {}) then
+			return false, "UnexpectedField"
+		end
+		return true, nil
+	end
+	if not hasExactKeys(payload, { productKey = true }) then
+		return false, "UnexpectedField"
+	end
+	if not ShopConfig.isKey(payload.productKey) then
+		return false, "InvalidProduct"
 	end
 	return true, nil
 end

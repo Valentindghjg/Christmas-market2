@@ -13,6 +13,7 @@ local ServerStorage = game:GetService("ServerStorage")
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
+local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ShopConfig"))
 local PersistenceService = require(script.Parent:WaitForChild("PersistenceService"))
 
 local StudioTestService = {}
@@ -590,6 +591,79 @@ function StudioTestService.install(context)
 			staffSpawned = staffSpawned,
 			peakStaff = peakStaff,
 		})
+	end
+
+	-- Robux shop (CM2-46a). Nothing here prompts or charges: receipts are simulated.
+	local monetization = context.monetization
+	local ledger = context.ledger
+
+	-- One simulated developer-product receipt through the real receipt path.
+	function commands.shopReceipt(arg)
+		if
+			type(arg) ~= "table"
+			or type(arg.userId) ~= "number"
+			or type(arg.productKey) ~= "string"
+			or type(arg.purchaseId) ~= "string"
+			or (arg.robux ~= nil and type(arg.robux) ~= "number")
+		then
+			return failure("BadArgument")
+		end
+		local decision = monetization:processReceiptByKey(arg.productKey, {
+			PlayerId = arg.userId,
+			ProductId = 0,
+			PurchaseId = arg.purchaseId,
+			CurrencySpent = arg.robux or 0,
+		}, { present = isShadow(arg.userId) or realPlayer(arg.userId) ~= nil })
+		return success(decision)
+	end
+
+	-- Sets a user's pass ownership: passes = { [passKey] = true }.
+	function commands.shopPasses(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" or type(arg.passes) ~= "table" then
+			return failure("BadArgument")
+		end
+		monetization:setPassesForTest(arg.userId, arg.passes)
+		return success()
+	end
+
+	-- A fresh copy of the user's purchase ledger.
+	function commands.shopLedger(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
+			return failure("BadArgument")
+		end
+		local record, readError = ledger:read(arg.userId)
+		if record == nil then
+			return failure(tostring(readError))
+		end
+		return success(record)
+	end
+
+	-- One Shop.* request for the real player, like the ShopAction remote.
+	function commands.shopAction(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
+			return failure("BadArgument")
+		end
+		local player = realPlayer(arg.userId)
+		if not player then
+			return failure("NoPlayer")
+		end
+		return monetization:handle(player.UserId, {
+			version = Protocol.VERSION,
+			requestId = "studio_" .. HttpService:GenerateGUID(false),
+			action = arg.action,
+			payload = arg.payload,
+		})
+	end
+
+	function commands.shopPrompts()
+		return success(monetization:promptCountForTest())
+	end
+
+	-- Ends every live Cash Rush boost and saves at once (Amendment 1, playtest fixture).
+	function commands.shopClearBoosts()
+		local _, ticked = companies:tickBoostsAll(ShopConfig.BoostCapSeconds)
+		companies:flushDirty(true)
+		return success(ticked)
 	end
 
 	function commands.runPlaytest(arg)

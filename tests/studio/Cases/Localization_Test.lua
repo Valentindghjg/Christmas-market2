@@ -290,4 +290,14 @@ return function(t)
 		expect.equal(Localization.format("en", "staffStatus", 85, "Working"), "Energy 85% · Working")
 		expect.equal(Localization.format("de", "staffStatus", 85, "Arbeitet"), "Energie 85% · Arbeitet")
 	end)
+
+	-- CM2-46a: the Robux shop notices.
+	t.test("has the shop notice keys in English and German", function()
+		for _, key in ipairs({ "shopThanks", "shopPassActive" }) do
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+		expect.equal(Localization.get("en", "shopPassActive"), "Thanks! Your game pass is now active.")
+		expect.equal(Localization.get("de", "shopPassActive"), "Danke! Dein Spielpass ist jetzt aktiv.")
+	end)
 end

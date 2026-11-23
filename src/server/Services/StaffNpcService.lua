@@ -611,6 +611,19 @@ function StaffNpcService:cashierReady(companyId: string): boolean
 	return record ~= nil and record.state == "OnDuty"
 end
 
+-- Hot Cider Round (CM2-46a): every live staff record of the company is fully rested at once.
+-- Returns the number of records rested.
+function StaffNpcService:restAll(companyId: string): number
+	local count = 0
+	for _, record in ipairs(self:_ordered()) do
+		if not record.loadTest and record.companyId == companyId then
+			record.energy = Config.Energy.Max
+			count += 1
+		end
+	end
+	return count
+end
+
 -- Removes every record on the plot (the plot is released).
 function StaffNpcService:clearPlot(plotId: string)
 	for _, record in ipairs(self:_ordered()) do

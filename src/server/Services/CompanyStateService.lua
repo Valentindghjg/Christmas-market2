@@ -20,6 +20,7 @@ local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local Staff = require(Shared:WaitForChild("Staff"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
+local CompanyPurchases = require(script.Parent:WaitForChild("CompanyPurchases"))
 local CompanyStaff = require(script.Parent:WaitForChild("CompanyStaff"))
 local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
 local CustomerService = require(script.Parent:WaitForChild("CustomerService"))
@@ -37,6 +38,8 @@ CompanyStateService.__index = CompanyStateService
 -- staffLoadOrder, staffReleaseOrder, staffPeekRestock, staffRestock, noteStaff,
 -- setBreakAreaChangedHandler, _notifyBreakArea.
 CompanyStaff.install(CompanyStateService)
+-- Robux purchases (CM2-46a): pass perks, Cash Rush boosts and grantPurchase.
+CompanyPurchases.install(CompanyStateService)
 
 -- Persistence results that mean this server no longer owns a valid writable session.
 local FAIL_CLOSED_SAVE_ERRORS = { SessionLocked = true, NotLoaded = true }
@@ -819,7 +822,7 @@ local ORDER_ACTIONS = {
 }
 
 -- Applies one validated request to the live record. Must not yield.
-function CompanyStateService:_dispatch(session, state, userId: number, request)
+function CompanyStateService:_dispatch(session, state, userId: number, request, companyId: string)
 	if not canPerformAction(state, userId, request.action) then
 		return { ok = false, errorCode = "Forbidden" }
 	end
@@ -848,6 +851,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 				customers = CustomerOrderService.summary(state, session.npcClaims),
 				pricing = PricingService.summary(state),
 				staff = CompanyStaff.summary(session, state),
+				shop = CompanyPurchases.summary(self, companyId, state),
 			},
 		}
 	end
@@ -872,7 +876,8 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 			payload.speciesId,
 			payload.sizeId,
 			payload.quantity,
-			self._clock()
+			self._clock(),
+			if self:perksOf(companyId).instantDelivery then 0 else nil
 		)
 	elseif action == Protocol.Actions.StockPlace or action == Protocol.Actions.StockStore then
 		-- OBSERVED: stocking needs empty hands.
@@ -911,8 +916,9 @@ function CompanyStateService:_dispatch(session, state, userId: number, request)
 	elseif action == Protocol.Actions.OrderCarry then
 		succeeded, result = CustomerOrderService.carry(state, userId, payload.orderNumber)
 	elseif action == Protocol.Actions.OrderLoad then
+		local perks = self:perksOf(companyId)
 		succeeded, result =
-			CustomerOrderService.load(state, userId, payload.orderNumber, payload.carNumber, self._clock())
+			CustomerOrderService.load(state, userId, payload.orderNumber, payload.carNumber, self._clock(), perks)
 	elseif action == Protocol.Actions.OrderRelease then
 		succeeded, result = CustomerOrderService.release(state, userId, payload.orderNumber)
 	elseif action == Protocol.Actions.SupplierSellBack then
@@ -954,7 +960,7 @@ function CompanyStateService:handle(companyId: string, userId: number, request)
 		return { ok = false, errorCode = "CompanyUnavailable" }
 	end
 	local entered, response = self:_withSession(companyId, session, function(state)
-		return self:_dispatch(session, state, userId, request)
+		return self:_dispatch(session, state, userId, request, companyId)
 	end)
 	if not entered then
 		return { ok = false, errorCode = response }
@@ -1118,6 +1124,7 @@ function CompanyStateService:npcDecide(companyId: string, visitId: string, custo
 	if not session then
 		return false, "CompanyUnavailable"
 	end
+	local tolerance = self:priceTolerance(companyId)
 	local entered, ok, result = self:_withSession(companyId, session, function(state)
 		if claimOf(session, visitId) == nil then
 			return false, "NoClaim"
@@ -1127,7 +1134,7 @@ function CompanyStateService:npcDecide(companyId: string, visitId: string, custo
 			customerNumber,
 			self._clock(),
 			if roll ~= nil then roll else self._randomRoll(),
-			{ duration = GameConfig.Customers.Npc.ReservationSeconds, customerId = visitId }
+			{ duration = GameConfig.Customers.Npc.ReservationSeconds, customerId = visitId, priceTolerance = tolerance }
 		)
 		if not started then
 			return false, visit
@@ -1223,7 +1230,8 @@ function CompanyStateService:npcSettle(
 			self._clock(),
 			space,
 			session.npcClaims,
-			queueSeconds
+			queueSeconds,
+			self:cashMultiplierOf(companyId, state)
 		)
 		state.revision += 1
 		session.dirty = true
@@ -1354,7 +1362,9 @@ function CompanyStateService:visitForTest(companyId: string, customerNumber: num
 		if not started then
 			return false, visit
 		end
-		local sold, sale = CustomerSimulationService.completeVisit(state, visit, timestamp, nil, session.npcClaims)
+		local multiplier = self:cashMultiplierOf(companyId, state)
+		local sold, sale =
+			CustomerSimulationService.completeVisit(state, visit, timestamp, nil, session.npcClaims, nil, multiplier)
 		if not sold then
 			return false, sale
 		end
@@ -1478,6 +1488,7 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		pendingOrders = pending,
 		customerOrders = CustomerOrderService.summary(state, session.npcClaims).orders,
 		clock = clock, -- Fix round 1 (F7): lets a playtest expire orders from the server's clock
+		purchases = CompanyPurchases.snapshot(state), -- CM2-46a
 	}
 end
 

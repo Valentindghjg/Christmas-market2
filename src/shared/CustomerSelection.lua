@@ -26,7 +26,9 @@ local function varietyFactor(state): number
 end
 
 -- Returns the first stable compatible candidate and its server-computed conversion score.
-function CustomerSelection.choose(state, profile)
+-- priceTolerance (CM2-46a, Evergreen VIP): the customer judges salePrice / priceTolerance
+-- against its budget and the Demand price ratio; the candidate keeps the real salePrice.
+function CustomerSelection.choose(state, profile, priceTolerance: number?)
 	if type(state) ~= "table" or type(state.layout) ~= "table" or type(state.layout.placements) ~= "table" then
 		return nil
 	end
@@ -38,14 +40,19 @@ function CustomerSelection.choose(state, profile)
 	end
 	table.sort(candidateIds)
 	local stockFactor = math.min(1, #candidateIds / GameConfig.AutoPricing.TargetDisplayStock)
+	local tolerance = 1
+	if type(priceTolerance) == "number" and priceTolerance > 0 and priceTolerance ~= math.huge then
+		tolerance = priceTolerance
+	end
 	for _, placementId in ipairs(candidateIds) do
 		local placement = state.layout.placements[placementId]
 		local mediumPrice = state.mediumPrices[placement.speciesId]
 		if type(mediumPrice) == "number" then
 			local salePrice = Economy.priceForSize(mediumPrice, placement.sizeId)
 			local typical = Economy.typicalPrice(placement.speciesId, placement.sizeId)
-			if typical ~= nil and CustomerProfile.canPurchase(profile, placement, salePrice) then
-				local score = Demand.score(salePrice / typical, state.reputation, 1, varietyFactor(state), stockFactor)
+			local judged = salePrice / tolerance
+			if typical ~= nil and CustomerProfile.canPurchase(profile, placement, judged) then
+				local score = Demand.score(judged / typical, state.reputation, 1, varietyFactor(state), stockFactor)
 				return { placementId = placementId, salePrice = salePrice, conversionScore = score }
 			end
 		end

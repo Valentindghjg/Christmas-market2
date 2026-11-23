@@ -8,6 +8,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Reviews = require(Shared:WaitForChild("Reviews"))
+local ShopConfig = require(Shared:WaitForChild("ShopConfig"))
 local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
 
 local CustomerOrderService = {}
@@ -200,11 +201,18 @@ function CustomerOrderService.releaseCarriedBy(state, userId: number): number
 	return released
 end
 
--- The customer reviews the service (CM2-G15): queue time plus the wait at the car.
-local function complete(state, order, timestamp: number)
+-- The customer reviews the service (CM2-G15): queue time plus the wait at the car. perks
+-- (CM2-46a): Evergreen VIP lifts the stars, Shining Star doubles the reputation gain.
+local function complete(state, order, timestamp: number, perks)
 	local pickup = math.max(0, timestamp - order.soldAt)
 	local stars = Reviews.starsFor(order.queueSeconds + pickup)
+	if type(perks) == "table" and perks.vip == true then
+		stars = math.min(5, stars + ShopConfig.VipStarBonus)
+	end
 	local gain = GameConfig.Reviews.ReputationByStars[stars]
+	if type(perks) == "table" and perks.reputationX2 == true then
+		gain *= ShopConfig.ReputationMultiplier
+	end
 	state.customerOrders[tostring(order.orderNumber)] = nil
 	state.reputation += gain
 	state.loadedOrders += 1
@@ -219,7 +227,14 @@ local function complete(state, order, timestamp: number)
 end
 
 -- Completes an order only for the carrying player at the car with the same number.
-function CustomerOrderService.load(state, userId: number, orderNumber: number, carNumber: number, timestamp: number)
+function CustomerOrderService.load(
+	state,
+	userId: number,
+	orderNumber: number,
+	carNumber: number,
+	timestamp: number,
+	perks: any?
+)
 	local order = find(state, orderNumber)
 	if not order then
 		return false, "UnknownOrder"
@@ -230,7 +245,7 @@ function CustomerOrderService.load(state, userId: number, orderNumber: number, c
 	if carNumber ~= orderNumber then
 		return false, "WrongCar"
 	end
-	return true, complete(state, order, timestamp)
+	return true, complete(state, order, timestamp, perks)
 end
 
 -- Customers whose patience ran out drive off unhappy; the paid sale stays booked. Each leaves

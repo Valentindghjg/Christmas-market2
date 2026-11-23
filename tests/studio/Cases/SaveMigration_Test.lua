@@ -359,4 +359,42 @@ return function(t)
 		expect.truthy(store.records[targetKey])
 		expect.equal(store.records[legacyKey]._migratedTo, saveId)
 	end)
+
+	-- CM2-46a: schema 17 adds the purchases record (receipts, owned counts, boost time).
+	t.test("migrates schema 16 to 17 with empty purchases", function()
+		local record = BusinessState.new("save:" .. SAVE_ID, 42)
+		record.schemaVersion = 16
+		record.purchases = nil
+		record.cash = 777
+		local migrated, reason = BusinessState.migrate(record, "save:" .. SAVE_ID, 42)
+		expect.equal(reason, nil)
+		expect.truthy(migrated)
+		expect.equal(migrated.schemaVersion, 17)
+		expect.equal(migrated.cash, 777)
+		expect.equal(#migrated.purchases.receipts, 0)
+		expect.equal(next(migrated.purchases.owned), nil)
+		expect.equal(migrated.purchases.boosts.CashX2, 0)
+		expect.truthy(BusinessState.validate(migrated))
+		local v1 = {
+			schemaVersion = 1,
+			cash = 500,
+			reputation = 10,
+			stock = {},
+			pendingOrders = {},
+			history = {},
+			sales = 0,
+			revenue = 0,
+			spent = 0,
+		}
+		local fromV1 = BusinessState.migrate(v1, "personal:42", 42)
+		expect.truthy(fromV1)
+		expect.equal(fromV1.schemaVersion, 17)
+		expect.equal(fromV1.purchases.boosts.CashX2, 0)
+		expect.truthy(BusinessState.validate(fromV1))
+		local broken = BusinessState.new("save:" .. SAVE_ID, 42)
+		broken.purchases = { receipts = {}, owned = {}, boosts = { CashX2 = -1 } }
+		expect.falsy(BusinessState.validate(broken))
+		broken.purchases = "none"
+		expect.falsy(BusinessState.validate(broken))
+	end)
 end

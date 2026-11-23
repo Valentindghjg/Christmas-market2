@@ -398,4 +398,38 @@ return function(t)
 			expect.equal(reason, "InvalidBreakArea")
 		end
 	end)
+
+	-- CM2-46a: Shop.Catalog has no fields; Shop.Prompt carries exactly a product key.
+	t.test("validates shop requests", function()
+		local function shop(action: string, payload)
+			return Protocol.validateShopRequest({
+				version = 1,
+				requestId = "shop_0001",
+				action = action,
+				payload = payload,
+			})
+		end
+		expect.truthy(shop("Shop.Catalog", {}))
+		local _, extra = shop("Shop.Catalog", { cash = 1 })
+		expect.equal(extra, "UnexpectedField")
+		expect.truthy(shop("Shop.Prompt", { productKey = "CashPinecone" }))
+		local _, missing = shop("Shop.Prompt", {})
+		expect.equal(missing, "UnexpectedField")
+		local _, more = shop("Shop.Prompt", { productKey = "CashPinecone", price = 0 })
+		expect.equal(more, "UnexpectedField")
+		local _, bad = shop("Shop.Prompt", { productKey = "Cash Pinecone" })
+		expect.equal(bad, "InvalidProduct")
+		local _, number = shop("Shop.Prompt", { productKey = 1001 })
+		expect.equal(number, "InvalidProduct")
+		local _, unknown = shop("Shop.Grant", {})
+		expect.equal(unknown, "UnknownAction")
+		-- Shop actions never pass the business validator.
+		local _, business = Protocol.validateRequest({
+			version = 1,
+			requestId = "shop_0002",
+			action = "Shop.Catalog",
+			payload = {},
+		})
+		expect.equal(business, "UnknownAction")
+	end)
 end

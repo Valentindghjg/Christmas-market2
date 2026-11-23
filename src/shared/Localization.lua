@@ -287,6 +287,9 @@ Localization.Strings = {
 		breakAreaCancel = "Cancel (Q)",
 		breakAreaMoved = "Break area moved.",
 		breakAreaTrees = "Trees are in the way.",
+		-- Robux shop notices (CM2-46a).
+		shopThanks = "Thanks for your purchase! It has been added to your lot.",
+		shopPassActive = "Thanks! Your game pass is now active.",
 	},
 	de = {
 		cash = "Geld",
@@ -572,6 +575,8 @@ Localization.Strings = {
 		breakAreaCancel = "Abbrechen (Q)",
 		breakAreaMoved = "Pausenplatz verschoben.",
 		breakAreaTrees = "Hier stehen Bäume im Weg.",
+		shopThanks = "Danke für deinen Kauf! Er wurde deinem Grundstück gutgeschrieben.",
+		shopPassActive = "Danke! Dein Spielpass ist jetzt aktiv.",
 	},
 }
 

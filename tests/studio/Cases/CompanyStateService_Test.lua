@@ -1053,4 +1053,70 @@ return function(t)
 		expect.equal(stored.z, -4)
 		expect.equal(stored.rotation, 90)
 	end)
+
+	-- CM2-46a: Golden Till (x2) and Cash Rush (x2) pay a bonus on customer sale cash.
+	t.test("pays the sale bonus for passes and boosts", function()
+		local function saleDelta(cashX2: boolean, boost: number): (number, number, number)
+			local service = Service.new(fakePersistence(), function()
+				return 100
+			end, function()
+				return 0
+			end)
+			local state = service:loadCompany("personal:42", 42)
+			state.layout.placements.douglas = { speciesId = "DouglasFir", sizeId = "Medium" }
+			state.purchases.boosts.CashX2 = boost
+			service:setPerks("personal:42", { cashX2 = cashX2 })
+			local cash, revenue = state.cash, state.revenue
+			local ok = service:visitForTest("personal:42", 8)
+			expect.truthy(ok)
+			return state.cash - cash, state.revenue - revenue, state.mediumPrices.DouglasFir
+		end
+		local plain, plainRevenue, price = saleDelta(false, 0)
+		expect.equal(plain, price)
+		expect.equal(plainRevenue, price)
+		local pass, passRevenue = saleDelta(true, 0)
+		expect.equal(pass, price * 2)
+		expect.equal(passRevenue, price * 2)
+		local boosted = saleDelta(false, 60)
+		expect.equal(boosted, price * 2)
+		local both, bothRevenue = saleDelta(true, 60)
+		expect.equal(both, price * 4)
+		expect.equal(bothRevenue, price * 4)
+	end)
+
+	-- CM2-46a: Express Sleigh delivers supplier orders at once.
+	t.test("delivers at once with Express Sleigh", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end)
+		local state = service:loadCompany("personal:42", 42)
+		state.cash = 1000
+		service:setPerks("personal:42", { instantDelivery = true })
+		expect.truthy(service:handle("personal:42", 42, order("order_3333")).ok)
+		expect.equal(state.pendingOrders["order:order_3333"].dueAt, 100)
+		service:setPerks("personal:42", {})
+		expect.truthy(service:handle("personal:42", 42, order("order_4444")).ok)
+		expect.equal(state.pendingOrders["order:order_4444"].dueAt, 100 + GameConfig.DeliverySeconds)
+		expect.equal(GameConfig.DeliverySeconds, 30)
+	end)
+
+	-- CM2-46a: Cash Rush counts down only while its save is loaded, without a dirty flag.
+	t.test("ticks the cash boost only while loaded", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end)
+		local state = service:loadCompany("personal:42", 42)
+		state.purchases.boosts.CashX2 = 100
+		local ok, ticked = service:tickBoostsAll(5)
+		expect.truthy(ok)
+		expect.equal(ticked, 1)
+		expect.equal(state.purchases.boosts.CashX2, 95)
+		expect.equal(service:boostSeconds("personal:42"), 95)
+		expect.falsy(service:isDirty("personal:42"))
+		expect.truthy(service:unloadCompany("personal:42"))
+		local _, none = service:tickBoostsAll(5)
+		expect.equal(none, 0)
+		expect.equal(state.purchases.boosts.CashX2, 95)
+		expect.equal(service:boostSeconds("personal:42"), nil)
+	end)
 end

@@ -10,6 +10,7 @@ return function(t)
 	local CompanyStateService = require(Services:WaitForChild("CompanyStateService"))
 	local PersistenceService = require(Services:WaitForChild("PersistenceService"))
 	local PlotService = require(Services:WaitForChild("PlotService"))
+	local PurchaseLedgerService = require(Services:WaitForChild("PurchaseLedgerService"))
 	local SaveSlotService = require(Services:WaitForChild("SaveSlotService"))
 	local expect = t.expect
 
@@ -618,6 +619,8 @@ return function(t)
 			end
 		end
 		expect.equal(SaveSlotService.profileKey(MAX_USER_ID), "profile:9223372036854774784")
+		-- CM2-46a: the purchase ledger key of the same user fits too.
+		expect.truthy(#PurchaseLedgerService.keyFor(MAX_USER_ID) <= KEY_NAME_LIMIT)
 		expect.truthy(env.profileStore.records["profile:9223372036854774784"])
 		expect.equal(env.companyStore.records[PersistenceService.keyFor("save:" .. migratedId)].cash, 777)
 	end)

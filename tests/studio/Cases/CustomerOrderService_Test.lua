@@ -362,4 +362,42 @@ return function(t)
 		expect.falsy(maxed)
 		expect.equal(reason, "MaxParking")
 	end)
+
+	-- CM2-46a: Shining Star doubles the review's reputation; Evergreen VIP adds a star (max 5).
+	t.test("doubles reputation and lifts VIP stars", function()
+		local stars = GameConfig.Reviews.ReputationByStars
+		local state, order = stateWithSale()
+		local reputation = state.reputation
+		expect.truthy(Orders.carry(state, 42, order.orderNumber))
+		local _, fast = Orders.load(
+			state,
+			42,
+			order.orderNumber,
+			order.orderNumber,
+			order.soldAt + 10,
+			{ reputationX2 = true, vip = true }
+		)
+		expect.equal(fast.stars, 5)
+		expect.equal(fast.reputationGain, stars[5] * 2)
+		expect.equal(state.reputation, reputation + stars[5] * 2)
+		local slowState, slowOrder = stateWithSale()
+		expect.truthy(Orders.carry(slowState, 42, slowOrder.orderNumber))
+		local _, slow = Orders.load(
+			slowState,
+			42,
+			slowOrder.orderNumber,
+			slowOrder.orderNumber,
+			slowOrder.soldAt + 90,
+			{ vip = true }
+		)
+		expect.equal(slow.stars, 3)
+		expect.equal(slow.reputationGain, stars[3])
+		expect.equal(slowState.reviews.recent[1], 3)
+		local plainState, plainOrder = stateWithSale()
+		expect.truthy(Orders.carry(plainState, 42, plainOrder.orderNumber))
+		local _, plain =
+			Orders.load(plainState, 42, plainOrder.orderNumber, plainOrder.orderNumber, plainOrder.soldAt + 90)
+		expect.equal(plain.stars, 2)
+		expect.equal(plain.reputationGain, stars[2])
+	end)
 end

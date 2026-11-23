@@ -1,13 +1,14 @@
 --!strict
 local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
+local Purchases = require(script.Parent.Purchases)
 local Receiving = require(script.Parent.Receiving)
 local Reviews = require(script.Parent.Reviews)
 local SaveProfile = require(script.Parent.SaveProfile)
 local Staff = require(script.Parent.Staff)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 16
+BusinessState.SCHEMA_VERSION = 17
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -160,6 +161,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		supplier = BusinessState.newSupplier(),
 		reviews = Reviews.newReviews(),
 		likes = Reviews.newLikes(),
+		purchases = Purchases.new(),
 	}
 end
 
@@ -303,6 +305,11 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.staffEnergy = Staff.newEnergy()
 		state.breakArea = Staff.defaultBreakArea(state)
 	end
+	if state.schemaVersion == 16 then
+		state.schemaVersion = 17
+		-- Schema 17 (CM2-46a): Robux purchase receipts, owned counts and boost time.
+		state.purchases = Purchases.new()
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -312,6 +319,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		BusinessState.clearReservations(state)
 		normalizeSchema10(state)
 		Reviews.normalize(state)
+		Purchases.normalize(state)
 		return validated(state)
 	end
 	if not isValidLegacyV1(state) then
@@ -344,6 +352,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	applyStockMigration(state)
 	state.staffEnergy = Staff.newEnergy()
 	state.breakArea = Staff.defaultBreakArea(state)
+	state.purchases = Purchases.new()
 	return validated(state)
 end
 
@@ -724,7 +733,7 @@ function BusinessState.validate(state)
 	if not isFiniteInteger(state.spent) or state.spent < 0 then
 		return false
 	end
-	if not Reviews.isValid(state) then
+	if not Reviews.isValid(state) or not Purchases.isValid(state) then
 		return false
 	end
 	for placementId, reservation in pairs(state.reservations) do
@@ -756,13 +765,15 @@ end
 
 -- Creates a server-priced delivery order in its own receiving bay. The trees land in the bay
 -- by themselves at dueAt (reconcileDeliveries); cost is always obtained from GameConfig.
+-- deliverySeconds (CM2-46a) replaces GameConfig.DeliverySeconds (0 with Express Sleigh).
 function BusinessState.placeOrder(
 	state,
 	requestId: string,
 	species: string,
 	size: string,
 	quantity: number,
-	timestamp: number
+	timestamp: number,
+	deliverySeconds: number?
 )
 	if not BusinessState.validate(state) then
 		return false, "InvalidState"
@@ -816,7 +827,7 @@ function BusinessState.placeOrder(
 		sizeId = size,
 		quantity = quantity,
 		createdAt = timestamp,
-		dueAt = timestamp + GameConfig.DeliverySeconds,
+		dueAt = timestamp + (deliverySeconds or GameConfig.DeliverySeconds),
 		status = "Pending",
 		bay = bay,
 	}

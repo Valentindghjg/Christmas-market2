@@ -213,6 +213,44 @@ function PersistenceService:release(companyId: string)
 	return true, nil
 end
 
+-- Whether a stored save already received a Robux purchase (CM2-46a cross-save receipts). One
+-- read through UpdateAsync whose transform never writes. "Applied": the receipt is in the
+-- record (checked first, a deleted save included); "Held": an unexpired lock of any server,
+-- this one included; else "Free" (also for a missing record). A store error is "LoadFailed".
+function PersistenceService:peekReceipt(companyId: string, purchaseId: string): (string?, string?)
+	local status = "Free"
+	local success = self:_retry(function()
+		return self._store:UpdateAsync(self:_key(companyId), function(previous)
+			status = "Free"
+			if type(previous) ~= "table" then
+				return nil
+			end
+			local purchases = previous.purchases
+			if type(purchases) == "table" and type(purchases.receipts) == "table" then
+				for _, received in ipairs(purchases.receipts) do
+					if received == purchaseId then
+						status = "Applied"
+						return nil
+					end
+				end
+			end
+			local session = previous._session
+			if
+				type(session) == "table"
+				and type(session.expiresAt) == "number"
+				and session.expiresAt > self._clock()
+			then
+				status = "Held"
+			end
+			return nil
+		end)
+	end)
+	if not success then
+		return nil, "LoadFailed"
+	end
+	return status, nil
+end
+
 -- Non-owner member IDs (ascending) and the invite code of a stored record (CM2-S2).
 local function deletionInfo(record)
 	local memberUserIds = {}

@@ -230,8 +230,15 @@ function CompanyStaff.install(CompanyStateService)
 	-- Loads the carried order into its car exactly once; the customer leaves a review.
 	function CompanyStateService:staffLoadOrder(companyId: string, orderNumber: number): (boolean, any)
 		local entered, ok, result = withLive(self, companyId, function(state, session)
-			local loaded, review =
-				CustomerOrderService.load(state, StaffConfig.CarrierUserId, orderNumber, orderNumber, self._clock())
+			-- CM2-46a: Shining Star and Evergreen VIP apply to staff loads too.
+			local loaded, review = CustomerOrderService.load(
+				state,
+				StaffConfig.CarrierUserId,
+				orderNumber,
+				orderNumber,
+				self._clock(),
+				self:perksOf(companyId)
+			)
 			if not loaded then
 				return false, review
 			end

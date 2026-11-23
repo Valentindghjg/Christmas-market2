@@ -3,6 +3,7 @@
 -- or a server-side ProximityPrompt that is checked exactly like a remote call.
 local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
 local MemoryStoreService = game:GetService("MemoryStoreService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -14,13 +15,16 @@ local config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Ga
 local BusinessState = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BusinessState"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
+local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ShopConfig"))
 local PersistenceService = require(script.Parent.Services:WaitForChild("PersistenceService"))
 local CompanyStateService = require(script.Parent.Services:WaitForChild("CompanyStateService"))
 local CustomerNpcService = require(script.Parent.Services:WaitForChild("CustomerNpcService"))
 local CustomerNpcWorld = require(script.Parent.Services:WaitForChild("CustomerNpcWorld"))
 local InviteCodeService = require(script.Parent.Services:WaitForChild("InviteCodeService"))
+local MonetizationService = require(script.Parent.Services:WaitForChild("MonetizationService"))
 local NpcAvatar = require(script.Parent.Services:WaitForChild("NpcAvatar"))
 local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
+local PurchaseLedgerService = require(script.Parent.Services:WaitForChild("PurchaseLedgerService"))
 local SaveLocatorService = require(script.Parent.Services:WaitForChild("SaveLocatorService"))
 local SaveSlotService = require(script.Parent.Services:WaitForChild("SaveSlotService"))
 local StaffNpcService = require(script.Parent.Services:WaitForChild("StaffNpcService"))
@@ -41,6 +45,12 @@ businessAction.Parent = remotes
 local saveAction = remotes:FindFirstChild("SaveAction") or Instance.new("RemoteFunction")
 saveAction.Name = "SaveAction"
 saveAction.Parent = remotes
+
+-- Robux shop actions (CM2-46a): validated and rate-limited by MonetizationService. Only the
+-- server prompts a purchase, and never without an owner-provided ID.
+local shopAction = remotes:FindFirstChild("ShopAction") or Instance.new("RemoteFunction")
+shopAction.Name = "ShopAction"
+shopAction.Parent = remotes
 
 -- One-way, server-to-client notices; clients cannot send anything through it.
 local notify = remotes:FindFirstChild("Notify") or Instance.new("RemoteEvent")
@@ -224,6 +234,58 @@ local saveSlots = SaveSlotService.new({
 	teleport = teleportForFreePlot,
 	locator = locator,
 	teleportToServer = teleportToServer,
+})
+
+-- Robux shop (CM2-46a): receipts into the buyer's active save, passes, perks, Robux spent.
+local ledger = PurchaseLedgerService.new()
+local monetization = MonetizationService.new({
+	companies = companies,
+	ledger = ledger,
+	persistence = persistence,
+	activeCompanyId = function(userId: number): string?
+		return saveSlots:activeCompanyId(userId)
+	end,
+	playersOn = function(companyId: string)
+		return saveSlots:playersOn(companyId)
+	end,
+	isPresent = function(userId: number): boolean
+		return Players:GetPlayerByUserId(userId) ~= nil
+	end,
+	ownsPass = function(userId: number, passId: number): boolean
+		return MarketplaceService:UserOwnsGamePassAsync(userId, passId)
+	end,
+	prompt = function(userId: number, kind: string, id: number)
+		local player = Players:GetPlayerByUserId(userId)
+		if not player then
+			error("NoPlayer")
+		end
+		if kind == "Pass" then
+			MarketplaceService:PromptGamePassPurchase(player, id)
+		else
+			MarketplaceService:PromptProductPurchase(player, id)
+		end
+	end,
+	productPrice = function(kind: string, id: number): number?
+		local infoType = if kind == "Pass" then Enum.InfoType.GamePass else Enum.InfoType.Product
+		return MarketplaceService:GetProductInfo(id, infoType).PriceInRobux
+	end,
+	onApplied = function(userId: number, companyId: string, product)
+		if type(product.grant) == "table" and product.grant.rested == true then
+			staff:restAll(companyId)
+		end
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			tell(player, "shopThanks")
+		end
+	end,
+	setAttribute = function(userId: number, name: string, value: any)
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			player:SetAttribute(name, value)
+		end
+	end,
+	wait = task.wait,
+	clock = os.time,
 })
 
 -- Teammate finder (CM2-S3): open finder panels refetch when the listings change.
@@ -570,6 +632,13 @@ end)
 every(config.Saves.LocatorRenewSeconds, "save locator", function()
 	return saveSlots:renewLocations()
 end)
+-- Cash Rush counts down only while its save is loaded (CM2-46a, no offline time).
+every(ShopConfig.BoostTickSeconds, "boosts", function()
+	return companies:tickBoostsAll(ShopConfig.BoostTickSeconds)
+end)
+task.spawn(function()
+	monetization:refreshPrices()
+end)
 
 local function isInGame(player: Player): boolean
 	return player.Parent == Players
@@ -620,6 +689,8 @@ saveSlots:setActivationHandlers(function(userId: number, companyId: string, plot
 			task.spawn(spawnAtClaimedPlot, player, player.Character)
 		end
 	end
+	-- Pass perks follow the players on the save (CM2-46a).
+	monetization:refreshPerks(companyId)
 end, function(userId: number, companyId: string, plotId: string?, plotReleased: boolean)
 	if plotReleased then
 		signNames[companyId] = nil
@@ -641,6 +712,7 @@ end, function(userId: number, companyId: string, plotId: string?, plotReleased: 
 		player:SetAttribute("ActiveSaveSize", nil)
 		player:SetAttribute("ActiveSaveOwnerName", nil)
 	end
+	monetization:refreshPerks(companyId, userId)
 end)
 
 -- Co-op teams (CM2-S2): a removed member learns why; a team change refreshes open team panels.
@@ -726,6 +798,10 @@ local function crossServerJoin(player: Player)
 end
 
 local function onPlayerAdded(player: Player)
+	-- Robux spent and game passes (CM2-46a); independent of the save picker.
+	task.spawn(function()
+		monetization:onPlayerJoined(player.UserId)
+	end)
 	player.CharacterAdded:Connect(function(character)
 		CustomerNpcWorld.assignPlayerCharacter(character)
 		-- A respawn drops the carried tree back at the pickup spot.
@@ -799,6 +875,7 @@ Players.PlayerRemoving:Connect(function(player)
 		warn(string.format("[ChristmasMarket2] save unload failed for %d: %s", player.UserId, tostring(errorCode)))
 	end
 	companies:forgetUser(player.UserId)
+	monetization:forgetUser(player.UserId)
 end)
 
 local ORDER_REACH_ACTIONS = {
@@ -872,6 +949,40 @@ local function handleBusinessAction(player: Player, request)
 end
 businessAction.OnServerInvoke = handleBusinessAction
 
+-- Untrusted Shop.* requests (CM2-46a).
+shopAction.OnServerInvoke = function(player: Player, request)
+	return monetization:handle(player.UserId, request)
+end
+
+-- Developer-product receipts (CM2-46a): PurchaseGranted only after the grant, the save of the
+-- company record and the ledger entry; everything else is NotProcessedYet and retried by
+-- Roblox. Unknown product IDs are never granted.
+MarketplaceService.ProcessReceipt = function(info)
+	local called, decision = pcall(function()
+		return monetization:processReceipt({
+			PlayerId = info.PlayerId,
+			ProductId = info.ProductId,
+			PurchaseId = info.PurchaseId,
+			CurrencySpent = if info.CurrencyType == Enum.CurrencyType.Robux then info.CurrencySpent else 0,
+		})
+	end)
+	if called and decision == "PurchaseGranted" then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+	if not called then
+		warn(string.format("[ChristmasMarket2] ProcessReceipt errored: %s", tostring(decision)))
+	end
+	return Enum.ProductPurchaseDecision.NotProcessedYet
+end
+
+-- Game passes bought in this session take effect at once (CM2-46a).
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player: Player, passId: number, purchased: boolean)
+	monetization:onPassPurchaseFinished(player.UserId, passId, purchased)
+	if purchased then
+		tell(player, "shopPassActive")
+	end
+end)
+
 -- Studio-only test instrument for reproducible playtests (docs/TEST_PLAN.md). The hook is
 -- never created on live servers (the release build omits StudioTestService), and clients
 -- cannot reach a ServerStorage BindableFunction.
@@ -884,6 +995,8 @@ if RunService:IsStudio() then
 			npc = npc,
 			staff = staff,
 			saveSlots = saveSlots,
+			monetization = monetization,
+			ledger = ledger,
 			orderCallbacks = orderCallbacks,
 			checkoutAt = checkoutAt,
 			companyIdFor = companyIdFor,

@@ -52,4 +52,17 @@ return function(t)
 		expect.truthy(pricey)
 		expect.truthy(pricey.conversionScore < medium.conversionScore)
 	end)
+
+	-- CM2-46a: Evergreen VIP customers judge the price against their budget with 15 % tolerance.
+	t.test("lets VIP customers pay up to 15% more", function()
+		local profile = CustomerProfile.create(8)
+		local price = profile.budget + 1
+		local state = douglasState(price, "Medium")
+		expect.equal(CustomerSelection.choose(state, profile), nil)
+		local candidate = CustomerSelection.choose(state, profile, 1.15)
+		expect.truthy(candidate)
+		expect.equal(candidate.salePrice, price)
+		local tooDear = douglasState(math.ceil(profile.budget * 1.15) + 1, "Medium")
+		expect.equal(CustomerSelection.choose(tooDear, profile, 1.15), nil)
+	end)
 end

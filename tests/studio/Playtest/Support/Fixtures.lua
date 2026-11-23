@@ -196,6 +196,11 @@ return function(ctx: any)
 				call("setStaff", { employeeId = "LotWorker", count = 0 })
 				call("setStaff", { employeeId = "Cashier", count = 0 })
 			end)
+			-- CM2-46a Amendment 1: no Cash Rush time or test pass survives the run.
+			attempt("shop boosts", function()
+				call("shopClearBoosts", nil)
+				call("shopPasses", { userId = S.userId, passes = {} })
+			end)
 		end
 		-- CM2-S3: the finder save needs the shadow's live profile, so it goes before shadowLeave.
 		attempt("delete finder save", function()
