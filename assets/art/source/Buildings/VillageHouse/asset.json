@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Buildings/VillageHouse",
+	"displayName": "Village House",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 3000,
+	"maxMeshParts": 10,
+	"requiredAttachments": ["Entrance"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

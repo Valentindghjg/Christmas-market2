@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/LeaderboardBoard",
+	"displayName": "Leaderboard Board",
+	"tier": "A",
+	"version": 1,
+	"maxTriangles": 1500,
+	"maxMeshParts": 8,
+	"requiredAttachments": ["Screen", "Title"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

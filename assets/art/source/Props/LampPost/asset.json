@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/LampPost",
+	"displayName": "Lamp Post",
+	"tier": "B",
+	"version": 1,
+	"maxTriangles": 160,
+	"maxMeshParts": 3,
+	"requiredAttachments": ["Light"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}

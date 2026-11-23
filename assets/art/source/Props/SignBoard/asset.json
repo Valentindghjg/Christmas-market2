@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/SignBoard",
+	"displayName": "Sign Board",
+	"tier": "B",
+	"version": 1,
+	"maxTriangles": 220,
+	"maxMeshParts": 3,
+	"requiredAttachments": ["SignFront"],
+	"upload": {
+		"modelAssetId": null,
+		"sourceSha256": null,
+		"uploadedAt": null
+	}
+}
