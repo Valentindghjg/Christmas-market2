@@ -775,3 +775,10 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Studio (Edit and Play, instance `d0521b88`): the 13 models sit at their plan paths; `MapLayout.plan` 302 placements, art 302, fallback 0, skip 0, missing 0; `runPlaytest full` PASS 62/62 with `ART_ASSETS` 41 Blender models, 238 meshes, 0 failed, 0 duplicates and `MAP_WORLD` overlaps 0, server fps 60. A Rojo live-sync glitch dropped the PrimaryPart of VillageHouse once in Edit mode; touching the `.rbxm` timestamp fixed it, no repo change. Not read: a `[ART]` warning line in the Play log (the log had rotated past startup; recorded as inferred from `MAP_WORLD` art 302).
 - Not done, BLOCKED by PC-9 (black Play viewport): the captures of CM2-10a/b/c playtest step 2 and the CM2-10W bridge and square art re-check captures; queued in "Studio-Test ausstehend". CM2-10, CM2-10W and CM2-10a to 10c are not ticked.
 - Files: assets/art/rbxm/{Buildings,Environment,Props}/*.rbxm (13 new), assets/art/source/<artPath>/asset.json (13).
+
+## 2026-11-24 — owner: recurring repo hygiene task CM2-SLIM
+- Owner: the repo grows faster than it should (about 27,000 lines in `src`, a 175 KB backlog and a 145 KB decision log that agents read every task). A clean-up task runs again and again, at the smallest tier that fits.
+- Planner decisions: tier S (no planner, `implementer` on Sonnet medium). Due after 8 `feat`/`fix` commits since the last run, when the backlog or decision log passes 80 KB or `CLAUDE.md` 16 KB, and before CM2-47 and CM2-48; `hasseln` checks this before it picks each task. Budgets, method, what it may fix itself and what it only files are in the backlog section "Recurring task: CM2-SLIM".
+- It may archive and shorten docs and delete dead files and client, test and tool code with grep evidence. Dead code in server or shared modules and near saves, money, inventory, purchases or remotes becomes a follow-up task; splitting big Luau files waits until after CM2-48.
+- Archived decision-log entries stay binding; CLAUDE.md now says to grep `docs/archive/DECISION_LOG_*.md` too.
+- Files: docs/CLAUDE_BACKLOG.md, .claude/skills/hasseln/SKILL.md, CLAUDE.md.

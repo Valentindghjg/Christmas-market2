@@ -316,6 +316,44 @@ Source: [REFERENCE_GAME_LIVE_TEST.md](REFERENCE_GAME_LIVE_TEST.md) §11 (gaps G1
   - Steps for the `playtester`: (1) in Edit mode and in the Play client, scan `game:GetDescendants()` (pcall per instance) for the asset ID in `SoundId`, `AnimationId`, `Texture`, `TextureID`, `Image`, `MeshId`, `ColorMap`, `Sky*` and in string attributes, and print the full names; (2) note when the 6 lines appear (Edit, server start, client join, character spawn) from the console order; (3) repeat on a fresh baseplate place in Play without the project, if the MCP allows it, to tell engine noise from project content.
   - Accept: PROGRESS.md records the hit list (or "0 hits" on client and edit side), the console moment, and the baseplate result (or step 3 BLOCKED with the reason); the planner then either closes it as engine noise (a DECISION_LOG line, P0_AUDIT note updated) or adds a fix task with the found instance. Also note whether the warning appears at the same moment as the black Play capture (PC-9), yes or no.
 
+## Recurring task: CM2-SLIM repo hygiene (owner decision 2026-11-24)
+The same task runs again and again; each run is one `cm2-task` with the ID `CM2-SLIM` and its date. **Tier S**: no planner, `implementer` (Sonnet medium) works from this entry, `reviewer` commits with `(CM2-SLIM)` in every commit subject (the due check below finds the last run through it).
+
+**When it is due** (skill `hasseln`, step 2, checks this before it picks a task; run it by hand with `cm2-task CM2-SLIM`):
+- no commit with `CM2-SLIM` in its subject yet, or
+- 8 or more `feat`/`fix` commits since the last one (`git log --oneline <last SLIM sha>..HEAD | grep -cE "^[0-9a-f]+ (feat|fix)"`), or
+- `docs/CLAUDE_BACKLOG.md` or `docs/DECISION_LOG.md` is over 80 KB, or `CLAUDE.md` over 16 KB, or
+- the next task is CM2-47 (QA) or CM2-48 (release candidate).
+
+**Goal:** find what nobody uses and what is too big, and shrink it, so agents read less per task. No behaviour change.
+
+**Method:** use tools, do not read every file in full: `git ls-files` with sizes (`wc -c`), `grep -rn` for references, `selene` for unused locals.
+
+**Find (report every hit with its evidence):**
+1. Dead files anywhere in the repo: scripts, tools, docs, assets, configs and skills that nothing references (no `require`, no path in `default.project.json`, code, docs or tools).
+2. Dead code: modules never required, exported functions never called, config keys never read, `Localization` keys never used, actions in `Protocol` never sent or never handled.
+3. Dead text: doc sections about removed or superseded things, duplicates of other docs, finished status notes.
+4. Too big: text files over these budgets: `CLAUDE.md` 12 KB (it is loaded on every message), `docs/CLAUDE_BACKLOG.md` 60 KB, `docs/DECISION_LOG.md` 60 KB, `docs/PROGRESS.md` 20 KB, any other doc 30 KB, any Luau file 800 lines.
+
+**Fix in this run (tier S allows it):**
+- Docs: shorten wording without changing meaning; move finished material into `docs/archive/`:
+  - backlog: ticked task lines with their status notes, resolved PC entries and done "current run" blocks go to `docs/archive/BACKLOG_DONE_<first date>_to_<last date>.md`, leaving one line per task ID (`- [x] CM2-xx title, done <date>, see archive`);
+  - decision log: entries older than 14 days go to `docs/archive/DECISION_LOG_<first date>_to_<last date>.md` unchanged; they stay binding;
+  - plans of ticked tasks go to `docs/archive/plans/`; update links that pointed to them.
+- Delete dead files outside `src/` and dead code in `src/client`, `tests` and `tools`, each only with grep evidence that nothing references it.
+- Never delete an owner decision, test evidence, a licence or provenance record, or anything in `.claude/settings*.json` and hooks; archive instead.
+
+**Do not fix here, file it instead:** dead code in `src/server` or `src/shared`, anything near saves, money, inventory, purchases or remotes, and splitting Luau files over budget. Each becomes a follow-up task right after the current launch-order task (dead code: tier by the template rules; splits: after CM2-48, not before release).
+
+**Accept:**
+- (a) A PROGRESS entry with a before/after table: size of the 10 largest text files, line counts of `src`, `tests` and `docs`, and the total size of what agents read every task (`CLAUDE.md` + the backlog + the last 60 KB of the decision log).
+- (b) Every removal is listed with its grep evidence; every archived block is findable by its task ID (`grep -rn <ID> docs/` hits it).
+- (c) `stylua --check src tests`, `selene src tests`, `lune run tests/headless/run.luau` and `rojo build` pass; the headless count is unchanged unless a test of removed dead code went with it, and then each removed test is named.
+- (d) Follow-up tasks are in the backlog with goal, tier and acceptance criteria, or the entry says "none".
+- (e) Studio: not needed when only docs and files outside `src` changed; otherwise the Studio queue rules of `cm2-task` step 3 apply.
+
+Runs: none yet.
+
 ## Launch replanning (2026-11-21)
 The owner interview changed scope and priorities (PRODUCT_SPEC, top section). This section is the **binding work order** from 2026-11-21 on; it supersedes the milestone order P1..P5 above. The ticket lists above stay as the history and the GitHub mapping. Decision record: DECISION_LOG 2026-11-21 "Launch order".
 
