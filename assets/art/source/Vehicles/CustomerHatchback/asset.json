@@ -3,13 +3,13 @@
 	"artPath": "Vehicles/CustomerHatchback",
 	"displayName": "Customer Hatchback",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1500,
 	"maxMeshParts": 7,
 	"requiredAttachments": ["CargoAnchor"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "92060776256909",
+		"sourceSha256": "c52ce76dfd9cda9c0ce3b0ee896ba9b2adadd174ab4766a80db47f8b51461a6b",
+		"uploadedAt": "2026-11-24T18:35:33Z"
 	}
 }

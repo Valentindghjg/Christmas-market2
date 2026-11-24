@@ -3,13 +3,13 @@
 	"artPath": "Vehicles/CustomerSuv",
 	"displayName": "Customer SUV",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1500,
 	"maxMeshParts": 7,
 	"requiredAttachments": ["CargoAnchor"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "105457478334599",
+		"sourceSha256": "596c19652bb3c17e8497d26af2b2a37dec49236f8870d02792a428d12bc38e8b",
+		"uploadedAt": "2026-11-24T18:36:12Z"
 	}
 }

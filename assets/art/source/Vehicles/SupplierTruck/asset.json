@@ -3,13 +3,13 @@
 	"artPath": "Vehicles/SupplierTruck",
 	"displayName": "Supplier Truck",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 3000,
 	"maxMeshParts": 10,
 	"requiredAttachments": ["CargoAnchor"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "130326245862058",
+		"sourceSha256": "178ee00eb0c6ad1a264efdf2dcada6dca1affd427e2844a4c0574e6e1cc68a24",
+		"uploadedAt": "2026-11-24T18:35:18Z"
 	}
 }

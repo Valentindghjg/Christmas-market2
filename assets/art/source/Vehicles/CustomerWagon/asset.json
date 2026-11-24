@@ -3,13 +3,13 @@
 	"artPath": "Vehicles/CustomerWagon",
 	"displayName": "Customer Wagon",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1500,
 	"maxMeshParts": 7,
 	"requiredAttachments": ["CargoAnchor"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "111886456380527",
+		"sourceSha256": "b534523ba0b3f2570ae16fa1a5e3fc95c216c83e97e974b19db0a84a5a4c105e",
+		"uploadedAt": "2026-11-24T18:35:55Z"
 	}
 }
