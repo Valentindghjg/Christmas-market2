@@ -126,11 +126,18 @@ end
 
 -- Exit -----------------------------------------------------------------------------------------
 
-local function exit()
+local function trace(message: string)
+	if RunService:IsStudio() then
+		print("[BREAK] " .. message)
+	end
+end
+
+local function exit(reason: string)
 	local current = session
 	if current == nil then
 		return
 	end
+	trace("exit " .. reason)
 	session = nil
 	for _, connection in current.connections do
 		connection:Disconnect()
@@ -235,7 +242,7 @@ local function place()
 		render(current)
 		task.delay(DONE_SECONDS, function()
 			if session == current then
-				exit()
+				exit("placed")
 				current.onDone()
 			end
 		end)
@@ -272,7 +279,9 @@ local function buildBar(current: Session)
 			rotate(current)
 		end,
 		Place = place,
-		Cancel = exit,
+		Cancel = function()
+			exit("cancel")
+		end,
 	}
 	for _, id in ipairs(order) do
 		local color = if id == "Place" then UiKit.Colors.Gold else UiKit.Colors.Sand
@@ -319,11 +328,18 @@ end
 -- Opens the mode on the player's own plot (closes the Lot Manager). request sends one business
 -- action; onDone runs after a successful move, once the bar has closed.
 function BreakAreaMode.start(plotId: string, request: Request, onDone: () -> ())
-	if session ~= nil or player:GetAttribute("CompanyReady") ~= true then
+	trace("start requested " .. tostring(plotId))
+	if session ~= nil then
+		trace("start skipped session")
+		return
+	end
+	if player:GetAttribute("CompanyReady") ~= true then
+		trace("start skipped notReady")
 		return
 	end
 	local plot = plotModel(plotId)
 	if plot == nil then
+		trace("start skipped noPlot")
 		return
 	end
 	local areaX, areaZ = plot:GetAttribute("BreakAreaX"), plot:GetAttribute("BreakAreaZ")
@@ -374,7 +390,9 @@ function BreakAreaMode.start(plotId: string, request: Request, onDone: () -> ())
 		buttons = {},
 	}
 	session = current
-	UiKit.claimModal(MODAL_ID, exit)
+	UiKit.claimModal(MODAL_ID, function()
+		exit("claim")
+	end)
 	buildBar(current)
 	refreshTrees(current)
 
@@ -383,11 +401,15 @@ function BreakAreaMode.start(plotId: string, request: Request, onDone: () -> ())
 	end
 	track(player:GetAttributeChangedSignal("CompanyReady"):Connect(function()
 		if player:GetAttribute("CompanyReady") ~= true then
-			exit()
+			exit("company")
 		end
 	end))
-	track(player:GetAttributeChangedSignal("ActiveSaveId"):Connect(exit))
-	track(player:GetAttributeChangedSignal("PlotId"):Connect(exit))
+	track(player:GetAttributeChangedSignal("ActiveSaveId"):Connect(function()
+		exit("save")
+	end))
+	track(player:GetAttributeChangedSignal("PlotId"):Connect(function()
+		exit("plot")
+	end))
 
 	local touchStarts: { [InputObject]: { at: number, position: Vector3 } } = {}
 	track(UserInputService.InputBegan:Connect(function(input, processed)
@@ -403,7 +425,7 @@ function BreakAreaMode.start(plotId: string, request: Request, onDone: () -> ())
 			elseif key == Enum.KeyCode.Return or key == Enum.KeyCode.KeypadEnter then
 				place()
 			elseif key == Enum.KeyCode.Q then
-				exit()
+				exit("keyQ")
 			end
 		end
 	end))
@@ -450,6 +472,7 @@ function BreakAreaMode.start(plotId: string, request: Request, onDone: () -> ())
 		end
 		render(current)
 	end))
+	trace("start ok")
 	render(current)
 end
 

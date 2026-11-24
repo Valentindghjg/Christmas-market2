@@ -195,6 +195,7 @@ function LandTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 	local function setButton(button: TextButton, label: string, enabled: boolean)
 		button.Text = label
 		button.AutoButtonColor = enabled
+		button.Active = enabled
 		button.BackgroundColor3 = if enabled then colors.Gold else colors.Disabled
 	end
 

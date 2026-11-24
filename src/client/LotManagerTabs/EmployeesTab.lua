@@ -166,6 +166,7 @@ function EmployeesTab.create(page: ScrollingFrame, context: TabContext): TabHand
 	local function setButton(button: TextButton, text: string, enabled: boolean)
 		button.Text = text
 		button.AutoButtonColor = enabled
+		button.Active = enabled
 		button.BackgroundColor3 = if enabled then colors.Gold else colors.Disabled
 	end
 
