@@ -116,6 +116,7 @@ Larger models are Blender MeshParts; small items stay Parts. The `.blend` in `as
 - Mountains are open surfaces sunk to y -12 (bbox y -12..150 / -12..100); front (-Z after export) = the valley side. Their only collider is `COL_Core` 20 x 20 x 20 at (0, 0, 10), inside the mass, so the MeshParts do not collide; CM2-10W adds boundary walls.
 - Colliders (Blender coordinates): `COL_Trunk` 1.4 x 1.4 x 6 at (0, 0, 3) on ForestFir, `COL_Trunk1..5` / `COL_Trunk1..3` at each trunk on the clusters, `COL_Rock` 6.6 x 4.0 x 2.2 at (0.1, 0, 0.8). Attachment `TreeBase` (0, 0, 0) on ForestFir only.
 - The game is unchanged; CM2-10W places them (zones and counts in "Map layout (CM2-10)").
+- Import of all 13 map models (CM2-10a, 10b, 10c; branch I, 2026-11-24): the `.rbxm` are in `assets/art/rbxm/Buildings/`, `Environment/` and `Props/` (asset IDs in each `asset.json`, version 2); sizes and attachments read back from the files match the tables above (`PortalFront`/`PortalBack` (0, 0.35, -28/+28), `Star` (0, 46, 0), `Screen`/`Title`, `Entrance` (0, 0, -9.6), `Light` (0, 8.15, 0), `TreeBase`). In Studio the plan places 302 pieces, all as art (fallback 0, skip 0, missing 0).
 
 ## Map in the world (CM2-10W)
 - Modules: `src/shared/MapLayout.lua` (pure data and maths: pieces, seed 1010, zones, surfaces, walls, hide levels, `plan`), `src/server/Services/MapWorld.lua` (builds `ChristmasMarketWorld.Map`, `applyReserve`), wired by `WorldService.build`; `ArtLibrary.root(ReplicatedStorage)` picks the non-empty `ArtAssets` folder.
