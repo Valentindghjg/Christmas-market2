@@ -764,3 +764,8 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Developer products: StarterPack → 3735805319 (Tree Lot Starter Kit, 79); CashPinecone → 3735805373 (Pinecone Purse, 29); CashSleigh → 3735805396 (Sleigh Sack, 99); CashCabin → 3735805416 (Cabin Chest, 249); CashVillage → 3735805452 (Village Vault, 599); CashMountain → 3735805469 (Mountain Treasury, 1499); BoostCashX2 → 3735805526 (Cash Rush, 10); BoostRested → 3735805549 (Hot Cider Round, 5).
 - Planner decision: PC-8 is resolved; CM2-46c (line 13c) enters these IDs only after a Studio `MarketplaceService:GetProductInfo` check of all 12 returns the expected name and price (any mismatch stops CM2-46c with a report). Publication stays the owner's action.
 - Files: docs/CLAUDE_BACKLOG.md (PC-8, line 13c, N3, run record), docs/DECISION_LOG.md.
+
+## 2026-11-24 — CM2-14 import branch I (engineering)
+- Import: the 4 vehicles were uploaded and normalized with yaw 0 and scale 0.0100. Model asset IDs: SupplierTruck 130326245862058, CustomerHatchback 92060776256909, CustomerWagon 111886456380527, CustomerSuv 105457478334599. Sizes in the plan (Truck 5.98 x 6.00 x 13.01, Hatchback 5 x 4 x 8, Wagon 5 x 4 x 9, Suv 5 x 4.6 x 9); `CargoAnchor` positions read back from the saved `.rbxm` are correct (the Normalize CFrame fix from the CM2-13a/13b import applies).
+- Play checks (capture with bundle stand-ins and `Paint` colour, `runPlaytest full` with `ART_ASSETS`, no `[ART]` warning) are BLOCKED by PC-9 and queued; CM2-14 is not ticked. Wiring stays CM2-14W.
+- Files: assets/art/rbxm/Vehicles/*.rbxm, assets/art/source/Vehicles/*/asset.json.
