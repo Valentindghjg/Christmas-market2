@@ -697,6 +697,20 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 
 - Schema 19: schema-18 servers fail closed on schema-19 records; shut them down when this ships.
 
+## 2026-11-23 — Day/night per save (CM2-G12a, engineering)
+- Plan: `docs/plans/CM2-G12a.md`. Config `GameConfig.DayCycle`, pure maths `src/shared/DayCycle.lua`, tick, view, arrival rate and test setter in the mixin `CompanyDayCycle`, sky and lights in `src/client/DayNight.client.lua`.
+
+| Topic | Decision |
+|---|---|
+| Whose clock | One clock per save (`state.dayCycle`), not per server. 6 saves on a server can be at different times; each client shows its own active save's sky. A player without an active save sees `DefaultClockTime` 14. |
+| When it runs | Only while the save's session is healthy and not unloading (same rule as Cash Rush, CM2-46a). No offline progress. |
+| New and migrated saves | Day 1, elapsed 0 (dawn). |
+| Night customers | Arrival credit per company: each arrival pass adds `DayCycle.arrivalRate` (1 by day, 0.5 at night, PROVISIONAL), an arrival needs credit 1. By day behaviour is exactly today's (one try per pass). |
+| Lights | Tag `NightLight` on server-created lights, `Enabled = false` on the server; the client enables them while `DayCycle.lightsOn`. Lamp posts get a Part fallback (they were skipped since CM2-10W) so the street has lights before PC-2. |
+| Lighting writes | Client only (`Lighting.ClockTime`, `Lighting.OutdoorAmbient`), 2 Hz. The server never writes `Lighting`. |
+
+- Schema 20: schema-19 servers fail closed on schema-20 records; shut them down when this ships.
+
 ## 2026-11-24 — owner: the reviewer runs on Sonnet
 - Owner: the Opus reviewer is too expensive for what it does. The `reviewer` agent now runs on Sonnet 5.5 for every task, including tier L (saves, money, inventory, security). Planner decision: high effort instead of medium, so the diff-against-plan review keeps depth on tier L tasks; still far cheaper than Opus.
 - Considered and not chosen: Opus only for tier L (the reviews of CM2-S1 and CM2-G7 found CM2-R5 and CM2-G7a); dropping the reviewer.
