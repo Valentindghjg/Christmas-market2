@@ -3,13 +3,13 @@
 	"artPath": "Environment/MountainPeak",
 	"displayName": "Mountain Peak",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1000,
 	"maxMeshParts": 4,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "112662539846046",
+		"sourceSha256": "6ef4526c139bb5cf134e0c6330f25196a05aad1b0faaac81b8ea8bd0cf0ea170",
+		"uploadedAt": "2026-11-24T18:42:33Z"
 	}
 }

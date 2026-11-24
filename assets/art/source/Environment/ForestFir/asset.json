@@ -3,13 +3,13 @@
 	"artPath": "Environment/ForestFir",
 	"displayName": "Forest Fir",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 240,
 	"maxMeshParts": 3,
 	"requiredAttachments": ["TreeBase"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "118200481007814",
+		"sourceSha256": "cde962f0eaf756e5ddefde6f98273e5395041e6b8cb9f9bc50d9e8a14d40651d",
+		"uploadedAt": "2026-11-24T18:42:49Z"
 	}
 }

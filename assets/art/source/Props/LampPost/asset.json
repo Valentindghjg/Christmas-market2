@@ -3,13 +3,13 @@
 	"artPath": "Props/LampPost",
 	"displayName": "Lamp Post",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 160,
 	"maxMeshParts": 3,
 	"requiredAttachments": ["Light"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "87108177014078",
+		"sourceSha256": "0821deb645e22b0824c669b290b576a0d3edaef254efa477e974b93d6df7e01c",
+		"uploadedAt": "2026-11-24T18:41:52Z"
 	}
 }

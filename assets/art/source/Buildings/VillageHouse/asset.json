@@ -3,13 +3,13 @@
 	"artPath": "Buildings/VillageHouse",
 	"displayName": "Village House",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 3000,
 	"maxMeshParts": 10,
 	"requiredAttachments": ["Entrance"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "137762068173947",
+		"sourceSha256": "71420760917e8b281cb66fb941e8a861aecc0fa613c505deb02d94c2d3664302",
+		"uploadedAt": "2026-11-24T18:41:21Z"
 	}
 }

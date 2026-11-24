@@ -3,13 +3,13 @@
 	"artPath": "Environment/VillageTree",
 	"displayName": "Village Tree",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 4000,
 	"maxMeshParts": 10,
 	"requiredAttachments": ["TreeBase", "Star"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "110105358193881",
+		"sourceSha256": "f27d6c50d9ee925b3c19d59d24e769e52935622fc9b424f14a7922cd3f99429e",
+		"uploadedAt": "2026-11-24T18:40:46Z"
 	}
 }

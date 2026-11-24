@@ -3,13 +3,13 @@
 	"artPath": "Props/SignBoard",
 	"displayName": "Sign Board",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 220,
 	"maxMeshParts": 3,
 	"requiredAttachments": ["SignFront"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "132704641565793",
+		"sourceSha256": "074826136f5406e06142ab98e80fb84738ae78d69a9822ac4d72acbc7d930684",
+		"uploadedAt": "2026-11-24T18:41:40Z"
 	}
 }

@@ -3,13 +3,13 @@
 	"artPath": "Buildings/CoveredBridge",
 	"displayName": "Covered Bridge",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 4000,
 	"maxMeshParts": 10,
 	"requiredAttachments": ["PortalFront", "PortalBack"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "109589026509855",
+		"sourceSha256": "2aa155242fd0e8cc8faf4bc5317d3f78477a72ac7c7b5ba014ef763657d385e7",
+		"uploadedAt": "2026-11-24T18:40:26Z"
 	}
 }

@@ -3,13 +3,13 @@
 	"artPath": "Props/Bench",
 	"displayName": "Bench",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 240,
 	"maxMeshParts": 3,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "117040393139740",
+		"sourceSha256": "6cc59d96dc1cf7024ded0b5dfc0f5ba54e86fe691d3cea5e6587a5fac5acba64",
+		"uploadedAt": "2026-11-24T18:42:05Z"
 	}
 }

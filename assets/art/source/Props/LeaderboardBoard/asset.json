@@ -3,13 +3,13 @@
 	"artPath": "Props/LeaderboardBoard",
 	"displayName": "Leaderboard Board",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1500,
 	"maxMeshParts": 8,
 	"requiredAttachments": ["Screen", "Title"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "105589306514399",
+		"sourceSha256": "9dd1d98ecffd65a65a52dee4dfc1727df89615fd3e7a12fb66eb18ccb7eecb20",
+		"uploadedAt": "2026-11-24T18:41:01Z"
 	}
 }

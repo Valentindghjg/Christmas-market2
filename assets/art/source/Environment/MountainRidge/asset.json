@@ -3,13 +3,13 @@
 	"artPath": "Environment/MountainRidge",
 	"displayName": "Mountain Ridge",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1000,
 	"maxMeshParts": 4,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "136804962948038",
+		"sourceSha256": "1f85975eb565e79deb9bb76946077e228eb4ca3e8163dda15d951beb3c5fc071",
+		"uploadedAt": "2026-11-24T18:42:20Z"
 	}
 }

@@ -3,13 +3,13 @@
 	"artPath": "Environment/RockCluster",
 	"displayName": "Rock Cluster",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 300,
 	"maxMeshParts": 3,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "100391001748906",
+		"sourceSha256": "add65f0c7e0e27286244d076103652dd2384fd36679cfdaef12c4f5fe6279db3",
+		"uploadedAt": "2026-11-24T18:43:33Z"
 	}
 }

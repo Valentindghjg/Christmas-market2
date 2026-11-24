@@ -3,13 +3,13 @@
 	"artPath": "Environment/ForestClusterB",
 	"displayName": "Forest Cluster B",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 700,
 	"maxMeshParts": 4,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "119327449245936",
+		"sourceSha256": "1491817f2eaa3b311258ee6e298244cff8d41fde10fca0e87fabb5b10af6ab3e",
+		"uploadedAt": "2026-11-24T18:43:18Z"
 	}
 }
