@@ -56,7 +56,9 @@ Owner decision 2026-11-21 (PRODUCT_SPEC). Every task that changes code, tests, m
 
 | Step | Agent | Model, effort |
 |---|---|---|
-| Plan `docs/plans/<ID>.md` from `docs/plans/TEMPLATE.md`; the plan settles every decision and sets the implementer tier | `planner` | Opus 5.5, high |
+| Plan `docs/plans/<ID>.md` from `docs/plans/TEMPLATE.md` for tier M and MODEL; the plan settles every decision and sets the implementer tier | `planner` | Opus 5.5, medium |
+| Plan for tier L (saves, money, inventory, security, concurrency, bugs of unknown cause) | `planner-high` | Opus 5.5, high |
+| Tier S runs without a plan: the implementer works from the backlog entry and stops on anything it may not decide; then `planner` writes a plan | none | none |
 | Implement, tier S (patterns, UI, config, docs, tests) | `implementer` | Sonnet 5.5, medium |
 | Implement, tier M (multi-service features, non-trivial logic) | `implementer-high` | Sonnet 5.5, high |
 | Implement, tier L (saves, money, inventory, security, concurrency) | `implementer-opus` | Opus 5.5, high |

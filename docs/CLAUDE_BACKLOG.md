@@ -300,7 +300,7 @@ The owner interview changed scope and priorities (PRODUCT_SPEC, top section). Th
 
 ### Rules for the order
 - Work top to bottom. A task is **ready** when every dependency is done (reviewer COMMITTED). If the next task is blocked, take the next ready one and record the blocker on the blocked line.
-- Every task runs through `cm2-task`: one plan `docs/plans/<ID>.md`, tier set by the planner (the tier column below is the planning estimate only).
+- Every task runs through `cm2-task`. The tier on the task's line picks the planner (owner decision 2026-11-24): S runs without a plan, so its entry needs a goal and verifiable acceptance criteria; M and MODEL go to `planner` (Opus medium), L to `planner-high` (Opus high). The planner can still raise the tier in the plan.
 - **MODEL tasks are ready since 2026-11-22**: the owner's reference images and the quality checklist are in `docs/art/quality-reference/`. The planner sets the quality tier (A or B) for every model in the plan. Feature tasks still never wait for art.
 - Every task ends with the standard checks (`stylua --check src tests`, `selene src tests`, `lune run tests/headless/run.luau`, `rojo build`) plus its own criteria below. A Studio criterion is PASS only if the `playtester` ran it; otherwise it is BLOCKED and the task stays open for that item.
 - No publication, no creation or activation of Robux products by engineering (PRODUCT_SPEC). Product, gamepass and group IDs come from the owner through config.

@@ -57,7 +57,7 @@ Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST
 
 ## Way of working and release
 - **Model routing (owner decision 2026-11-21, amended):** every task runs through the skill `cm2-task`.
-  - Planning: always Opus 5.5, high effort. The plan settles every decision.
+  - Planning by tier (owner decision 2026-11-24; was always Opus 5.5 high): tier S runs without a plan, the implementer works from the backlog entry and stops on anything it may not decide. Tier M and MODEL get a plan from Opus 5.5, medium effort; tier L (saves, money, inventory, security, concurrency, bugs of unknown cause) from Opus 5.5, high effort. A plan settles every decision.
   - Implementing: by task, Sonnet 5.5 medium (tier S), Sonnet 5.5 high (tier M) or Opus 5.5 high (tier L). Implementers make no design decisions and stop on ambiguity.
   - Playtests: Haiku 5.5, through the Roblox Studio MCP (owner decision 2026-11-24; was Sonnet 5.5).
   - Review and commit: Sonnet 5.5, high effort (owner decision 2026-11-24; was Opus 5.5, medium).

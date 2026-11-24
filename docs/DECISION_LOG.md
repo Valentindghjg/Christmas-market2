@@ -735,3 +735,13 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - PREFLIGHT clears boosts and R's pass overrides.
 - CM2-UVF8 A1: the full-run PREFLIGHT sets R's Lot Worker and Cashier to 0 (`setStaff` takes an optional `userId`) and names the reset in its detail, because manual checks left a Lot Worker on R's save.
 - CM2-UVF8 A3: ChatTags assigns `TextChatService.OnChatWindowAdded` with `ChatWindowConfiguration:DeriveNewMessageProperties()`, the documented hook for chat-window prefixes; `OnIncomingMessage` produced no [VIP] line.
+
+## 2026-11-24 — owner: planner by tier
+- Owner: the product questions are settled (grill-me interview), so the Opus planner at high effort for every task costs too much. The planner now depends on the task's tier:
+  - Tier S runs without a plan. The `implementer` works from the backlog entry (goal and acceptance criteria) and stops at once on the save schema, money, inventory, purchases, remotes or any choice it may not make; then `planner` writes a plan. The reviewer checks the diff against the entry and returns "re-plan needed" on the same triggers.
+  - Tier M and MODEL: `planner`, Opus 5.5 at medium effort. If the task turns out to be tier L, it stops with "ESCALATE TIER L" and `planner-high` plans it.
+  - Tier L (saves, money, inventory, security, concurrency, bugs of unknown cause): new agent `planner-high`, Opus 5.5 at high effort.
+- Source of the tier: an existing plan, else the tier estimate on the backlog line; without one, an unknown-cause bug counts as L and the rest goes to `planner`. Amendments go to the planner of the plan's tier.
+- Unchanged: planning with the owner in the chat (`cm2-plan`, Opus high), the implementers, modeler, playtester and reviewer.
+- Revert: set `effort: high` in .claude/agents/planner.md and remove the S branch in step 1 of `cm2-task`.
+- Files: .claude/agents/planner.md, .claude/agents/planner-high.md, .claude/agents/implementer.md, .claude/agents/playtester.md, .claude/agents/reviewer.md, .claude/skills/cm2-task/SKILL.md, .claude/skills/cm2-plan/SKILL.md, CLAUDE.md, docs/PRODUCT_SPEC.md, docs/CLAUDE_BACKLOG.md, docs/plans/TEMPLATE.md.
