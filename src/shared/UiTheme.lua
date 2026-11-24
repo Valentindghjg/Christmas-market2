@@ -238,6 +238,9 @@ UiTheme.Dialogs = {
 	},
 } :: { [string]: DialogSpec }
 
+-- Shop category bar (CM2-UVF8): fixed bar, seven tabs share the width; text scales between minText and maxText.
+UiTheme.ShopCategoryBar = { gap = 6, maxText = 13, minText = 9 }
+
 -- Save picker row (CM2-UVF4): name, kind and state on their own lines above the buttons. listGap is the space between list entries.
 export type SaveRowLayout = {
 	height: number,

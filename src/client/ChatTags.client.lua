@@ -6,12 +6,13 @@ local TextChatService = game:GetService("TextChatService")
 
 local UiKit = require(script.Parent:WaitForChild("UiKit") :: ModuleScript)
 
--- This is the only script that assigns TextChatService.OnIncomingMessage (checked at CM2-46b
--- review). A callback member cannot be read at runtime, so there is no "already set" check here.
+-- CM2-UVF8 A3: this is the only script that assigns TextChatService.OnChatWindowAdded, the documented
+-- hook for chat-window prefixes (OnIncomingMessage showed no tag). A callback member cannot be read at
+-- runtime, so there is no "already set" check here.
 
 local tagColor = UiKit.Colors.Gold:ToHex()
 
-TextChatService.OnIncomingMessage = function(message: TextChatMessage): any
+TextChatService.OnChatWindowAdded = function(message: TextChatMessage): any
 	local source = message.TextSource
 	if source == nil then
 		return nil
@@ -20,7 +21,7 @@ TextChatService.OnIncomingMessage = function(message: TextChatMessage): any
 	if sender == nil or sender:GetAttribute("ShopPassVip") ~= true then
 		return nil
 	end
-	local properties = Instance.new("TextChatMessageProperties")
+	local properties = TextChatService.ChatWindowConfiguration:DeriveNewMessageProperties()
 	properties.PrefixText = '<font color="#' .. tagColor .. '">[VIP]</font> ' .. message.PrefixText
 	return properties
 end

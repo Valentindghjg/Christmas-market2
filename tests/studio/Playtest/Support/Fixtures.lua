@@ -35,6 +35,7 @@ return function(ctx: any)
 	local priceToSell = ctx.priceToSell
 	local realPlayer = ctx.realPlayer
 	local snap = ctx.snap
+	local staffSnapshot = ctx.staffSnapshot
 	local strayHumanoids = ctx.strayHumanoids
 
 	-- Shared between steps of one run.
@@ -184,8 +185,39 @@ return function(ctx: any)
 		return if #parts == 0 then "none" else table.concat(parts, ", ")
 	end
 
+	-- CM2-UVF8 A1: sets R's Lot Worker and Cashier to 0 (manual checks may leave them) and names the reset.
+	local function resetPlayerStaff(): string
+		local before = snap(R.userId).staff
+		local notes: { string } = {}
+		for _, id in { "LotWorker", "Cashier" } do
+			local count = before[id] or 0
+			if count ~= 0 then
+				call("setStaff", { userId = R.userId, employeeId = id, count = 0 })
+				table.insert(notes, string.format("%s %d->0", id, count))
+			end
+		end
+		if #notes > 0 then
+			check(
+				poll(function()
+					for _, entry in staffSnapshot().staff do
+						if entry.plotId == R.plotId and (entry.role == "LotWorker" or entry.role == "Cashier") then
+							return false
+						end
+					end
+					return true
+				end, 5),
+				"R's staff NPCs still present 5 s after the staff reset"
+			)
+		end
+		return if #notes == 0 then "none" else table.concat(notes, ", ")
+	end
+
 	local function preflight(soak: boolean): string
 		resetCustomers()
+		-- CM2-UVF8: manual shop checks may leave a Cash Rush or a pass override on R; sales steps expect x1 cash.
+		call("shopClearBoosts", nil)
+		call("shopPasses", { userId = R.userId, passes = {} })
+		local staffReset = if soak then "skipped" else resetPlayerStaff()
 		-- CM2-G12a: every run starts in the morning; call() checks each response is ok.
 		call("setDay", { userId = R.userId, elapsed = 0 })
 		if shadowJoined then
@@ -203,10 +235,12 @@ return function(ctx: any)
 		check(current:GetAttribute("CompanyReady") == true, "CompanyReady is not true")
 		check(type(R.plotId) == "string", "player has no PlotId")
 		local snapshot = snap(R.userId)
+		check(snapshot.purchases.boosts.CashX2 == 0, "Cash Rush time left on R after shopClearBoosts")
 		check(#snapshot.customerOrders == 0, "player still has customer orders")
 		priceToSell(R.userId)
 		if not soak then
-			check(snapshot.staff.LotWorker == 0, "player has a Lot Worker hired")
+			check(snapshot.staff.LotWorker == 0, "player has a Lot Worker hired after the staff reset")
+			check(snapshot.staff.Cashier == 0, "player has a Cashier hired after the staff reset")
 			check(snapshot.cash >= 2 * UNIT_PRICE, "cash below " .. 2 * UNIT_PRICE)
 		else
 			check(snapshot.cash >= UNIT_PRICE, "cash below " .. UNIT_PRICE)
@@ -215,19 +249,21 @@ return function(ctx: any)
 		check(snapshot.receiving.storageCapacity - snapshot.receiving.storageUsed >= 3, "storage room below 3")
 		if not shadowJoined then
 			return string.format(
-				"cash %d, bays %d/%d, no shadow",
+				"cash %d, bays %d/%d, no shadow, staff reset: %s",
 				snapshot.cash,
 				snapshot.receiving.baysUsed,
-				snapshot.receiving.bayCount
+				snapshot.receiving.bayCount,
+				staffReset
 			)
 		end
 		return string.format(
-			"cash %d, bays %d/%d, shadow bays 0/%d, sold back %s",
+			"cash %d, bays %d/%d, shadow bays 0/%d, sold back %s, staff reset: %s",
 			snapshot.cash,
 			snapshot.receiving.baysUsed,
 			snapshot.receiving.bayCount,
 			snapshot.receiving.bayCount,
-			drained
+			drained,
+			staffReset
 		)
 	end
 

@@ -71,6 +71,13 @@ return function(t)
 		end
 	end)
 
+	-- CM2-UVF8: cash packs read "Adds $1,200 ..." in both languages.
+	t.test("formats the cash pack description with a dollar sign", function()
+		local expected = "Adds $1,200 to the save you are playing."
+		expect.equal(Localization.format("en", "shopDescCash", "1,200"), expected)
+		expect.equal(Localization.format("de", "shopDescCash", "1,200"), expected)
+	end)
+
 	t.test("formats templates and tolerates bad arguments", function()
 		expect.equal(Localization.format("de", "orderAccepted", 32), "Bestellung angenommen: 32 $")
 		expect.equal(Localization.format("en", "orderAccepted", "not a number"), "Order accepted: $%d")

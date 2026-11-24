@@ -53,22 +53,26 @@ corner(panel, UiTheme.CornerRadius.Panel)
 UiKit.padding(panel, 12)
 
 local title = textLabel(panel, "Title", localized("shopTitle"), 22)
-title.Size = UDim2.new(1, 0, 0, 30)
+title.Size = UDim2.new(0.5, 0, 0, 30)
 
-local categoryBar = Instance.new("ScrollingFrame")
+local boostLine = textLabel(panel, "BoostLine", "", UiTheme.TextSize.Small)
+boostLine.Position = UDim2.new(0.5, 0, 0, 4)
+boostLine.Size = UDim2.new(0.5, 0, 0, 22)
+boostLine.TextXAlignment = Enum.TextXAlignment.Right
+boostLine.TextColor3 = GOLD
+boostLine.Visible = false
+
+local categoryBar = Instance.new("Frame")
 categoryBar.Name = "CategoryBar"
 categoryBar.BackgroundTransparency = 1
 categoryBar.BorderSizePixel = 0
+categoryBar.ClipsDescendants = true
 categoryBar.Position = UDim2.fromOffset(0, 38)
 categoryBar.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
-categoryBar.CanvasSize = UDim2.new()
-categoryBar.AutomaticCanvasSize = Enum.AutomaticSize.X
-categoryBar.ScrollingDirection = Enum.ScrollingDirection.X
-categoryBar.ScrollBarThickness = 0
 categoryBar.Parent = panel
 local barLayout = Instance.new("UIListLayout")
 barLayout.FillDirection = Enum.FillDirection.Horizontal
-barLayout.Padding = UDim.new(0, 6)
+barLayout.Padding = UDim.new(0, UiTheme.ShopCategoryBar.gap)
 barLayout.SortOrder = Enum.SortOrder.LayoutOrder
 barLayout.Parent = categoryBar
 
@@ -102,10 +106,18 @@ closeButton.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
 UiKit.bindDialog(gui, { frame = panel, list = productList, footer = footer }, UiTheme.Dialogs.Shop)
 
 local categoryButtons: { [string]: TextButton } = {}
+local tabCount = #ShopConfig.Categories
+local tabGap = UiTheme.ShopCategoryBar.gap
 for index, id in ipairs(ShopConfig.Categories) do
 	local button = textButton(categoryBar, "Category_" .. id, localized("shopCategory" .. id), SAND)
 	button.LayoutOrder = index
-	button.Size = UDim2.fromOffset(120, BUTTON_HEIGHT)
+	button.Size = UDim2.new(1 / tabCount, -math.ceil(tabGap * (tabCount - 1) / tabCount), 0, BUTTON_HEIGHT)
+	button.TextScaled = true
+	button.TextWrapped = true
+	local textLimit = Instance.new("UITextSizeConstraint")
+	textLimit.MaxTextSize = UiTheme.ShopCategoryBar.maxText
+	textLimit.MinTextSize = UiTheme.ShopCategoryBar.minText
+	textLimit.Parent = button
 	categoryButtons[id] = button
 end
 
@@ -114,7 +126,6 @@ end
 local selected = "Starter"
 local catalog: { any }? = nil
 local boostLeft = 0
-local boostLabel: TextLabel? = nil
 local buyInFlight = false
 local openToken = 0
 
@@ -123,8 +134,9 @@ local function formatClock(seconds: number): string
 end
 
 local function updateBoostLabel()
-	if boostLabel ~= nil then
-		boostLabel.Text = localizedFormat("shopBoostActive", formatClock(boostLeft))
+	boostLine.Visible = boostLeft > 0
+	if boostLeft > 0 then
+		boostLine.Text = localizedFormat("shopBoostActive", formatClock(boostLeft))
 	end
 end
 
@@ -139,7 +151,6 @@ local function describe(entry: any, product: ShopConfig.Product): string
 end
 
 local function clearRows()
-	boostLabel = nil
 	for _, child in productList:GetChildren() do
 		if child:IsA("Frame") and string.sub(child.Name, 1, 8) == "Product_" then
 			child:Destroy()
@@ -195,14 +206,6 @@ local function buildRow(index: number, entry: any, product: ShopConfig.Product)
 		action.AutoButtonColor = false
 	end
 
-	if product.key == "BoostCashX2" and boostLeft > 0 then
-		local line = textLabel(row, "BoostLine", "", 13)
-		line.Position = UDim2.new(0.4, 0, 1, -22)
-		line.Size = UDim2.new(0.6, -150, 0, 22)
-		line.TextColor3 = GOLD
-		boostLabel = line
-		updateBoostLabel()
-	end
 	row.Parent = productList
 end
 
@@ -246,6 +249,7 @@ local function fetchCatalog()
 		end
 	end
 	boostLeft = seconds
+	updateBoostLabel()
 	render()
 end
 
@@ -289,6 +293,8 @@ local function open()
 	panel.Visible = true
 	selected = "Starter"
 	catalog = nil
+	boostLeft = 0
+	updateBoostLabel()
 	status.Text = localized("shopLoading")
 	render()
 	startCountdown(openToken)

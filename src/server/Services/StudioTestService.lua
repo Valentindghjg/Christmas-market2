@@ -268,11 +268,12 @@ function StudioTestService.install(context)
 		return success()
 	end
 
+	-- {employeeId, count, userId?}: userId picks that user's active save (R or S), else the shadow's (CM2-UVF8 A2).
 	function commands.setStaff(arg)
-		if type(arg) ~= "table" then
+		if type(arg) ~= "table" or (arg.userId ~= nil and type(arg.userId) ~= "number") then
 			return failure("BadStaff")
 		end
-		local companyId = companyIdFor(shadowUserId)
+		local companyId = companyIdFor(if arg.userId ~= nil then arg.userId else shadowUserId)
 		if companyId == nil then
 			return failure("NoActiveSave")
 		end
