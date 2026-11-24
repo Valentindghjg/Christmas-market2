@@ -54,6 +54,7 @@ type Session = {
 	resultAt: number,
 	placeCount: number,
 	placeValid: boolean,
+	compact: boolean,
 	storeTarget: Model?,
 	connections: { RBXScriptConnection },
 	gui: ScreenGui,
@@ -293,7 +294,7 @@ local function render(current: Session)
 		end
 	end
 	current.header.Text = UiKit.localizedFormat(
-		"stockingHeader",
+		if current.compact then "stockingHeaderCompact" else "stockingHeader",
 		speciesName(current.speciesId),
 		count(bay, "Small"),
 		count(bay, "Medium"),
@@ -499,6 +500,8 @@ local function buildBar(current: Session)
 	local header = UiKit.label(frame, "Header", "", UiTheme.TextSize.Body)
 	local reason = UiKit.label(frame, "Reason", "", UiTheme.TextSize.Small)
 	reason.TextColor3 = UiKit.Colors.Sand
+	reason.TextWrapped = true
+	reason.TextTruncate = Enum.TextTruncate.None
 	current.header = header
 	current.reason = reason
 	local actions: { [string]: () -> () } = {
@@ -540,6 +543,7 @@ local function buildBar(current: Session)
 	table.insert(
 		current.connections,
 		UiKit.onLayout(gui, function(m)
+			current.compact = m.compact
 			local layout = UiTheme.stockingBarLayout(m)
 			placeBox(frame, layout.frame)
 			placeBox(header, layout.header)
@@ -614,6 +618,7 @@ local function start(prompt: ProximityPrompt)
 		resultAt = 0,
 		placeCount = 0,
 		placeValid = false,
+		compact = false,
 		storeTarget = nil,
 		connections = {},
 		gui = gui,

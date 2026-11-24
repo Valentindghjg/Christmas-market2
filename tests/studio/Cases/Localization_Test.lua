@@ -13,6 +13,17 @@ return function(t)
 		expect.equal(Localization.get("de", "missingKey"), "missingKey")
 	end)
 
+	t.test("compact stocking header (CM2-UVF10)", function()
+		expect.equal(
+			Localization.format("en", "stockingHeaderCompact", "Douglas Fir", 12, 12, 12),
+			"Douglas Fir · S 12 · M 12 · L 12"
+		)
+		expect.equal(
+			Localization.format("de", "stockingHeaderCompact", "Douglas Fir", 12, 12, 12),
+			"Douglas Fir · K 12 · M 12 · G 12"
+		)
+	end)
+
 	-- The spec requires localized keys rather than hardcoded prose in both languages.
 	t.test("defines every key in both languages", function()
 		for key in pairs(Localization.Strings.en) do

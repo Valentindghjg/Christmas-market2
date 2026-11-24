@@ -68,14 +68,35 @@ stroke.Thickness = 3
 stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 stroke.Parent = highlight
 
-UiKit.onLayout(gui, function(m)
-	local layout = UiTheme.tutorialBarLayout(m)
+local currentMetrics: UiTheme.Metrics? = nil
+local docked = false
+local textShown = true
+
+local function applyLayout()
+	if currentMetrics == nil then
+		return
+	end
+	local layout = UiTheme.tutorialBarLayout(currentMetrics, docked)
 	bar.Position = UDim2.fromOffset(layout.frame.x, layout.frame.y)
 	bar.Size = UDim2.fromOffset(layout.frame.w, layout.frame.h)
 	hintText.Position = UDim2.fromOffset(layout.text.x, layout.text.y)
 	hintText.Size = UDim2.fromOffset(layout.text.w, layout.text.h)
 	skipButton.Position = UDim2.fromOffset(layout.skip.x, layout.skip.y)
 	skipButton.Size = UDim2.fromOffset(layout.skip.w, layout.skip.h)
+	textShown = layout.showText
+	hintText.Visible = layout.showText
+end
+
+local function setDocked(value: boolean)
+	if docked ~= value then
+		docked = value
+		applyLayout()
+	end
+end
+
+UiKit.onLayout(gui, function(m)
+	currentMetrics = m
+	applyLayout()
 end)
 
 local worldArrow = Instance.new("BillboardGui")
@@ -250,6 +271,10 @@ local function showBar(text: string?, withSkip: boolean)
 		bar.Visible = false
 		return
 	end
+	if not textShown and not withSkip then
+		bar.Visible = false
+		return
+	end
 	local now = os.clock()
 	if failedUntil ~= nil and now < failedUntil then
 		hintText.Text = localized("tutorialSkipFailed")
@@ -291,6 +316,7 @@ local function refresh()
 		hideAll()
 		return
 	end
+	setDocked(UiKit.heldModal() == "Stocking")
 	local now = os.clock()
 	if doneUntil ~= nil then
 		if now < doneUntil then

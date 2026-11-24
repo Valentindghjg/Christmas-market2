@@ -80,6 +80,7 @@ export type TutorialBarLayout = {
 	frame: Box,
 	text: Box,
 	skip: Box,
+	showText: boolean,
 }
 
 export type StockingBarLayout = {
@@ -373,14 +374,26 @@ function UiTheme.hudLayout(m: Metrics, railButtons: number): HudLayout
 end
 
 -- CM2-49: the hint bar sits top-centre below the toast row, between the rail columns.
-function UiTheme.tutorialBarLayout(m: Metrics): TutorialBarLayout
+-- CM2-UVF10: with `docked` on a compact screen (stocking mode open) the bar shrinks to the Skip
+-- button, top-right below the HUD, clear of the stocking bar and the toast row.
+function UiTheme.tutorialBarLayout(m: Metrics, docked: boolean?): TutorialBarLayout
 	local config = UiTheme.TutorialBar
 	local p = config.padding
+	if docked == true and m.compact then
+		local dockedWidth = config.skipWidth + 2 * p
+		return {
+			frame = box(m.width - m.margin - dockedWidth, m.margin + HUD_HEIGHT + GAP, dockedWidth, config.height),
+			text = box(p, p, 0, BUTTON_HEIGHT),
+			skip = box(p, p, config.skipWidth, BUTTON_HEIGHT),
+			showText = false,
+		}
+	end
 	local w = math.min(config.maxWidth, m.width - 2 * (m.margin + m.railWidth + RAIL_SIDE_PADDING))
 	return {
 		frame = box(math.floor((m.width - w) / 2), m.margin + HUD_HEIGHT + GAP + BUTTON_HEIGHT + GAP, w, config.height),
 		text = box(p, p, w - 3 * p - config.skipWidth, BUTTON_HEIGHT),
 		skip = box(w - p - config.skipWidth, p, config.skipWidth, BUTTON_HEIGHT),
+		showText = true,
 	}
 end
 
@@ -479,7 +492,8 @@ end
 
 -- Stocking bar (CM2-G14): one row of controls on regular screens, two rows on compact screens
 -- or when one row would make the controls narrower than MinTouch. Control boxes are relative
--- to the frame; every value is clamped to >= 0.
+-- to the frame; every value is clamped to >= 0. CM2-UVF10: the compact bar gives the reason two
+-- lines (rows at y 58 and 106, still inside the 154 px frame).
 local STOCKING_GAP = 6
 local STOCKING_PADDING = 8
 local STOCKING_MAX_WIDTH = 760
@@ -517,13 +531,13 @@ function UiTheme.stockingBarLayout(m: Metrics): StockingBarLayout
 	end
 	local w = if m.compact then math.floor(0.5 * m.width) else regularWidth
 	local unit = math.floor((w - 2 * STOCKING_PADDING - 4 * STOCKING_GAP) / 5)
-	row(STOCKING_TOP_ROW, 52, unit)
-	row(STOCKING_BOTTOM_ROW, 102, unit)
+	row(STOCKING_TOP_ROW, if m.compact then 58 else 52, unit)
+	row(STOCKING_BOTTOM_ROW, if m.compact then 106 else 102, unit)
 	local x = if m.compact then math.floor(0.3 * m.width) else math.floor((m.width - w) / 2)
 	return {
 		frame = clampedBox(x, m.height - m.margin - 154, w, 154),
-		header = clampedBox(8, 8, w - 16, 20),
-		reason = clampedBox(8, 30, w - 16, 16),
+		header = if m.compact then clampedBox(8, 4, w - 16, 18) else clampedBox(8, 8, w - 16, 20),
+		reason = if m.compact then clampedBox(8, 24, w - 16, 32) else clampedBox(8, 30, w - 16, 16),
 		controls = controls,
 		twoRows = true,
 	}

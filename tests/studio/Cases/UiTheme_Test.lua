@@ -300,4 +300,80 @@ return function(t)
 			expect.truthy(bar.text.w > 0)
 		end
 	end)
+
+	-- CM2-UVF10: with stocking mode open on a phone the tutorial bar docks to the Skip button.
+	t.test("docks the tutorial bar beside the stocking bar on phones (CM2-UVF10)", function()
+		local sizes = {
+			{ 666, 374 },
+			{ 667, 375 },
+			{ 666, 316 },
+			{ 667, 317 },
+			{ 780, 302 },
+			{ 750, 332 },
+			{ 1024, 768 },
+			{ 1022, 709 },
+		}
+		for _, size in ipairs(sizes) do
+			local w, h = size[1], size[2]
+			local m = UiTheme.metrics(w, h)
+			local d = UiTheme.tutorialBarLayout(m, true)
+			local plain = UiTheme.tutorialBarLayout(m)
+			local s = UiTheme.stockingBarLayout(m)
+			local hud = UiTheme.hudLayout(m, 7)
+			expect.truthy(UiTheme.inside(d.frame, w, h))
+			expect.falsy(UiTheme.overlaps(d.frame, s.frame))
+			expect.falsy(UiTheme.overlaps(d.frame, hud.hud))
+			expect.falsy(UiTheme.overlaps(d.frame, hud.toast))
+			expect.falsy(UiTheme.overlaps(d.frame, hud.rail))
+			expect.truthy(d.skip.w >= UiTheme.MinTouch)
+			expect.truthy(d.skip.h >= UiTheme.MinTouch)
+			expect.truthy(UiTheme.inside(d.skip, d.frame.w, d.frame.h))
+			expect.truthy(plain.showText)
+			if m.compact then
+				expect.falsy(d.showText)
+				expect.equal(d.frame.w, UiTheme.TutorialBar.skipWidth + 2 * UiTheme.TutorialBar.padding)
+				expect.equal(d.frame.x + d.frame.w, w - m.margin)
+			else
+				expect.truthy(d.showText)
+				for _, key in ipairs({ "x", "y", "w", "h" }) do
+					expect.equal(d.frame[key], plain.frame[key])
+					expect.equal(d.skip[key], plain.skip[key])
+					expect.equal(d.text[key], plain.text[key])
+				end
+			end
+		end
+	end)
+
+	t.test("compact stocking bar gives the reason two lines (CM2-UVF10)", function()
+		for _, size in ipairs({ { 666, 316 }, { 667, 317 }, { 780, 302 }, { 750, 332 }, { 666, 374 } }) do
+			local m = UiTheme.metrics(size[1], size[2])
+			local bar = UiTheme.stockingBarLayout(m)
+			expect.equal(bar.frame.h, 154)
+			expect.truthy(bar.reason.h >= 2 * UiTheme.TextSize.Small + 4)
+			expect.truthy(bar.header.h >= UiTheme.TextSize.Body + 2)
+			expect.falsy(UiTheme.overlaps(bar.header, bar.reason))
+			expect.truthy(bar.reason.y + bar.reason.h <= bar.controls.Size.y)
+			local ids = {}
+			for id in pairs(bar.controls) do
+				table.insert(ids, id)
+			end
+			for index, id in ipairs(ids) do
+				local control = bar.controls[id]
+				expect.truthy(UiTheme.inside(control, bar.frame.w, bar.frame.h))
+				expect.falsy(UiTheme.overlaps(control, bar.header))
+				expect.falsy(UiTheme.overlaps(control, bar.reason))
+				for other = index + 1, #ids do
+					expect.falsy(UiTheme.overlaps(control, bar.controls[ids[other]]))
+				end
+			end
+		end
+		local pc = UiTheme.stockingBarLayout(UiTheme.metrics(1920, 1022))
+		expect.falsy(pc.twoRows)
+		expect.equal(pc.header.h, 22)
+		expect.equal(pc.reason.h, 18)
+		local regular = UiTheme.stockingBarLayout(UiTheme.metrics(720, 520))
+		expect.truthy(regular.twoRows)
+		expect.equal(regular.controls.Size.y, 52)
+		expect.equal(regular.reason.h, 16)
+	end)
 end
