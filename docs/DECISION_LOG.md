@@ -701,3 +701,9 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Owner: the Opus reviewer is too expensive for what it does. The `reviewer` agent now runs on Sonnet 5.5 for every task, including tier L (saves, money, inventory, security). Planner decision: high effort instead of medium, so the diff-against-plan review keeps depth on tier L tasks; still far cheaper than Opus.
 - Considered and not chosen: Opus only for tier L (the reviews of CM2-S1 and CM2-G7 found CM2-R5 and CM2-G7a); dropping the reviewer.
 - Files: .claude/agents/reviewer.md, CLAUDE.md, .claude/skills/cm2-task/SKILL.md, docs/PRODUCT_SPEC.md.
+
+## 2026-11-24 — owner: the playtester runs on Haiku
+- Owner: replace Sonnet with Haiku where it is safe. The `playtester` agent now runs on Haiku 5.5 (no effort setting). It mostly runs the scripted `runPlaytest` and plan steps and reports PASS, FAIL or BLOCKED with evidence. New rule: on a FAIL it quotes the raw console output and does not diagnose; the planner diagnoses failures.
+- Kept on Sonnet: implementers S and M (strict Luau, rework through review would cost more), the reviewer (last check before the commit), the orchestrating chat (decides blockers and the next task).
+- Revert: if the playtest reports get too thin, set `model: claude-sonnet-5-5` and `effort: medium` in .claude/agents/playtester.md again.
+- Files: .claude/agents/playtester.md, CLAUDE.md, .claude/skills/cm2-task/SKILL.md, docs/PRODUCT_SPEC.md, docs/plans/TEMPLATE.md.
