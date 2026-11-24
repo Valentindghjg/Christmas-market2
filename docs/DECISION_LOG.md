@@ -728,3 +728,10 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Rule (planner): only the look is used (styling values rebuilt in `UiTheme`/`UiKit`, icons, the button tween and sounds). Its scripts, remotes, leaderstats and the paid wheel are not used; they conflict with server authority, the action protocol and "no paid random items in version 1". Icons for strength, gems and dumbbells are replaced with Christmas-market icons; colours are recoloured to the palette.
 - Licence: unknown. The pack's README names only a Discord invite and swarve.lol (unreachable on 2026-11-24); a BuiltByBit listing with a similar name ("Essential STUD UI Pack", ProfileStore, 11+ systems) describes a different, larger product. Precondition for CM2-UI: a written licence from Swarve Studios in `assets/third_party/swarve-essential-ui/LICENSE.md`; without it CM2-UI falls back to a CC0 set.
 - Files: docs/CLAUDE_BACKLOG.md (CM2-UI (b), owner inputs).
+
+## 2026-11-24 — CM2-UVF8 (engineering)
+- The shop category bar no longer scrolls. The 7 tabs share the width, with text scaled 9–13 px.
+- The Cash Rush line sits at the top right of the shop in every category.
+- PREFLIGHT clears boosts and R's pass overrides.
+- CM2-UVF8 A1: the full-run PREFLIGHT sets R's Lot Worker and Cashier to 0 (`setStaff` takes an optional `userId`) and names the reset in its detail, because manual checks left a Lot Worker on R's save.
+- CM2-UVF8 A3: ChatTags assigns `TextChatService.OnChatWindowAdded` with `ChatWindowConfiguration:DeriveNewMessageProperties()`, the documented hook for chat-window prefixes; `OnIncomingMessage` produced no [VIP] line.

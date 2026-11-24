@@ -103,3 +103,31 @@ Run this as a batch with every entry of "Studio-Test ausstehend" (skill `cm2-tas
 - A HUD boost chip.
 - Real purchases (PC-8).
 - Any change to receipts, boosts or the cash multiplier.
+
+## Amendment 1 (2026-11-24, after the batch on Studio `d0521b88`, BUILD `cm2-uvf8`)
+Evidence: checks 1–4 and 6 PASS. Full run FAIL at 03 PREFLIGHT "player has a Lot Worker hired": R's save kept one from manual checks, and `setStaff` reaches only the shadow. VIP: attribute true, but no "[VIP]" line. Deltas apply to the uncommitted work; tier stays S.
+
+| # | Decision | Reason |
+|---|---|---|
+| A1 | PREFLIGHT (not soak) sets R's LotWorker and Cashier to 0 and names the reset in its detail | The run needs both at 0. PREFLIGHT already resets R's day, boosts and passes. LotManager has no runtime job. |
+| A2 | `setStaff` takes an optional `userId`, like `setProgression` | Studio-only hook; the default (shadow) stays |
+| A3 | ChatTags assigns `TextChatService.OnChatWindowAdded` with `ChatWindowConfiguration:DeriveNewMessageProperties()`; nothing assigns `OnIncomingMessage` any more | Inputs were right. `OnChatWindowAdded` is the documented hook for chat-window prefixes. Bubbles never show PrefixText. |
+
+Files changed in addition: `StudioTestService.lua`, `ChatTags.client.lua`.
+
+Steps:
+1. `commands.setStaff(arg)`: `arg.userId ~= nil and type(arg.userId) ~= "number"` → `failure("BadStaff")`; company is `companyIdFor(if arg.userId ~= nil then arg.userId else shadowUserId)`. Comment above it: `-- {employeeId, count, userId?}: userId picks that user's active save (R or S), else the shadow's (CM2-UVF8 A2).`
+2. `Fixtures.lua`: add `local staffSnapshot = ctx.staffSnapshot` and the helper `local function resetPlayerStaff(): string` above `preflight`:
+   - `before = snap(R.userId).staff`. For `id` in `{ "LotWorker", "Cashier" }` with `count = before[id] or 0` and `count ~= 0`, call `call("setStaff", { userId = R.userId, employeeId = id, count = 0 })` and note `string.format("%s %d->0", id, count)`.
+   - If anything was reset: `check(poll(fn, 5), "R's staff NPCs still present 5 s after the staff reset")`, where `fn` is true when no `staffSnapshot().staff` entry has `plotId == R.plotId` and role `LotWorker` or `Cashier`.
+   - Returns the notes joined by `", "`, else `"none"`.
+3. `preflight`: right after the `shopPasses` call, `local staffReset = if soak then "skipped" else resetPlayerStaff()`. In `if not soak`, the Lot Worker message becomes "player has a Lot Worker hired after the staff reset", and `check(snapshot.staff.Cashier == 0, "player has a Cashier hired after the staff reset")` follows it. Both return strings end with `, staff reset: %s` (`staffReset`). This replaces "The return strings stay unchanged" in step 4.
+4. `ChatTags.client.lua`: same body under `TextChatService.OnChatWindowAdded = function(message: TextChatMessage): any`. `properties = TextChatService.ChatWindowConfiguration:DeriveNewMessageProperties()` replaces `Instance.new("TextChatMessageProperties")`. The header comment names A3.
+5. Docs: append to the TEST_PLAN sentence: " It also sets R's Lot Worker and Cashier to 0 (`setStaff` with `userId`) and names the reset in its detail." Add two DECISION_LOG bullets, for A1 and for A3 with its reason.
+
+Headless stays 586/586 (Studio-only changes).
+
+Re-test (playtester, a NEW Play session, in this order):
+- R0: (a) gate and BUILD `cm2-uvf8`, as in 0.
+- R1 VIP, client side. Record `ChatTags` present and Enabled, `ChatVersion`, `ChatWindowConfiguration.Enabled`, Output lines naming ChatTags. Then `shopPasses {PassVip = true}`. Open the chat window and send `SendAsync("vip check")`. Within 3 s, read the `CoreGui.ExperienceChat` descendants: the line with "vip check" contains "[VIP]". If CoreGui is unreadable, capture it. Control: `shopPasses {}` and send `"plain check"`; its line has no "[VIP]". Unreadable and black capture → BLOCKED (step 5 rule). Readable without "[VIP]" → FAIL: record the four values and the line text. The reviewer still commits UVF8; the planner adds a tag follow-up, and line 13 waits for it.
+- R2: clean full run, as in 7, `steps=62 pass=62` with 37, 41 and 52 passing. PREFLIGHT detail names the reset (e.g. `LotWorker 1->0`). Afterwards `snapshot(R.userId).staff` has LotWorker 0 and Cashier 0.
