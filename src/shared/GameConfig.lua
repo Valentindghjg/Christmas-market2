@@ -429,6 +429,26 @@ GameConfig.Customers = {
 	},
 }
 
+-- Day/night per save (CM2-G12a, docs/plans/CM2-G12a.md): an 18-minute game day that runs only
+-- while the save is loaded (shared/DayCycle.lua).
+GameConfig.DayCycle = {
+	DaySeconds = 720, -- OWNER DECIDED
+	NightSeconds = 360, -- OWNER DECIDED
+	DayStartClockTime = 6, -- PROVISIONAL
+	NightStartClockTime = 18, -- PROVISIONAL
+	NightArrivalRate = 0.5, -- PROVISIONAL
+	TwilightSeconds = 30, -- PROVISIONAL
+	TickSeconds = 1,
+	MaxTickSeconds = 5, -- a longer server hitch counts as 5 s
+	SyncSeconds = 30,
+	ClientUpdateSeconds = 0.5,
+	DefaultClockTime = 14, -- PROVISIONAL: a player without an active save
+	NightOutdoorAmbient = { 70, 80, 110 }, -- PROVISIONAL
+	NightLightTag = "NightLight",
+	LampLight = { range = 16, brightness = 1.5 }, -- PROVISIONAL
+	PlotLight = { range = 14, brightness = 1.2 }, -- PROVISIONAL
+}
+
 -- Customer reviews, rating and likes (CM2-G15, docs/REFERENCE_GAME_LIVE_TEST.md §3.7).
 GameConfig.Reviews = {
 	-- PROVISIONAL: service seconds (queue + pickup) for 5, 4, 3 and 2 stars; slower is 1 star.

@@ -79,8 +79,9 @@ local function elapsed(now: number, since: number, seconds: number): boolean
 	return now - since >= seconds - EPSILON
 end
 
--- deps = {companies, plotOf(companyId) -> plotId?, world, now() -> seconds, staff?}; staff
--- (CM2-25/26, StaffNpcService) answers cashierReady(companyId).
+-- deps = {companies, plotOf(companyId) -> plotId?, world, now() -> seconds, staff?,
+-- arrivalRate?(companyId) -> number}; staff (CM2-25/26, StaffNpcService) answers
+-- cashierReady(companyId); arrivalRate (CM2-G12a) is the save's day/night arrival rate.
 -- options = {maxPerServer?, maxPerPlot?, maxVisitSeconds?}
 function CustomerNpcService.new(deps, options)
 	local self = setmetatable({}, CustomerNpcService)
@@ -90,6 +91,9 @@ function CustomerNpcService.new(deps, options)
 	self._plotOf = deps.plotOf
 	self._worldAdapter = deps.world
 	self._now = deps.now
+	self._arrivalRate = deps.arrivalRate
+	-- Arrival credit per company (CM2-G12a): each pass adds the arrival rate; an arrival needs 1.
+	self._arrivalCredit = {}
 	self._maxPerServer = if type(opts.maxPerServer) == "number" then opts.maxPerServer else Npc.MaxPerServer
 	self._maxPerPlot = if type(opts.maxPerPlot) == "number" then opts.maxPerPlot else Npc.MaxPerPlot
 	self._maxVisitSeconds = if type(opts.maxVisitSeconds) == "number" then opts.maxVisitSeconds else Npc.MaxVisitSeconds
@@ -702,6 +706,19 @@ function CustomerNpcService:_arrive(companyId: string, plotId: string, forcedNum
 	return true, visitId
 end
 
+-- The company's arrival rate in [0, 1] (CM2-G12a): 1 without the dependency or on a bad value.
+function CustomerNpcService:_rateOf(companyId: string): number
+	local source = self._arrivalRate
+	if type(source) ~= "function" then
+		return 1
+	end
+	local ok, rate = pcall(source, companyId)
+	if not ok or type(rate) ~= "number" or rate ~= rate then
+		return 1
+	end
+	return math.clamp(rate, 0, 1)
+end
+
 -- Per live company with a plot: sweep orphaned reservations and claims, then (unless paused
 -- or stopped) one arrival if the budget allows. Returns the number of new visits.
 function CustomerNpcService:arrivalPass(paused: boolean?): number
@@ -709,7 +726,17 @@ function CustomerNpcService:arrivalPass(paused: boolean?): number
 		return 0
 	end
 	local spawned = 0
-	for _, companyId in ipairs(self._companies:liveCompanyIds()) do
+	local companyIds = self._companies:liveCompanyIds()
+	local liveIds = {}
+	for _, companyId in ipairs(companyIds) do
+		liveIds[companyId] = true
+	end
+	for companyId in pairs(self._arrivalCredit) do
+		if not liveIds[companyId] then
+			self._arrivalCredit[companyId] = nil
+		end
+	end
+	for _, companyId in ipairs(companyIds) do
 		local plotId = self._plotOf(companyId)
 		if plotId ~= nil then
 			local live = {}
@@ -720,17 +747,23 @@ function CustomerNpcService:arrivalPass(paused: boolean?): number
 			end
 			self._companies:npcSweep(companyId, live)
 			if not paused and self:_hasRoom(plotId) then
-				-- A test override forces the next arrival's profile (roll 0); it is cleared
-				-- only once an arrival succeeded.
-				local override = self._arrivalOverrides[companyId]
-				if override ~= nil then
-					if self:_arrive(companyId, plotId, override, 0) then
-						self._arrivalOverrides[companyId] = nil
+				local credit = math.min(1, (self._arrivalCredit[companyId] or 1) + self:_rateOf(companyId))
+				if credit >= 1 - 1e-9 then
+					-- A test override forces the next arrival's profile (roll 0); it is cleared
+					-- only once an arrival succeeded.
+					local override = self._arrivalOverrides[companyId]
+					if override ~= nil then
+						if self:_arrive(companyId, plotId, override, 0) then
+							self._arrivalOverrides[companyId] = nil
+							spawned += 1
+							credit -= 1
+						end
+					elseif self:_arrive(companyId, plotId, nil, nil) then
 						spawned += 1
+						credit -= 1
 					end
-				elseif self:_arrive(companyId, plotId, nil, nil) then
-					spawned += 1
 				end
+				self._arrivalCredit[companyId] = credit
 			end
 		end
 	end

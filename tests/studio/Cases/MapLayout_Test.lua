@@ -221,8 +221,8 @@ return function(t)
 			end
 			return count
 		end
-		expect.equal(size(fallback), 7)
-		expect.equal(size(skip), 6)
+		expect.equal(size(fallback), 8)
+		expect.equal(size(skip), 5)
 		expect.equal(#missing, 13)
 		local seen = {}
 		for _, entry in ipairs(missing) do

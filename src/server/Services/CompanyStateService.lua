@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
+local DayCycle = require(Shared:WaitForChild("DayCycle"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Progression = require(Shared:WaitForChild("Progression"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
@@ -20,6 +21,7 @@ local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local Staff = require(Shared:WaitForChild("Staff"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
+local CompanyDayCycle = require(script.Parent:WaitForChild("CompanyDayCycle"))
 local CompanyProgression = require(script.Parent:WaitForChild("CompanyProgression"))
 local CompanyPurchases = require(script.Parent:WaitForChild("CompanyPurchases"))
 local CompanyStaff = require(script.Parent:WaitForChild("CompanyStaff"))
@@ -35,11 +37,12 @@ local QuestService = require(script.Parent:WaitForChild("QuestService"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
--- Mixins: staff and break area (CM2-25/26), Robux purchases (CM2-46a), tutorial (CM2-49), ladder (CM2-G9a).
+-- Mixins: staff (CM2-25/26), Robux purchases (CM2-46a), tutorial (CM2-49), ladder (CM2-G9a), day (CM2-G12a).
 CompanyStaff.install(CompanyStateService)
 CompanyPurchases.install(CompanyStateService)
 CompanyTutorial.install(CompanyStateService)
 CompanyProgression.install(CompanyStateService)
+CompanyDayCycle.install(CompanyStateService)
 
 -- Persistence results that mean this server no longer owns a valid writable session.
 local FAIL_CLOSED_SAVE_ERRORS = { SessionLocked = true, NotLoaded = true }
@@ -855,6 +858,8 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 				pricing = PricingService.summary(state),
 				staff = CompanyStaff.summary(session, state),
 				shop = CompanyPurchases.summary(self, companyId, state),
+				day = state.dayCycle.day,
+				night = DayCycle.isNight(state.dayCycle.elapsed),
 			},
 		}
 	end
@@ -1387,31 +1392,6 @@ function CompanyStateService:visitForTest(companyId: string, customerNumber: num
 	return success, result
 end
 
--- Sets the hired count of one employee type (GameConfig.Employees, Lot Manager included) without touching cash.
-function CompanyStateService:setStaffForTest(companyId: string, employeeId: string, count: number): boolean
-	local employee = GameConfig.Employees[employeeId]
-	if
-		type(employee) ~= "table"
-		or type(count) ~= "number"
-		or count ~= math.floor(count)
-		or count < 0
-		or count > employee.maxCount
-	then
-		return false
-	end
-	local session = self._sessions[companyId]
-	if not session or not session.healthy then
-		return false
-	end
-	local entered = self:_withSession(companyId, session, function(state)
-		state.staff[employeeId] = count
-		state.revision += 1
-		session.dirty = true
-		return true
-	end)
-	return entered
-end
-
 -- Clears today's likers so a playtest can like the lot again.
 function CompanyStateService:resetLikesForTest(companyId: string): boolean
 	local session = self._sessions[companyId]
@@ -1494,6 +1474,7 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		purchases = CompanyPurchases.snapshot(state), -- CM2-46a
 		tutorial = table.clone(state.tutorial), -- CM2-49
 		progression = table.clone(state.progression), -- CM2-G9a
+		dayCycle = table.clone(state.dayCycle), -- CM2-G12a
 	}
 end
 

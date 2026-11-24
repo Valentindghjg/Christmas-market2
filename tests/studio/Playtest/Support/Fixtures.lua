@@ -186,6 +186,11 @@ return function(ctx: any)
 
 	local function preflight(soak: boolean): string
 		resetCustomers()
+		-- CM2-G12a: every run starts in the morning; call() checks each response is ok.
+		call("setDay", { userId = R.userId, elapsed = 0 })
+		if shadowJoined then
+			call("setDay", { userId = S.userId, elapsed = 0 })
+		end
 		settleDeliveries(R.userId)
 		local drained = "none"
 		if shadowJoined then

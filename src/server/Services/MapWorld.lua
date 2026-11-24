@@ -2,10 +2,12 @@
 -- Builds ChristmasMarketWorld.Map (CM2-10W): ground, stream, roads, square, walls and the
 -- placed art pieces of MapLayout, with Part fallbacks until the Blender models are imported.
 -- Never requires WorldService (the part and tree helpers come in through the kit).
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArtLibrary = require(Shared:WaitForChild("ArtLibrary"))
 local ArtPalette = require(Shared:WaitForChild("ArtPalette"))
+local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Localization = require(Shared:WaitForChild("Localization"))
 local MapLayout = require(Shared:WaitForChild("MapLayout"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
@@ -27,6 +29,24 @@ local reserves: { [string]: { folder: Folder, rows: { Model } } } = {}
 
 local function paletteColor(key: string): Color3
 	return Color3.fromRGB(table.unpack(ArtPalette[key].rgb))
+end
+-- Shared with WorldService (CM2-G12a), which stays under its 1500-line cap.
+MapWorld.paletteColor = paletteColor
+
+-- A night light (CM2-G12a): a warm PointLight named NightLight tagged NightLight, off on the
+-- server; the client (DayNight.client.lua) switches every tagged light at night. Shared with
+-- WorldService for the plot lights.
+function MapWorld.nightLight(parent: Instance, spec: { range: number, brightness: number }): PointLight
+	local light = Instance.new("PointLight")
+	light.Name = "NightLight"
+	light.Range = spec.range
+	light.Brightness = spec.brightness
+	light.Color = paletteColor("LightWarm")
+	light.Shadows = false
+	light.Enabled = false
+	light.Parent = parent
+	CollectionService:AddTag(light, GameConfig.DayCycle.NightLightTag)
+	return light
 end
 
 local function rgb(values: { number }): Color3
@@ -227,7 +247,64 @@ local FALLBACKS: { [string]: (MapKit, Instance, MapLayout.Piece, CFrame) -> Mode
 		model.PrimaryPart = board
 		return model
 	end,
+	-- Street lamp (CM2-G12a): the Lantern carries the night light until the art is imported.
+	Lamp = function(kit, parent, piece, pivot)
+		local model = newModel(parent, piece)
+		local post = offsetPart(
+			kit,
+			model,
+			"Post",
+			Vector3.new(0.5, 7.6, 0.5),
+			pivot,
+			Vector3.new(0, 3.8, 0),
+			"MetalDark",
+			Enum.Material.SmoothPlastic
+		)
+		local lantern = offsetPart(
+			kit,
+			model,
+			"Lantern",
+			Vector3.new(1, 1, 1),
+			pivot,
+			Vector3.new(0, 8.15, 0),
+			"LightWarm",
+			Enum.Material.Neon
+		)
+		lantern.CanCollide = false
+		local cap = offsetPart(
+			kit,
+			model,
+			"Cap",
+			Vector3.new(1.3, 0.25, 1.3),
+			pivot,
+			Vector3.new(0, 8.775, 0),
+			"MetalDark",
+			Enum.Material.SmoothPlastic
+		)
+		cap.CanCollide = false
+		model.PrimaryPart = post
+		return model
+	end,
 }
+
+-- Night light of a street lamp (CM2-G12a): under the art's `Light` attachment, else the
+-- fallback's Lantern, else the PrimaryPart. Off on the server; the client switches it at night.
+local function addLampLight(model: Model)
+	local parent: Instance? = nil
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("Attachment") and descendant.Name == "Light" then
+			parent = descendant
+			break
+		end
+	end
+	if parent == nil then
+		local lantern = model:FindFirstChild("Lantern")
+		parent = if lantern and lantern:IsA("BasePart") then lantern else model.PrimaryPart
+	end
+	if parent ~= nil then
+		MapWorld.nightLight(parent, GameConfig.DayCycle.LampLight)
+	end
+end
 
 -- Boards and signs (both modes) -------------------------------------------------------------
 
@@ -336,6 +413,9 @@ local function placePiece(kit: MapKit, placement: MapLayout.Placement, parent: I
 		model = FALLBACKS[fallback](kit, parent, piece, pivot)
 	end
 	model:SetAttribute("MapPiece", piece.id)
+	if piece.artPath == "Props/LampPost" then
+		addLampLight(model)
+	end
 	if piece.boardKey then
 		addBoardParts(kit, model, piece, pivot)
 	elseif piece.textKey then

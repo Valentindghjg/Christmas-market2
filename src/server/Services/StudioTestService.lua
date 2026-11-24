@@ -716,6 +716,31 @@ function StudioTestService.install(context)
 		return success(flag)
 	end
 
+	-- Day/night (CM2-G12a): sets the save's clock ({userId, day?, elapsed}) and returns the view.
+	function commands.setDay(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" or type(arg.elapsed) ~= "number" then
+			return failure("BadArgument")
+		end
+		local companyId = companyIdFor(arg.userId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		if not companies:setDayForTest(companyId, arg.day, arg.elapsed) then
+			return failure("Refused")
+		end
+		return success(companies:dayView(companyId))
+	end
+
+	-- The save's day view ({day, elapsed, night, arrivalRate}) for a userId.
+	function commands.dayView(arg)
+		local companyId = if type(arg) == "number" then companyIdFor(arg) else nil
+		local view = if companyId ~= nil then companies:dayView(companyId) else nil
+		if view == nil then
+			return failure("NoActiveSave")
+		end
+		return success(view)
+	end
+
 	function commands.runPlaytest(arg)
 		local unitTest = ServerStorage:FindFirstChild("UnitTest")
 		local folder = unitTest and unitTest:FindFirstChild("Playtest")

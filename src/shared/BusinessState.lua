@@ -1,4 +1,5 @@
 --!strict
+local DayCycle = require(script.Parent.DayCycle)
 local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 local Progression = require(script.Parent.Progression)
@@ -10,7 +11,7 @@ local Staff = require(script.Parent.Staff)
 local Tutorial = require(script.Parent.Tutorial)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 19
+BusinessState.SCHEMA_VERSION = 20
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -178,6 +179,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		likes = Reviews.newLikes(),
 		purchases = Purchases.new(),
 		tutorial = Tutorial.new(false),
+		dayCycle = DayCycle.new(),
 	}
 end
 
@@ -336,6 +338,11 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		-- Schema 19 (CM2-G9a): the ladder { lotExpansion, parkingTier, hqLevel }; no money moves.
 		state.progression = Progression.migrate18(state.progression)
 	end
+	if state.schemaVersion == 19 then
+		state.schemaVersion = 20
+		-- Schema 20 (CM2-G12a): the save's game day
+		state.dayCycle = DayCycle.new()
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -346,6 +353,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		normalizeSchema10(state)
 		Reviews.normalize(state)
 		Purchases.normalize(state)
+		DayCycle.normalize(state)
 		return validated(state)
 	end
 	if not isValidLegacyV1(state) then
@@ -380,6 +388,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.breakArea = Staff.defaultBreakArea(state)
 	state.purchases = Purchases.new()
 	state.tutorial = Tutorial.new(false)
+	state.dayCycle = DayCycle.new()
 	return validated(state)
 end
 
@@ -757,6 +766,9 @@ function BusinessState.validate(state)
 		return false
 	end
 	if not Tutorial.isValid(state.tutorial) then
+		return false
+	end
+	if not DayCycle.isValid(state.dayCycle) then
 		return false
 	end
 	for placementId, reservation in pairs(state.reservations) do

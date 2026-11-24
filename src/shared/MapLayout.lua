@@ -75,7 +75,7 @@ MapLayout.ART = {
 	[BOARD] = { w = 14.0, l = 2.97, triangles = 1500, meshParts = 8, fallback = "Board" },
 	[HOUSE] = { w = 23.15, l = 19.2, triangles = 3000, meshParts = 10, fallback = nil },
 	[SIGN] = { w = 8.6, l = 1.0, triangles = 220, meshParts = 3, fallback = "Sign" },
-	[LAMP] = { w = 1.13, l = 1.13, triangles = 160, meshParts = 3, fallback = nil },
+	[LAMP] = { w = 1.13, l = 1.13, triangles = 160, meshParts = 3, fallback = "Lamp" },
 	[BENCH] = { w = 4.96, l = 1.82, triangles = 240, meshParts = 3, fallback = nil },
 	[FIR] = { w = 8.75, l = 8.67, triangles = 240, meshParts = 3, fallback = "Fir" },
 	[CLUSTER_A] = { w = 21.81, l = 20.56, triangles = 1000, meshParts = 4, fallback = "ClusterA" },

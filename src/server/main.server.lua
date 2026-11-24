@@ -108,6 +108,10 @@ local npc = CustomerNpcService.new({
 	world = CustomerNpcWorld.new(),
 	now = os.clock,
 	staff = staff,
+	-- Fewer arrivals at night (CM2-G12a).
+	arrivalRate = function(companyId: string): number
+		return companies:arrivalRate(companyId)
+	end,
 })
 
 -- Save IDs: `<userId>_<16 lowercase hex>` (GUID chars 17-32), at most 36 chars, so every
@@ -412,6 +416,24 @@ companies:setTutorialChangedHandler(function(companyId: string, value: string?)
 	end
 end)
 
+-- The save's day clock (CM2-G12a): every player on the save gets the day and the elapsed
+-- time with the server time of the write; the client extrapolates the sky from it.
+local function pushDay(companyId: string)
+	local view = companies:dayView(companyId)
+	if view == nil then
+		return
+	end
+	for _, userId in saveSlots:playersOn(companyId) do
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			player:SetAttribute("DayNumber", view.day)
+			player:SetAttribute("DayElapsed", math.floor(view.elapsed * 10 + 0.5) / 10)
+			player:SetAttribute("DaySyncAt", workspace:GetServerTimeNow())
+		end
+	end
+end
+companies:setDayChangedHandler(pushDay)
+
 -- Customer orders: prompts are validated like remote calls before any mutation.
 local orderCallbacks
 local performOrderAction
@@ -654,6 +676,23 @@ end)
 every(ShopConfig.BoostTickSeconds, "boosts", function()
 	return companies:tickBoostsAll(ShopConfig.BoostTickSeconds)
 end)
+-- The save's day runs only while it is loaded (CM2-G12a); the measured wait is the step.
+task.spawn(function()
+	while true do
+		local dt = task.wait(config.DayCycle.TickSeconds)
+		local ok, err = pcall(companies.tickDayAll, companies, dt)
+		if not ok then
+			warn(string.format("[ChristmasMarket2] day tick errored: %s", tostring(err)))
+		end
+	end
+end)
+every(config.DayCycle.SyncSeconds, "day sync", function()
+	local ids = companies:liveCompanyIds()
+	for _, id in ids do
+		pushDay(id)
+	end
+	return true, #ids, 0
+end)
 task.spawn(function()
 	monetization:refreshPrices()
 end)
@@ -703,6 +742,7 @@ saveSlots:setActivationHandlers(function(userId: number, companyId: string, plot
 		player:SetAttribute("ActiveSaveOwnerName", view.ownerName)
 		player:SetAttribute("CompanyError", nil)
 		player:SetAttribute("TutorialStep", companies:tutorialAttribute(companyId))
+		pushDay(companyId)
 		player:SetAttribute("CompanyReady", true)
 		if player.Character then
 			task.spawn(spawnAtClaimedPlot, player, player.Character)
@@ -731,6 +771,9 @@ end, function(userId: number, companyId: string, plotId: string?, plotReleased: 
 		player:SetAttribute("ActiveSaveSize", nil)
 		player:SetAttribute("ActiveSaveOwnerName", nil)
 		player:SetAttribute("TutorialStep", nil)
+		player:SetAttribute("DayNumber", nil)
+		player:SetAttribute("DayElapsed", nil)
+		player:SetAttribute("DaySyncAt", nil)
 	end
 	monetization:refreshPerks(companyId, userId)
 end)

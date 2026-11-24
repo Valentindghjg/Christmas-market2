@@ -145,6 +145,10 @@ return function(t)
 				return h.ticks / 5
 			end,
 			staff = h.staff,
+			-- CM2-G12a: the save's arrival rate; existing tests leave h.rate nil (day, 1).
+			arrivalRate = function()
+				return h.rate or 1
+			end,
 		}, options)
 		h.service:setCustomerOrdersChangedHandler(function(companyId, summary)
 			table.insert(h.world.calls, { name = "ordersChanged", args = { companyId } })
@@ -688,5 +692,34 @@ return function(t)
 		expect.equal(claimCount(h, B), 1)
 		expect.equal(h.npc:resetForTest(), 1)
 		expect.equal(h.npc:count(), 0)
+	end)
+
+	-- CM2-G12a: arrival credit per company; each pass adds the rate and an arrival needs 1.
+	t.test("night arrival rate halves arrivals", function()
+		local h = harness()
+		h.rate = 0.5
+		addCompany(h, A, PLOT_1, 4)
+		expect.equal(h.npc:arrivalPass(false), 1)
+		expect.equal(h.npc:arrivalPass(false), 0)
+		expect.equal(h.npc:arrivalPass(false), 1)
+		expect.equal(h.npc:arrivalPass(false), 0)
+		expect.equal(h.npc:count(), 2)
+	end)
+
+	t.test("a refused arrival keeps its credit", function()
+		local h = harness()
+		h.rate = 0.5
+		local state = addCompany(h, A, PLOT_1, 0)
+		expect.equal(h.npc:arrivalPass(false), 0)
+		expect.equal(h.npc:arrivalPass(false), 0)
+		for index = 1, 2 do
+			state.layout.placements["douglas_" .. index] = {
+				speciesId = "DouglasFir",
+				sizeId = "Medium",
+				transform = { x = -35 + 7 * index, y = 0, z = -20, rotation = 0 },
+			}
+		end
+		expect.equal(h.npc:arrivalPass(false), 1)
+		expect.equal(h.npc:count(), 1)
 	end)
 end

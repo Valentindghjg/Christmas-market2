@@ -4,7 +4,6 @@ local Debris = game:GetService("Debris")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local ArtLibrary = require(Shared:WaitForChild("ArtLibrary"))
-local ArtPalette = require(Shared:WaitForChild("ArtPalette"))
 local AssetCatalog = require(Shared:WaitForChild("AssetCatalog"))
 local Economy = require(Shared:WaitForChild("Economy"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
@@ -239,7 +238,7 @@ local function checkout(parent: Instance, position: Vector3): Model
 		Color3.fromRGB(107, 68, 38),
 		Enum.Material.WoodPlanks
 	)
-	part(
+	local register = part(
 		model,
 		"Register",
 		Vector3.new(1.5, 0.7, 1),
@@ -247,6 +246,7 @@ local function checkout(parent: Instance, position: Vector3): Model
 		Color3.fromRGB(40, 48, 51),
 		Enum.Material.Metal
 	)
+	MapWorld.nightLight(register, GameConfig.DayCycle.PlotLight) -- CM2-G12a
 	-- CM2-N2: the player checks out the customer at the counter; enabled only while one waits.
 	local checkoutPrompt = Instance.new("ProximityPrompt")
 	checkoutPrompt.Name = "CheckoutPrompt"
@@ -418,9 +418,7 @@ local function buildReceiving(plot: Model)
 	setCollisionGroup(folder, STRUCTURE_GROUP)
 end
 
-local function paletteColor(key: string): Color3
-	return Color3.fromRGB(table.unpack(ArtPalette[key].rgb))
-end
+local paletteColor = MapWorld.paletteColor
 
 local function uiColor(key: string): Color3
 	return Color3.fromRGB(table.unpack(UiTheme.Colors[key]))
@@ -498,6 +496,7 @@ local function lotSign(plot: Model)
 	local cap = part(model, "Cap", Vector3.new(8.6, 0.3, 0.8), capCenter, paletteColor("SnowWhite"), smooth)
 	cap.CFrame = CFrame.lookAt(capCenter, capCenter + Vector3.new(0, 0, facing))
 	cap.CanCollide = false
+	MapWorld.nightLight(cap, GameConfig.DayCycle.PlotLight) -- CM2-G12a
 	signFace(board, "SignFront", Enum.NormalId.Front)
 	signFace(board, "SignBack", Enum.NormalId.Back)
 	local likePrompt = Instance.new("ProximityPrompt")

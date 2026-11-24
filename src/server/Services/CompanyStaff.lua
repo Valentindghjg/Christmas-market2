@@ -351,6 +351,32 @@ function CompanyStaff.install(CompanyStateService)
 		end
 		return ok, code
 	end
+
+	-- Studio test instrument only (StudioTestService; moved from CompanyStateService in CM2-G12a):
+	-- sets the hired count of one employee type (GameConfig.Employees, Lot Manager included) without touching cash.
+	function CompanyStateService:setStaffForTest(companyId: string, employeeId: string, count: number): boolean
+		local employee = GameConfig.Employees[employeeId]
+		if
+			type(employee) ~= "table"
+			or type(count) ~= "number"
+			or count ~= math.floor(count)
+			or count < 0
+			or count > employee.maxCount
+		then
+			return false
+		end
+		local session = self._sessions[companyId]
+		if not session or not session.healthy then
+			return false
+		end
+		local entered = self:_withSession(companyId, session, function(state)
+			state.staff[employeeId] = count
+			state.revision += 1
+			session.dirty = true
+			return true
+		end)
+		return entered
+	end
 end
 
 return CompanyStaff
