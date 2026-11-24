@@ -696,3 +696,8 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 | Deferred (G9c, G9d) | CM2-G9c: the Lot Manager's avatar and computer job (it shows "Standby" until then). CM2-G9d: the new species per HQ tier and the 2nd/3rd checkout station; their unlocks show as inactive ("coming soon"). |
 
 - Schema 19: schema-18 servers fail closed on schema-19 records; shut them down when this ships.
+
+## 2026-11-24 — owner: the reviewer runs on Sonnet
+- Owner: the Opus reviewer is too expensive for what it does. The `reviewer` agent now runs on Sonnet 5.5 for every task, including tier L (saves, money, inventory, security). Planner decision: high effort instead of medium, so the diff-against-plan review keeps depth on tier L tasks; still far cheaper than Opus.
+- Considered and not chosen: Opus only for tier L (the reviews of CM2-S1 and CM2-G7 found CM2-R5 and CM2-G7a); dropping the reviewer.
+- Files: .claude/agents/reviewer.md, CLAUDE.md, .claude/skills/cm2-task/SKILL.md, docs/PRODUCT_SPEC.md.
