@@ -782,3 +782,8 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - It may archive and shorten docs and delete dead files and client, test and tool code with grep evidence. Dead code in server or shared modules and near saves, money, inventory, purchases or remotes becomes a follow-up task; splitting big Luau files waits until after CM2-48.
 - Archived decision-log entries stay binding; CLAUDE.md now says to grep `docs/archive/DECISION_LOG_*.md` too.
 - Files: docs/CLAUDE_BACKLOG.md, .claude/skills/hasseln/SKILL.md, CLAUDE.md.
+
+## 2026-11-24 — owner: plot picker at session start (CM2-PP)
+- Owner: the reference lets the player choose the plot from a camera view over the map; ours assigns the first free plot. Add the picker.
+- Planner decisions: only the first player of a save on a server picks; teammates and reloads attach as today. Nothing is reserved while browsing; the server claims the plot only if it is still free on confirm, else `PlotTaken`. `Save.Play` without a plot id keeps the automatic choice, so tests and old clients keep working. Tier L (claim path and a new action), order 17a in the launch order, before QA (23) and the UI redesign (22a).
+- Files: docs/CLAUDE_BACKLOG.md (17a), docs/PRODUCT_SPEC.md.

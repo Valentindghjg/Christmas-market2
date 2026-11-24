@@ -11,6 +11,7 @@ Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST
 - **Language:** launch in **English only**; Roblox automatic translation covers other languages. Keep all text key-based and in full sentences (no concatenated fragments). An in-game language switch (DE, ES, …) comes in a later update. *Supersedes "German and English" / "DE/EN".*
 - **Platforms:** PC and phone equally at launch (touch controls for every interaction), tablet included; gamepad after launch.
 - **Server:** 12 players per server, 6 plots. A solo player without a free plot goes to another server.
+- **Plot picker (owner decision 2026-11-24):** as in the reference, the first player of a save on a server chooses a free plot from a camera view over the map ("Plot N of 6", free or occupied with the company name, confirm). Teammates of a save that already plays there join its plot directly. Backlog CM2-PP.
 
 ## Gameplay (all as in the reference unless stated)
 - **Checkout:** the player checks out customers manually at the counter until a Cashier is hired.
