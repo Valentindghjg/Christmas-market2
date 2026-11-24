@@ -371,7 +371,9 @@ test("N10 attachments are created and required ones are enforced", function()
 	local model = normalized(report, probeSpec(), makeRaw(report))
 	local attachment = model.PrimaryPart:FindFirstChild("Front")
 	truthy(attachment and attachment.ClassName == "Attachment", "Front attachment")
-	near(attachment.Position.Z, -3, 1e-3)
+	near(attachment.CFrame.Position.Z, -3, 1e-3)
+	local back = roblox.deserializeModel(roblox.serializeModel({ model }))[1]
+	near(back.PrimaryPart:FindFirstChild("Front").CFrame.Position.Z, -3, 1e-3)
 
 	local noFront = probeReport()
 	noFront.attachments = {}

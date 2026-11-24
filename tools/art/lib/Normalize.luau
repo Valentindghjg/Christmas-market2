@@ -253,7 +253,8 @@ function Normalize.normalize(
 	for _, name in ipairs(names) do
 		local attachment = Instance.new("Attachment")
 		attachment.Name = name
-		attachment.Position = vectorOf(report.attachments[name])
+		-- CFrame, not Position: Position is not serialized, so it is lost in the .rbxm.
+		attachment.CFrame = CFrame.new(vectorOf(report.attachments[name]))
 		attachment.Parent = artRoot
 	end
 
