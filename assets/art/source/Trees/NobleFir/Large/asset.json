@@ -3,13 +3,13 @@
 	"artPath": "Trees/NobleFir/Large",
 	"displayName": "Noble Fir Large",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1200,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "126477386855016",
+		"sourceSha256": "b0b3f668d7bcacf8110b6406bae03fe3f9035ac44e569a064f30e41879bf8cd1",
+		"uploadedAt": "2026-11-24T18:16:50Z"
 	}
 }

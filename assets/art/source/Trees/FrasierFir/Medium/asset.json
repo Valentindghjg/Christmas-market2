@@ -3,13 +3,13 @@
 	"artPath": "Trees/FrasierFir/Medium",
 	"displayName": "Fraser Fir Medium",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1000,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "130760737319394",
+		"sourceSha256": "6911bce7a9da58b3912f21805e543d5bf4e825368b82752c0ec594a363bda016",
+		"uploadedAt": "2026-11-24T18:16:15Z"
 	}
 }

@@ -3,13 +3,13 @@
 	"artPath": "Trees/BlueSpruce/Small",
 	"displayName": "Blue Spruce Small",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 800,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "95484903788258",
+		"sourceSha256": "23d57b24ec4ca4e18498c868e33e25d853e5e4814cc3fb18153be8f1b3390b40",
+		"uploadedAt": "2026-11-24T18:16:56Z"
 	}
 }

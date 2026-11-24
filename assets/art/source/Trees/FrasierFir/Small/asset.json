@@ -3,13 +3,13 @@
 	"artPath": "Trees/FrasierFir/Small",
 	"displayName": "Fraser Fir Small",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 800,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "123556016569169",
+		"sourceSha256": "0f698c4ba239c62c5918aaf38305c7221ab965f799df87d7928ad3ebe8e2169d",
+		"uploadedAt": "2026-11-24T18:16:00Z"
 	}
 }

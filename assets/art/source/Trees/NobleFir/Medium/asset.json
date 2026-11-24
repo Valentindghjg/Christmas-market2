@@ -3,13 +3,13 @@
 	"artPath": "Trees/NobleFir/Medium",
 	"displayName": "Noble Fir Medium",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1000,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "83929274263608",
+		"sourceSha256": "a6f82daabdb8e0302fc04593165c730f2ade619283754edb6ec67940c156dc46",
+		"uploadedAt": "2026-11-24T18:16:42Z"
 	}
 }

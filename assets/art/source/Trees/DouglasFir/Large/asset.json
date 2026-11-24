@@ -3,13 +3,13 @@
 	"artPath": "Trees/DouglasFir/Large",
 	"displayName": "Douglas Fir Large",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1200,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "94180249419473",
+		"sourceSha256": "f54aa16454f27d5060d4294b720f30e1a29d9bf3ccf2df190f3157248ed2079b",
+		"uploadedAt": "2026-11-24T18:15:48Z"
 	}
 }

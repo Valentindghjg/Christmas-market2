@@ -3,13 +3,13 @@
 	"artPath": "Trees/FrasierFir/Large",
 	"displayName": "Fraser Fir Large",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1200,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "93358112749882",
+		"sourceSha256": "ecb9a30c424c4f943d9f254cc76fbe8c58dc95be594503d1836c6f96c4418f24",
+		"uploadedAt": "2026-11-24T18:16:24Z"
 	}
 }

@@ -3,13 +3,13 @@
 	"artPath": "Trees/NobleFir/Small",
 	"displayName": "Noble Fir Small",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 800,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "129584054447330",
+		"sourceSha256": "bc29fc714e2b5c802d18e2a471634033687fb901be27daf770a2ea0144c42bd0",
+		"uploadedAt": "2026-11-24T18:16:34Z"
 	}
 }

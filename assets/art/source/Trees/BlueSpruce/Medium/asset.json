@@ -3,13 +3,13 @@
 	"artPath": "Trees/BlueSpruce/Medium",
 	"displayName": "Blue Spruce Medium",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1000,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "74560912000435",
+		"sourceSha256": "3adf7a18e0afacd421ffb254a82817fd6000b69f1bc7f2957373a873645e9d14",
+		"uploadedAt": "2026-11-24T18:17:04Z"
 	}
 }

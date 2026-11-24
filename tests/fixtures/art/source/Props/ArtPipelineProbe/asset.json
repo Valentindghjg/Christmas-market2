@@ -3,11 +3,11 @@
 	"artPath": "Props/ArtPipelineProbe",
 	"displayName": "Art pipeline probe",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"requiredAttachments": ["Front"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "137379227464042",
+		"sourceSha256": "44d7b67efce5d66353fad7e4cb87f5c85a8b70a379e247a74282764c3491947f",
+		"uploadedAt": "2026-11-24T18:15:00Z"
 	}
 }

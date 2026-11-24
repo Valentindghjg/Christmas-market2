@@ -3,13 +3,13 @@
 	"artPath": "Trees/BlueSpruce/Large",
 	"displayName": "Blue Spruce Large",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1200,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "98581622744297",
+		"sourceSha256": "9b03210cb2331613ae82a1557a6de6c7f830ce46c3c99b94699a1684c4baed34",
+		"uploadedAt": "2026-11-24T18:17:19Z"
 	}
 }

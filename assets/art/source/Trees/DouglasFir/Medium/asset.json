@@ -3,13 +3,13 @@
 	"artPath": "Trees/DouglasFir/Medium",
 	"displayName": "Douglas Fir Medium",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1000,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "79362053698357",
+		"sourceSha256": "73d5b71d2a36e007bc61be123c0c6d730dd1092872a8f93481419b85d177fd07",
+		"uploadedAt": "2026-11-24T18:15:33Z"
 	}
 }

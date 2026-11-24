@@ -3,13 +3,13 @@
 	"artPath": "Trees/HollyberrySpruce/Large",
 	"displayName": "Hollyberry Spruce Large",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1600,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "109431284114952",
+		"sourceSha256": "d149ddcff8483601e01e8b705427c3c0cdc019644bbc9b3b125b3930a3c7a996",
+		"uploadedAt": "2026-11-24T18:17:40Z"
 	}
 }

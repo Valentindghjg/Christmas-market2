@@ -3,13 +3,13 @@
 	"artPath": "Trees/DouglasFir/Small",
 	"displayName": "Douglas Fir Small",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 800,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "85476281495620",
+		"sourceSha256": "c61ba874bade9028513198dfb3befefcf4682bba95040c2fc7c801ba68095bb4",
+		"uploadedAt": "2026-11-24T18:15:23Z"
 	}
 }

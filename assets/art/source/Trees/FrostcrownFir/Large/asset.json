@@ -3,13 +3,13 @@
 	"artPath": "Trees/FrostcrownFir/Large",
 	"displayName": "Frostcrown Fir Large",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1600,
 	"maxMeshParts": 7,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "97931006450750",
+		"sourceSha256": "65b359212932fee118c27a8f0045bf2dcf44b6d8d07ea8f6a99fbbd2d170ca59",
+		"uploadedAt": "2026-11-24T18:17:32Z"
 	}
 }
