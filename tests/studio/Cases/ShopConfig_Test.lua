@@ -91,9 +91,29 @@ return function(t)
 		expect.equal(ShopConfig.byKey("Nope"), nil)
 	end)
 
-	t.test("ships with every ID empty", function()
+	t.test("carries the created IDs and leaves the other products at 0", function()
+		local IDS = {
+			StarterPack = 3735805319,
+			PassCashX2 = 2101828296,
+			PassReputationX2 = 2099729097,
+			PassInstantDelivery = 2099165138,
+			PassVip = 2098973055,
+			CashPinecone = 3735805373,
+			CashSleigh = 3735805396,
+			CashCabin = 3735805416,
+			CashVillage = 3735805452,
+			CashMountain = 3735805469,
+			BoostCashX2 = 3735805526,
+			BoostRested = 3735805549,
+		}
 		for _, product in ipairs(ShopConfig.Products) do
-			expect.equal(product.id, 0)
+			expect.equal(product.id, IDS[product.key] or 0)
+			local found = if product.kind == "Pass"
+				then ShopConfig.byPassId(product.id)
+				else ShopConfig.byProductId(product.id)
+			if IDS[product.key] then
+				expect.equal(found, product)
+			end
 		end
 		expect.equal(ShopConfig.byProductId(0), nil)
 		expect.equal(ShopConfig.byPassId(0), nil)

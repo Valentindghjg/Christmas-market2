@@ -92,6 +92,25 @@ ShopConfig.Products = {
 	product("DecorVillageExpress", "PremiumDecor", 149, false, false, {}),
 }
 
+-- Roblox IDs of the products the owner created (DECISION_LOG 2026-11-24, PC-8); the rest stay 0.
+local CREATED_IDS: { [string]: number } = {
+	StarterPack = 3735805319,
+	PassCashX2 = 2101828296,
+	PassReputationX2 = 2099729097,
+	PassInstantDelivery = 2099165138,
+	PassVip = 2098973055,
+	CashPinecone = 3735805373,
+	CashSleigh = 3735805396,
+	CashCabin = 3735805416,
+	CashVillage = 3735805452,
+	CashMountain = 3735805469,
+	BoostCashX2 = 3735805526,
+	BoostRested = 3735805549,
+}
+for _, entry in ipairs(ShopConfig.Products) do
+	entry.id = CREATED_IDS[entry.key] or 0
+end
+
 -- Caps and timings (PROVISIONAL unless marked).
 ShopConfig.MaxSaveReceipts = 100
 ShopConfig.BoostCapSeconds = 21600
