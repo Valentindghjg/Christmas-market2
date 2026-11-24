@@ -54,6 +54,12 @@ Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST
 - **Until shortly before release** the UI stays functional in its current style. New screens use only the tokens in `src/shared/UiTheme.lua` and the builders in `src/client/UiKit.lua` and get no visual polish, so the redesign does not have to be redone after every feature.
 - **The visual redesign is the last task before release** (CM2-UI in the backlog). It works from the owner's liked and disliked UI screenshots and, if one exists, a mockup, and uses one graphics set (frames, buttons, icons). Possible sources are an AI UI generator such as ForgeGUI, a CC0 set such as Kenney, or a bought kit with a written licence for commercial use in Roblox. Every set gets its licence and source recorded.
 - The redesign changes the look only. Behaviour, remotes and string keys stay as they are.
+- **Target look (owner decision 2026-11-24).** No bought UI pack: the Swarve Studios pack is dropped, and the look is built from our own `UiTheme` tokens and `UiKit` builders. Direction from the owner and from the reference's UI (REFERENCE_GAME_LIVE_TEST section 9: cream panels, dark-green buttons, gold accents):
+  - **Calm and creamy.** Cream panels with dark text as the main surface; dark green only for primary buttons and headers; gold for money and highlights; a muted red only for close and danger. No saturated red, green or blue fills, no rainbow of button colours, no decorative gradients.
+  - **Heavy type.** Titles, buttons and numbers in a heavy rounded font, body text at least bold, never thin. Titles get a dark outline for readability.
+  - **Big tap targets.** Buttons at least 48 px high on phone (primary buttons 56 px), generous padding and spacing, whole rows tappable.
+  - **Feedback.** Hover grows a button slightly, press shrinks it, a soft click plays; touch shows the press effect. The selected tab is clearly marked.
+  - **Not generic.** Thick darker outlines, rounded corners and a soft drop shadow, one consistent style on every screen.
 
 ## Way of working and release
 - **Model routing (owner decision 2026-11-21, amended):** every task runs through the skill `cm2-task`.

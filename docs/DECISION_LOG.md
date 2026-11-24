@@ -745,3 +745,9 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Unchanged: planning with the owner in the chat (`cm2-plan`, Opus high), the implementers, modeler, playtester and reviewer.
 - Revert: set `effort: high` in .claude/agents/planner.md and remove the S branch in step 1 of `cm2-task`.
 - Files: .claude/agents/planner.md, .claude/agents/planner-high.md, .claude/agents/implementer.md, .claude/agents/playtester.md, .claude/agents/reviewer.md, .claude/skills/cm2-task/SKILL.md, .claude/skills/cm2-plan/SKILL.md, CLAUDE.md, docs/PRODUCT_SPEC.md, docs/CLAUDE_BACKLOG.md, docs/plans/TEMPLATE.md.
+
+## 2026-11-24 — owner: own UI look, Swarve pack dropped
+- Owner: Swarve Studios did not answer the licence request, and waiting costs more than the pack is worth. CM2-UI uses no bought or third-party UI set; the 2026-11-24 entry "UI graphics from the Essential UI Pack" is superseded.
+- Target look (PRODUCT_SPEC "UI look"): calm cream panels, dark green and gold as accents, muted red only for close and danger; heavy rounded type; tap targets at least 48 px (primary 56 px on phone); hover grows, press shrinks, soft click; thick outlines, rounded corners, soft shadow.
+- Planner decisions: hover 106 %, press 95 %, 0.1 s tween through a `UIScale` so layout does not move; the font is picked in the CM2-UI plan from Roblox's built-in heavy fonts after a Device Simulator comparison. CM2-UI stays the last task before release (owner decision 2026-11-22).
+- Files: docs/PRODUCT_SPEC.md, docs/CLAUDE_BACKLOG.md (22a (b), (c), (e); owner inputs).
