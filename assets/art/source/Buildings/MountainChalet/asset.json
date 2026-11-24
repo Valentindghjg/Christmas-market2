@@ -3,13 +3,13 @@
 	"artPath": "Buildings/MountainChalet",
 	"displayName": "Mountain Chalet",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 4000,
 	"maxMeshParts": 10,
 	"requiredAttachments": ["Entrance", "Computer", "Radio"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "80346869419890",
+		"sourceSha256": "e07d65a5cb74af1cb66acbed8fd9b0f11036008a619a7c73887a215e91298617",
+		"uploadedAt": "2026-11-24T18:21:43Z"
 	}
 }

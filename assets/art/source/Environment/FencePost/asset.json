@@ -3,13 +3,13 @@
 	"artPath": "Environment/FencePost",
 	"displayName": "Fence Post",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 100,
 	"maxMeshParts": 2,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "80498840265993",
+		"sourceSha256": "41692498a6c4edfdf91d6a0dca3b592d3a71706fb8cd3e2cb021f249915fa799",
+		"uploadedAt": "2026-11-24T18:22:45Z"
 	}
 }

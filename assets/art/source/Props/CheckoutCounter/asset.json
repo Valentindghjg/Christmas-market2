@@ -3,13 +3,13 @@
 	"artPath": "Props/CheckoutCounter",
 	"displayName": "Checkout Counter",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 1500,
 	"maxMeshParts": 8,
 	"requiredAttachments": ["Checkout1", "CashierStand", "Register"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "86195605998455",
+		"sourceSha256": "15dc11c042913b524a0285c966f31a962041445dec67dc8783c34fa45173ddc7",
+		"uploadedAt": "2026-11-24T18:21:56Z"
 	}
 }

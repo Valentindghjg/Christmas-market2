@@ -3,13 +3,13 @@
 	"artPath": "Buildings/SalesTent",
 	"displayName": "Sales Tent",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 2500,
 	"maxMeshParts": 10,
 	"requiredAttachments": ["Entrance", "Computer", "Radio"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "76796067556800",
+		"sourceSha256": "c8e8ace6c9a856751f90f8f881d271179db23ff1d94058876a54e3b82998c55c",
+		"uploadedAt": "2026-11-24T18:21:14Z"
 	}
 }

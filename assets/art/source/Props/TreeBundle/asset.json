@@ -3,13 +3,13 @@
 	"artPath": "Props/TreeBundle",
 	"displayName": "Tree Bundle",
 	"tier": "B",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 240,
 	"maxMeshParts": 3,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "92004701506028",
+		"sourceSha256": "cbd647e527bd3971afcd5851ed4ae6e77bb78d943ca7a9d78329a1bab5420b1f",
+		"uploadedAt": "2026-11-24T18:22:17Z"
 	}
 }

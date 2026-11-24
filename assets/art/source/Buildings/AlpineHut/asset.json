@@ -3,13 +3,13 @@
 	"artPath": "Buildings/AlpineHut",
 	"displayName": "Alpine Hut",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 3600,
 	"maxMeshParts": 10,
 	"requiredAttachments": ["Entrance", "Computer", "Radio"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "96170871620807",
+		"sourceSha256": "9002903a06bf7cc80f13a45b69192799983b50248ce9ee66aa6a217328e80de4",
+		"uploadedAt": "2026-11-24T18:21:34Z"
 	}
 }

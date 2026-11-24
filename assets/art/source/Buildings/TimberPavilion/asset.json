@@ -3,13 +3,13 @@
 	"artPath": "Buildings/TimberPavilion",
 	"displayName": "Timber Pavilion",
 	"tier": "A",
-	"version": 1,
+	"version": 2,
 	"maxTriangles": 4000,
 	"maxMeshParts": 10,
 	"requiredAttachments": ["Entrance", "Computer", "Radio"],
 	"upload": {
-		"modelAssetId": null,
-		"sourceSha256": null,
-		"uploadedAt": null
+		"modelAssetId": "129908851202139",
+		"sourceSha256": "1d731eb91efbdf416f81285aa7365f3a42d70d27efbdc075e592fea83a2b3f91",
+		"uploadedAt": "2026-11-24T18:21:26Z"
 	}
 }
