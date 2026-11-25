@@ -9,7 +9,7 @@ A co-op save that another server plays shows "Being played by X" with a **Join**
 ## Source of truth
 - Backlog launch order line 5 (CM2-S3), original CM2-39 (single writer, join on another server, recovery, no split brain), order 15 sub-bullet (friends test), order 5a (CM2-R5, the next task).
 - PRODUCT_SPEC 2026-11-21 "Saves and multiplayer" (OWNER DECIDED: one server per save, "Being played by X – Join" teleports into that server, "Server full, try again"; an in-server "looking for teammates" list where the searcher owns the new save; cross-server matchmaking later).
-- `docs/plans/CM2-S1.md` (key budget and prefix rule, the no-free-plot teleport seam, `pendingCount`), `docs/plans/CM2-S2.md` (`addMember(state, userId, nil)` for trusted callers, `_changeRecord`, attach, `_unloadShared`, the join lockout). DECISION_LOG 2026-11-22 entries for CM2-S1 and CM2-S2.
+- `docs/archive/plans/CM2-S1.md` (key budget and prefix rule, the no-free-plot teleport seam, `pendingCount`), `docs/archive/plans/CM2-S2.md` (`addMember(state, userId, nil)` for trusted callers, `_changeRecord`, attach, `_unloadShared`, the join lockout). DECISION_LOG 2026-11-22 entries for CM2-S1 and CM2-S2.
 - Skill rules: roblox-server-data "MemoryStoreService" (game-level quotas 1000 + 120 × CCU request units per minute, HashMap `UpdateAsync` costs 2 units, `GetAsync` 1, shortest workable TTL) and roblox-security (teleport data is client-routed and untrusted).
 
 ## Implementer tier

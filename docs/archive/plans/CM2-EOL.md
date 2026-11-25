@@ -8,7 +8,7 @@ Every text file git writes to disk (checkout, stash, reset, rebase) has LF line 
 
 ## Source of truth
 - Finding: PROGRESS 2026-11-22 entries CM2-RF and CM2-13b ("three working copies had been checked out with CRLF by `core.autocrlf` and were reset to LF").
-- Cause (planner check 2026-11-22, git 2.55.0.windows.5): `core.autocrlf=true` comes from the system config `C:/Program Files/Git/etc/gitconfig`; `.gitattributes` has no eol rule for text files. The index stores every text file as LF (`git ls-files --eol`: 242 `i/lf w/lf`, 86 `i/lf w/crlf`, 1 `i/lf w/mixed` = `docs/plans/CM2-UVF2.md`, 56 `i/-text` binaries, 2 `-text` CC0 files, 0 `i/crlf`).
+- Cause (planner check 2026-11-22, git 2.55.0.windows.5): `core.autocrlf=true` comes from the system config `C:/Program Files/Git/etc/gitconfig`; `.gitattributes` has no eol rule for text files. The index stores every text file as LF (`git ls-files --eol`: 242 `i/lf w/lf`, 86 `i/lf w/crlf`, 1 `i/lf w/mixed` = `docs/archive/plans/CM2-UVF2.md`, 56 `i/-text` binaries, 2 `-text` CC0 files, 0 `i/crlf`).
 - No file is stored as CRLF on purpose: `docs/MODEL_INTEGRATION.md` is `i/lf w/lf`. The repo has no `.bat`, `.cmd` or `.ps1` file. So there is no CRLF exception.
 - CLAUDE.md "Non-negotiables" (never overwrite user changes) and the task brief (do not change git config).
 
@@ -60,13 +60,13 @@ Run everything in Git Bash at the repo root. Do not run `git config`. Do not com
 2. **Write `.gitattributes`** exactly as in "Data and config" (LF, final newline).
 3. **Renormalize once.** `git add --renormalize -- . ':!docs/CLAUDE_BACKLOG.md'` (implies `-u`; the backlog is LF in index and working copy and stays unstaged for the reviewer; untracked `.agents/`, `.codex/`, `.mcp.json`, `AGENTS.md` are not touched). Then check:
    - `git diff --cached --name-only` prints exactly `.gitattributes`. Expected, because no blob is stored as CRLF. Any other path: stop and report the list and `git diff --cached --stat`; do not unstage anything yourself.
-   - `git status --porcelain` shows `M  .gitattributes` (staged), ` M docs/CLAUDE_BACKLOG.md` if the planner edit is still uncommitted, `?? docs/plans/CM2-EOL.md` if the plan is still untracked, and the four `??` entries above; nothing else.
+   - `git status --porcelain` shows `M  .gitattributes` (staged), ` M docs/CLAUDE_BACKLOG.md` if the planner edit is still uncommitted, `?? docs/archive/plans/CM2-EOL.md` if the plan is still untracked, and the four `??` entries above; nothing else.
 4. **Rewrite the CRLF working copies as LF.** `git checkout -- <path>` skips files whose stat data is unchanged, so delete first. Exclude `.claude/` (the running Claude Code session reads `settings.json`, hooks, agents and skills; they get LF the next time git writes them):
    ```bash
    git ls-files --eol | grep -E 'w/(crlf|mixed)' | cut -f2 | grep -v '^\.claude/' \
      | while IFS= read -r f; do rm -- "$f" && git checkout -- "$f"; done
    ```
-   (`cut -f2` takes the path after the tab; the attr column now contains a space.) Expected: 20 files (`default.project.json`, `skills-lock.json`, 4 under `assets/art/source/Buildings/`, 14 under `docs/`, incl. `docs/plans/CM2-UVF2.md` and `docs/plans/TEMPLATE.md`).
+   (`cut -f2` takes the path after the tab; the attr column now contains a space.) Expected: 20 files (`default.project.json`, `skills-lock.json`, 4 under `assets/art/source/Buildings/`, 14 under `docs/`, incl. `docs/archive/plans/CM2-UVF2.md` and `docs/plans/TEMPLATE.md`).
 5. **Verify** (all must hold; record the outputs for the reviewer):
    - `git ls-files --eol | grep -E 'w/(crlf|mixed)' | grep -vc $'\t\\.claude/'` prints `0`.
    - `git ls-files --eol | grep -E 'w/(crlf|mixed)' | grep -c $'\t\\.claude/'` prints `67` (left as they are, see step 4).

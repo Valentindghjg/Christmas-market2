@@ -91,7 +91,7 @@ Strings: en `bayContents = "%s · %d trees"`, `bayContentsOne = "%s · 1 tree"`;
 Headless total: **397** (389 + 8).
 
 ## Playtest (Studio, via playtester; batch run)
-Helpers from `docs/plans/CM2-UV.md` (D1 BUILD `cm2-n1-fix2`, D4 clicks without `GetGuiInset`, D5, H, H3). New:
+Helpers from `docs/archive/plans/CM2-UV.md` (D1 BUILD `cm2-n1-fix2`, D4 clicks without `GetGuiInset`, D5, H, H3). New:
 - **H6 labelProbe()** (Client), 0.3 s after each camera move: every BillboardGui in workspace whose `Text` child has `LabelKind`, shown = `Enabled` and distance ≤ `MaxDistance` and `WorldToViewportPoint(point).Z > 0`; box = viewport centre ± `AbsoluteSize / 2`. Violations: any pair of shown boxes with `UiTheme.overlaps`; any shown `Text` with `TextFits == false`. PASS when empty; record the shown labels' texts.
 - **H7 view(target, offset)** (Client, stands in for the player camera): Scriptable, `CFrame.lookAt(target + offset, target + Vector3.new(0, 3, 0))`; s = 1 when `c.Z < 0` else −1.
 

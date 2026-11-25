@@ -9,7 +9,7 @@ Opening the Lot Manager, the Team panel or the stocking bar closes an open Saves
 ## Source of truth
 - Backlog launch order 5c (CM2-UVF1); defect evidence: PROGRESS "CM2-UV UI verification" item (f), capture `uv-f2-pre`.
 - Modal rule: DECISION_LOG "2026-11-22 - HUD shell and Lot Manager, CM2-40", bullet "Modal rules" and `docs/plans/CM2-40.md` step 88. This plan amends it: the picker stays the base layer, but now registers with the coordinator so a claim closes it.
-- CM2-S3 design: the finder opens over the picker (`docs/plans/CM2-S3.md`).
+- CM2-S3 design: the finder opens over the picker (`docs/archive/plans/CM2-S3.md`).
 - CM2-UI (backlog 22a, no plan yet; commit 1958110): look only, adds a dim layer under stacked dialogs later. This plan changes behaviour only (no look, no strings) and keeps picker (DisplayOrder 20) under finder (25), so CM2-UI adds its dim layer on this rule unchanged.
 
 ## Implementer tier

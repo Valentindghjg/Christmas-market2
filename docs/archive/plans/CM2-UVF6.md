@@ -70,7 +70,7 @@ The asserts, in order:
 Headless total: **400** (399 + 1). If the baseline on HEAD is not 399, the expected total is baseline + 1; report the baseline.
 
 ## Playtest (Studio, via playtester; batch run, position 2)
-Helpers come from `docs/plans/CM2-UV.md` and its H4b amendment:
+Helpers come from `docs/archive/plans/CM2-UV.md` and its H4b amendment:
 - D4 clicks: GUI space, `AbsolutePosition + AbsoluteSize/2`, without `GuiService:GetGuiInset()`.
 - D5 timeouts, D7 test data, H, `sa`, R and H4b.
 

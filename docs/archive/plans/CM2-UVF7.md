@@ -9,7 +9,7 @@ No two drawn world labels overlap at any distance: the client's pass hides label
 ## Source of truth
 - Backlog launch order 5i (CM2-UVF7).
 - PROGRESS, CM2-UVF2 re-test, observation (1): at the uvf2-5b view, 4 bay labels 65–77 studs away were drawn and overlapped. Their `MaxDistance` is 60.
-- `docs/plans/CM2-UVF2.md` D2 and amendment UVF2-A1; DECISION_LOG CM2-UVF2 entry.
+- `docs/archive/plans/CM2-UVF2.md` D2 and amendment UVF2-A1; DECISION_LOG CM2-UVF2 entry.
 
 ## Analysis and decisions
 Today (`WorldLabels.client.lua` lines 156–161) a label beyond `gui.MaxDistance` (camera distance) or behind the camera is set `Enabled = true` and left out of `resolve`; the engine still drew such labels.
@@ -80,7 +80,7 @@ All tests go in `tests/studio/Cases/LabelDeclutter_Test.lua`. They use a local h
 Expected: `lune run tests/headless/run.luau` 405 run, 0 failed (baseline 400).
 
 ## Playtest (Studio, via playtester; batch run with CM2-UVF5 and CM2-UVF6)
-Helpers: `docs/plans/CM2-UV.md` (D1, D4, D5, H, `c`, H3, End) and `docs/plans/CM2-UVF2.md` (H6, H7, step 3 setup). New helpers:
+Helpers: `docs/archive/plans/CM2-UV.md` (D1, D4, D5, H, `c`, H3, End) and `docs/archive/plans/CM2-UVF2.md` (H6, H7, step 3 setup). New helpers:
 - **Tracked** = every BillboardGui in workspace whose `Text` child has `LabelKind`.
 - **WL** = the WorldLabels script, `LocalPlayer.PlayerScripts:FindFirstChild("WorldLabels", true)`.
 - **d(gui)** = `|Adornee.Position + StudsOffsetWorldSpace − Camera.CFrame.Position|`, **z(gui)** = `WorldToViewportPoint(...).Z`, **rng(gui)** = `gui:GetAttribute("LabelRange")`.

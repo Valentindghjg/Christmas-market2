@@ -9,7 +9,7 @@ A player creates a Solo, Duo, Trio or Quad save (1/2/3/4 seats). Duo and larger 
 ## Source of truth
 - Backlog launch order line 4 (CM2-S2), line 5 (CM2-S3, shapes the data only), original CM2-37 (join and leave), CM2-38 (roles → owner vs member, DECISION_LOG 2026-11-21 launch order), CM2-G10 part 2.
 - PRODUCT_SPEC 2026-11-21 "Saves and multiplayer" (OWNER DECIDED: sizes, creator owns, members do everything in play, owner-only rename/delete/remove/renew code, members play while the owner is offline, fixed 5-digit numeric code).
-- `docs/plans/CM2-S1.md` (save ID, key budget and prefix rule, lock-free profile, `_play`/`_leaveActive`, shutdown `pendingCount`). DECISION_LOG 2026-11-22 CM2-S1 and CM2-G20 (shadow user `999999999001`).
+- `docs/archive/plans/CM2-S1.md` (save ID, key budget and prefix rule, lock-free profile, `_play`/`_leaveActive`, shutdown `pendingCount`). DECISION_LOG 2026-11-22 CM2-S1 and CM2-G20 (shadow user `999999999001`).
 - TECHNICAL_ARCHITECTURE §5 and §7; skill rule roblox-security "Text filtering as a workflow" (stored text shown to other players).
 
 ## Implementer tier

@@ -8,7 +8,7 @@ When a player leaves, switches saves or the server shuts down while saving fails
 
 ## Source of truth
 - Backlog launch order 5a (CM2-R5) with acceptance (a)–(d). Found by the CM2-S1 review.
-- `docs/plans/CM2-S2.md` (`_unloadShared`, `_pendingLoads`/`_unloading` hand-over, Amendment A3) and `docs/plans/CM2-S3.md` (step: release the map entry only after a successful unload; out-of-scope note on R5 renewal). `docs/plans/CM2-S1.md` F6/F7 (`beginShutdown`, `pendingCount`, BindToClose 25 s).
+- `docs/archive/plans/CM2-S2.md` (`_unloadShared`, `_pendingLoads`/`_unloading` hand-over, Amendment A3) and `docs/archive/plans/CM2-S3.md` (step: release the map entry only after a successful unload; out-of-scope note on R5 renewal). `docs/archive/plans/CM2-S1.md` F6/F7 (`beginShutdown`, `pendingCount`, BindToClose 25 s).
 - TECHNICAL_ARCHITECTURE §5 "Implemented policy" and "Shutdown". DECISION_LOG 2026-11-22 CM2-S2 "Plot hand-over" (the failed-final-save case stays with R5).
 - Skill rules: roblox-data (`BindToClose` finishes pending work; handle throttling and transient errors with `UpdateAsync`), roblox-server-data (MemoryStore TTL, game-level budget).
 

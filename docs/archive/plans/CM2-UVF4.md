@@ -8,7 +8,7 @@ Every label of the save picker, Team panel and teammate finder shows its full En
 
 ## Source of truth
 - Backlog 5e; PROGRESS "CM2-UV UI verification" row (d): uv-d1 (`SaveState` is 0.4 of the row, about 169 px at PC, no wrap).
-- CM2-UV plan H4 and (d) step 1; H4 amended by the planner (H4b) in `docs/plans/CM2-UV.md`.
+- CM2-UV plan H4 and (d) step 1; H4 amended by the planner (H4b) in `docs/archive/plans/CM2-UV.md`.
 - roblox-gui full.md §4, §11.6: fixed size plus layout, wrap instead of truncating or shrinking.
 - PRODUCT_SPEC: English-only launch.
 
@@ -40,7 +40,7 @@ roblox-collaboration-mode, roblox-gui, roblox-input, roblox-localization, roblox
 | `tests/studio/Cases/UiTheme_Test.lua` | Change | 1 test |
 | `docs/DECISION_LOG.md`, `docs/TEST_PLAN.md` | Change | entry, one sentence |
 
-`docs/plans/CM2-UV.md` H4 is already amended (planner). No other file changes.
+`docs/archive/plans/CM2-UV.md` H4 is already amended (planner). No other file changes.
 
 ## Data and config
 `src/shared/UiTheme.lua`, after `UiTheme.Dialogs` (PROVISIONAL):
@@ -71,7 +71,7 @@ UiTheme.SaveRow = { height = 136, padding = 6, nameTextSize = 18, nameHeight = 3
 The existing "fits the picker, delete confirm, Team panel and finder on every screen" must still pass with the new values. Headless total: **398** (397 + 1).
 
 ## Playtest (Studio, via playtester; batch run)
-Helpers from `docs/plans/CM2-UV.md`: D4 clicks in GUI space without `GuiService:GetGuiInset()`, D5 timeouts, D7 test data, H, `sa`, R, SH. If the batch already started Play, read BUILD and ran `runPlaytest {mode="full"}` on the same HEAD, reuse those results.
+Helpers from `docs/archive/plans/CM2-UV.md`: D4 clicks in GUI space without `GuiService:GetGuiInset()`, D5 timeouts, D7 test data, H, `sa`, R, SH. If the batch already started Play, read BUILD and ran `runPlaytest {mode="full"}` on the same HEAD, reuse those results.
 - **H4b probe(guis)** (Client), 1 s after the last input: H4's rules, with the text rule replaced by: any TextLabel, TextButton or TextBox whose text is not empty, that is shown (gui `Enabled`, it and every GuiObject ancestor `Visible`) and has `TextFits == false`, whatever its `TextTruncate`. Report path, `Text`, `AbsoluteSize`, `TextBounds`. PASS when empty.
 - `en(key)` = `require(ReplicatedStorage.Shared.Localization).get("en", key)`.
 

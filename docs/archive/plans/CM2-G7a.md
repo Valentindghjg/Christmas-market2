@@ -9,7 +9,7 @@ The Noble Fir "typical" price is the observed $184, not the derived 185. Its bou
 ## Source of truth
 - REFERENCE_GAME_LIVE_TEST §4.3 (OBSERVED cards): typical M is Douglas 140, Fraser 160, Noble 184, Blue Spruce 210 at wholesale M 28/32/37/42. 140, 160 and 210 are exactly 5 × wholesale. Noble 184 is 4.97 ×, the only card that differs from the rule.
 - PRODUCT_SPEC owner decisions, **Fidelity**: all numbers of the reference game are adopted; unknown numbers are extrapolated and marked PROVISIONAL.
-- DECISION_LOG 2026-11-22 "Price benchmark and Pricing tab, CM2-G7" (benchmark bullet "Noble is 185") and its reviewer note; `docs/plans/CM2-G7.md` (Decisions table).
+- DECISION_LOG 2026-11-22 "Price benchmark and Pricing tab, CM2-G7" (benchmark bullet "Noble is 185") and its reviewer note; `docs/archive/plans/CM2-G7.md` (Decisions table).
 - Backlog launch order 7a.
 
 ## Decision (settled)
@@ -38,7 +38,7 @@ roblox-collaboration-mode, roblox-game-design, roblox-networking, roblox-securit
 | `tests/studio/Playtest/RunPlaytest.lua` | Change | BUILD `cm2-g7a`, threshold 309 |
 | `docs/GAME_DESIGN.md`, `docs/TEST_PLAN.md`, `docs/DECISION_LOG.md` | Change | Step 4 |
 
-Do not change: `PricingService.lua`, `Economy.lua`, `BusinessState.lua`, `CustomerProfile.lua`, `CustomerSelection.lua`, the client, `Protocol.lua`, rate limits, `docs/plans/CM2-G7.md`, `docs/PROGRESS.md`, `docs/CLAUDE_BACKLOG.md` (the reviewer updates the last two).
+Do not change: `PricingService.lua`, `Economy.lua`, `BusinessState.lua`, `CustomerProfile.lua`, `CustomerSelection.lua`, the client, `Protocol.lua`, rate limits, `docs/archive/plans/CM2-G7.md`, `docs/PROGRESS.md`, `docs/CLAUDE_BACKLOG.md` (the reviewer updates the last two).
 
 ## Data and config
 In `GameConfig.Pricing`, the `BenchmarkMultiplier` line and one new key directly below it:
@@ -56,7 +56,7 @@ In `GameConfig.Pricing`, the `BenchmarkMultiplier` line and one new key directly
 4. **Docs**:
    - GAME_DESIGN line 28: replace `medium = 5 × medium wholesale (GameConfig.Pricing.BenchmarkMultiplier, OBSERVED): Douglas 140, Fraser 160, Noble 185, Blue Spruce 210;` with `medium = 5 × medium wholesale (GameConfig.Pricing.BenchmarkMultiplier), unless an observed card differs (GameConfig.Pricing.TypicalMediumOverride): Douglas 140, Fraser 160, Noble 184 (observed override; 5 × 37 would be 185), Blue Spruce 210, all OBSERVED; the 5 × rule is the PROVISIONAL extrapolation for species without an observed card;`. Keep the rest of the line.
    - TEST_PLAN §2 row PRC-01: `typical = 5 × medium wholesale; manual prices …` → `typical = 5 × medium wholesale or the OBSERVED override (Noble 184); manual prices …`. Line 63 `(at least 308 tests)` → `(at least 309 tests)`.
-   - DECISION_LOG, new entry at the end: `## 2026-11-22 - Noble Fir typical price 184 (OBSERVED override), CM2-G7a (engineering)`, with these bullets: it supersedes the CM2-G7 benchmark bullet "Noble is 185, not the observed 184"; why the override and not an exception (Fidelity rule; 140/160/210 match 5 × exactly); `GameConfig.Pricing.TypicalMediumOverride = { NobleFir = 184 }`; the 5 × rule is the PROVISIONAL extrapolation for unobserved species; Noble bounds 92–460, size benchmarks 147/184/239, auto base 184; saves and remote as in the Decision table; no schema change; threshold 308 → 309 (`BUILD cm2-g7a`). Plan: `docs/plans/CM2-G7a.md`.
+   - DECISION_LOG, new entry at the end: `## 2026-11-22 - Noble Fir typical price 184 (OBSERVED override), CM2-G7a (engineering)`, with these bullets: it supersedes the CM2-G7 benchmark bullet "Noble is 185, not the observed 184"; why the override and not an exception (Fidelity rule; 140/160/210 match 5 × exactly); `GameConfig.Pricing.TypicalMediumOverride = { NobleFir = 184 }`; the 5 × rule is the PROVISIONAL extrapolation for unobserved species; Noble bounds 92–460, size benchmarks 147/184/239, auto base 184; saves and remote as in the Decision table; no schema change; threshold 308 → 309 (`BUILD cm2-g7a`). Plan: `docs/archive/plans/CM2-G7a.md`.
 5. **RunPlaytest**: `RunPlaytest.BUILD = "cm2-g7a"`; the step-01 check and its message use `309`.
 
 ## Tests (headless)
