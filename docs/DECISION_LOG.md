@@ -281,3 +281,9 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Planner consequences: CM2-12, CM2-13a, CM2-13b, CM2-13, CM2-14, CM2-10a, CM2-10b, CM2-10c, CM2-10 and CM2-10W ticked (their remaining checks had passed 2026-11-24); the `[ART]` log line is a non-blocking note under CM2-ASSETWARN; line 17 waits only on CM2-G12b; CM2-UV2 drops j1/j6; CM2-49 keeps its numeric touch flow; capture and FPS clauses in later Accepts no longer gate.
 - Files: docs/CLAUDE_BACKLOG.md (PC-9, queue, lines 5h, 14, 17, 22a, MODEL tasks, Next run), docs/PRODUCT_SPEC.md ("Testing").
 - Finding (owner-provided probe from another session, 2026-11-25 ~18:10, main @ be3489e): Play capture shows the 3D world (1564x730, no longer black); client RenderStepped over 10 s mean 15.0 FPS (min 14.6, max frame 68.5 ms), so the 15-FPS cap persists but no longer gates; Rojo in sync (live Studio has the CM2-UVF13 code); console: `rbxassetid://203785492` warning 5x, no Lua errors.
+
+## 2026-11-25 — owner: compact UI on phone (CM2-UI)
+- Owner: the new UI must be smaller, otherwise it is far too big on a phone.
+- Previous rule: "Big tap targets", buttons at least 48 px on phone, primary 56 px (2026-11-24). New rule: buttons 44–52 px (today's `UiTheme.MinTouch` 44 stays the minimum); on phone every window at most 70 % × 80 % of the safe area, HUD at most 20 % of the screen, body text 14–16 px, titles at most 24 px, and no screen bigger on phone than before CM2-UI. The pack's frame sizes are not taken over; its images are scaled into these boxes.
+- Planner decisions: the limits are checked headlessly from the `UiTheme` layout functions for the phone sizes in `UiTheme_Test` (box areas and sizes, a baseline of today's phone boxes taken before CM2-UI starts) and visually in the Device Simulator shots. Hover growth (110 %) runs through a `UIScale` and does not count against the limits.
+- Files: docs/PRODUCT_SPEC.md ("UI look"), docs/CLAUDE_BACKLOG.md (22a (c), (e)).

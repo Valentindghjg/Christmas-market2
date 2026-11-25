@@ -59,7 +59,8 @@ Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST
 - **Target look (owner decision 2026-11-24).** Built through our `UiTheme` tokens and `UiKit` builders. Direction from the owner and from the reference's UI (REFERENCE_GAME_LIVE_TEST section 9: cream panels, dark-green buttons, gold accents):
   - **Calm and creamy.** Cream panels with dark text as the main surface; dark green only for primary buttons and headers; gold for money and highlights; a muted red only for close and danger. No saturated red, green or blue fills, no rainbow of button colours, no decorative gradients.
   - **Heavy type.** Titles, buttons and numbers in a heavy rounded font, body text at least bold, never thin. Titles get a dark outline for readability.
-  - **Big tap targets.** Buttons at least 48 px high on phone (primary buttons 56 px), generous padding and spacing, whole rows tappable.
+  - **Tap targets.** Buttons at least 44 px high (Roblox and Apple minimum), whole rows tappable. (Was "48 px, primary 56 px on phone"; lowered by the owner decision of 2026-11-25 below.)
+  - **Compact on phone (owner decision 2026-11-25).** On a phone the UI must not be too big: the 3D world stays the main thing on screen. Windows, HUD and text are smaller on phone than on tablet and PC, and the pack's large frame sizes are not taken over. Limits: every window at most 70 % of the safe-area width and 80 % of its height; the HUD (button rail, money bar, stocking bar, hints) together at most 20 % of the screen; buttons 44–52 px high; body text 14–16 px, titles at most 24 px; no screen bigger on phone than it is today.
   - **Feedback.** Hover grows a button slightly, press shrinks it, a soft click plays; touch shows the press effect. The selected tab is clearly marked.
   - **Not generic.** Thick darker outlines, rounded corners and a soft drop shadow, one consistent style on every screen.
 
