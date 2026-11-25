@@ -189,7 +189,7 @@ fetchListings = function()
 	afterRequest()
 end
 
--- A successful Start or Join closes the panel; the picker closes itself on CompanyReady.
+-- A successful Join, or a Start from the picker (no company yet), closes the panel; the picker closes itself on CompanyReady.
 local function act(action: string, payload: { [string]: any }, closeOnSuccess: boolean)
 	if inFlight then
 		return
@@ -305,7 +305,7 @@ end
 updateSizeButtons()
 
 startListing.Activated:Connect(function()
-	act("Save.FinderStart", { size = selectedSize }, true)
+	act("Save.FinderStart", { size = selectedSize }, player:GetAttribute("CompanyReady") ~= true)
 end)
 
 stopListing.Activated:Connect(function()
