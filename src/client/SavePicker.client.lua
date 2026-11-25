@@ -14,6 +14,7 @@ local player = Players.LocalPlayer
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Localization = require(Shared:WaitForChild("Localization"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
+local SaveListSync = require(Shared:WaitForChild("SaveListSync"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
 local UiKit = require(script.Parent:WaitForChild("UiKit") :: ModuleScript)
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -216,19 +217,17 @@ local savesButton = UiKit.addRailButton("SavesButton", "savesButton", 50)
 
 -- Requests ----------------------------------------------------------------------------------
 
--- Only one request is in flight at a time; a tap during one is ignored.
-local inFlight = false
+-- Only one request is in flight at a time; a tap during one is ignored (SaveListSync, CM2-SP1).
+local sync: SaveListSync.Sync
 local function request(action: string, payload: { [string]: any }): any
-	if inFlight then
-		return nil
-	end
-	inFlight = true
-	local response = UiKit.request(saveAction, action, payload)
-	inFlight = false
-	return response
+	return sync.request(action, payload)
 end
 
 local function showError(code: unknown)
+	if code == SaveListSync.BusyCode then
+		sync.showTransient(code)
+		return
+	end
 	status.Text = localized(Localization.saveErrorKey(code))
 end
 
@@ -275,6 +274,9 @@ local function teleportTo(payload: { [string]: any })
 end
 
 local function play(entry)
+	if sync.inFlight() then
+		return
+	end
 	status.Text = localized("saveLoading")
 	local response = request("Save.Play", { saveId = entry.saveId })
 	if response == nil then
@@ -465,18 +467,38 @@ redrawRows = function()
 	renderRows(lastSaves)
 end
 
+sync = SaveListSync.new({
+	invoke = function(action: string, payload: { [string]: any }): any
+		return UiKit.request(saveAction, action, payload)
+	end,
+	defer = function(callback: () -> ())
+		task.defer(callback)
+	end,
+	delay = function(seconds: number, callback: () -> ())
+		task.delay(seconds, callback)
+	end,
+	isOpen = function(): boolean
+		return picker.Visible
+	end,
+	render = function(saves: { any }?)
+		renderRows(saves or lastSaves)
+	end,
+	getStatus = function(): string
+		return status.Text
+	end,
+	setStatus = function(text: string)
+		status.Text = text
+	end,
+	errorText = function(code: unknown): string
+		return localized(Localization.saveErrorKey(code))
+	end,
+	onBusyAnswer = function(count: number)
+		gui:SetAttribute("ListBusyAnswers", count)
+	end,
+})
+
 refreshList = function()
-	local response = request("Save.List", {})
-	if response == nil then
-		renderRows(lastSaves)
-		return
-	end
-	if not response.ok or type(response.data) ~= "table" then
-		showError(response.errorCode)
-		renderRows(lastSaves)
-		return
-	end
-	renderRows(if type(response.data.saves) == "table" then response.data.saves else {})
+	sync.refresh()
 end
 
 -- Open and close ----------------------------------------------------------------------------
@@ -608,6 +630,9 @@ player:GetAttributeChangedSignal("CompanyError"):Connect(function()
 		open()
 	end
 	showError(code)
+	if code == SaveListSync.BusyCode then
+		refreshList()
+	end
 end)
 
 -- The profile becomes readable a moment after joining; refresh an open picker then.
@@ -622,6 +647,9 @@ if player:GetAttribute("ActiveSaveId") == nil or player:GetAttribute("CompanyErr
 	local code = player:GetAttribute("CompanyError")
 	if code ~= nil then
 		showError(code)
+		if code == SaveListSync.BusyCode then
+			refreshList()
+		end
 	end
 else
 	savesButton.Visible = true

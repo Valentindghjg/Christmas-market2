@@ -98,6 +98,7 @@ local sourcePaths = {
 	Purchases = "src/shared/Purchases.lua",
 	Reviews = "src/shared/Reviews.lua",
 	Receiving = "src/shared/Receiving.lua",
+	SaveListSync = "src/shared/SaveListSync.lua",
 	SaveProfile = "src/shared/SaveProfile.lua",
 	ShopConfig = "src/shared/ShopConfig.lua",
 	Staff = "src/shared/Staff.lua",
