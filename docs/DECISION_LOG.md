@@ -272,3 +272,11 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - CLAUDE.md (15.7 KB against 12 KB) is trimmed by wording and pointers only (CM2-SLIM5, planner text, implementer applies it); owner approval only if a binding rule would change.
 - `Quest.Claim` stays: server handler and validator are the scaffold for CM2-G11. Splits of Luau files over 800 lines run after CM2-50a (25a-25c), so the release candidate stays unchanged.
 - Files: docs/CLAUDE_BACKLOG.md (CM2-SLIM section, CM2-SLIM1..5, 25a-25c, line 18 note).
+
+## 2026-11-25 — owner: drop PC-9 (Studio FPS and world captures are not required)
+- Owner (chat, in reply to the PC-9 explanation): "wir scheißen auf all das, streich das alles weg, das sind ja nur Tests".
+- FPS measurements (desktop and phone) and world/art captures (Play `screen_capture` of the 3D world) no longer gate any tick and are not run. PC-9 is closed as dropped.
+- Still counting: numeric and automated checks that need no capture: headless tests, `runPlaytest {mode="full"}`, `ART_ASSETS`, `MAP_WORLD`, Edit-mode steps (incl. `PreloadAsync`), HUD/GUI readings (sizes, positions, probe, HUD captures).
+- Performance stays a goal, not a gate. A performance task is created only if a player-visible problem is reported.
+- Planner consequences: CM2-12, CM2-13a, CM2-13b, CM2-13, CM2-14, CM2-10a, CM2-10b, CM2-10c, CM2-10 and CM2-10W ticked (their remaining checks had passed 2026-11-24); the `[ART]` log line is a non-blocking note under CM2-ASSETWARN; line 17 waits only on CM2-G12b; CM2-UV2 drops j1/j6; CM2-49 keeps its numeric touch flow; capture and FPS clauses in later Accepts no longer gate.
+- Files: docs/CLAUDE_BACKLOG.md (PC-9, queue, lines 5h, 14, 17, 22a, MODEL tasks, Next run), docs/PRODUCT_SPEC.md ("Testing").

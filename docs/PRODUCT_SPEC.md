@@ -75,6 +75,7 @@ Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST
   - A friends test with 2–5 players before the 1st Advent (Duo, invite code, purchases).
   - The owner's go/no-go is on 2026-11-28.
   - The owner publishes and creates products, following a checklist prepared by engineering.
+  - No Studio FPS measurements and no world/art captures as test gates (owner decision 2026-11-25, PC-9 dropped): numeric and automated checks decide; performance is a goal, a performance task follows only a reported player-visible problem.
 
 ## Observe in the reference game (engineering task, not owner questions)
 Starting cash and reputation of a new save; staff energy drain rate; the other events' contents; Elf Workshop contents; the first-time tutorial; the reference's Robux prices for items not yet seen.
