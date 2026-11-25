@@ -3,6 +3,32 @@
 Older entries: one file per task or day in [archive/](archive/) named `PROGRESS_<first date>_to_<last date>[_<task ID>].md`, from 2026-11-19. Find an ID with `grep -rn <ID> docs/archive/`; read them only when a task needs that history.
 Archived 2026-11-25 (entries CM2-UVF13 step 1, CM2-UVF12, CM2-UVF11, CM2-SLIM4, CM2-SLIM2, CM2-SLIM3): [archive/PROGRESS_2026-11-25_to_2026-11-25_CM2-UVF13-SLIM.md](archive/PROGRESS_2026-11-25_to_2026-11-25_CM2-UVF13-SLIM.md).
 
+2026-11-25: CM2-SALE1 Customers never buy on a fresh save (tier L; 14a ticked; commits 1a9cc02 plan, 07614c5 code+tests+docs, 3a9872c backlog follow-ups)
+Skills: roblox-collaboration-mode, roblox-security, roblox-npc-ai, roblox-luau-core, roblox-luau-types, roblox-game-design. Plan `docs/plans/CM2-SALE1.md` incl. Amendment 1.
+Cause (backlog 14a (1)): no code path was broken. The demand model refuses almost every visit on a one-tree lot (Douglas Medium 140, reputation 90): exact preference (`CustomerProfile.canPurchase`, 1 of 12 profiles, others `NoEligibleStock`) times the conversion score 0.0256 (price 0.65 x reputation 0.59 x variety 1/3 x stock 1/5) is about 0.2 % per visit. The backlog counter note was wrong (all 49 visits saw the tree); `forceCustomer 8` failed because its single server-wide forced roll went to whichever visit decided first (now the per-save arrival override).
+Fix: `Tutorial.guaranteesSale` (step `Checkout`) makes `beginVisit` pick with `CustomerSelection.chooseGuaranteed` (first unreserved displayed tree at its current server price, no preference, budget or roll); `npcDecide` reports `NoStock` when every tree is reserved; `npcSnapshot` gains `decision` and `decisionLog` (last 20); `forceCustomer` uses `setArrivalOverrideForTest` (`NoActiveSave`); `forcedRolls` removed. No schema, remote or action change; the guarantee reads only the saved tutorial step.
+| Check | Result |
+|---|---|
+| `stylua --check src tests` | PASS |
+| `selene src tests` | PASS (0 errors, 0 warnings, 0 parse errors) |
+| `lune run tests/headless/run.luau` | PASS, 608 run, 608 passed (602 + 6 new, T1-T6); pre-fix run 604 run, 602 passed with T3 (`NoEligibleStock`) and T5 (visit left without sale) failing as planned |
+| `rojo build default.project.json --output build.rbxlx` | PASS (not committed) |
+| Review of the diff against the plan | every step 1-9 present, no file outside the plan; implementer made no own decisions beyond the plan; money stays server-owned |
+Studio (af5facc4, place 92354134900807, `BUILD cm2-sale1` read in Play; playtester Haiku, report reviewed): RunUnitTest 608/608; fresh save "SALE1 Tut".
+| Step | Result |
+|---|---|
+| Order, stock, place (Checkout) | PASS |
+| Part A, old path, tutorial Done, 120 s | PASS as reproduction: 17 visits, 17 abandoned, 0 sales; log 16 `NoEligibleStock` plus `NoConversion` for customer 8, as the cause table predicts |
+| `forceCustomer 8` | PASS: customer 8 `Reserved` P at 140 |
+| Part B (Checkout) | PASS: customer 20 `Reserved` P 140 after 26 s, customer 21 `NoStock`, checkout prompt Enabled with Price 140 |
+| 7 Real sale | PASS: checkout prompt hook, sales 0 to 1, server `tutorial.step` Done, player attribute `TutorialStep` Done, cash 56 to 336 (+280) and revenue +280. Amendment 1: +280 = 140 x M with M = 2 from the Golden Till pass the test account owns (INFERRED from code; `ShopPassCashX2` not read; later runs neutralise it with `shopPasses {passes={}}`). The client toast "Well done! Your tree lot is open." was NOT read |
+| 8 No lost customer | PASS: abandoned 20 to 21 equals the one `NoStock`, `walkedOutCustomers` 0 to 0 |
+| 9 Regression `runPlaytest full` | 60/62: FAIL 35 FINDER (shadow save state) and FAIL 53 SHOP_GUARD (stale since 3c5ac49); neither is caused by CM2-SALE1 (no save or finder code touched, no step uses `forceCustomer`), filed as CM2-PT35 and CM2-PT53 |
+| 10 Cleanup | "SALE1 Tut" deleted, other saves untouched |
+Console: only test-suite injected warnings and the expected SessionLocked line.
+Tick decision: 14a ticked. Backlog acceptance (3) asks for a real sale, `tutorial.step == "Done"` and no lost customer; all three were read on the server. The toast is a client string driven by the same step (`Localization.tutorialDone`); it is not in the backlog criteria, so it is read in the N1 (b) re-run, which reads the client. Cash was exactly +140 x M (M = 2). Line 14 stays open until that re-run passes.
+Follow-ups filed: CM2-PT53 (S), CM2-PT35 (S, investigation), CM2-SALE2 (M, early-lot demand before Gate B; after the tutorial a small lot still sells about 1 % per visit).
+
 2026-11-25: N1 rest part B, N1 (b) fresh-save tutorial on the phone, c2 Team list, test-save cleanup (Studio playtest, no code; N1 (b) NOT MET, fix task 14a CM2-SALE1 filed; 5h and CM2-40 ticked)
 Studio: place 92354134900807, Studio session af5facc4, iPhone 7 `ViewportSize` 666x374, tester report reviewed; docs only (planner backlog edits checked against this evidence). No time-advance hook used.
 | Item | Result |
