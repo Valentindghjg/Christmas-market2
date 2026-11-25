@@ -147,6 +147,24 @@ return function(t)
 		end
 	end)
 
+	-- CM2-UVF13: every rail button (FinderButton is the fifth, rail order 70) ends inside the rail
+	-- height reserved above the thumbstick, and stays a 44 px touch target.
+	t.test("keeps every phone rail button above the thumb reserve", function()
+		for _, size in ipairs({ { w = 666, h = 374 }, { w = 667, h = 375 } }) do
+			local m = UiTheme.metrics(size.w, size.h)
+			expect.truthy(m.compact)
+			local limit = m.railTop + m.railMaxHeight
+			for count = 1, 5 do
+				local rail = UiTheme.hudLayout(m, count).rail
+				local rowHeight = (rail.h - (count - 1) * m.railGap) / count
+				expect.truthy(rowHeight >= 44)
+				local bottom = rail.y + count * 44 + (count - 1) * m.railGap
+				expect.truthy(bottom <= limit)
+				expect.truthy(bottom <= size.h - 96 - m.margin)
+			end
+		end
+	end)
+
 	t.test("fits the Lot Manager on every screen", function()
 		for _, size in ipairs(MATRIX) do
 			local m = UiTheme.metrics(size.w, size.h)
