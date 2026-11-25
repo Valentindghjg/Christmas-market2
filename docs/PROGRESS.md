@@ -2,6 +2,13 @@
 
 Older entries: one file per task or day in [archive/](archive/) named `PROGRESS_<first date>_to_<last date>[_<task ID>].md`, from 2026-11-19. Find an ID with `grep -rn <ID> docs/archive/`; read them only when a task needs that history.
 
+2026-11-25: CM2-UVF13 Phone rail buttons above the thumbstick (backlog 5m, tier S, plan `docs/plans/CM2-UVF13.md`; DONE)
+Result: `UiTheme.hudLayout` now returns `railButtons` boxes (`RAIL_OVERFLOW_MIN_WIDTH` 72, `RAIL_SCROLLBAR` 6; falls back to the scrolling rail); `UiKit.applyRail` sorts the visible buttons by LayoutOrder/Name and places and sizes each (TextSize Small under 100 px); UIListLayout and the fixed button size removed. Buttons that do not fit above the thumb reserve go right of row 1. Test "keeps every phone rail button above the thumbstick" (666x316/667x317 and the compact matrix) replaces the step-1 test; new "keeps the regular rail as one column".
+Checks (reviewer, local Windows, `~/.rokit/bin`): `stylua --check src tests` PASS; `selene src tests` PASS (0 errors, 0 warnings, 0 parse errors); `lune run tests/headless/run.luau` PASS 602 run, 602 passed, 0 failed (baseline 601, -1 +2; the plan said 600 from a stale baseline); `rojo build default.project.json --output build.rbxlx` PASS.
+Playtest (playtester, Studio d95d782c, iPhone 7 666x374, GuiInset 0,58): sync PASS; Rail 200x188, not scrolling; LotManager (8,8), Shop (8,56), Saves (8,104), Team (8,152) 118x44, FinderButton (130,8) 78x44, all visible; ring top 223, lowest button bottom 196, gap 27 px PASS; tap FinderButton opens FinderPanel, Close works; TextFits true on all five; capture ScreenCapture_UVF13_phone. Console: no [ChristmasMarket2] warning or error (known rbxassetid x6; two errors from the tester's own probe calls).
+Not run (time box): taps on the other four rail buttons (plan step 3) and the PC 1920x1080 one-column check (plan step 5; the headless regular-rail test covers the layout math). Queued under "Studio-Test ausstehend"; 5m ticked.
+Own decisions: none beyond the plan.
+
 2026-11-25: CM2-UVF13 step 1 and test only (backlog 5m, tier S, no plan; NOT done, 5m stays open)
 Result: the new test "keeps every phone rail button above the thumb reserve" (rail counts 1-5 at 666x374 and 667x375) is committed. The fix is not implemented: the planner must choose the layout (see the status line under 5m).
 Checks (reviewer, local Windows, `~/.rokit/bin`): `stylua --check src tests` PASS; `selene src tests` PASS (0 errors, 0 warnings, 0 parse errors); `lune run tests/headless/run.luau` PASS 601 run, 601 passed, 0 failed; `rojo build default.project.json --output build.rbxlx` PASS.
