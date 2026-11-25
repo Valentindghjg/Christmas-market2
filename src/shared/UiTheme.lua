@@ -1,7 +1,7 @@
 --!strict
 -- UI tokens and pure layout math (CM2-40). No Instances: the client UiKit and the screens apply
 -- these numbers, and tests/studio/Cases/UiTheme_Test.lua checks them for every device size.
--- All values are PROVISIONAL engineering values (docs/plans/CM2-40.md). Sizes are pixel offsets
+-- All values are PROVISIONAL engineering values (docs/archive/plans/CM2-40.md). Sizes are pixel offsets
 -- computed from the ScreenGui's AbsoluteSize (the safe area); there is no UIScale.
 local UiTheme = {}
 

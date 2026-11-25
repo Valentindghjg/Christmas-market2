@@ -1,5 +1,5 @@
 --!strict
--- The progression ladder (CM2-G9a, docs/plans/CM2-G9a.md): lot expansion levels, parking tiers,
+-- The progression ladder (CM2-G9a, docs/archive/plans/CM2-G9a.md): lot expansion levels, parking tiers,
 -- HQ tiers and the Elf Workshop. Pure logic over GameConfig.Progression and a company record;
 -- no Roblox types. ProgressionService buys through check(), and the summary shows the same
 -- rows(), so the client sees every requirement exactly as the server checks it.

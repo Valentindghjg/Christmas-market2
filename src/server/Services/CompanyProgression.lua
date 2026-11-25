@@ -1,5 +1,5 @@
 --!strict
--- Progression of the company service (CM2-G9a, docs/plans/CM2-G9a.md): a mixin that
+-- Progression of the company service (CM2-G9a, docs/archive/plans/CM2-G9a.md): a mixin that
 -- CompanyStateService installs. Its _dispatch runs the three Progression.Buy* actions through
 -- buy() (ProgressionService, idempotency and limits come from handle); this mixin tells trusted
 -- server code (main.server.lua: stand, lot pad, fence, parking) when the saved ladder changed

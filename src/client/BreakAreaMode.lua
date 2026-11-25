@@ -1,5 +1,5 @@
 --!strict
--- Break-area mode (CM2-25/26 part b, docs/plans/CM2-25-26b.md): a modal bar that moves the staff
+-- Break-area mode (CM2-25/26 part b, docs/archive/plans/CM2-25-26b.md): a modal bar that moves the staff
 -- break area. A ghost square follows the pointer (the mouse on PC, a short tap on touch); Rotate
 -- (R), Place (Enter) and Cancel (Q). The client check is only a preview: the server checks the
 -- spot again (Staff.MoveBreakArea) and decides.

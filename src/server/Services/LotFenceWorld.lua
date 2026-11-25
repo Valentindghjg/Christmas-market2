@@ -1,5 +1,5 @@
 --!strict
--- The lot fence of a plot (CM2-G9a, docs/plans/CM2-G9a.md): ProgressionVisuals.LotFence, built
+-- The lot fence of a plot (CM2-G9a, docs/archive/plans/CM2-G9a.md): ProgressionVisuals.LotFence, built
 -- from Progression.fenceBoxes so it moves back with every lot expansion level. Parts only; the
 -- helpers (part, lotPosition, paletteColor, setCollisionGroup, group) come from WorldService.
 -- Also holds WorldService's lot-frame helpers for fitting the HQ art (Amendment 1), which keep

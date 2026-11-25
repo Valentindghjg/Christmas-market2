@@ -11,7 +11,7 @@ local Config = {
 	MAX_RATE_RETRIES = 3,
 	DOWNLOAD_RETRIES = 5,
 	DOWNLOAD_WAIT = 5,
-	-- Set to the yaw the probe detects when it is not 0 (see docs/plans/CM2-AP.md).
+	-- Set to the yaw the probe detects when it is not 0 (see docs/archive/plans/CM2-AP.md).
 	IMPORT_YAW_DEGREES = 0,
 	MATCH_ABS = 0.02,
 	MATCH_REL = 0.01,

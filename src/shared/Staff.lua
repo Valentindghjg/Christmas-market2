@@ -1,6 +1,6 @@
 --!strict
 -- Staff rules shared by the save schema and the staff director (CM2-25/26,
--- docs/plans/CM2-25-26a.md): gentle energy, the break area and the lot-frame points staff walk
+-- docs/archive/plans/CM2-25-26a.md): gentle energy, the break area and the lot-frame points staff walk
 -- to. Pure and deterministic; every point is in the lot frame (x from the plot centre, z the
 -- depth toward the road).
 local GameConfig = require(script.Parent.GameConfig)

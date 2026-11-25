@@ -1,5 +1,5 @@
 --!strict
--- Land tab of the Lot Manager (CM2-G9b, docs/plans/CM2-G9b.md): one card each for the lot
+-- Land tab of the Lot Manager (CM2-G9b, docs/archive/plans/CM2-G9b.md): one card each for the lot
 -- expansion, parking and HQ ladders and the Elf Workshop. Every requirement row, unlock line and
 -- the `ready` flag come from the summary's `progression` table (Progression.summary); the tab
 -- computes nothing. Buying is a two-tap confirm that sends the next target.

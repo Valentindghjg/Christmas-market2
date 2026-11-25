@@ -1,5 +1,5 @@
 --!strict
--- Visible staff at work (CM2-25/26, docs/plans/CM2-25-26a.md): the director. A hired Cashier
+-- Visible staff at work (CM2-25/26, docs/archive/plans/CM2-25-26a.md): the director. A hired Cashier
 -- walks to the counter and serves the queue; a hired Lot Worker loads customer cars and
 -- restocks sold spots from the bays. Both get gently tired, rest at the break area and go back
 -- to work. It requires only GameConfig, NpcPath and Staff and calls no game service itself:

@@ -1,5 +1,5 @@
 --!strict
--- Employees tab of the Lot Manager (CM2-25/26 part b, docs/plans/CM2-25-26b.md): one card per
+-- Employees tab of the Lot Manager (CM2-25/26 part b, docs/archive/plans/CM2-25-26b.md): one card per
 -- role with the one-time cost, a two-tap Hire button and, once hired, the employee's energy and
 -- status; "X / N hired", the no-wages line and the button that moves the staff break area.
 -- Every figure comes from the server summary's `staff` table; hiring is decided by the server.

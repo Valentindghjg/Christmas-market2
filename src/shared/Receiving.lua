@@ -1,5 +1,5 @@
 --!strict
--- Receiving bays (CM2-G14, docs/plans/CM2-G14.md). Pure functions over state.bays and the
+-- Receiving bays (CM2-G14, docs/archive/plans/CM2-G14.md). Pure functions over state.bays and the
 -- pending orders: one order = one bay, a bay keeps its trees until they are stocked out,
 -- stored elsewhere or sold. A bay is busy while it holds trees or a pending order targets it.
 local GameConfig = require(script.Parent.GameConfig)

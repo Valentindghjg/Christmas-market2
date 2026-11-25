@@ -1,5 +1,5 @@
 --!strict
--- Pure text mapping for the Lot Manager's Land tab (CM2-G9b, docs/plans/CM2-G9b.md). Turns the
+-- Pure text mapping for the Lot Manager's Land tab (CM2-G9b, docs/archive/plans/CM2-G9b.md). Turns the
 -- server's `progression` summary (Progression.summary) into `{key, args}` lines; the tab only
 -- localizes and shows them. No requirement is computed here.
 local GameConfig = require(script.Parent.GameConfig)

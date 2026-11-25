@@ -1,5 +1,5 @@
 --!strict
--- Authoritative receiving-bay <-> display transitions (CM2-G14, docs/plans/CM2-G14.md). Pure
+-- Authoritative receiving-bay <-> display transitions (CM2-G14, docs/archive/plans/CM2-G14.md). Pure
 -- state functions without the hands check, so the Lot Worker (CM2-25/26) can call them too.
 -- Every check runs before the first mutation: a refused request changes nothing.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

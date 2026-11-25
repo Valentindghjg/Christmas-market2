@@ -1,5 +1,5 @@
 --!strict
--- Stocking mode (CM2-G14, docs/plans/CM2-G14.md): the touch-first bar that opens at a receiving
+-- Stocking mode (CM2-G14, docs/archive/plans/CM2-G14.md): the touch-first bar that opens at a receiving
 -- bay. Size, rotate, single place, row fill with gap control and store mode, which puts a tree
 -- back into receiving. The ghost is a client-only preview under the camera; the server checks
 -- every spot again (Stock.Place / Stock.Store), so the preview is presentation only.

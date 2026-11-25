@@ -283,7 +283,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Locator before plot: `_unloadShared` now releases the map entry (which yields) before the plot, so no yield lies between the plot release and the caller's deactivation handler.
 
 ## 2026-11-22 - HUD shell and Lot Manager, CM2-40 (engineering)
-- Old rule: one screen-wide `ChristmasMarketUI` with the supplier panel on screen, separate buttons for saves, team and finder at fixed positions, and `UISizeConstraint`s per dialog. New rule: a top-right HUD (cash, reputation, day, lot status, save status), a left button rail, and a **Lot Manager** with the 6 reference tabs (OBSERVED, REFERENCE_GAME_LIVE_TEST section 4: Supplier, Catalog, Pricing, Employees, Land, Analytics) opened from the rail or key M. English launch, touch first (PRODUCT_SPEC 2026-11-21 Platforms and Language). Client only: no server, save, money or remote change. Origin: engineering. Files: `src/shared/UiTheme.lua` (new), `src/client/UiKit.lua`, `LotManager.lua`, `LotManagerTabs/SupplierTab.lua` (new), `UiController`, `SavePicker`, `TeamPanel`, `TeammateFinder`, `WorldLabels`, `src/shared/Localization.lua`, `tests/studio/Cases/UiTheme_Test.lua`, `tests/headless/run.luau`, `tests/studio/Playtest/RunPlaytest.lua`. Plan: `docs/plans/CM2-40.md`.
+- Old rule: one screen-wide `ChristmasMarketUI` with the supplier panel on screen, separate buttons for saves, team and finder at fixed positions, and `UISizeConstraint`s per dialog. New rule: a top-right HUD (cash, reputation, day, lot status, save status), a left button rail, and a **Lot Manager** with the 6 reference tabs (OBSERVED, REFERENCE_GAME_LIVE_TEST section 4: Supplier, Catalog, Pricing, Employees, Land, Analytics) opened from the rail or key M. English launch, touch first (PRODUCT_SPEC 2026-11-21 Platforms and Language). Client only: no server, save, money or remote change. Origin: engineering. Files: `src/shared/UiTheme.lua` (new), `src/client/UiKit.lua`, `LotManager.lua`, `LotManagerTabs/SupplierTab.lua` (new), `UiController`, `SavePicker`, `TeamPanel`, `TeammateFinder`, `WorldLabels`, `src/shared/Localization.lua`, `tests/studio/Cases/UiTheme_Test.lua`, `tests/headless/run.luau`, `tests/studio/Playtest/RunPlaytest.lua`. Plan: `docs/archive/plans/CM2-40.md`.
 - Layout rules (all PROVISIONAL engineering values, pure math in `UiTheme`, headless-tested over a device matrix of 667x317, 780x302, 750x332, 1024x710, 960x542 and 1920x1022 safe-area sizes):
   - Compact when height < 520 or width < 720 (the ScreenGui `AbsoluteSize`, i.e. the safe area). Margin 8 compact, 12 regular; gap 8; no `UIScale`: sizes are pixel offsets from the safe-area size, so PC gets wider panels, not bigger text. Every control is at least 44 px; every computed width and height is clamped to 0, so a 1x1 viewport never errors.
   - HUD chips Cash 128, Reputation 104, Day 88, Lot 104 wide (36 high, gap 6), status line 34 high below; the Day chip is hidden when the width cannot hold the full strip next to the rail. Every ScreenGui uses `CoreUISafeInsets`.
@@ -340,7 +340,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Plan: `docs/archive/plans/CM2-G7a.md`.
 
 ## 2026-11-22 - Automatic unload and bay stocking, CM2-G14 (engineering)
-- Plan: `docs/plans/CM2-G14.md` (covers CM2-17, CM2-18). Source: REFERENCE_GAME_LIVE_TEST §3.2, §3.3, §4.1, §6.
+- Plan: `docs/archive/plans/CM2-G14.md` (covers CM2-17, CM2-18). Source: REFERENCE_GAME_LIVE_TEST §3.2, §3.3, §4.1, §6.
 - Bay model: one order = one bay (OBSERVED "Bays n/4"; orders are blocked while all 4 bays hold trees). No merging into another bay. A bay keeps its trees until they are stocked out, stored elsewhere or sold. A bay is busy while it holds trees or a pending order targets it. Bays persist in `state.bays`; `state.stock` is removed and the summary keeps a derived `stock` map.
 - Bay ↔ order: `placeOrder` assigns the lowest free bay (`order.bay`) and sets its species. At `dueAt` the server pass adds the quantity to `bays[order.bay].counts[size]` and removes the order. No player or Lot Worker unload step exists any more (OBSERVED: "The player does not unload").
 - Countdown: `GameConfig.DeliverySeconds` 60 → 30 (OBSERVED 25–31 s). The countdown over the bay runs for the whole wait; the truck pulls in during the last `TruckPullInSeconds = 5` and leaves in `TruckLeaveSeconds = 3` (PROVISIONAL, visual only). Deliveries are checked every `DeliveryPassSeconds = 1` (PROVISIONAL).
@@ -362,7 +362,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
   5. Stocking bar: GapDown/GapUp show "-" and "+"; a place or store result stays on the reason line for 2 s; when another species takes the bay the bar shows `stockBayChanged` for 1.5 s, then closes; the size switches to the next size with trees when the current one runs out; Place is also disabled while the character carries a tree.
 
 ## 2026-11-22 - Walking customer NPCs, CM2-N1 (engineering)
-- Plan: `docs/plans/CM2-N1.md` with Amendment 1 (covers CM2-19, CM2-22, CM2-23). Source: PRODUCT_SPEC 2026-11-21 (visible walking R15 customers in winter clothing), REFERENCE_GAME_LIVE_TEST §3.5–§3.7 and §9, DECISION_LOG G1/G2 and CM2-G14.
+- Plan: `docs/archive/plans/CM2-N1.md` with Amendment 1 (covers CM2-19, CM2-22, CM2-23). Source: PRODUCT_SPEC 2026-11-21 (visible walking R15 customers in winter clothing), REFERENCE_GAME_LIVE_TEST §3.5–§3.7 and §9, DECISION_LOG G1/G2 and CM2-G14.
 - Avatars: one template from `Players:CreateHumanoidModelFromDescription` with a default `HumanoidDescription` and `R15`, built once, lazily, in pcall. No catalog asset IDs: no UGC or third-party licences, no asset loads per NPC, and it matches the reference's blocky avatars. Each customer is a clone; body colours come from the own palette (`GameConfig.Customers.Npc.Look`); beanie (optional pompom) and scarf are own welded Parts. The template drops every script, `BodyColors`, `Shirt`, `Pants` and `ShirtGraphic`. Staff (CM2-25/26) reuse `NpcAvatar.build(look)`.
 - Animation: Roblox's first-party default R15 Walk `rbxassetid://507777826` and Idle `rbxassetid://507766388`, played on the server through the Animator; Walk while `Humanoid.Running` speed > 0.5, else Idle. A load failure warns once (`NpcAnimationFailed`) and the NPC glides.
 - Movement: `Humanoid:MoveTo` along `NpcPath.route` waypoints in the lot frame; no PathfindingService (the lot is flat and its obstacles are known boxes, so routes are deterministic and headless-testable). MoveTo is re-issued every `ReissueSeconds` (2); a waypoint counts as reached within `ArriveRadius` (1.5, horizontal). A stuck leg snaps to its last point after `LegTimeoutSeconds` (20).
@@ -400,7 +400,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Files: .claude/agents/reviewer.md, .claude/agents/planner.md, docs/CLAUDE_BACKLOG.md.
 
 ## 2026-11-22 - CM2-N1 fix round 1 (engineering)
-- Plan: `docs/plans/CM2-N1.md`, "Fix round 1", after the failed Studio run. It supersedes the N1 entry above where they differ (clearance, collision group of the lot structures, playtest counts).
+- Plan: `docs/archive/plans/CM2-N1.md`, "Fix round 1", after the failed Studio run. It supersedes the N1 entry above where they differ (clearance, collision group of the lot structures, playtest counts).
 - Root causes:
   - R1: the stall at lot (−13.4, −16.0) on Plot_01 was not the stand's footprint (Market_FirstAge_Level1 spans lot x −24.2..8.2, z −16.2..8.2, i.e. KeepClear `Stand` ± 0.2). The R15 avatar is ~4 studs wide (half-width ≈ 2.1 at scale 1.04) while `Clearance` was 1.5, so body parts touched the stand, the Humanoid stepped onto its platform and stalled.
   - R2: a leg that started strictly inside an inflated box walked from the real position straight to the first corner; `route` pushed `from` out but never walked to the pushed point.
@@ -433,7 +433,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Files: .claude/skills/cm2-modeling/SKILL.md, tools/art/kit/, .claude/agents/modeler.md, CLAUDE.md.
 
 ## 2026-11-22 - CM2-N1 fix round 2 (engineering)
-- Plan: `docs/plans/CM2-N1.md`, "Fix round 2", after the `cm2-n1-fix1` run (full 40/41 twice, only FAIL `37 NPC_WALK | Plot_01 stand exceeds KeepClear (x -11.1..-4.9, z -24.0..16.0)`; soak 7/7). Inspection: one MeshPart `Market_FirstAge_Level1`, Size (32.4, 11.0, 24.4), at yaw −44.4° on plots 1–3 and +135.6° on 4–6, no PrimaryPart.
+- Plan: `docs/archive/plans/CM2-N1.md`, "Fix round 2", after the `cm2-n1-fix1` run (full 40/41 twice, only FAIL `37 NPC_WALK | Plot_01 stand exceeds KeepClear (x -11.1..-4.9, z -24.0..16.0)`; soak 7/7). Inspection: one MeshPart `Market_FirstAge_Level1`, Size (32.4, 11.0, 24.4), at yaw −44.4° on plots 1–3 and +135.6° on 4–6, no PrimaryPart.
 - Findings:
   - Q1 (placement defect): the stall was tilted ~45° on every plot. `salesStand` only translated the clone, so it kept the yaw of the Studio-only CC0 template `ArtAssets/Buildings/MarketStarter`; `faceRoad` adds the 180° on plots 4–6 correctly. The tilted world AABB (~40 × 40: x −28.1..12.1, z −24..16) reached into the Parking box (minZ 13) and the Checkout box (minX 11). Levelled, the part spans x −24.2..8.2, z −16.2..8.2 = KeepClear `Stand` ± 0.2, so KeepClear was drawn for the level stall and stays unchanged.
   - Q2 (check defect): P6 mapped two opposite corners of the rotated `GetBoundingBox()` into the lot frame, which gives a diagonal (the reported 6.2 × 40 box), not an AABB.
@@ -589,7 +589,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Bridge height: size contract amended to H 24.0 +- 1.0 (plan Amendment 1); measured 23.92 (bbox y -4.0..19.92).
 
 ## 2026-11-23 — Visible staff, energy and break area, CM2-25/26 (engineering)
-- Plan: `docs/plans/CM2-25-26a.md` (part a of launch order 12; part b, `CM2-25-26b.md`, adds the Employees tab, the Lot Manager row and `Staff.MoveBreakArea`). Replaces the CM2-N2 rule "Cashier until CM2-25/26: invisible".
+- Plan: `docs/archive/plans/CM2-25-26a.md` (part a of launch order 12; part b, `CM2-25-26b.md`, adds the Employees tab, the Lot Manager row and `Staff.MoveBreakArea`). Replaces the CM2-N2 rule "Cashier until CM2-25/26: invisible".
 
 | Topic | Decision |
 |---|---|
@@ -605,7 +605,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 | Wages | None. No code path debits cash for staff after the one-time hire (headless test 9). |
 
 - Schema 16: `staff.LotManager`, `staffEnergy`, `breakArea`; migration 15 → 16 adds the defaults. Schema-15 servers fail closed on schema-16 records; shut them down when this ships.
-- Part b (`docs/plans/CM2-25-26b.md`): Employees tab (tab contract, reads only `summary.staff`), two-tap hire, `N / 2 hired`, no-wages line, locked Lot Manager row.
+- Part b (`docs/archive/plans/CM2-25-26b.md`): Employees tab (tab contract, reads only `summary.staff`), two-tap hire, `N / 2 hired`, no-wages line, locked Lot Manager row.
 - Part b: capacity `Employees.BaseCapacity` 2 (OBSERVED), with an HQ its `employeeCapacity` (Pavilion 3); hired count = Cashier + Lot Worker + Lot Manager. Hire checks in order `UnknownEmployee`, `AlreadyHired`, `EmployeeLocked` (while the config has `requiredHqTier`; CM2-G9 replaces it), `EmployeeCapacity`, `InsufficientFunds`; then one debit, `spent`, history `EmployeeHired`, energy 100. Idempotent by request ID and by `AlreadyHired`.
 - Part b: new member action `Staff.MoveBreakArea {x, z, rotation}` (0.5 grid, quarter turns, `InvalidBreakArea`), checked by `Staff.checkBreakArea`; the same spot again is ok. Client `BreakAreaMode` is a modal preview (ghost, Rotate R, Place Enter, Cancel Q); the server decides. Staff walking to or resting at the old spot re-route to the new seat (`record.breakKey`).
 - Part b: the director writes `session.staffLive[role] = {status, energy}` (runtime only, never saved, no dirty flag); the summary maps hired roles without a live record to `Arriving`.
@@ -680,7 +680,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 | CM2-44 split | CM2-10W only removes the world placements of the CC0 scenery, the market alley (incl. `MarketGazebo`) and the primitive showcase and forest trees. CM2-44 keeps the remaining CC0 uses (stand, fence), the CC0 templates in `ArtAssets`, `AssetCatalog` and `assets/third_party/`. |
 
 ## 2026-11-23 — Progression ladder, CM2-G9a (engineering)
-- Plan: `docs/plans/CM2-G9a.md`. Config `GameConfig.Progression` (replaces `GameConfig.HQ`), pure logic `src/shared/Progression.lua`, purchases `ProgressionService`, notify and test setter `CompanyProgression`.
+- Plan: `docs/archive/plans/CM2-G9a.md`. Config `GameConfig.Progression` (replaces `GameConfig.HQ`), pure logic `src/shared/Progression.lua`, purchases `ProgressionService`, notify and test setter `CompanyProgression`.
 
 | Topic | Decision |
 |---|---|

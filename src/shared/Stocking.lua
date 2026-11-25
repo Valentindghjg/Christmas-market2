@@ -1,5 +1,5 @@
 --!strict
--- Stocking spot rules (CM2-G14, docs/plans/CM2-G14.md), shared by the client preview and the
+-- Stocking spot rules (CM2-G14, docs/archive/plans/CM2-G14.md), shared by the client preview and the
 -- server. Positions use the lot frame: x is the offset from the plot centre, z the depth toward
 -- the road (+ = toward the road). Each tree is a circle with radius FootprintRadius[size].
 local GameConfig = require(script.Parent.GameConfig)

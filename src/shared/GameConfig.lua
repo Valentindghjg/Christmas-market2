@@ -200,7 +200,7 @@ GameConfig.Employees = {
 	},
 }
 
--- Visible staff at work, energy and the break area (CM2-25/26, docs/plans/CM2-25-26a.md). All
+-- Visible staff at work, energy and the break area (CM2-25/26, docs/archive/plans/CM2-25-26a.md). All
 -- values are PROVISIONAL unless marked. Points are in the lot frame (x from the plot centre, z
 -- toward the road). No wages: staff cost only the one-time hire.
 GameConfig.Staff = {
@@ -240,7 +240,7 @@ GameConfig.Staff = {
 	},
 }
 
--- Progression ladder (CM2-G9a, docs/plans/CM2-G9a.md): lot expansion, parking and HQ tiers.
+-- Progression ladder (CM2-G9a, docs/archive/plans/CM2-G9a.md): lot expansion, parking and HQ tiers.
 -- O = OBSERVED (REFERENCE_GAME_LIVE_TEST §4.4/§4.5), P = PROVISIONAL; unmarked values are P.
 local O, P = GameConfig.Evidence.Observed, GameConfig.Evidence.Provisional
 GameConfig.Progression = {

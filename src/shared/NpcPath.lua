@@ -1,5 +1,5 @@
 --!strict
--- Walking routes of customer NPCs (CM2-N1, docs/plans/CM2-N1.md). Pure and deterministic:
+-- Walking routes of customer NPCs (CM2-N1, docs/archive/plans/CM2-N1.md). Pure and deterministic:
 -- every point is in the lot frame (x from the plot centre, z the depth toward the road), and
 -- the obstacles are the known keep-clear boxes, so no navmesh is needed and routes are
 -- headless-testable. toWorld/fromWorld mirror plots north of the road (Stocking.facing).

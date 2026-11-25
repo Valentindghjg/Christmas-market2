@@ -1,5 +1,5 @@
 --!strict
--- Walking customer NPCs (CM2-N1, docs/plans/CM2-N1.md): the director. Every customer is a
+-- Walking customer NPCs (CM2-N1, docs/archive/plans/CM2-N1.md): the director. Every customer is a
 -- visit record driven by a small state machine. It requires only GameConfig and NpcPath and
 -- calls no game service itself: the company service (transactions), the plot lookup, the
 -- world adapter (avatar, car, tree) and the clock are injected, so it runs headless.

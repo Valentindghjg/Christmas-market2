@@ -1,9 +1,9 @@
 --!strict
--- Staff transactions of the company service (CM2-25/26, docs/plans/CM2-25-26a.md): a mixin
+-- Staff transactions of the company service (CM2-25/26, docs/archive/plans/CM2-25-26a.md): a mixin
 -- that CompanyStateService installs. Server-trusted callers only (StaffNpcService); no client
 -- request reaches these methods. Each runs inside the company's critical section, never
 -- yields and returns false/nil when the session is not available. Staff never cost money
--- after the one-time hire: nothing here debits cash. Part b (docs/plans/CM2-25-26b.md) adds
+-- after the one-time hire: nothing here debits cash. Part b (docs/archive/plans/CM2-25-26b.md) adds
 -- the runtime staff status (noteStaff), the Employees tab summary and the break-area notify.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")

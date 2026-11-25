@@ -1,5 +1,5 @@
 --!strict
--- Playtest steps 58-59 (full mode): the progression ladder (CM2-G9a, docs/plans/CM2-G9a.md).
+-- Playtest steps 58-59 (full mode): the progression ladder (CM2-G9a, docs/archive/plans/CM2-G9a.md).
 -- Installed by RunPlaytest.execute after Steps/Map. Both steps work on the shadow S only: step 58
 -- buys every ladder kind once through the real actions (with setProgression fixtures for cash
 -- and prerequisites) and restores S; step 59 moves S's stand through HQ 1-4 and its lot through

@@ -3,7 +3,7 @@
 -- Installed by RunPlaytest.execute after Steps/Reviews. Only the shadow S gets staff fixtures
 -- (setStaff, setStaffEnergy); the real company R changes only through normal actions. Steps
 -- 48 and 50 (part b) check the server side here; their client UI checks (Employees tab, the
--- break-area bar and ghost) are done by the playtester in the client (docs/plans/CM2-25-26b.md).
+-- break-area bar and ghost) are done by the playtester in the client (docs/archive/plans/CM2-25-26b.md).
 return function(ctx: any)
 	local DELIVERY_WAIT = ctx.DELIVERY_WAIT
 	local GameConfig = ctx.GameConfig
