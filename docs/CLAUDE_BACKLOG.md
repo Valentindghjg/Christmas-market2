@@ -38,6 +38,7 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
 #### Erledigt
 
 - PC-9 Bildrate in Studio ohne 15-FPS-Grenze messen, schwarze Play-Captures, erledigt 2026-11-25 (Owner: gestrichen). Erledigt-Grund: Owner-Entscheidung 2026-11-25 (DECISION_LOG „owner: drop PC-9“): FPS-Messungen und Welt-Captures sind keine Testbedingung mehr und laufen nicht; die davon abhängigen Haken sind gesetzt bzw. die Bedingungen gestrichen. Der frühere Text steht in der Git-Historie (Stand be3489e).
+  - Befund (Owner, Probe einer anderen Sitzung, 2026-11-25 ~18:10, main @ be3489e): Play-Capture zeigt die 3D-Welt (1564x730, nicht mehr schwarz); Client-RenderStepped über 10 s im Mittel 15,0 FPS (min 14,6, längster Frame 68,5 ms), die 15-FPS-Grenze besteht weiter, gated aber nichts mehr; Rojo synchron (Live-Studio hat den CM2-UVF13-Code); Konsole: Warnung `rbxassetid://203785492` 5x, keine Lua-Fehler.
 - PC-11 Rojo neu starten und verbinden: Quelländerungen kommen nicht mehr in Studio an, erledigt 2026-11-25, see archive
 - PC-8 Robux-Produkte anlegen und die IDs schicken, erledigt 2026-11-24, see archive
 - PC-4 Geräte-Emulator umschalten (Telefon, Tablet, 1080p), erledigt 2026-11-24 (Planner-Entscheidung: ein MCP-Werkzeug ersetzt den Owner-Schritt), bestätigt 2026-11-24 durch die erste Ablesung in N1 (nicht mehr vorläufig), see archive
@@ -157,6 +158,7 @@ Source: REFERENCE_GAME_LIVE_TEST.md §11 (gaps G1–G18); planning IDs only. Ori
 
 ## Follow-up tasks (created 2026-11-24 from the hasseln run, N2)
 - [ ] **CM2-ASSETWARN Trace the `rbxassetid://203785492` asset-type warning** (added 2026-11-24) · S (investigation only, no code change; a fix it finds becomes its own task, tiered then) · Depends: none (Studio connected; needs no capture). Runs after "N1 rest", before N6 ("Next run" item 5). Non-blocking note (from the dropped art queue items): while the Play log is open, also note any `[ART]` warning line from startup; it ticks nothing (the art tasks ticked on `MAP_WORLD` 302 of 302).
+  - Status 2026-11-25 (owner probe, main @ be3489e): the warning still appears, 5x per Play session (earlier counts 6x), no Lua errors.
   - Goal: find what requests asset 203785492 with the wrong type (6 times per Play session since P0, `docs/P0_AUDIT.md`; the CM2-G15 server trace and a repo grep found nothing: client-side, a default instance or an engine script).
   - `playtester`: (1) in Edit mode and the Play client, scan `game:GetDescendants()` (pcall per instance) for the ID in `SoundId`, `AnimationId`, `Texture`, `TextureID`, `Image`, `MeshId`, `ColorMap`, `Sky*` and string attributes, printing full names; (2) note from the console order when the 6 lines appear (Edit, server start, client join, spawn); (3) if the MCP allows, repeat in Play on a fresh baseplate place without the project.
   - Accept: PROGRESS.md has the hit list (or "0 hits" client and edit side), the console moment, the baseplate result (or step 3 BLOCKED with the reason); the planner then closes it as engine noise (DECISION_LOG line, P0_AUDIT note) or adds a fix task.
