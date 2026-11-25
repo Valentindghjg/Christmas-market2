@@ -179,7 +179,7 @@ Run in this order ("Next run" item 3). None changes behaviour. Standard checks f
 - [x] **CM2-SLIM3 Decision-log archive by the new window**, done 2026-11-25, see archive
 - [x] **CM2-SLIM4 Backlog under 60 KB**, done 2026-11-25 with CM2-SLIM4b, see archive
 - [x] **CM2-SLIM4b Backlog to 61440 B, the three SLIM4 follow-ups**, done 2026-11-25 (61,347 B; standing plan `docs/plans/CM2-SLIM.md`), see archive
-- [ ] **CM2-SLIM5 CLAUDE.md to 12 KB, wording only** · `planner` writes `docs/plans/CM2-SLIM5.md` with the full new text, `implementer` (S) applies it verbatim · Depends: CM2-SLIM4b. Goal: `CLAUDE.md` from 15.7 KB to <= 12 KB without changing a binding rule: shorter wording; a rule stated in full elsewhere (hook details in `.claude/hooks/`, skill list in `skills-lock.json`, hasseln loop in `.claude/skills/hasseln/SKILL.md`) becomes a one-line pointer. Owner approval only if 12 KB needs dropping or weakening a rule: then the plan stops, lists those rules, and the planner adds a PC entry. Accept: `wc -c CLAUDE.md` <= 12288; the plan has a table "rule → where it stands now" for every bullet of Non-negotiables, Continuous execution, the routing table, the skill table and the 12 conflict rules; `route-prompt.js` and `guard-main-edits.js` do not depend on CLAUDE.md text (grep).
+- [x] **CM2-SLIM5 CLAUDE.md to 12 KB, wording only**, done 2026-11-25 (15,707 B to 12,241 B; plan `docs/plans/CM2-SLIM5.md`), see PROGRESS
 
 ## Launch replanning (2026-11-21)
 The owner interview changed scope and priorities (PRODUCT_SPEC, top section). This section is the **binding work order** from 2026-11-21 on; it supersedes the milestone order P1..P5 above. The ticket lists above stay as the history and the GitHub mapping. Decision record: DECISION_LOG 2026-11-21 "Launch order".
@@ -208,7 +208,7 @@ Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or ab
 **Next hasseln starts here** (planner 2026-11-25, end-of-run refresh, then updated for the owner decision dropping PC-9; done this run: CM2-SLIM, SLIM1–3, 5j, 5j1, 5k, 5l; SLIM4 partial; the closed blocks N1, N3, N5, N8 and the run history are archived). The order assumes the owner resolved every open PC entry; hasseln step 1 checks each `Prüfen` field, and a block whose PC entry is still open is skipped silently for that run. If Rojo drops again, the planner reopens PC-11 and Studio criteria go to "Studio-Test ausstehend" (code work goes on).
 1. PC follow-ups whose entry checks out: **N3b** (PC-10, owner present) → **N4** (PC-1). (N2, the PC-9 batch, is dropped: owner decision 2026-11-25.)
 2. ~~CM2-UVF13~~ (5m done 2026-11-25; Studio remainder in the queue).
-3. ~~CM2-SLIM4b~~ (done 2026-11-25) → **CM2-SLIM5**.
+3. ~~CM2-SLIM4b~~, ~~CM2-SLIM5~~ (done 2026-11-25).
 4. **"N1 rest"** (queue item: line 5h and the line 14 phone criterion).
 5. **CM2-ASSETWARN** (investigation only).
 6. **N6** from **CM2-G12b**.
