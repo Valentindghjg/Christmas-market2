@@ -111,3 +111,54 @@ Lot frame to world (same as `worldPoint` in `StockingMode`): `c = plot.PrimaryPa
 **Step 8 (one check added).** On PC, after the hint-bar check: open stocking, press Done, then reopen with the procedure above. Opening on PC but not on the phone is a FAIL ("reopen after Done on phone"); failing on both is a FAIL ("reopen after Done"). Either way record the readings above; the planner decides the fix (cause unknown, so it is not assumed to be a CM2-UVF10 regression). Opening on both is PASS (no regression).
 
 Pre-check before step 1: the live `ReplicatedStorage.Shared.Localization` source contains `stockingHeaderCompact` (Rojo live); else stop, the planner reopens PC-11.
+
+## Amendment 2 (2026-11-25, planner-high): reasons on PC, phone wrap through the start pointer, Bay_2 prompt diagnosis
+Why: N8 re-run (Studio `d95d782c`): steps 1-4 and 6-8 PASS; 5a-5c BLOCKED on the phone (PreferredInput Touch moves the pointer only on a touch tap; the MCP sends mouse input only, `SendTouchEvent` lacks the capability). On PC the Bay_2 StockBay prompt did not trigger (3 tries); Bay_1 on PC and Bay_2 on the phone did. No code change. This replaces step 5 (also Amendment 1's) and adds steps 5P and 9.
+
+**Step 5 (PC, in step 8's Play).** One stocking session. Move the mouse without clicking (`user_mouse_input`) to `Camera:WorldToScreenPoint(world)` (GUI space, CM2-UV D4; world from Amendment 1), wait 0.5 s, then read. Targets and expected strings: Amendment 1 table. 5c: move to (-32, -10), wait 0.5 s, left-click the same point (a world click places; the Place button would move the pointer under it), wait for `stockingPlacedOne`, then move to (-31, -10). Off-screen, GUI-rect and fallback rules: Amendment 1. Each: red ghost within 1 stud of the target, full `Reason.Text`, `TextFits` true, probe empty. Ghost off by about the GUI inset: use `WorldToViewportPoint`, record it.
+
+**Step 5P (phone wrap, in the phone Play).** `start` sets the pointer to `root.Position + LookVector * 8`; on touch it stays there. Per case: Done if open, set the root to `CFrame.lookAt(R, R + Vector3.xAxis)` (lot +x is world +X), R = the lot point + 3 studs up, wait 1 s, reopen Bay_2 (Amendment 1 procedure), read within 1 s.
+| Case | Root (x, z) | Pointer | Expected |
+|---|---|---|---|
+| KeepClear | (27, -16) | (35, -16), Bays box | `stockKeepClear` (the i4 string, two lines) |
+| OutsideLot | (31.5, -16) | (39.5, -16) | `stockOutsideLot` |
+
+Each: red ghost, full text, `TextFits` true, `Reason.AbsoluteSize.Y` 32 ±1, probe empty. Root turned (`LookVector.X < 0.99`): set it once more, record. TooClose is PC only (one-line string, same label).
+
+**Step 9 (PC, Bay_2 prompt diagnosis; readings only, before step 8's Done).** First connect client listeners on `ProximityPromptService` `PromptShown`, `PromptHidden`, `PromptButtonHoldBegan` and `PromptTriggered` (log `GetFullName()`, `os.clock()`). Root at lot (31, -16) facing +X, wait 1 s.
+- (a) Bay_2 prompt: `Enabled`, `HoldDuration`, `RequiresLineOfSight`, `Exclusivity`, `ClickablePrompt`, `Style`, `KeyboardKeyCode`, `MaxActivationDistance`, parent and its `Position`, root distance; `ProximityPromptService.Enabled`, `MaxPromptsVisible`; `PreferredInput`.
+- (b) Every enabled prompt within 16 studs: name, key, `Exclusivity`, distance; Bay_1..4 `SpeciesId`.
+- (c) The prompt shown now (last `PromptShown` without `PromptHidden`).
+- (d) `InputHoldBegin()`, wait `HoldDuration + 0.3`, `InputHoldEnd()` on Bay_2 (record the DM it ran in); (e) a real E key via `user_keyboard_input`, Play viewport focused. Events after each.
+- Repeat (c)-(e) at Bay_1, root lot (31, -22), as the control.
+
+| Reading | Verdict | Action |
+|---|---|---|
+| (c) is another prompt and E triggers that one | Harness: every prompt uses E with OnePerButton, only the shown one responds | No fix; reopen uses E where Bay_2 is shown. If no point within 4 studs of Bay_2 shows it: row 3 |
+| Bay_2 shown, E opens, `InputHoldBegin` does not | Harness (`InputHoldBegin`) | No fix; PC reopen uses E |
+| E does not trigger Bay_2 | Real defect, cause unknown | New backlog task CM2-UVF14, plan by `planner-high`, implementer tier L (`implementer-opus`) until the cause is known |
+| `PromptTriggered` for Bay_2, no StockingBar | Real defect in `StockingMode.start` | Also read `CompanyReady`, `PlotId`, Bay_2 `SpeciesId`/`BayIndex`; CM2-UVF14 as row 3 |
+
+From the code, row 1 is expected: nothing in client or server code treats Bay_2 differently. No row is a CM2-UVF10 regression (no prompt or `start` code changed; reopen after Done worked on PC Bay_1 and phone Bay_2), so step 9 does not gate 5j.
+
+**Acceptance (replaces the playtest line).** Steps 3, 4, 6, 7, 8 PASS (2026-11-25); step 5 (PC) and step 5P (phone) PASS; step 9 recorded with its verdict row.
+
+## Amendment 3 (2026-11-25, planner): 5c second half with two trees, step 9 closed
+Why: re-run 2 (Studio `d95d782c`): 5a, 5b (PC), 5c first half, 5P (both cases), step 8 reopen PASS. The 5c second half was BLOCKED by a plan gap: the bay held one tree, so after placing it the bay was empty ("This bay is empty now.", no ghost). No code change. Only the step below runs (re-run 3).
+
+**Step 5c-R (PC, one Play, stocking closed at the start).**
+1. Pre-check as Amendment 1 (live `Localization` has `stockingHeaderCompact`). Open "N1 Phone" as in re-run 2 (the `Save.Play` request the picker sends is allowed if the picker shows the empty list; record it).
+2. `local d = orderTrees(R.userId, 2)`, `advance(DELIVERY_WAIT)`, `awaitDelivery(R.userId, d.orderId)` (harness helpers, CM2-49 step 54). Read `Count<SIZE>` (harness `SIZE`) on Bay_1..Bay_4; use the first bay with >= 2. None: BLOCKED with the readings.
+3. Open that bay: root 4 studs in front, facing it, wait 1 s, a real E key (`user_keyboard_input`, Play viewport focused); fallback the Amendment 1 `InputHoldBegin` procedure. The bar's size is `SIZE` (select it if not).
+4. Pointer method from re-run 2: pinned Scriptable camera, target from `Camera:WorldToViewportPoint`, `user_mouse_input` y = viewport y - 58, check with `UserInputService:GetMouseLocation()`.
+5. Hover lot (-32, -10), wait 0.5 s, read:
+   - green: left-click the same point, wait for `stockingPlacedOne`, check the bay count fell by 1 and is >= 1, then hover (-31, -10);
+   - red with `stockTooClose` (the re-run 2 tree still stands): this is the reading; record it and skip the click;
+   - red with another reason: use (-32, -20), then (-31, -20) the same way.
+6. Expect at the 1-stud point: red ghost within 1 stud of it, `Reason.Text` = en `stockTooClose`, `TextFits` true, probe `{StockingUI, TutorialUI, HudRailUI, ChristmasMarketUI}` empty. Then Done, stop Play.
+
+**Step 9: closed, verdict "no defect reproduced".** Bay_2 opened on PC with `InputHoldBegin` and with a real E key. E triggers only the prompt that is shown, so Bay_2 was shown; the missing `PromptShown`/`PromptHidden` log means the listeners were not in the client DataModel (harness). Re-run 1's three failures count as harness artefacts (root position or viewport focus). The Bay_1 control is dropped. No CM2-UVF14.
+
+**Saves picker observation (not part of 5j).** "You have no saves yet" with `saveErrorBusy` on a fresh Play is a plausible real race in `src/client/SavePicker.client.lua`: the first `Save.List` can reach the server while `SaveSlotService:openProfile` holds `_busy` (answer `SaveActionBusy`), and the `ProfileReady` refresh is dropped while that request is in flight (`request` returns nil when `inFlight`). Nothing retries. Backlog task CM2-SP1 (line 5j1, tier L) investigates and fixes it.
+
+**Acceptance (replaces Amendment 2's).** Steps 3, 4, 5a, 5b, 5c first half, 5P, 6, 7, 8 PASS (2026-11-25); step 9 closed. 5j ticks when step 5c-R passes.
