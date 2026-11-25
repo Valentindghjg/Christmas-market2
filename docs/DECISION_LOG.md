@@ -308,7 +308,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Test plan: unit runner threshold 286 -> 293 tests (`BUILD cm2-40`), section 3 J points to the plan.
 
 ## 2026-11-22 - Price benchmark and Pricing tab, CM2-G7 (engineering)
-- Supersedes the CM2-G6 bullet "Douglas Fir typical medium 70 and starting medium price 72 are PROVISIONAL … until CM2-G7". Plan: `docs/plans/CM2-G7.md`.
+- Supersedes the CM2-G6 bullet "Douglas Fir typical medium 70 and starting medium price 72 are PROVISIONAL … until CM2-G7". Plan: `docs/archive/plans/CM2-G7.md`.
 - Benchmark: the "typical" medium price is `wholesale.Medium × 5` per species (OBSERVED ≈ 5×, REFERENCE_GAME_LIVE_TEST §4.3; `GameConfig.Pricing.BenchmarkMultiplier`, `GameConfig.typicalMediumFor`): Douglas 140, Fraser 160, Noble 185, Blue Spruce 210. Noble is 185, not the observed 184 (derived rule, 0.5 % off). `typicalMedium` and `initialMediumPrice` are removed from `GameConfig.Trees`.
 - Per-size benchmark: `typical(size) = Economy.priceForSize(typicalMedium, size)` (the 80/130 rule, PROVISIONAL; `Economy.typicalPrice`), not `wholesale[size] × 5`, because the player sets only the medium price and a per-size wholesale benchmark would make Large always look cheap and Small expensive.
 - Manual prices: one medium price per species; Small and Large follow 80 %/130 % (OBSERVED). No price per size.
@@ -337,7 +337,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Remote: `Pricing.SetMediumPrice` code, rate limits and error codes are unchanged; only the accepted Noble range changes from 93–462 to 92–460.
 - No schema change: `SCHEMA_VERSION` stays 12 and `GameConfig.VERSION` stays 1.
 - Unit runner threshold 308 → 309 (`BUILD cm2-g7a`).
-- Plan: `docs/plans/CM2-G7a.md`.
+- Plan: `docs/archive/plans/CM2-G7a.md`.
 
 ## 2026-11-22 - Automatic unload and bay stocking, CM2-G14 (engineering)
 - Plan: `docs/plans/CM2-G14.md` (covers CM2-17, CM2-18). Source: REFERENCE_GAME_LIVE_TEST §3.2, §3.3, §4.1, §6.
@@ -548,7 +548,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - `git add --renormalize` changed no blob (index already LF). CRLF working copies outside `.claude/` were re-checked-out as LF; `.claude/` files are left until git next writes them.
 
 ## 2026-11-22 — Manual checkout and queue, CM2-N2 (engineering)
-- Plan: `docs/plans/CM2-N2.md` (covers CM2-24, absorbs CM2-UVF3). Source: PRODUCT_SPEC 2026-11-21 ("the player checks out customers manually at the counter until a Cashier is hired"), REFERENCE_GAME_LIVE_TEST §3.6, §3.8, §4.4 and §9 G3. Supersedes N1's "Counter until N2" and `AutoCheckoutSeconds`.
+- Plan: `docs/archive/plans/CM2-N2.md` (covers CM2-24, absorbs CM2-UVF3). Source: PRODUCT_SPEC 2026-11-21 ("the player checks out customers manually at the counter until a Cashier is hired"), REFERENCE_GAME_LIVE_TEST §3.6, §3.8, §4.4 and §9 G3. Supersedes N1's "Counter until N2" and `AutoCheckoutSeconds`.
 - Counter: the queue head enters `CheckingOut` as soon as it stands at slot 1, whoever serves. `CheckingOut` no longer ends on a timer by itself.
 - Player path: a server ProximityPrompt `CheckoutPrompt` on `CheckoutCounter.CounterBase` (ActionText "Check Out", E, no hold, reach `InteractDistance - 2`, no line of sight), enabled only while a customer is in `CheckingOut` on that plot. Triggered → `main.server` `checkoutAt` checks, in this order: `CompanyReady`; the player's active company plays this plot (`plots:getPlot(companyId) == plotId` and the `PlotId` attribute); a per-player interval (`CheckoutMinIntervalSeconds` 0.25); server reach (`InteractDistance` 16 to `CounterBase`, else `outOfReach`); empty hands (else `handsFull`). Then `CustomerNpcService:checkout(companyId, plotId)`. No new remote, no `Protocol` action; other refusals are silent. Foreign players see the prompt on other plots, but nothing happens.
 - Cashier until CM2-25/26: invisible. With `staff.Cashier >= 1` the director serves the customer in `CheckingOut` after `CashierCheckoutSeconds` (3 s, the N1 interim value). The prompt stays usable with a Cashier. One counter serves one customer at a time; more Cashiers or stations come with HQ tiers (CM2-G9), the visible avatar at `NpcPath.staffPoint()` with CM2-25/26. Cashiers still add no arrivals.
@@ -571,7 +571,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 
 
 ## 2026-11-22 — Customer reviews, rating and lot sign, CM2-G15 (engineering)
-- Plan: `docs/plans/CM2-G15.md` (covers the reputation part of CM2-27). Source: PRODUCT_SPEC 2026-11-21 (Customers: star review; Lot sign; Fidelity; Art: Parts for signs), REFERENCE_GAME_LIVE_TEST header table, §2, §3.7, §3.8, §9, §11 G15.
+- Plan: `docs/archive/plans/CM2-G15.md` (covers the reputation part of CM2-27). Source: PRODUCT_SPEC 2026-11-21 (Customers: star review; Lot sign; Fidelity; Art: Parts for signs), REFERENCE_GAME_LIVE_TEST header table, §2, §3.7, §3.8, §9, §11 G15.
 - Supersedes the G1 reputation rule (2026-11-21: +1 at checkout, then +2 within 30 s or +1 afterwards at loading; keys `FastLoadSeconds`, `FastLoadReputation`, `SlowLoadReputation`). Now the checkout gives 0 reputation (`Customers.SaleReputation = 0`, OBSERVED by arithmetic: the header table's totals only add up with 0 at checkout), and loading gives `Reviews.ReputationByStars[stars]` = {2, 4, 6, 8, 9} (3 stars = 6 OBSERVED, 5 stars = 9 INFERRED, rest PROVISIONAL). The three G1 keys are removed.
 - Service time = `queueSeconds + pickupSeconds`: `queueSeconds` = whole seconds from the walking customer entering `Queued` (`visit.queuedAt`, os.clock) to the sale, stored on the order (0 for the simulation and test path, at most 3600); `pickupSeconds` = `max(0, loadTime − soldAt)` on the business clock. Stars by `StarMaxSeconds` {30, 50, 75, 105} (PROVISIONAL): ≤ 30 → 5, ≤ 50 → 4, ≤ 75 → 3, ≤ 105 → 2, else 1.
 - Review text: 5 stars `reviewGreat`, 4 `reviewGood`, 3 and 2 `reviewSlowService` when the queue took longer than the pickup, else `reviewSlowTree` (both OBSERVED), 1 `reviewVerySlow`. A missed pickup (`expire`) is a 1-star `reviewNoTree` review that counts in the rating; its penalty stays `MissedPickupReputationPenalty` (1). Walk-outs and abandoned visits leave no review (the customer never paid); CM2-N2's abandonment observation goes to CM2-28.
@@ -791,3 +791,9 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 ## 2026-11-25 — Swarve Studios licence received
 - Swarve Studios answered the owner's ticket (2026-11-25): any use, modification and re-upload is allowed, no credit required; only reselling or charging money for the assets themselves is not. Record: `assets/third_party/swarve-essential-ui/LICENSE.md`.
 - The `.rbxl` stays out of the public repository (`.gitignore`). The CM2-UI look stays as decided on 2026-11-24 (own cream look); whether CM2-UI also uses the pack's pieces is the owner's call.
+
+## 2026-11-25 — decision-log archive window and CM2-SLIM follow-ups (planner)
+- The 14-day window of CM2-SLIM moved nothing (the oldest entry is 6 days old) and left the log at 147 KB against 60 KB. New rule: keep the top sections, every owner entry and every entry dated on the run day or the day before; every other entry goes unchanged to `docs/archive/DECISION_LOG_<first>_to_<last>.md`. Archived entries stay binding and grep-findable. If still over 60 KB, an owner entry that a later owner entry supersedes may move with a one-line pointer. Applied once by CM2-SLIM3, then by every CM2-SLIM run.
+- CLAUDE.md (15.7 KB against 12 KB) is trimmed by wording and pointers only (CM2-SLIM5, planner text, implementer applies it); owner approval only if a binding rule would change.
+- `Quest.Claim` stays: server handler and validator are the scaffold for CM2-G11. Splits of Luau files over 800 lines run after CM2-50a (25a-25c), so the release candidate stays unchanged.
+- Files: docs/CLAUDE_BACKLOG.md (CM2-SLIM section, CM2-SLIM1..5, 25a-25c, line 18 note).
