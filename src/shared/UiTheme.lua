@@ -65,6 +65,18 @@ export type ManagerLayout = {
 	horizontal: boolean,
 }
 
+export type SupplierLayout = {
+	twoColumns: boolean,
+	detail: Box,
+	order: Box,
+	stockingHint: Box,
+	supplierLine: Box,
+	receivingLine: Box,
+	customerLine: Box,
+	sellBack: Box,
+	canvasHeight: number,
+}
+
 export type DialogLayout = {
 	compact: boolean,
 	frame: Box,
@@ -445,6 +457,38 @@ function UiTheme.managerLayout(m: Metrics, manager: Box): ManagerLayout
 		tabs = tabs,
 		body = box(180, 52, cw - 180, ch - 52),
 		horizontal = false,
+	}
+end
+
+-- CM2-UVF11: Supplier page boxes relative to the page. Regular screens keep the single column.
+-- Compact screens move the quote, the order button and the sell-back button into a right column
+-- beside the species grid, so the order button stays inside the Lot Manager body without scrolling.
+function UiTheme.supplierLayout(m: Metrics, pageWidth: number): SupplierLayout
+	if not m.compact then
+		return {
+			twoColumns = false,
+			detail = box(0, 152, 324, 24),
+			order = box(0, 182, 324, 44),
+			stockingHint = box(0, 234, 324, 36),
+			supplierLine = box(0, 274, 324, 18),
+			receivingLine = box(0, 292, 324, 18),
+			customerLine = box(0, 310, 324, 18),
+			sellBack = box(0, 334, 324, 44),
+			canvasHeight = 386,
+		}
+	end
+	local x = 332
+	local w = math.max(0, math.floor(pageWidth) - x - 8)
+	return {
+		twoColumns = true,
+		detail = box(x, 0, w, 40),
+		order = box(x, 44, w, BUTTON_HEIGHT),
+		stockingHint = box(x, 92, w, 40),
+		supplierLine = box(0, 150, 324, 18),
+		receivingLine = box(0, 168, 324, 18),
+		customerLine = box(0, 186, 324, 18),
+		sellBack = box(x, 136, w, BUTTON_HEIGHT),
+		canvasHeight = 206,
 	}
 end
 

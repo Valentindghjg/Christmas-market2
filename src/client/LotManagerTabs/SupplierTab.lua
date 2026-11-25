@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local UiKit = require(script.Parent.Parent:WaitForChild("UiKit") :: ModuleScript)
+local UiTheme = require(Shared:WaitForChild("UiTheme"))
 
 type TabContext = {
 	request: (action: string, payload: { [string]: any }) -> any,
@@ -56,8 +57,6 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	local localized = UiKit.localized
 	local localizedFormat = UiKit.localizedFormat
 
-	page.CanvasSize = UDim2.fromOffset(0, 386)
-
 	local titleLabel = UiKit.label(page, "SupplierTitle", localized("supplier"), 22)
 	titleLabel.Position = UDim2.fromOffset(0, 0)
 	titleLabel.Size = UDim2.fromOffset(324, 28)
@@ -94,34 +93,48 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	updateSelection()
 
 	local detail = UiKit.label(page, "SupplierDetail", localized("loading"), 15)
-	detail.Position = UDim2.fromOffset(0, 152)
-	detail.Size = UDim2.fromOffset(324, 24)
 
 	local order = UiKit.button(page, "OrderTrees", localized("placeOrder"), colors.Gold, 17)
-	order.Position = UDim2.fromOffset(0, 182)
-	order.Size = UDim2.fromOffset(324, 44)
 
 	-- CM2-G14: deliveries land in a bay by themselves; stocking happens at the bay.
 	local stockingHint = UiKit.label(page, "StockingHint", localized("supplierStockingHint"), 13)
-	stockingHint.Position = UDim2.fromOffset(0, 234)
-	stockingHint.Size = UDim2.fromOffset(324, 36)
 	stockingHint.TextWrapped = true
 	stockingHint.TextTruncate = Enum.TextTruncate.None
 
 	-- G4/G5/G1 status lines and sell-back.
 	local supplierLine = UiKit.label(page, "SupplierLine", "", 13)
-	supplierLine.Position = UDim2.fromOffset(0, 274)
-	supplierLine.Size = UDim2.fromOffset(324, 18)
 	local receivingLine = UiKit.label(page, "ReceivingLine", "", 13)
-	receivingLine.Position = UDim2.fromOffset(0, 292)
-	receivingLine.Size = UDim2.fromOffset(324, 18)
 	local customerLine = UiKit.label(page, "CustomerLine", "", 13)
-	customerLine.Position = UDim2.fromOffset(0, 310)
-	customerLine.Size = UDim2.fromOffset(324, 18)
 	local sellBack = UiKit.button(page, "SellBackTree", "", SELL_BACK_SAND, 13)
-	sellBack.Position = UDim2.fromOffset(0, 334)
-	sellBack.Size = UDim2.fromOffset(324, 44)
 	sellBack.Visible = false
+
+	-- CM2-UVF11: boxes come from UiTheme.supplierLayout and follow the screen size.
+	local function place(item: GuiObject, placed: UiTheme.Box)
+		item.Position = UDim2.fromOffset(placed.x, placed.y)
+		item.Size = UDim2.fromOffset(placed.w, placed.h)
+	end
+	local function applyLayout(m: UiTheme.Metrics)
+		local layout = UiTheme.supplierLayout(m, page.AbsoluteSize.X)
+		page.CanvasSize = UDim2.fromOffset(0, layout.canvasHeight)
+		place(detail, layout.detail)
+		detail.TextWrapped = layout.twoColumns
+		detail.TextTruncate = if layout.twoColumns then Enum.TextTruncate.None else Enum.TextTruncate.AtEnd
+		place(order, layout.order)
+		place(stockingHint, layout.stockingHint)
+		place(supplierLine, layout.supplierLine)
+		place(receivingLine, layout.receivingLine)
+		place(customerLine, layout.customerLine)
+		place(sellBack, layout.sellBack)
+	end
+	local gui = page:FindFirstAncestorOfClass("ScreenGui")
+	if gui then
+		UiKit.onLayout(gui, applyLayout)
+		page:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+			applyLayout(UiTheme.metrics(gui.AbsoluteSize.X, gui.AbsoluteSize.Y))
+		end)
+	else
+		applyLayout(UiTheme.metrics(1920, 1080))
+	end
 
 	local storedSelectedMedium = 0
 	local lastSummary: any = nil

@@ -376,4 +376,27 @@ return function(t)
 		expect.equal(regular.controls.Size.y, 52)
 		expect.equal(regular.reason.h, 16)
 	end)
+
+	t.test("Supplier order button stays inside the Lot Manager body (CM2-UVF11)", function()
+		for _, size in ipairs({ { 666, 374 }, { 667, 375 }, { 666, 324 }, { 780, 302 } }) do
+			local m = UiTheme.metrics(size[1], size[2])
+			local manager = UiTheme.hudLayout(m, 0).manager
+			local body = UiTheme.managerLayout(m, manager).body
+			local layout = UiTheme.supplierLayout(m, body.w)
+			for _, id in ipairs({ "order", "detail" }) do
+				local b = layout[id]
+				expect.truthy(b.x >= 0 and b.y >= 0)
+				expect.truthy(b.x + b.w <= body.w)
+				expect.truthy(b.y + b.h <= body.h)
+			end
+			expect.truthy(layout.order.h >= UiTheme.MinTouch)
+			expect.truthy(layout.order.w >= UiTheme.MinTouch)
+			expect.falsy(UiTheme.overlaps(layout.order, layout.detail))
+			expect.falsy(UiTheme.overlaps(layout.order, layout.sellBack))
+		end
+		local pc = UiTheme.supplierLayout(UiTheme.metrics(1920, 1022), 600)
+		expect.falsy(pc.twoColumns)
+		expect.equal(pc.order.y, 182)
+		expect.equal(pc.canvasHeight, 386)
+	end)
 end
