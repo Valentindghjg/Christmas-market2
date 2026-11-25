@@ -581,7 +581,10 @@ return function(ctx: any)
 	-- One Medium Douglas Fir from `bay` onto the first free slot.
 	local function placeOne(userId: number, bay: number)
 		local slot = freeSlot(userId)
-		check(slot ~= nil, "no free stocking slot")
+		check(
+			slot ~= nil,
+			string.format("no free stocking slot for %d (placementCount %d)", userId, snap(userId).placementCount)
+		)
 		local spot = slot :: { x: number, z: number }
 		actOk(userId, "Stock.Place", stockPayload(bay, spot.x, spot.z, 1))
 	end

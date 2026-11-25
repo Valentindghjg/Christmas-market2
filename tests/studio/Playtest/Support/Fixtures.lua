@@ -15,6 +15,7 @@ return function(ctx: any)
 	local SAVE_T2 = ctx.SAVE_T2
 	local UNIT_PRICE = ctx.UNIT_PRICE
 	local GameConfig = ctx.GameConfig
+	local act = ctx.act
 	local actOk = ctx.actOk
 	local advance = ctx.advance
 	local call = ctx.call
@@ -185,6 +186,31 @@ return function(ctx: any)
 		return if #parts == 0 then "none" else table.concat(parts, ", ")
 	end
 
+	-- CM2-PT35b: stores every tree on the shadow's lot back into its bays, so each run starts with
+	-- an empty shadow lot (steps 20, 44 and 52 leave trees, and the shadow keeps one Solo save).
+	-- Never touches R. Returns the stored count.
+	local function clearShadowLot(): number
+		local stored = 0
+		for _, placement in snap(S.userId).placements do
+			local response = act(S.userId, "Stock.Store", { placementId = placement.placementId })
+			if
+				type(response) == "table"
+				and (response.errorCode == "NoFreeBay" or response.errorCode == "StorageFull")
+			then
+				drainShadowBays()
+				actOk(S.userId, "Stock.Store", { placementId = placement.placementId })
+			else
+				check(
+					type(response) == "table" and response.ok == true,
+					"Stock.Store failed: " .. tostring(type(response) == "table" and response.errorCode or response)
+				)
+			end
+			stored += 1
+			task.wait(1)
+		end
+		return stored
+	end
+
 	-- CM2-UVF8 A1: sets R's Lot Worker and Cashier to 0 (manual checks may leave them) and names the reset.
 	local function resetPlayerStaff(): string
 		local before = snap(R.userId).staff
@@ -225,10 +251,13 @@ return function(ctx: any)
 		end
 		settleDeliveries(R.userId)
 		local drained = "none"
+		local cleared = 0
 		if shadowJoined then
 			settleDeliveries(S.userId)
+			cleared = clearShadowLot()
 			drained = drainShadowBays()
 			check(snap(S.userId).receiving.baysUsed == 0, "shadow bays not empty after the drain")
+			check(snap(S.userId).placementCount == 0, "shadow lot not empty after the clear")
 		end
 		check(#Players:GetPlayers() == 1, "expected exactly 1 player, got " .. #Players:GetPlayers())
 		local current = realPlayer()
@@ -257,12 +286,13 @@ return function(ctx: any)
 			)
 		end
 		return string.format(
-			"cash %d, bays %d/%d, shadow bays 0/%d, sold back %s, staff reset: %s",
+			"cash %d, bays %d/%d, shadow bays 0/%d, sold back %s, shadow lot cleared %d, staff reset: %s",
 			snapshot.cash,
 			snapshot.receiving.baysUsed,
 			snapshot.receiving.bayCount,
 			snapshot.receiving.bayCount,
 			drained,
+			cleared,
 			staffReset
 		)
 	end

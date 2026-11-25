@@ -16,13 +16,24 @@ return function(ctx: any)
 	local SAVE_A, SAVE_B, SAVE_B2, SAVE_C = "Playtest A", "Playtest B", "Playtest B2", "Playtest C"
 	ctx.saveA = ""
 
-	-- One Save.* request for a user (the player or a synthetic one); a rate-limited request is
-	-- retried once after the window.
+	-- One Save.* request for a user (the player or a synthetic one). A rate-limited request is
+	-- retried once after the window. A SaveActionBusy answer is retried up to 5 times, 1 s apart:
+	-- the real client's picker lists while the player has no active save, and the server refuses
+	-- a busy request before any change.
 	local function saveActAs(userId: number, action: string, payload: any, requestId: string?): any
 		local arg = { userId = userId, action = action, payload = payload, requestId = requestId }
 		local response = invoke("saveAction", arg)
-		if type(response) == "table" and response.errorCode == "RateLimited" then
-			task.wait(61)
+		local busyRetries, rateRetried = 0, false
+		while type(response) == "table" do
+			if response.errorCode == "RateLimited" and not rateRetried then
+				rateRetried = true
+				task.wait(61)
+			elseif response.errorCode == "SaveActionBusy" and busyRetries < 5 then
+				busyRetries += 1
+				task.wait(1)
+			else
+				break
+			end
 			response = invoke("saveAction", arg)
 		end
 		task.wait(ACTION_PAUSE)
@@ -190,6 +201,53 @@ return function(ctx: any)
 		return true
 	end
 
+	-- Puts the shadow on a clean slate for step 35: stops its listing, plays its first owned Solo
+	-- save (creating one if absent) and deletes every other shadow-owned save; returns the delete
+	-- count. The shadow never owns a co-op save outside step 35 (steps 29-32 use R's "Playtest
+	-- Duo"), so every shadow-owned co-op save is a finder leftover.
+	local function shadowCleanSlate(): number
+		saveActAsOk(S.userId, "Save.FinderStop", {})
+		local function ownedRows(): { any }
+			local rows = {}
+			for _, row in call("saves", S.userId) do
+				if row.role == "Owner" then
+					table.insert(rows, row)
+				end
+			end
+			return rows
+		end
+		local function firstSolo(rows: { any }): any
+			for _, row in rows do
+				if row.size == "Solo" then
+					return row
+				end
+			end
+			return nil
+		end
+		local rows = ownedRows()
+		local solo = firstSolo(rows)
+		if solo == nil then
+			saveActAsOk(S.userId, "Save.Create", {})
+			rows = ownedRows()
+			solo = firstSolo(rows)
+			check(solo ~= nil, "the shadow has no Solo save after Save.Create")
+		end
+		if solo.active ~= true then
+			S.plotId = saveActAsOk(S.userId, "Save.Play", { saveId = solo.saveId }).plotId
+		end
+		local deleted = 0
+		for _, row in rows do
+			if row.size ~= "Solo" then
+				if rowOf(R.userId, row.saveId) ~= nil then
+					saveActOk("Save.LeaveTeam", { saveId = row.saveId })
+				end
+				saveActAsOk(S.userId, "Save.Delete", { saveId = row.saveId, confirmName = row.name })
+				deleted += 1
+			end
+		end
+		return deleted
+	end
+
 	local function activeSave(): string
 		local entry = findSave(SAVE_A)
 		local created = entry == nil
@@ -231,4 +289,5 @@ return function(ctx: any)
 	ctx.shadowOtherSave = shadowOtherSave
 	ctx.deleteFinderSave = deleteFinderSave
 	ctx.activeSave = activeSave
+	ctx.shadowCleanSlate = shadowCleanSlate
 end

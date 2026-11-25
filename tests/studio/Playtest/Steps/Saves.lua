@@ -38,6 +38,7 @@ return function(ctx: any)
 	local saveActAsOk = ctx.saveActAsOk
 	local saveActOk = ctx.saveActOk
 	local saveList = ctx.saveList
+	local shadowCleanSlate = ctx.shadowCleanSlate
 	local saveRefused = ctx.saveRefused
 	local saveRefusedAs = ctx.saveRefusedAs
 	local shadowOtherSave = ctx.shadowOtherSave
@@ -351,8 +352,12 @@ return function(ctx: any)
 
 	-- Teammate finder (CM2-S3): the shadow searches, the player takes the free seat.
 	addStep("35", "FINDER", { "02", "02a" }, function()
+		local swept = shadowCleanSlate()
 		local started = saveActAsOk(S.userId, "Save.FinderStart", { size = "Duo" })
-		check(started.created == true, "the shadow's search did not create a save")
+		check(
+			started.created == true,
+			string.format("the shadow's search did not create a save (listed %s)", tostring(started.saveId))
+		)
 		S.finderSaveId = started.saveId
 		local listed = finderListings(R.userId)
 		local listing = nil
@@ -402,6 +407,10 @@ return function(ctx: any)
 		S.plotId = saveActAsOk(S.userId, "Save.Play", { saveId = other.saveId }).plotId
 		check(#finderListings(R.userId).listings == 0, "the listing outlived the switch")
 		check(deleteFinderSave(), "the finder save was not deleted")
-		return string.format("listed, joined on %s, left, relisted, stopped, switched, deleted", tostring(join.plotId))
+		return string.format(
+			"listed, joined on %s, left, relisted, stopped, switched, deleted%s",
+			tostring(join.plotId),
+			if swept > 0 then string.format(", %d leftover shadow saves removed", swept) else ""
+		)
 	end)
 end
