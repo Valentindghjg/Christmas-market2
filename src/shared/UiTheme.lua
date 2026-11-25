@@ -77,6 +77,19 @@ export type SupplierLayout = {
 	canvasHeight: number,
 }
 
+export type PricingCardLayout = {
+	cardHeight: number,
+	pitch: number,
+	name: Box,
+	sentiment: Box,
+	wholesaleTypical: Box,
+	margin: Box,
+	sizes: Box,
+	price: Box,
+	controlsY: number,
+	controlsHeight: number,
+}
+
 export type DialogLayout = {
 	compact: boolean,
 	frame: Box,
@@ -489,6 +502,37 @@ function UiTheme.supplierLayout(m: Metrics, pageWidth: number): SupplierLayout
 		customerLine = box(0, 186, 324, 18),
 		sellBack = box(x, 136, w, BUTTON_HEIGHT),
 		canvasHeight = 206,
+	}
+end
+
+-- CM2-UVF12: Pricing card boxes relative to the card. Compact screens use a 168 px card (page clip
+-- is about 180 px) so the whole card with its 44 px -5/-1/+1/+5 row fits the page at once.
+function UiTheme.pricingCardLayout(m: Metrics): PricingCardLayout
+	if not m.compact then
+		return {
+			cardHeight = 180,
+			pitch = 188,
+			name = box(10, 6, 304, 20),
+			sentiment = box(10, 28, 304, 18),
+			wholesaleTypical = box(10, 48, 304, 30),
+			margin = box(10, 80, 304, 18),
+			sizes = box(10, 98, 304, 28),
+			price = box(130, 128, 64, 44),
+			controlsY = 128,
+			controlsHeight = 44,
+		}
+	end
+	return {
+		cardHeight = 168,
+		pitch = 176,
+		name = box(10, 4, 304, 18),
+		sentiment = box(10, 22, 304, 16),
+		wholesaleTypical = box(10, 38, 304, 28),
+		margin = box(10, 66, 304, 16),
+		sizes = box(10, 82, 304, 28),
+		price = box(130, 120, 64, BUTTON_HEIGHT),
+		controlsY = 120,
+		controlsHeight = BUTTON_HEIGHT,
 	}
 end
 

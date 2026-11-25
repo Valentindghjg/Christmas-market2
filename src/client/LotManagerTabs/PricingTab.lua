@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local PricingView = require(Shared:WaitForChild("PricingView"))
+local UiTheme = require(Shared:WaitForChild("UiTheme"))
 local UiKit = require(script.Parent.Parent:WaitForChild("UiKit") :: ModuleScript)
 
 type TabContext = {
@@ -25,8 +26,6 @@ local PricingTab = {}
 local SPECIES_ORDER = GameConfig.SpeciesOrder
 local COLUMN_WIDTH = 324
 local CARD_TOP = 212
-local CARD_PITCH = 188
-local CARD_HEIGHT = 180
 local DEBOUNCE_SECONDS = 0.4
 local STEP_BUTTONS = {
 	{ name = "Minus5", delta = -5, x = 10 },
@@ -43,6 +42,7 @@ type Card = {
 	margin: TextLabel,
 	sizes: TextLabel,
 	price: TextLabel,
+	stepButtons: { { button: TextButton, x: number } },
 }
 
 local function wrap(label: TextLabel)
@@ -59,8 +59,6 @@ function PricingTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 	local colors = UiKit.Colors
 	local localized = UiKit.localized
 	local fmt = UiKit.localizedFormat
-
-	page.CanvasSize = UDim2.fromOffset(0, CARD_TOP + #SPECIES_ORDER * CARD_PITCH)
 
 	local title = UiKit.label(page, "PricingTitle", localized("pricing"), 22)
 	place(title, 0, 0, COLUMN_WIDTH, 28)
@@ -134,12 +132,11 @@ function PricingTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 		end)
 	end
 
-	for index, speciesId in ipairs(SPECIES_ORDER) do
+	for _, speciesId in ipairs(SPECIES_ORDER) do
 		local frame = Instance.new("Frame")
 		frame.Name = "Price_" .. speciesId
 		frame.BackgroundColor3 = colors.Row
 		frame.BorderSizePixel = 0
-		place(frame, 0, CARD_TOP + (index - 1) * CARD_PITCH, COLUMN_WIDTH, CARD_HEIGHT)
 		frame.Visible = false
 		frame.Parent = page
 		UiKit.corner(frame, 10)
@@ -160,9 +157,11 @@ function PricingTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 		place(price, 130, 128, 64, 44)
 		price.TextXAlignment = Enum.TextXAlignment.Center
 
+		local stepButtons: { { button: TextButton, x: number } } = {}
 		for _, spec in ipairs(STEP_BUTTONS) do
 			local stepButton = UiKit.button(frame, spec.name, fmt("pricingStep", spec.delta), colors.Sand, 17)
 			place(stepButton, spec.x, 128, 56, 44)
+			table.insert(stepButtons, { button = stepButton, x = spec.x })
 			local delta = spec.delta
 			stepButton.Activated:Connect(function()
 				step(speciesId, delta)
@@ -177,7 +176,31 @@ function PricingTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 			margin = margin,
 			sizes = sizes,
 			price = price,
+			stepButtons = stepButtons,
 		}
+	end
+
+	-- CM2-UVF12: card boxes come from UiTheme.pricingCardLayout and follow the screen size.
+	local function applyLayout(m: UiTheme.Metrics)
+		local layout = UiTheme.pricingCardLayout(m)
+		page.CanvasSize = UDim2.fromOffset(0, CARD_TOP + #SPECIES_ORDER * layout.pitch)
+		for index, speciesId in ipairs(SPECIES_ORDER) do
+			local card = cards[speciesId]
+			place(card.frame, 0, CARD_TOP + (index - 1) * layout.pitch, COLUMN_WIDTH, layout.cardHeight)
+			for _, part in ipairs({ "name", "sentiment", "wholesaleTypical", "margin", "sizes", "price" }) do
+				local b = (layout :: any)[part] :: UiTheme.Box
+				place((card :: any)[part], b.x, b.y, b.w, b.h)
+			end
+			for _, entry in ipairs(card.stepButtons) do
+				place(entry.button, entry.x, layout.controlsY, 56, layout.controlsHeight)
+			end
+		end
+	end
+	local gui = page:FindFirstAncestorOfClass("ScreenGui")
+	if gui then
+		UiKit.onLayout(gui, applyLayout)
+	else
+		applyLayout(UiTheme.metrics(1920, 1080))
 	end
 
 	autoButton.Activated:Connect(function()

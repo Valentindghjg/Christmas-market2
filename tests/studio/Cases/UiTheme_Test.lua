@@ -399,4 +399,30 @@ return function(t)
 		expect.equal(pc.order.y, 182)
 		expect.equal(pc.canvasHeight, 386)
 	end)
+
+	t.test("Pricing card fits the page and keeps 44 px controls (CM2-UVF12)", function()
+		for _, size in ipairs({ { 666, 374 }, { 667, 375 }, { 666, 324 }, { 780, 302 } }) do
+			local m = UiTheme.metrics(size[1], size[2])
+			local manager = UiTheme.hudLayout(m, 0).manager
+			local body = UiTheme.managerLayout(m, manager).body
+			local card = UiTheme.pricingCardLayout(m)
+			if size[2] >= 374 then
+				-- The page clip is about 180 px high at 666x374 (CM2-UVF11 playtest): card <= page - 8.
+				expect.truthy(card.cardHeight <= 172)
+				expect.truthy(card.cardHeight <= body.h - 58 - 8)
+			end
+			expect.truthy(card.controlsHeight >= UiTheme.MinTouch)
+			expect.truthy(card.controlsY + card.controlsHeight <= card.cardHeight)
+			expect.truthy(card.pitch >= card.cardHeight)
+			expect.falsy(UiTheme.overlaps(card.sizes, card.price))
+		end
+		local pc = UiTheme.pricingCardLayout(UiTheme.metrics(1920, 1022))
+		expect.equal(pc.cardHeight, 180)
+		expect.equal(pc.pitch, 188)
+		expect.equal(pc.controlsY, 128)
+		expect.truthy(pc.controlsY + pc.controlsHeight <= pc.cardHeight)
+		local compactCard = UiTheme.pricingCardLayout(UiTheme.metrics(666, 374))
+		expect.equal(compactCard.controlsY, 120)
+		expect.truthy(compactCard.controlsY + compactCard.controlsHeight <= compactCard.cardHeight)
+	end)
 end
