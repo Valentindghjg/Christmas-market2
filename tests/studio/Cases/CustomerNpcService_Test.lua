@@ -122,10 +122,11 @@ return function(t)
 	local function harness(options, stuck: boolean?, shortBy: number?)
 		local h = { ticks = 0, clock = 1000 }
 		h.world = fakeWorld(stuck, shortBy)
+		-- CM2-SALE1: h.roll is the company service's random roll (0 when nil).
 		h.service = CompanyStateService.new(fakePersistence(), function()
 			return h.clock
 		end, function()
-			return 0
+			return h.roll or 0
 		end)
 		h.plots = {}
 		-- CM2-25/26: a stand-in for the visible Cashier, on duty whenever one is hired.
@@ -721,5 +722,47 @@ return function(t)
 		end
 		expect.equal(h.npc:arrivalPass(false), 1)
 		expect.equal(h.npc:count(), 1)
+	end)
+
+	-- CM2-SALE1: on the tutorial's Checkout step a live arrival buys even with a high roll.
+	t.test("a live tutorial arrival buys with a random roll (CM2-SALE1)", function()
+		local h = harness()
+		local state = addCompany(h, A, PLOT_1, 1)
+		state.tutorial = { step = "Checkout", skipped = false }
+		h.roll = 0.99
+		local cash0 = state.cash
+		expect.equal(h.npc:arrivalPass(false), 1)
+		local first = h.npc:snapshot().visits[1]
+		expect.equal(first.customerNumber, 1)
+		runUntil(h, first.visitId, "WaitingAtCar", 200)
+		expect.equal(state.sales, 1)
+		expect.equal(state.cash, cash0 + 140)
+		expect.equal(state.tutorial.step, "Done")
+		local entry = h.npc:snapshot().decisionLog[1]
+		expect.equal(entry.decision, "Reserved")
+		expect.equal(entry.visitId, first.visitId)
+	end)
+
+	t.test("the decision log records each pick and resetForTest clears it (CM2-SALE1)", function()
+		local h = harness()
+		addCompany(h, A, PLOT_1, 1)
+		local first = spawn(h, A, 5)
+		runUntil(h, first, "Departing", 100)
+		local second = spawn(h, A, 8)
+		runUntil(h, second, "WalkingToTree", 100)
+		local log = h.npc:snapshot().decisionLog
+		expect.equal(#log, 2)
+		expect.equal(log[1].visitId, first)
+		expect.equal(log[1].customerNumber, 5)
+		expect.equal(log[1].decision, "NoEligibleStock")
+		expect.equal(log[1].placementId, nil)
+		expect.equal(log[2].visitId, second)
+		expect.equal(log[2].customerNumber, 8)
+		expect.equal(log[2].decision, "Reserved")
+		expect.equal(log[2].placementId, "douglas_1")
+		expect.equal(log[2].salePrice, 140)
+		expect.equal(visitOf(h, second).decision, "Reserved")
+		h.npc:resetForTest(A)
+		expect.equal(#h.npc:snapshot().decisionLog, 0)
 	end)
 end

@@ -105,6 +105,7 @@ function CustomerNpcService.new(deps, options)
 	self._loadSnaps = 0
 	self._customerSnaps = 0
 	self._snapLog = {}
+	self._decisionLog = {}
 	self._arrivalOverrides = {}
 	return self
 end
@@ -312,6 +313,23 @@ function CustomerNpcService:_finish(visit)
 	end
 end
 
+-- Decision log (CM2-SALE1): the last DECISION_LOG_LIMIT picks, a Studio test instrument.
+local DECISION_LOG_LIMIT = 20
+
+function CustomerNpcService:_logDecision(visit)
+	table.insert(self._decisionLog, {
+		visitId = visit.id,
+		companyId = visit.companyId,
+		customerNumber = visit.customerNumber,
+		decision = visit.decision,
+		placementId = visit.placementId,
+		salePrice = visit.salePrice,
+	})
+	while #self._decisionLog > DECISION_LOG_LIMIT do
+		table.remove(self._decisionLog, 1)
+	end
+end
+
 function CustomerNpcService:_decide(visit)
 	local ok, result = self._companies:npcDecide(visit.companyId, visit.id, visit.customerNumber :: number, visit.roll)
 	if ok and type(result) == "table" then
@@ -322,8 +340,12 @@ function CustomerNpcService:_decide(visit)
 		visit.treeX = result.x
 		visit.treeZ = result.z
 		visit.reserved = true
+		visit.decision = "Reserved"
+		self:_logDecision(visit)
 		self:_enter(visit, "WalkingToTree")
 	else
+		visit.decision = tostring(result)
+		self:_logDecision(visit)
 		self:_enter(visit, "WalkingOut")
 	end
 end
@@ -677,6 +699,7 @@ local function newVisit(id: string, seq: number, plotId: string, space: number, 
 		settling = false,
 		walkedOut = false,
 		cashierSince = nil :: number?,
+		decision = nil :: string?,
 	}
 end
 
@@ -894,11 +917,16 @@ function CustomerNpcService:snapshot()
 			carrying = visit.carrying,
 			loadTest = visit.loadTest,
 			customerNumber = visit.customerNumber,
+			decision = visit.decision,
 		})
 	end
 	local snapLog = {}
 	for _, entry in ipairs(self._snapLog) do
 		table.insert(snapLog, table.clone(entry))
+	end
+	local decisionLog = {}
+	for _, entry in ipairs(self._decisionLog) do
+		table.insert(decisionLog, table.clone(entry))
 	end
 	return {
 		count = #visits,
@@ -906,6 +934,7 @@ function CustomerNpcService:snapshot()
 		loadSnaps = self._loadSnaps,
 		customerSnaps = self._customerSnaps,
 		snapLog = snapLog,
+		decisionLog = decisionLog,
 	}
 end
 
@@ -944,13 +973,19 @@ end
 
 -- Hard-removes the company's customer visits at once (nil: every visit, load visits
 -- included) and clears the arrival override(s); then sweeps the company's orphaned
--- reservations and claims and re-syncs its displayed trees. Returns the number removed.
+-- reservations and claims, re-syncs its displayed trees and drops its decision-log entries
+-- (CM2-SALE1). Returns the number removed.
 function CustomerNpcService:resetForTest(companyId: string?): number
 	local removed = 0
 	for _, visit in ipairs(self:_ordered()) do
 		if companyId == nil or (visit.companyId == companyId and not visit.loadTest) then
 			self:_hardRemove(visit)
 			removed += 1
+		end
+	end
+	for index = #self._decisionLog, 1, -1 do
+		if companyId == nil or self._decisionLog[index].companyId == companyId then
+			table.remove(self._decisionLog, index)
 		end
 	end
 	local companyIds: { string }

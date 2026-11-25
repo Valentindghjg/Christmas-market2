@@ -40,11 +40,12 @@ return function(t)
 		}
 	end
 
-	local function setup(trees: number)
+	-- roll (CM2-SALE1): the service's random roll; 0 when omitted.
+	local function setup(trees: number, roll: number?)
 		local service = Service.new(fakePersistence(), function()
 			return NOW
 		end, function()
-			return 0
+			return roll or 0
 		end)
 		local state = service:loadCompany(COMPANY, 42)
 		for index = 1, trees do
@@ -268,5 +269,39 @@ return function(t)
 		expect.equal(snapshot.reviewsRecent[2], 5)
 		snapshot.reviewsRecent[1] = 1
 		expect.equal(state.reviews.recent[1], 4)
+	end)
+
+	-- CM2-SALE1: the tutorial customer ignores preference and roll; normal demand after Done.
+	t.test("npcDecide sells for sure on the tutorial's Checkout step (CM2-SALE1)", function()
+		local service, state = setup(1, 0.99)
+		state.tutorial = { step = "Checkout", skipped = false }
+		expect.truthy(service:npcArrive(COMPANY, "visit:1"))
+		local cash, sales = state.cash, state.sales
+		local ok, picked = service:npcDecide(COMPANY, "visit:1", 5)
+		expect.truthy(ok)
+		expect.equal(picked.placementId, "douglas_1")
+		expect.equal(picked.salePrice, 140)
+		expect.truthy(service:npcSettle(COMPANY, "visit:1", "douglas_1"))
+		expect.equal(state.cash, cash + 140)
+		expect.equal(state.sales, sales + 1)
+		expect.equal(state.tutorial.step, "Done")
+		douglas(state, "douglas_2", -14)
+		expect.truthy(service:npcArrive(COMPANY, "visit:2"))
+		local again, code = service:npcDecide(COMPANY, "visit:2", 5)
+		expect.falsy(again)
+		expect.equal(code, "NoEligibleStock")
+	end)
+
+	t.test("npcDecide reports NoStock when every displayed tree is reserved (CM2-SALE1)", function()
+		local service, state = setup(1)
+		expect.truthy(service:npcArrive(COMPANY, "visit:1"))
+		expect.truthy(service:npcArrive(COMPANY, "visit:2"))
+		expect.truthy(service:npcDecide(COMPANY, "visit:1", 8, 0))
+		local visits, abandoned = state.customerVisits, state.abandonedCustomers
+		local ok, code = service:npcDecide(COMPANY, "visit:2", 8, 0)
+		expect.falsy(ok)
+		expect.equal(code, "NoStock")
+		expect.equal(state.customerVisits, visits + 1)
+		expect.equal(state.abandonedCustomers, abandoned + 1)
 	end)
 end

@@ -62,11 +62,9 @@ local function tell(player: Player, key: string, ...: number)
 	notify:FireClient(player, { key = key, args = { ... } })
 end
 
--- Studio playtests can force customer conversions, fast-forward the business clock and
--- pause random customers through StudioTestHook (below). Outside Studio all three stay
--- at their neutral values.
+-- Studio playtests can fast-forward the business clock and pause random customers through
+-- StudioTestHook (below). Outside Studio both stay at their neutral values.
 local clockOffset = 0
-local forcedRolls = 0
 local customersPaused = false
 
 local function businessClock(): number
@@ -74,10 +72,6 @@ local function businessClock(): number
 end
 
 local function businessRoll(): number
-	if forcedRolls > 0 then
-		forcedRolls -= 1
-		return 0
-	end
 	return math.random()
 end
 
@@ -1064,9 +1058,6 @@ if RunService:IsStudio() then
 			advanceClock = function(seconds: number): number
 				clockOffset += seconds
 				return clockOffset
-			end,
-			setForcedRolls = function(count: number)
-				forcedRolls = count
 			end,
 			setCustomersPaused = function(paused: boolean)
 				customersPaused = paused

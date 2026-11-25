@@ -65,4 +65,22 @@ return function(t)
 		local tooDear = douglasState(math.ceil(profile.budget * 1.15) + 1, "Medium")
 		expect.equal(CustomerSelection.choose(tooDear, profile, 1.15), nil)
 	end)
+
+	-- CM2-SALE1: the tutorial customer takes the first unreserved tree without preference checks.
+	t.test("chooseGuaranteed takes the first unreserved priced tree (CM2-SALE1)", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.layout.placements.a = { speciesId = "NobleFir", sizeId = "Small" }
+		state.layout.placements.b = { speciesId = "NobleFir", sizeId = "Small" }
+		state.layout.placements.c = { speciesId = "DouglasFir", sizeId = "Medium" }
+		state.reservations.a = { customerId = "npc:99", expiresAt = 200, salePrice = 1 }
+		local candidate = CustomerSelection.chooseGuaranteed(state)
+		expect.truthy(candidate)
+		expect.equal(candidate.placementId, "b")
+		expect.equal(candidate.salePrice, 147)
+		expect.equal(candidate.conversionScore, 1)
+		expect.equal(CustomerSelection.choose(state, CustomerProfile.create(1)), nil)
+		state.reservations.b = { customerId = "npc:99", expiresAt = 200, salePrice = 1 }
+		state.reservations.c = { customerId = "npc:99", expiresAt = 200, salePrice = 1 }
+		expect.equal(CustomerSelection.chooseGuaranteed(state), nil)
+	end)
 end

@@ -15,12 +15,18 @@ local CustomerSimulationService = {}
 -- options (CM2-N1): duration replaces the profile's patience as the reservation length and
 -- customerId replaces the profile ID as the reservation owner (a walking NPC's visit ID).
 -- priceTolerance (CM2-46a, Evergreen VIP) lets the customer pay that much over its budget.
+-- guaranteed (CM2-SALE1) picks with `CustomerSelection.chooseGuaranteed`.
 function CustomerSimulationService.beginVisit(
 	state,
 	customerNumber: number,
 	timestamp: number,
 	roll: number,
-	options: { duration: number?, customerId: string?, priceTolerance: number? }?
+	options: {
+		duration: number?,
+		customerId: string?,
+		priceTolerance: number?,
+		guaranteed: boolean?,
+	}?
 )
 	if type(roll) ~= "number" or roll < 0 or roll > 1 then
 		return false, "InvalidRoll"
@@ -31,7 +37,9 @@ function CustomerSimulationService.beginVisit(
 		state.abandonedCustomers += 1
 		return false, "InvalidCustomer"
 	end
-	local candidate = CustomerSelection.choose(state, profile, if options ~= nil then options.priceTolerance else nil)
+	local candidate = if options ~= nil and options.guaranteed == true
+		then CustomerSelection.chooseGuaranteed(state)
+		else CustomerSelection.choose(state, profile, if options ~= nil then options.priceTolerance else nil)
 	if not candidate then
 		state.abandonedCustomers += 1
 		return false, "NoEligibleStock"

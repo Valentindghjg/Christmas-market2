@@ -65,9 +65,16 @@ function StudioTestService.install(context)
 	-- Existing commands (moved from main.server.lua, behaviour unchanged).
 	function commands.forceCustomer(arg)
 		if type(arg) == "number" and arg >= 1 then
-			-- The next arriving customer has profile `arg` and always converts.
-			companies:setCustomerSequence(math.floor(arg) - 1)
-			context.setForcedRolls(1)
+			-- The next live arrival of every loaded save gets profile `arg` and roll 0 (as
+			-- npcNextArrival; CM2-SALE1: a server-wide forced roll went to whichever visit
+			-- decided first).
+			local ids = companies:liveCompanyIds()
+			if #ids == 0 then
+				return failure("NoActiveSave")
+			end
+			for _, id in ipairs(ids) do
+				context.npc:setArrivalOverrideForTest(id, math.floor(arg))
+			end
 			return true
 		end
 		return nil

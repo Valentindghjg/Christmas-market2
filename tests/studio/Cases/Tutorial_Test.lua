@@ -254,4 +254,15 @@ return function(t)
 		expect.falsy(limited.ok)
 		expect.equal(limited.errorCode, "RateLimited")
 	end)
+
+	t.test("guaranteesSale only on the Checkout step (CM2-SALE1)", function()
+		expect.equal(Tutorial.guaranteesSale({ tutorial = { step = "Checkout", skipped = false } }), true)
+		for _, step in ipairs({ "Order", "Stock", "Done" }) do
+			expect.equal(Tutorial.guaranteesSale({ tutorial = { step = step, skipped = false } }), false)
+		end
+		expect.equal(Tutorial.guaranteesSale({ tutorial = { step = "Done", skipped = true } }), false)
+		-- Invalid: skipped is only allowed on Done.
+		expect.equal(Tutorial.guaranteesSale({ tutorial = { step = "Checkout", skipped = true } }), false)
+		expect.equal(Tutorial.guaranteesSale(nil), false)
+	end)
 end

@@ -57,6 +57,11 @@ function Tutorial.advance(state: any, event: string): boolean
 	return false
 end
 
+-- CM2-SALE1: on the Checkout step the next walking customer buys for sure (tutorial customer).
+function Tutorial.guaranteesSale(state: any): boolean
+	return type(state) == "table" and Tutorial.isValid(state.tutorial) and state.tutorial.step == "Checkout"
+end
+
 function Tutorial.skip(state: any): (boolean, any)
 	if type(state) ~= "table" or not Tutorial.isValid(state.tutorial) then
 		return false, "InvalidState"

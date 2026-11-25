@@ -20,6 +20,7 @@ local Reviews = require(Shared:WaitForChild("Reviews"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local Staff = require(Shared:WaitForChild("Staff"))
 local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
+local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
 local CompanyDayCycle = require(script.Parent:WaitForChild("CompanyDayCycle"))
 local CompanyProgression = require(script.Parent:WaitForChild("CompanyProgression"))
@@ -1127,7 +1128,9 @@ function CompanyStateService:npcArrive(companyId: string, visitId: string, force
 end
 
 -- The browsing customer picks a tree: it is reserved for Npc.ReservationSeconds under the
--- visit ID. A failed pick only changes beginVisit's visit and abandonment counters.
+-- visit ID. On the tutorial's Checkout step the pick is guaranteed (CM2-SALE1). A failed pick
+-- only changes beginVisit's visit and abandonment counters; `NoStock` means every displayed
+-- tree was reserved.
 function CompanyStateService:npcDecide(companyId: string, visitId: string, customerNumber: number, roll: number?)
 	local session = self._sessions[companyId]
 	if not session then
@@ -1138,14 +1141,29 @@ function CompanyStateService:npcDecide(companyId: string, visitId: string, custo
 		if claimOf(session, visitId) == nil then
 			return false, "NoClaim"
 		end
+		local available = false
+		for placementId in pairs(state.layout.placements) do
+			if state.reservations[placementId] == nil then
+				available = true
+				break
+			end
+		end
 		local started, visit = CustomerSimulationService.beginVisit(
 			state,
 			customerNumber,
 			self._clock(),
 			if roll ~= nil then roll else self._randomRoll(),
-			{ duration = GameConfig.Customers.Npc.ReservationSeconds, customerId = visitId, priceTolerance = tolerance }
+			{
+				duration = GameConfig.Customers.Npc.ReservationSeconds,
+				customerId = visitId,
+				priceTolerance = tolerance,
+				guaranteed = Tutorial.guaranteesSale(state),
+			}
 		)
 		if not started then
+			if visit == "NoEligibleStock" and not available then
+				return false, "NoStock"
+			end
 			return false, visit
 		end
 		state.revision += 1
