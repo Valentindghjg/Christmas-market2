@@ -1,8 +1,9 @@
 --!strict
 -- Playtest steps 51-53 (full mode): the Robux shop server (CM2-46a, docs/plans/CM2-46a.md).
 -- Installed by RunPlaytest.execute after Steps/Staff. Receipts are simulated through the real
--- receipt path (StudioTestHook shopReceipt); nothing prompts or charges. Every shipped product
--- ID is 0, so real test purchases wait for the owner's IDs (46b playtest).
+-- receipt path (StudioTestHook shopReceipt); nothing prompts or charges. The owner's product IDs
+-- exist for 12 products (ShopConfig CREATED_IDS); step 53 never prompts one of them, so real test
+-- purchases stay a manual PC-10 check.
 return function(ctx: any)
 	local DELIVERY_WAIT = ctx.DELIVERY_WAIT
 	local EXPIRY_WAIT = ctx.EXPIRY_WAIT
@@ -26,6 +27,7 @@ return function(ctx: any)
 	local staffSnapshot = ctx.staffSnapshot
 	local visit = ctx.visit
 	local Economy = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Economy")) :: any
+	local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ShopConfig")) :: any
 
 	local NO_PLAYER_USER_ID = 999000123
 	local RESTED_SECONDS = 3
@@ -195,13 +197,31 @@ return function(ctx: any)
 		)
 	end
 
-	-- Step 53: with every ID 0 nothing is buyable or prompted; an absent buyer is refused.
+	-- Step 53: a product with an ID that is ready is Buy or Owned, every other one ComingSoon; the
+	-- ComingSoon prompt probe uses a product without an ID (a prompt for a product with an ID would
+	-- open a real purchase dialog); an absent buyer is refused.
 	local function guardStep(): string
 		local catalog = call("shopAction", { userId = R.userId, action = "Shop.Catalog", payload = {} })
 		check(type(catalog) == "table" and #catalog.products == 27, "catalog does not list 27 products")
+		local live, soon = 0, 0
 		for _, entry in catalog.products do
-			check(entry.state == "ComingSoon", entry.key .. " is " .. tostring(entry.state) .. ", expected ComingSoon")
+			local product = ShopConfig.byKey(entry.key)
+			check(product ~= nil, entry.key .. " is not in ShopConfig")
+			if product.id > 0 and product.ready then
+				check(
+					entry.state == "Buy" or entry.state == "Owned",
+					entry.key .. " is " .. tostring(entry.state) .. ", expected Buy or Owned"
+				)
+				live += 1
+			else
+				check(
+					entry.state == "ComingSoon",
+					entry.key .. " is " .. tostring(entry.state) .. ", expected ComingSoon"
+				)
+				soon += 1
+			end
 		end
+		check(live == 12 and soon == 15, string.format("%d live and %d ComingSoon, expected 12 and 15", live, soon))
 		local function promptCode(productKey: string): string?
 			local response = invoke("shopAction", {
 				userId = R.userId,
@@ -210,8 +230,8 @@ return function(ctx: any)
 			})
 			return if type(response) == "table" then response.errorCode else tostring(response)
 		end
-		local coming = promptCode("CashPinecone")
-		check(coming == "ComingSoon", "Shop.Prompt CashPinecone returned " .. tostring(coming))
+		local coming = promptCode("DecorFatherChristmas")
+		check(coming == "ComingSoon", "Shop.Prompt DecorFatherChristmas returned " .. tostring(coming))
 		local unknown = promptCode("Nope")
 		check(unknown == "UnknownProduct", "Shop.Prompt Nope returned " .. tostring(unknown))
 		local started = os.clock()
@@ -220,7 +240,7 @@ return function(ctx: any)
 		check(os.clock() - started < 2, "receipt for an absent buyer waited")
 		local prompts = call("shopPrompts", nil)
 		check(prompts == 0, prompts .. " purchase prompt(s) shown, expected 0")
-		return "27 products ComingSoon, prompts refused, absent buyer NotProcessedYet, 0 prompts"
+		return "12 live (Buy/Owned), 15 ComingSoon, prompts refused, absent buyer NotProcessedYet, 0 prompts"
 	end
 
 	addStep("51", "SHOP_RECEIPT", { "02a" }, receiptStep)
