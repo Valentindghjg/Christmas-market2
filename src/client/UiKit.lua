@@ -270,30 +270,39 @@ end
 
 -- Rail --------------------------------------------------------------------------------------
 
-local RAIL_BUTTON_HEIGHT = UiTheme.MinTouch
 local railFrame: ScrollingFrame? = nil
-local railLayout: UIListLayout? = nil
 local railMetrics: UiTheme.Metrics? = nil
 local railButtons: { TextButton } = {}
 local railHidden = false
 
 local function applyRail()
-	local frame, listLayout, m = railFrame, railLayout, railMetrics
-	if not (frame and listLayout and m) then
+	local frame, m = railFrame, railMetrics
+	if not (frame and m) then
 		return
 	end
-	listLayout.Padding = UDim.new(0, m.railGap)
-	local visible = 0
+	local visible: { TextButton } = {}
 	for _, railButton in ipairs(railButtons) do
 		if railButton.Visible then
-			visible += 1
+			table.insert(visible, railButton)
 		end
 	end
-	local layout = UiTheme.hudLayout(m, visible)
+	table.sort(visible, function(a, b)
+		if a.LayoutOrder ~= b.LayoutOrder then
+			return a.LayoutOrder < b.LayoutOrder
+		end
+		return a.Name < b.Name
+	end)
+	local layout = UiTheme.hudLayout(m, #visible)
 	frame.Position = UDim2.fromOffset(layout.rail.x, layout.rail.y)
 	frame.Size = UDim2.fromOffset(layout.rail.w, layout.rail.h)
 	frame.ScrollingEnabled = layout.railScrolls
 	frame.Visible = not railHidden
+	for index, railButton in ipairs(visible) do
+		local b = layout.railButtons[index]
+		railButton.Position = UDim2.fromOffset(b.x, b.y)
+		railButton.Size = UDim2.fromOffset(b.w, b.h)
+		railButton.TextSize = if b.w < 100 then UiTheme.TextSize.Small else UiTheme.TextSize.Body
+	end
 end
 
 local function ensureRail(): ScrollingFrame
@@ -310,11 +319,7 @@ local function ensureRail(): ScrollingFrame
 	frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	frame.ScrollingDirection = Enum.ScrollingDirection.Y
 	frame.Parent = gui
-	local listLayout = Instance.new("UIListLayout")
-	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	listLayout.Parent = frame
 	railFrame = frame
-	railLayout = listLayout
 	UiKit.onLayout(gui, function(m)
 		railMetrics = m
 		applyRail()
@@ -324,11 +329,11 @@ end
 
 -- Rail slots: 10 LotManagerButton, 20 Shop, 30 Quests, 40 Advent, 50 SavesButton, 60 TeamButton,
 -- 70 FinderButton. Buttons start hidden; the owner of a button shows it.
+-- Phones: buttons that do not fit above the thumbstick go right of row 1 (CM2-UVF13).
 function UiKit.addRailButton(name: string, textKey: string, order: number): TextButton
 	local frame = ensureRail()
 	local railButton = UiKit.button(frame, name, UiKit.localized(textKey), colors.Sand)
 	railButton.LayoutOrder = order
-	railButton.Size = UDim2.new(1, -6, 0, RAIL_BUTTON_HEIGHT)
 	railButton.Visible = false
 	table.insert(railButtons, railButton)
 	railButton:GetPropertyChangedSignal("Visible"):Connect(applyRail)

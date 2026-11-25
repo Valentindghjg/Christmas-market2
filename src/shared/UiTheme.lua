@@ -47,6 +47,7 @@ export type HudLayout = {
 	chips: { { id: string, box: Box } },
 	status: Box,
 	rail: Box,
+	railButtons: { Box },
 	railScrolls: boolean,
 	toast: Box,
 	actionBar: Box,
@@ -315,6 +316,8 @@ local STATUS_TOP = 40
 local STATUS_HEIGHT = 34
 local RAIL_SIDE_PADDING = 8
 local THUMB_RESERVE = 96
+local RAIL_OVERFLOW_MIN_WIDTH = 72 -- PROVISIONAL
+local RAIL_SCROLLBAR = 6
 local TOAST_MAX_WIDTH = 460
 local MANAGER_MAX_WIDTH = 920
 local MANAGER_MAX_HEIGHT = 640
@@ -366,7 +369,37 @@ function UiTheme.hudLayout(m: Metrics, railButtons: number): HudLayout
 
 	local count = math.max(0, math.floor(railButtons))
 	local content = if count > 0 then count * BUTTON_HEIGHT + (count - 1) * m.railGap else 0
+	local cell = m.railWidth - RAIL_SCROLLBAR
+	local step = BUTTON_HEIGHT + m.railGap
+	local railButtonBoxes: { Box } = {}
+	for index = 1, count do
+		railButtonBoxes[index] = box(0, (index - 1) * step, cell, BUTTON_HEIGHT)
+	end
 	local rail = box(m.margin, m.railTop, m.railWidth, math.min(content, m.railMaxHeight))
+	local railScrolls = content > m.railMaxHeight
+
+	-- CM2-UVF13: on phones the buttons that do not fit above the thumbstick go right of row 1.
+	if m.compact and railScrolls then
+		local rows = math.max(1, math.floor((m.railMaxHeight + m.railGap) / step))
+		local extra = count - rows
+		local startX = cell + m.railGap
+		if extra > 0 then
+			local room = hud.x - GAP - m.margin - startX - extra * m.railGap + m.railGap
+			local ow = math.min(cell, math.floor(room / extra))
+			if ow >= RAIL_OVERFLOW_MIN_WIDTH then
+				for k = 1, extra do
+					railButtonBoxes[rows + k] = box(startX + (k - 1) * (ow + m.railGap), 0, ow, BUTTON_HEIGHT)
+				end
+				rail = box(
+					m.margin,
+					m.railTop,
+					startX + extra * ow + (extra - 1) * m.railGap,
+					rows * BUTTON_HEIGHT + (rows - 1) * m.railGap
+				)
+				railScrolls = false
+			end
+		end
+	end
 
 	local toastWidth =
 		math.max(0, math.min(TOAST_MAX_WIDTH, m.width - 2 * (m.margin + m.railWidth + RAIL_SIDE_PADDING)))
@@ -391,7 +424,8 @@ function UiTheme.hudLayout(m: Metrics, railButtons: number): HudLayout
 		chips = chips,
 		status = box(0, STATUS_TOP, stripWidth, STATUS_HEIGHT),
 		rail = rail,
-		railScrolls = content > m.railMaxHeight,
+		railButtons = railButtonBoxes,
+		railScrolls = railScrolls,
 		toast = toast,
 		actionBar = actionBar,
 		manager = manager,

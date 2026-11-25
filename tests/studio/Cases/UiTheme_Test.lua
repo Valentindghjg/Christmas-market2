@@ -147,20 +147,68 @@ return function(t)
 		end
 	end)
 
-	-- CM2-UVF13: every rail button (FinderButton is the fifth, rail order 70) ends inside the rail
-	-- height reserved above the thumbstick, and stays a 44 px touch target.
-	t.test("keeps every phone rail button above the thumb reserve", function()
-		for _, size in ipairs({ { w = 666, h = 374 }, { w = 667, h = 375 } }) do
+	-- CM2-UVF13: every rail button (FinderButton is the fifth, rail order 70) stays a 44 px touch
+	-- target, ends above the thumbstick ring (top 93 px above the GUI bottom) and clear of the HUD.
+	t.test("keeps every phone rail button above the thumbstick", function()
+		local sizes = { { w = 666, h = 316 }, { w = 667, h = 317 } }
+		for _, size in ipairs(MATRIX) do
+			if size.compact then
+				table.insert(sizes, size)
+			end
+		end
+		expect.equal(UiTheme.metrics(666, 316).railMaxHeight, 204)
+		for _, size in ipairs(sizes) do
 			local m = UiTheme.metrics(size.w, size.h)
 			expect.truthy(m.compact)
-			local limit = m.railTop + m.railMaxHeight
 			for count = 1, 5 do
-				local rail = UiTheme.hudLayout(m, count).rail
-				local rowHeight = (rail.h - (count - 1) * m.railGap) / count
-				expect.truthy(rowHeight >= 44)
-				local bottom = rail.y + count * 44 + (count - 1) * m.railGap
-				expect.truthy(bottom <= limit)
-				expect.truthy(bottom <= size.h - 96 - m.margin)
+				local layout = UiTheme.hudLayout(m, count)
+				expect.equal(#layout.railButtons, count)
+				expect.falsy(layout.railScrolls)
+				local placed = {}
+				for index, relative in ipairs(layout.railButtons) do
+					local b = absolute(layout.rail, relative)
+					expect.truthy(b.h >= 44)
+					expect.truthy(b.w >= 72)
+					expect.truthy(b.x >= layout.rail.x)
+					expect.truthy(b.y >= layout.rail.y)
+					expect.truthy(b.x + b.w <= layout.rail.x + layout.rail.w)
+					expect.truthy(b.y + b.h <= layout.rail.y + layout.rail.h)
+					expect.truthy(b.y + b.h <= size.h - 93 - 8)
+					expect.truthy(b.x + b.w <= layout.hud.x - 8)
+					expect.falsy(UiTheme.overlaps(b, layout.hud))
+					expect.falsy(UiTheme.overlaps(b, layout.toast))
+					for _, other in ipairs(placed) do
+						expect.falsy(UiTheme.overlaps(b, other))
+					end
+					table.insert(placed, b)
+					expect.truthy(index <= count)
+				end
+			end
+		end
+		local layout = UiTheme.hudLayout(UiTheme.metrics(666, 316), 5)
+		expect.equal(layout.railButtons[5].x, 122)
+		expect.equal(layout.railButtons[5].y, 0)
+		expect.equal(layout.railButtons[5].w, 78)
+		expect.equal(layout.railButtons[5].h, 44)
+		expect.equal(layout.rail.x, 8)
+		expect.equal(layout.rail.y, 8)
+		expect.equal(layout.rail.w, 200)
+		expect.equal(layout.rail.h, 188)
+	end)
+
+	t.test("keeps the regular rail as one column", function()
+		for _, size in ipairs({ { w = 1920, h = 1022 }, { w = 1024, h = 710 } }) do
+			local m = UiTheme.metrics(size.w, size.h)
+			for count = 1, 5 do
+				local layout = UiTheme.hudLayout(m, count)
+				expect.equal(layout.rail.w, m.railWidth)
+				for index = 1, count do
+					local b = layout.railButtons[index]
+					expect.equal(b.x, 0)
+					expect.equal(b.y, (index - 1) * (44 + m.railGap))
+					expect.equal(b.w, m.railWidth - 6)
+					expect.equal(b.h, 44)
+				end
 			end
 		end
 	end)
