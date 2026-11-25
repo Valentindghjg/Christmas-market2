@@ -24,3 +24,7 @@ tests/fixtures/art/rbxm/
 tests/fixtures/art/source/**/*.blend
 *.blend1
 __pycache__/
+
+# Swarve Essential UI Pack: licensed for use, not for redistribution
+assets/third_party/swarve-essential-ui/*.rbxl
+assets/third_party/swarve-essential-ui/*.rbxlx

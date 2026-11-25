@@ -787,3 +787,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Owner: the reference lets the player choose the plot from a camera view over the map; ours assigns the first free plot. Add the picker.
 - Planner decisions: only the first player of a save on a server picks; teammates and reloads attach as today. Nothing is reserved while browsing; the server claims the plot only if it is still free on confirm, else `PlotTaken`. `Save.Play` without a plot id keeps the automatic choice, so tests and old clients keep working. Tier L (claim path and a new action), order 17a in the launch order, before QA (23) and the UI redesign (22a).
 - Files: docs/CLAUDE_BACKLOG.md (17a), docs/PRODUCT_SPEC.md.
+
+## 2026-11-25 — Swarve Studios licence received
+- Swarve Studios answered the owner's ticket (2026-11-25): any use, modification and re-upload is allowed, no credit required; only reselling or charging money for the assets themselves is not. Record: `assets/third_party/swarve-essential-ui/LICENSE.md`.
+- The `.rbxl` stays out of the public repository (`.gitignore`). The CM2-UI look stays as decided on 2026-11-24 (own cream look); whether CM2-UI also uses the pack's pieces is the owner's call.
