@@ -90,3 +90,24 @@ Device simulator with the PC-4 procedure (backlog "Erledigt" PC-4, including the
 
 ## Out of scope
 The Supplier button (CM2-UVF11), Pricing cards (CM2-UVF12), FinderButton (CM2-UVF13), the BreakAreaMode reason wrap, Skip-failed feedback while docked, and the N1 rest items (iPad/1080 checks, d3, d5, test-save cleanup).
+
+## Amendment 1 (2026-11-25, planner): playtest step 5 targets and reopening
+Why: in the 2026-11-24 run, step 5a could not be produced (`raycastLot` in `StockingMode` includes only `LotGround` and `LotExpansionPad`, so no tap past the lot edge is hittable), and 5c failed to reopen stocking with `InputHoldBegin`. No code change; this replaces playtest step 5 and adds one check to step 8.
+
+Lot frame to world (same as `worldPoint` in `StockingMode`): `c = plot.PrimaryPart.Position`, `facing = +1 if c.Z < 0 else -1`, world = `(c.X + x, c.Y + LotGround.Size.Y/2, c.Z + facing * z)`. Tap at `Camera:WorldToViewportPoint(world)`. Row mode off, size as the bar shows.
+
+**Step 5 (replaces the old step 5).** All three reasons run in the one stocking session opened in step 2; never press Done or Q before step 7.
+| Sub-step | Tap (lot frame x, z) | Why it fails | Expected `Reason.Text` (en) |
+|---|---|---|---|
+| 5a | (-39.5, 0) | on `LotGround`, but `x - r < -LotHalfWidth` (40) for every size; `Stocking.check` tests OutsideLot first | `stockOutsideLot` |
+| 5b | (-8, -4), centre of KeepClear `Stand` | KeepClear | `stockKeepClear` |
+| 5c | first (-32, -10), then press **Place** (tap its centre, GUI position plus `GetGuiInset`) and wait for `stockingPlacedOne`; then tap (-31, -10) | 1 stud from the placed tree | `stockTooClose` |
+- Each reason: red ghost, `Reason.Text` equals the en string, `TextFits == true`, then the probe `{StockingUI, TutorialUI, HudRailUI, ChristmasMarketUI}` is empty. Read the reason within 1 s of the tap (a placed result text replaces it until the next render).
+- If (-32, -10) is not valid (a reason shows, for example the break area), use (-32, -20) and then (-31, -20).
+- A tap point that is off screen (`onScreen == false`) or inside a GUI rect (StockingBar, HintBar, Hud, Toast, Rail, `TouchGui` thumbstick or jump button): set the character's `HumanoidRootPart` to the lot-frame point (-28, -4) plus 3 studs up, wait 1 s, compute the point again and tap. Stocking stays open (it has no distance check). Still not tappable: that sub-step is BLOCKED with the reading.
+
+**Reopening stocking (only if the session closed anyway, for example after a Play restart).** Put the root 4 studs in front of the StockBay with trees, facing it, wait 0.5 s, then `prompt:InputHoldBegin()`, wait `prompt.HoldDuration + 0.3` s, `prompt:InputHoldEnd()`. Read `StockingUI.StockingBar` within 1 s. Two failed tries: record the prompt's `Enabled`, `MaxActivationDistance`, the root distance and `UiKit` held modal (`TutorialUI`/`StockingUI` present), mark the reasons that need the session BLOCKED, and go on.
+
+**Step 8 (one check added).** On PC, after the hint-bar check: open stocking, press Done, then reopen with the procedure above. Opening on PC but not on the phone is a FAIL ("reopen after Done on phone"); failing on both is a FAIL ("reopen after Done"). Either way record the readings above; the planner decides the fix (cause unknown, so it is not assumed to be a CM2-UVF10 regression). Opening on both is PASS (no regression).
+
+Pre-check before step 1: the live `ReplicatedStorage.Shared.Localization` source contains `stockingHeaderCompact` (Rojo live); else stop, the planner reopens PC-11.
