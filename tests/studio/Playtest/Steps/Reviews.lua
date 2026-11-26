@@ -10,6 +10,7 @@ return function(ctx: any)
 	local addStep = ctx.addStep
 	local advance = ctx.advance
 	local call = ctx.call
+	local rejoin = ctx.rejoin
 	local check = ctx.check
 	local counterPart = ctx.counterPart
 	local ensureDouglas = ctx.ensureDouglas
@@ -294,7 +295,7 @@ return function(ctx: any)
 		check(signShowsRating(afterSlow), "sign rating not updated within 2 s after the slow load")
 
 		-- 5. Persist: the rating and likes survive a rejoin and the sign shows them again.
-		call("rejoin", R.userId)
+		rejoin(R.userId)
 		local rejoined = snap(R.userId)
 		for _, field in { "reviewCount", "ratingTenths", "likes" } do
 			check(

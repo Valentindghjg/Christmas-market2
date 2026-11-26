@@ -18,6 +18,7 @@ return function(ctx: any)
 	local advance = ctx.advance
 	local awaitDelivery = ctx.awaitDelivery
 	local call = ctx.call
+	local rejoin = ctx.rejoin
 	local check = ctx.check
 	local invoke = ctx.invoke
 	local orderTrees = ctx.orderTrees
@@ -108,7 +109,7 @@ return function(ctx: any)
 		)
 		check(inDone(ledgerAfter, id), id .. " missing from the ledger's done list")
 		check(ledgerAfter.pending[id] == nil, id .. " still pending in the ledger")
-		call("rejoin", R.userId)
+		rejoin(R.userId)
 		local rejoined = snap(R.userId)
 		check(table.find(rejoined.purchases.receipts, id) ~= nil, id .. " not in the save after the rejoin")
 		check(

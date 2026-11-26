@@ -8,6 +8,7 @@ return function(ctx: any)
 	local actOk = ctx.actOk
 	local addStep = ctx.addStep
 	local call = ctx.call
+	local rejoin = ctx.rejoin
 	local check = ctx.check
 	local poll = ctx.poll
 	local realPlayer = ctx.realPlayer
@@ -74,7 +75,7 @@ return function(ctx: any)
 
 		-- (d) the rolled day is saved and survives a rejoin.
 		call("flush", nil)
-		call("rejoin", R.userId)
+		rejoin(R.userId)
 		local saved = snap(R.userId).dayCycle
 		check(
 			type(saved) == "table" and saved.day == before + 1,

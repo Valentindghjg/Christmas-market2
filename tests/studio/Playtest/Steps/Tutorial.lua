@@ -11,6 +11,7 @@ return function(ctx: any)
 	local advance = ctx.advance
 	local awaitDelivery = ctx.awaitDelivery
 	local call = ctx.call
+	local rejoin = ctx.rejoin
 	local check = ctx.check
 	local deleteLeftover = ctx.deleteLeftover
 	local npcSnapshot = ctx.npcSnapshot
@@ -99,12 +100,12 @@ return function(ctx: any)
 		expectAttribute("Done", "after the sale")
 
 		-- 6. Done survives a rejoin.
-		call("rejoin", R.userId)
+		rejoin(R.userId)
 		expectStep("Done", "after rejoin")
 
 		-- 7. A step in progress survives a rejoin too.
 		setStep("Stock")
-		call("rejoin", R.userId)
+		rejoin(R.userId)
 		expectStep("Stock", "after the second rejoin")
 		expectAttribute("Stock", "after the second rejoin")
 

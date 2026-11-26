@@ -13,6 +13,8 @@ return function(ctx: any)
 	local MAX_DETAIL = 200
 	local POLL_INTERVAL = 0.25
 	local ACTION_PAUSE = 0.3
+	local REJOIN_TRIES = 20
+	local REJOIN_PAUSE = 0.5
 	local TELEPORT_PAUSE = 0.2
 
 	local HttpService = game:GetService("HttpService")
@@ -80,6 +82,27 @@ return function(ctx: any)
 				command,
 				tostring(type(response) == "table" and response.errorCode or response)
 			)
+		)
+		return response.data
+	end
+
+	-- Studio rejoin; retries SaveActionBusy from the client's Save.List retries (CM2-PP A1).
+	local function rejoin(userId: number): any
+		local response = invoke("rejoin", userId)
+		local tries = 1
+		local waits = 0
+		while type(response) == "table" and response.errorCode == "SaveActionBusy" and tries < REJOIN_TRIES do
+			task.wait(REJOIN_PAUSE)
+			waits += 1
+			tries += 1
+			response = invoke("rejoin", userId)
+		end
+		if waits > 0 then
+			emit(string.format("NOTE rejoin waited %d time(s) on SaveActionBusy", waits))
+		end
+		check(
+			type(response) == "table" and response.ok == true,
+			string.format("rejoin failed: %s", tostring(type(response) == "table" and response.errorCode or response))
 		)
 		return response.data
 	end
@@ -658,6 +681,7 @@ return function(ctx: any)
 	ctx.record = record
 	ctx.invoke = invoke
 	ctx.call = call
+	ctx.rejoin = rejoin
 	ctx.snap = snap
 	ctx.act = act
 	ctx.actOk = actOk

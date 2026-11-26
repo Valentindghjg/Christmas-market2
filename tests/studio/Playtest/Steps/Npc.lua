@@ -21,6 +21,7 @@ return function(ctx: any)
 	local awaitDelivery = ctx.awaitDelivery
 	local bayWith = ctx.bayWith
 	local call = ctx.call
+	local rejoin = ctx.rejoin
 	local check = ctx.check
 	local displayedCount = ctx.displayedCount
 	local findNpc = ctx.findNpc
@@ -451,7 +452,7 @@ return function(ctx: any)
 			return customer ~= nil and NPC_RESERVED_STATES[customer.state] == true
 		end, 60)
 		check(reserved, visitId .. " never reserved its tree")
-		call("rejoin", R.userId)
+		rejoin(R.userId)
 		local clean = poll(function()
 			if npcOnPlot(R.plotId) ~= 0 or npcObjectsLeft({ R.plotId }) ~= nil then
 				return false

@@ -9,7 +9,7 @@
 -- Playtest/Support and steps from Playtest/Steps (CM2-RF); none of them is under Cases, so the
 -- unit-test runners never execute them. Nothing touches a game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-pp"
+RunPlaytest.BUILD = "cm2-pp-a1"
 
 local PREFIX = "[PLAYTEST]"
 

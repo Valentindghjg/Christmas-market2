@@ -22,6 +22,7 @@ return function(ctx: any)
 	local assertOutOfOwnReach = ctx.assertOutOfOwnReach
 	local awaitDelivery = ctx.awaitDelivery
 	local call = ctx.call
+	local rejoin = ctx.rejoin
 	local carriedTree = ctx.carriedTree
 	local check = ctx.check
 	local countOrderObjects = ctx.countOrderObjects
@@ -392,7 +393,7 @@ return function(ctx: any)
 	addStep("19", "REJOIN", { "03" }, function()
 		local saved = snap(R.userId)
 		local plotBefore = realPlayer():GetAttribute("PlotId")
-		call("rejoin", R.userId)
+		rejoin(R.userId)
 		local after = snap(R.userId)
 		for _, field in
 			{
