@@ -1,6 +1,6 @@
 # Claude Code — 50-task development backlog
 Updated: 2026-11-26 (planner, end-of-run refresh after the 2026-11-26 hasseln run, ended by the owner: CM2-ASSETWARN closed as engine noise (DECISION_LOG 2026-11-26), PC-10 resolved, PC-12 added for the line 14 phone time, done lines compacted, "Next hasseln starts here" rewritten. Older notes: `docs/archive/BACKLOG_DONE_2026-11-22_to_2026-11-25.md`, `docs/archive/BACKLOG_DONE_2026-11-21_to_2026-11-25.md`, `docs/archive/BACKLOG_RUNS_2026-11-22_to_2026-11-24.md`; texts dropped by this refresh are in git history, stand eee5e8b).
-Status: binding order = "Launch order". Done: Gate A lines 1–15 except 14 (with 5a–5n, 7a, 9a, 9b, 10a, 12c, 13c, 13d, 14a); Gate B lines 16, 17 (17a CM2-PP, 17b CM2-G12b); CM2-SALE2; MODEL CM2-10 (10a–10c), CM2-10W, CM2-12, CM2-12W, CM2-13 (13a, 13b), CM2-13W, CM2-14. Open in Gate A: only line 14 (CM2-49 phone time, PC-12). Friends test (line 15) is unblocked, an owner action. Open PC entries: PC-1, PC-12. Owner decision 2026-11-25 (DECISION_LOG): FPS measurements and world/art captures gate no tick and are not run; where an Accept below still names them, the numeric checks decide. Hygiene: last CM2-SLIM commit 17da09b (2026-11-25); 7 `feat`/`fix` commits since, so the next `feat`/`fix` commit (CM2-13W) makes CM2-SLIM due; backlog about 49 KB. GitHub issues stay open until the owner closes them.
+Status: binding order = "Launch order". Done: Gate A lines 1–15 except 14 (with 5a–5n, 7a, 9a, 9b, 10a, 12c, 13c, 13d, 14a); Gate B lines 16, 17 (17a CM2-PP, 17b CM2-G12b); CM2-SALE2; MODEL CM2-10 (10a–10c), CM2-10W, CM2-12, CM2-12W, CM2-13 (13a, 13b), CM2-13W, CM2-14. Open in Gate A: only line 14 (CM2-49 phone time, PC-12). Friends test (line 15) is unblocked, an owner action. Open PC entries: PC-1, PC-12. Owner decision 2026-11-25 (DECISION_LOG): FPS measurements and world/art captures gate no tick and are not run; where an Accept below still names them, the numeric checks decide. Hygiene: last CM2-SLIM commit 5c3a7ef (2026-11-26, run 2); 0 `feat`/`fix` commits since, so CM2-SLIM is next due after 8 more or before CM2-47; backlog about 49 KB. GitHub issues stay open until the owner closes them.
 
 ## Für den Owner am PC
 Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisions). Written by the `planner` during `hasseln` in the fixed format from `.claude/skills/hasseln/SKILL.md`; the next run checks each entry's `Prüfen` field first and starts with its `Danach` task.
@@ -172,7 +172,7 @@ One `cm2-task` per run, ID `CM2-SLIM` plus its date. **Tier S**: no planner; `im
 
 **Plan:** Goal, Method, Find, Fix, File-do-not-fix and Accept stand unchanged in the standing plan `docs/plans/CM2-SLIM.md` (tier S; moved by CM2-SLIM4b); each run passes that path to `implementer`.
 
-Runs: 2026-11-25 (first run; its PROGRESS entry holds the table). Follow-ups: CM2-SLIM1..5 and SLIM4b below (all done) and the splits CM2-SPLIT-a/b/c (launch lines 25a–25c).
+Runs: 2026-11-25 (first run; its PROGRESS entry holds the table); 2026-11-26 (run 2, 5c3a7ef; PROGRESS entries moved to the archive, nothing removed; filed: TECHNICAL_ARCHITECTURE 46.7 KB and TEST_PLAN 35.4 KB over 30 KB, Luau splits already in 25a-25c). Follow-ups: CM2-SLIM1..5 and SLIM4b below (all done) and the splits CM2-SPLIT-a/b/c (launch lines 25a–25c).
 
 ## Follow-up tasks (created 2026-11-25 from CM2-SLIM)
 All done. None changes behaviour. Standard checks for every task that touches `src` or `tests`; Studio not needed (comments, unused strings and docs only).
@@ -209,8 +209,8 @@ Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or ab
 
 **Next hasseln starts here** (planner 2026-11-26, end-of-run refresh; done that run: CM2-ASSETWARN (closed as engine noise), CM2-SALE2, 17b CM2-G12b, N3b/13c CM2-46c, CM2-12W, 17a CM2-PP; the owner ended the run). The order assumes the owner resolved every open PC entry; hasseln step 1 checks each `Prüfen` field, and a task whose PC entry is still open is skipped silently for that run. If Rojo drops again, the planner reopens PC-11 and Studio criteria go to "Studio-Test ausstehend" (code work goes on).
 1. **PC follow-ups** whose entry checks out, first: **CM2-49T** (PC-12) → **CM2-ARTREF** (PC-1, MODEL section).
-2. **CM2-SLIM** (due: 8 `feat`/`fix` commits since 17da09b incl. CM2-13W; hasseln step 2 checks it; standing plan `docs/plans/CM2-SLIM.md`). CM2-13W done 2026-11-26.
-3. **N6** from line 18 on.
+2. **CM2-SLIM** done 2026-11-26 (run 2, 5c3a7ef; the next run follows the due rule; standing plan `docs/plans/CM2-SLIM.md`). CM2-13W done 2026-11-26.
+3. **N6** from line 18 (CM2-G11) on.
 - **Repo hygiene:** `.claude/settings.local.json` exists, is not git-ignored and must never be committed; stage files by name, never `git add -A` or `git add .`.
 
 CM2-49T. **Record the owner's phone time for line 14** (Danach of PC-12) · S (docs only, no plan, no Studio run) · Depends: PC-12. Goal: the reviewer writes a PROGRESS.md entry "line 14 phone time (owner hand-test)" with the owner's time, device and remarks from the chat, and a status line under line 14. Accept: time ≤ 3:00 → line 14 ticked and Gate A closed in the status header; time > 3:00 → line 14 stays open and the `planner` adds an M fix task right after line 14 (shorten the slowest step the owner names; delivery ETA and customer arrival values from `GameConfig` in the plan), placed first in "Next hasseln starts here".
