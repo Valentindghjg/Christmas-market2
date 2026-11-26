@@ -363,3 +363,8 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Gameplay anchors stay: `CheckoutCounter.CounterBase` and `Receiving.Bay_<i>` keep size, position and children (prompt, label) and are invisible when the art is present.
 - Decor fences: `Placement.DecorFences` become one `FenceRail8` and one `FencePost` each in a model `DecorFence`; the CC0 `FenceWooden` stays only as the fallback.
 - Road yaw 180 degrees on plots 1-3 and 0 on plots 4-6; the night light moves to the art's `Register` part (else `CounterBase`). No save, remote, error-code, string-key or KeepClear change.
+
+## 2026-11-26 — owner: supplier orders with sizes, quantities and a cart (CM2-SUP)
+- Owner noticed that only one tree of a species can be ordered at a time. Cause: the Supplier tab sends a fixed Medium, quantity 1 for orders and sell back (deferred in CM2-G6 "to CM2-40 and later Supplier tab work", never filed); with one order per bay the 4 bays fill after 4 clicks.
+- New task 18a **CM2-SUP** (tier L, `planner-high`), right after CM2-G11 in the launch order: the reference's buy rows (species × size, −/quantity/+/MAX, demand tags), cart with bay and delivery info, one-click recommended order, sell back per row with ALL; the cart is one atomic, idempotent server order. Protocol shape, bay packing and any schema change are for `planner-high`.
+- Files: docs/CLAUDE_BACKLOG.md (18a, N6).
