@@ -109,6 +109,24 @@ export type TutorialBarLayout = {
 	showText: boolean,
 }
 
+-- Plot picker (CM2-PP): panel and confirm are screen boxes; the panel children are relative to the
+-- panel, confirmText/yes/no to the confirm frame.
+export type PlotPickerLayout = {
+	panel: Box,
+	title: Box,
+	prevButton: Box,
+	nextButton: Box,
+	plotNumber: Box,
+	status: Box,
+	message: Box,
+	back: Box,
+	choose: Box,
+	confirm: Box,
+	confirmText: Box,
+	yes: Box,
+	no: Box,
+}
+
 export type StockingBarLayout = {
 	frame: Box,
 	header: Box,
@@ -317,6 +335,15 @@ UiTheme.TutorialBar = {
 	doneSeconds = 5,
 	confirmSeconds = 3,
 	displayOrder = 12,
+}
+
+-- Plot picker at session start (CM2-PP). PROVISIONAL.
+UiTheme.PlotPicker = {
+	cameraHeight = 55,
+	cameraBack = 60,
+	tweenSeconds = 0.6,
+	displayOrder = 21,
+	numberTextSize = 18,
 }
 
 -- Layout constants.
@@ -675,6 +702,32 @@ function UiTheme.stockingBarLayout(m: Metrics): StockingBarLayout
 		reason = if m.compact then clampedBox(8, 24, w - 16, 32) else clampedBox(8, 30, w - 16, 16),
 		controls = controls,
 		twoRows = true,
+	}
+end
+
+-- Plot picker (CM2-PP): a bottom panel (title, prev/next, plot number, status, message, Back,
+-- Choose) and a centred confirm frame above it.
+function UiTheme.plotPickerLayout(m: Metrics): PlotPickerLayout
+	local w = math.min(520, m.width - 2 * m.margin)
+	local panel = box(math.floor((m.width - w) / 2), m.height - m.margin - 176, w, 176)
+	local half = math.floor((w - 36) / 2)
+	local cw = math.min(360, m.width - 2 * m.margin)
+	local confirm = box(math.floor((m.width - cw) / 2), math.max(m.margin, math.floor((panel.y - 120) / 2)), cw, 120)
+	local ch = math.floor((cw - 36) / 2)
+	return {
+		panel = panel,
+		title = box(12, 6, w - 24, 28),
+		prevButton = box(12, 40, 52, 52),
+		nextButton = box(w - 64, 40, 52, 52),
+		plotNumber = box(72, 40, w - 144, 24),
+		status = box(72, 64, w - 144, 32),
+		message = box(12, 98, w - 24, 18),
+		back = box(12, 120, half, 44),
+		choose = box(24 + half, 120, w - 36 - half, 44),
+		confirm = confirm,
+		confirmText = box(12, 10, cw - 24, 44),
+		yes = box(12, 64, ch, 44),
+		no = box(24 + ch, 64, cw - 36 - ch, 44),
 	}
 end
 

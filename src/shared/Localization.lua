@@ -68,6 +68,7 @@ Localization.Strings = {
 		saveErrorActive = "Switch to another save before deleting this one.",
 		saveErrorInUse = "This save is being played right now. Please try again in a minute.",
 		saveErrorNoFreePlot = "There is no free lot on this server. Please try another server.",
+		saveErrorPlotTaken = "Someone just took this plot. Please choose another one.",
 		teleportNoFreePlot = "There is no free lot here, so you are being moved to another server.",
 		saveErrorBusy = "Please wait until the last action has finished.",
 		saveErrorSessionBusy = "This save is still being stored on this server. Please try again in a minute.",
@@ -427,6 +428,21 @@ Localization.Strings = {
 		lbReputation = "★ %s",
 		lbHours = "%s h",
 		lbRobux = "R$ %s",
+		-- Plot picker at session start (CM2-PP).
+		plotPickerTitle = "Choose your plot",
+		plotPickerNumber = "Plot %d of %d",
+		plotPickerFreeSouth = "Available – south side of the road",
+		plotPickerFreeNorth = "Available – north side of the road",
+		plotPickerOccupiedBy = "Occupied – Home of %s",
+		plotPickerOccupied = "Occupied",
+		plotPickerPrev = "◀",
+		plotPickerNext = "▶",
+		plotPickerChoose = "Choose",
+		plotPickerBack = "Back",
+		plotPickerConfirm = "Choose plot %d?",
+		plotPickerYes = "Yes",
+		plotPickerNo = "No",
+		plotPickerMoving = "Moving in…",
 	},
 	de = {
 		cash = "Geld",
@@ -493,6 +509,7 @@ Localization.Strings = {
 		saveErrorActive = "Wechsle zu einem anderen Spielstand, bevor du diesen löschst.",
 		saveErrorInUse = "Dieser Spielstand wird gerade gespielt. Bitte versuche es in einer Minute erneut.",
 		saveErrorNoFreePlot = "Auf diesem Server ist kein Grundstück frei. Bitte versuche einen anderen Server.",
+		saveErrorPlotTaken = "Dieses Grundstück wurde gerade vergeben. Bitte wähle ein anderes.",
 		teleportNoFreePlot = "Hier ist kein Grundstück frei, deshalb wirst du auf einen anderen Server gebracht.",
 		saveErrorBusy = "Bitte warte, bis die letzte Aktion abgeschlossen ist.",
 		saveErrorSessionBusy = "Dieser Spielstand wird auf diesem Server noch gespeichert. Bitte versuche es in einer Minute noch einmal.",
@@ -851,6 +868,21 @@ Localization.Strings = {
 		lbReputation = "★ %s",
 		lbHours = "%s Std.",
 		lbRobux = "R$ %s",
+		-- Grundstückswahl beim Sitzungsstart (CM2-PP).
+		plotPickerTitle = "Wähle dein Grundstück",
+		plotPickerNumber = "Grundstück %d von %d",
+		plotPickerFreeSouth = "Frei – südliche Straßenseite",
+		plotPickerFreeNorth = "Frei – nördliche Straßenseite",
+		plotPickerOccupiedBy = "Belegt – Zuhause von %s",
+		plotPickerOccupied = "Belegt",
+		plotPickerPrev = "◀",
+		plotPickerNext = "▶",
+		plotPickerChoose = "Wählen",
+		plotPickerBack = "Zurück",
+		plotPickerConfirm = "Grundstück %d wählen?",
+		plotPickerYes = "Ja",
+		plotPickerNo = "Nein",
+		plotPickerMoving = "Einzug läuft…",
 	},
 }
 
@@ -910,6 +942,8 @@ Localization.SaveErrorKeys = {
 	-- Final save retries (CM2-R5).
 	SessionBusy = "saveErrorSessionBusy",
 	SwitchSaveFailed = "saveErrorSwitchSaveFailed",
+	-- Plot picker (CM2-PP). InvalidPlotId uses the fallback.
+	PlotTaken = "saveErrorPlotTaken",
 }
 
 function Localization.saveErrorKey(code: unknown): string

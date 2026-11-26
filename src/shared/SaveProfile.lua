@@ -140,6 +140,11 @@ local function validEntry(entry): boolean
 		and SIZES[entry.size] == true
 		and isTimestamp(entry.createdAt)
 		and isTimestamp(entry.lastPlayedAt)
+		-- CM2-PP: the last plot this player played the save on (no version bump).
+		and (
+			entry.lastPlotId == nil
+			or (type(entry.lastPlotId) == "string" and #entry.lastPlotId >= 1 and #entry.lastPlotId <= 32)
+		)
 end
 
 local function isArray(value): boolean

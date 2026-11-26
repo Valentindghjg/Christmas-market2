@@ -491,4 +491,38 @@ return function(t)
 		expect.equal(compactCard.controlsY, 120)
 		expect.truthy(compactCard.controlsY + compactCard.controlsHeight <= compactCard.cardHeight)
 	end)
+
+	-- CM2-PP: the plot picker panel and its confirm frame.
+	t.test("fits the plot picker on every screen", function()
+		local panelChildren =
+			{ "title", "prevButton", "nextButton", "plotNumber", "status", "message", "back", "choose" }
+		local confirmChildren = { "confirmText", "yes", "no" }
+		local touch = { "prevButton", "nextButton", "back", "choose", "yes", "no" }
+		for _, size in ipairs(MATRIX) do
+			local m = UiTheme.metrics(size.w, size.h)
+			local layout: any = UiTheme.plotPickerLayout(m)
+			expect.truthy(UiTheme.inside(layout.panel, m.width, m.height))
+			expect.truthy(UiTheme.inside(layout.confirm, m.width, m.height))
+			for _, id in ipairs(panelChildren) do
+				expect.truthy(UiTheme.inside(layout[id], layout.panel.w, layout.panel.h))
+			end
+			for _, id in ipairs(confirmChildren) do
+				expect.truthy(UiTheme.inside(layout[id], layout.confirm.w, layout.confirm.h))
+			end
+			for _, id in ipairs(touch) do
+				expect.truthy(layout[id].w >= UiTheme.MinTouch)
+				expect.truthy(layout[id].h >= UiTheme.MinTouch)
+			end
+			for first = 1, #panelChildren do
+				for second = first + 1, #panelChildren do
+					expect.falsy(UiTheme.overlaps(layout[panelChildren[first]], layout[panelChildren[second]]))
+				end
+			end
+			for first = 1, #confirmChildren do
+				for second = first + 1, #confirmChildren do
+					expect.falsy(UiTheme.overlaps(layout[confirmChildren[first]], layout[confirmChildren[second]]))
+				end
+			end
+		end
+	end)
 end

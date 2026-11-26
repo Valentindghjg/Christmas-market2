@@ -335,3 +335,20 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 
 ## 2026-11-26 — Owner: PassCashX2 test purchase skipped (N3b, CM2-46c)
 - Owner decision in chat ("gar nicht testen"): CM2-46b playtest step 7b (PassCashX2 test purchase) is not run, because the test account already owns the pass. Gate A line 13c is ticked on 7a, 7c, 7d and the idempotency replay (PROGRESS 2026-11-26 N3b). The simulated pass path stays covered by CM2-46a steps 51-53. No code or config change.
+
+## 2026-11-26 — CM2-PP engineering decisions
+- Plan: `docs/plans/CM2-PP.md` (owner decision "plot picker at session start", 2026-11-24). Picker UI in `src/client/PlotPicker.lua`, server parts in `SaveSlotPicker.lua` ("Plot picker (CM2-PP)") and `PlotService.claimExact`.
+
+| Topic | Decision |
+|---|---|
+| New action | `Save.Plots {saveId}` returns the plot list for that save; rate limit 20 per 10 s (like `Save.List`, PROVISIONAL). |
+| Who picks | `pick = true` only when the save holds no plot here, nobody plays it here, no load of it is pending or unloading, it is not the caller's active save and at least one plot is free for the caller; otherwise the client sends `Save.Play {saveId}` at once (attach, or the automatic/teleport path). |
+| Chosen play | `Save.Play {saveId, plotId?}`: without `plotId` the automatic claim is unchanged; with it, attach paths ignore it, otherwise the server claims exactly that plot if still free, else `PlotTaken` (other plots free) or the no-free-plot path (none free). Nothing is reserved while browsing. |
+| Own current plot | The plot of the caller's active save counts as free when the caller is its only player here and it is neither loading nor unloading (a switch releases it before the claim). |
+| Pre-check | `PlotTaken` is decided before the current save is left, so an obvious refusal never drops the running save; the claim after the leave stays authoritative. |
+| Last plot | Profile entry field `lastPlotId: string?` (1-32 bytes; written on every play and attach), no `SaveProfile.VERSION` bump (precedent `tutorialOffered`, CM2-49); an id the server does not know is ignored. Preselect = `lastPlotId` if free for the caller, else the first free plot in config order. |
+| Road side | `MapLayout.PLOTS[number].z < 0` is `"South"`, else `"North"` (plots 1-3 south, 4-6 north of the main road). |
+| Occupant name | The lot sign's public text (`WorldService.lotSignName`: the broadcast-filtered save name or "<user>'s Tree Lot"); nil while the sign shows "Lot available". Raw save names never leave the server. |
+| Teleport arrival | A `cm2NoFreePlot` arrival no longer auto-plays: the server stores `{saveId, attempt}` per player (`noteArrival`) and sets the player attribute `PlotPickSaveId`; the client opens the plot picker for that save. A later `Save.Play` of the same save uses the stored attempt, so `MaxPlotTeleports` still bounds the chain. |
+| Camera | Scriptable camera at `center + (0, 55, facing x 60)` looking at the plot centre, tween 0.6 s Quad Out; `RequestStreamAroundAsync(center)` per selection (PROVISIONAL, `UiTheme.PlotPicker`). |
+| Kept automatic | `Save.FinderStart`, `Save.Teleport` arrivals (`arrive`), Studio hooks (`shadowJoin`, `rejoin`) and `runPlaytest` keep the automatic claim. |

@@ -234,6 +234,8 @@ local saveSlots = SaveSlotService.new({
 	teleport = teleportForFreePlot,
 	locator = locator,
 	teleportToServer = teleportToServer,
+	-- CM2-PP: the plot picker shows a taken plot's public lot-sign name.
+	plotLabel = WorldService.lotSignName,
 })
 
 -- Robux shop (CM2-46a): receipts into the buyer's active save, passes, perks, Robux spent.
@@ -869,6 +871,7 @@ saveSlots:setActivationHandlers(function(userId: number, companyId: string, plot
 		player:SetAttribute("ActiveSaveName", view.saveName)
 		player:SetAttribute("ActiveSaveOwnerName", view.ownerName)
 		player:SetAttribute("CompanyError", nil)
+		player:SetAttribute("PlotPickSaveId", nil)
 		player:SetAttribute("TutorialStep", companies:tutorialAttribute(companyId))
 		pushDay(companyId)
 		player:SetAttribute("CompanyReady", true)
@@ -935,7 +938,8 @@ local function handleSaveAction(player: Player, request)
 		end
 		refreshLotSign("save:" .. response.data.saveId)
 	elseif not response.ok and action == Protocol.SaveActions.Play then
-		if saveSlots:activeCompanyId(player.UserId) == nil then
+		-- CM2-PP: the plot picker shows PlotTaken itself.
+		if saveSlots:activeCompanyId(player.UserId) == nil and response.errorCode ~= "PlotTaken" then
 			player:SetAttribute("CompanyError", response.errorCode)
 		end
 	end
@@ -1031,11 +1035,10 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 	local saveId, attempt = noFreePlotJoin(player)
-	if saveId then
-		local played, playError = saveSlots:play(player.UserId, saveId, { attempt = attempt })
-		if not played and isInGame(player) then
-			player:SetAttribute("CompanyError", playError)
-		end
+	if saveId and attempt then
+		-- CM2-PP: the arriving player picks a plot again (PlotPicker); the attempt rides along.
+		saveSlots:noteArrival(player.UserId, saveId, attempt)
+		player:SetAttribute("PlotPickSaveId", saveId)
 	end
 	-- Otherwise the save picker chooses; the character uses the world spawn until then.
 end

@@ -67,6 +67,8 @@ return function(t)
 			activated = {},
 			deactivated = {},
 			companyWait = noWait,
+			-- CM2-PP: lot-sign names per plot for Save.Plots.
+			labels = {},
 		}
 		local function clock(): number
 			return env.now
@@ -100,6 +102,9 @@ return function(t)
 			teleport = function(userId: number, data)
 				table.insert(env.teleports, { userId = userId, data = data })
 				return env.teleportResult
+			end,
+			plotLabel = function(plotId: string): string?
+				return env.labels[plotId]
 			end,
 		})
 		env.service:setActivationHandlers(function(...)
@@ -764,5 +769,210 @@ return function(t)
 		expect.truthy(ok)
 		expect.equal(env.companies:snapshotForTest(companyId).tutorial.step, "Done")
 		expect.equal(stored(env).tutorialOffered, true)
+	end)
+
+	-- CM2-PP: the plot picker at session start (Save.Plots, Save.Play with a chosen plot).
+	local function plotChoices(env, saveId: string, userId: number?)
+		return env.service:handle(userId or USER, request("Save.Plots", { saveId = saveId }))
+	end
+
+	local function playChosen(env, saveId: string, plotId: string?, userId: number?)
+		return env.service:handle(userId or USER, request("Save.Play", { saveId = saveId, plotId = plotId }))
+	end
+
+	-- Counts persistence loads of one company (all companies when companyId is nil).
+	local function countLoads(env, companyId: string?)
+		local counter = { loads = 0 }
+		local originalLoad = env.persistence.load
+		env.persistence.load = function(persistence, loadedId: string, ...)
+			if companyId == nil or loadedId == companyId then
+				counter.loads += 1
+			end
+			return originalLoad(persistence, loadedId, ...)
+		end
+		return counter
+	end
+
+	t.test("lists every plot with number, side and status", function()
+		local env = setup({ "Plot_01", "Plot_02", "Plot_03" })
+		local saveId = starter(env)
+		expect.equal(env.plots:claim("save:77_other"), "Plot_01")
+		env.labels.Plot_01 = "Other Lot"
+		local response = plotChoices(env, saveId)
+		expect.truthy(response.ok)
+		local data = response.data
+		expect.equal(data.saveId, saveId)
+		expect.equal(data.pick, true)
+		expect.equal(data.total, 3)
+		expect.equal(#data.plots, 3)
+		for index, row in ipairs(data.plots) do
+			expect.equal(row.plotId, string.format("Plot_%02d", index))
+			expect.equal(row.number, index)
+			expect.equal(row.side, "South")
+		end
+		expect.equal(data.plots[1].free, false)
+		expect.equal(data.plots[1].name, "Other Lot")
+		for index = 2, 3 do
+			expect.equal(data.plots[index].free, true)
+			expect.equal(data.plots[index].name, nil)
+		end
+		expect.equal(data.preselectId, "Plot_02")
+		expect.equal(env.plots:getPlot("save:" .. saveId), nil)
+		expect.equal(env.plots:freeCount(), 2)
+	end)
+
+	t.test("plays a chosen free plot and remembers it", function()
+		local env = setup({ "Plot_01", "Plot_02", "Plot_03" })
+		local saveId = starter(env)
+		local response = playChosen(env, saveId, "Plot_03")
+		expect.truthy(response.ok)
+		expect.equal(response.data.plotId, "Plot_03")
+		expect.equal(env.plots:getPlot("save:" .. saveId), "Plot_03")
+		expect.equal(stored(env).saves[1].lastPlotId, "Plot_03")
+	end)
+
+	t.test("refuses a taken plot with PlotTaken and changes nothing", function()
+		local env = setup()
+		local saveId = starter(env)
+		expect.equal(env.plots:claim("save:77_other"), "Plot_01")
+		local counter = countLoads(env, nil)
+		local response = playChosen(env, saveId, "Plot_01")
+		expect.falsy(response.ok)
+		expect.equal(response.errorCode, "PlotTaken")
+		expect.equal(counter.loads, 0)
+		expect.equal(env.plots:getPlot("save:" .. saveId), nil)
+		expect.equal(env.plots:freeCount(), 1)
+		expect.equal(env.service:activeCompanyId(USER), nil)
+		expect.equal(#env.teleports, 0)
+	end)
+
+	t.test("refuses a plot id this server does not hold", function()
+		local env = setup()
+		local saveId = starter(env)
+		expect.equal(playChosen(env, saveId, "Plot_05").errorCode, "InvalidPlotId")
+		expect.equal(playChosen(env, saveId, "Plot_9").errorCode, "InvalidPlotId")
+		expect.equal(env.plots:freeCount(), 2)
+		expect.equal(env.service:activeCompanyId(USER), nil)
+	end)
+
+	t.test("plays the automatic plot without a plot id", function()
+		local env = setup()
+		local saveId = starter(env)
+		expect.equal(env.plots:claim("save:77_other"), "Plot_01")
+		local response = playChosen(env, saveId, nil)
+		expect.truthy(response.ok)
+		expect.equal(response.data.plotId, "Plot_02")
+	end)
+
+	t.test("the second of two companies choosing one plot gets PlotTaken", function()
+		local env = setup()
+		local saveA = starter(env)
+		expect.truthy(playChosen(env, saveA, "Plot_02").ok)
+		local other = env.service:openProfile(43)
+		expect.truthy(other)
+		local saveB = other.saves[1].saveId
+		local choices = plotChoices(env, saveB, 43)
+		expect.truthy(choices.ok)
+		expect.equal(choices.data.pick, true)
+		expect.equal(choices.data.plots[2].free, false)
+		expect.equal(choices.data.plots[1].free, true)
+		expect.equal(playChosen(env, saveB, "Plot_02", 43).errorCode, "PlotTaken")
+		local played = playChosen(env, saveB, "Plot_01", 43)
+		expect.truthy(played.ok)
+		expect.equal(played.data.plotId, "Plot_01")
+		expect.equal(env.plots:getPlot("save:" .. saveA), "Plot_02")
+	end)
+
+	t.test("preselects the last plot when free, else the first free one", function()
+		local env = setup({ "Plot_01", "Plot_02", "Plot_03" })
+		local saveId = starter(env)
+		expect.truthy(playChosen(env, saveId, "Plot_03").ok)
+		expect.truthy(env.service:leave(USER))
+		expect.equal(env.plots:freeCount(), 3)
+		expect.equal(plotChoices(env, saveId).data.preselectId, "Plot_03")
+		expect.equal(env.plots:claim("save:77_other", "Plot_03"), "Plot_03")
+		local choices = plotChoices(env, saveId)
+		expect.equal(choices.data.pick, true)
+		expect.equal(choices.data.preselectId, "Plot_01")
+	end)
+
+	t.test("offers no pick for the active save and frees its plot for a switch", function()
+		local env = setup()
+		local saveA = starter(env)
+		local saveB = create(env, "Lot B")
+		local _, _, playedA = play(env, saveA)
+		expect.equal(playedA.plotId, "Plot_01")
+		local own = plotChoices(env, saveA)
+		expect.truthy(own.ok)
+		expect.equal(own.data.pick, false)
+		expect.equal(#own.data.plots, 0)
+		expect.equal(own.data.preselectId, nil)
+		local choices = plotChoices(env, saveB)
+		expect.equal(choices.data.pick, true)
+		expect.equal(choices.data.plots[1].free, true)
+		local played = playChosen(env, saveB, "Plot_01")
+		expect.truthy(played.ok)
+		expect.equal(played.data.plotId, "Plot_01")
+		expect.equal(env.service:activeCompanyId(USER), "save:" .. saveB)
+	end)
+
+	t.test("a taken plot with none free takes the teleport path", function()
+		local env = setup({ "Plot_01" })
+		local saveId = starter(env)
+		env.plots:claim("save:77_other")
+		local choices = plotChoices(env, saveId)
+		expect.truthy(choices.ok)
+		expect.equal(choices.data.pick, false)
+		expect.equal(choices.data.total, 1)
+		local response = playChosen(env, saveId, "Plot_01")
+		expect.equal(response.errorCode, "NoFreePlotTeleporting")
+		expect.equal(#env.teleports, 1)
+		expect.equal(env.teleports[1].data.saveId, saveId)
+		expect.equal(env.teleports[1].data.attempt, 1)
+	end)
+
+	t.test("a teleport arrival carries its attempt into the chosen play", function()
+		local env = setup()
+		local saveId = starter(env)
+		env.plots:claim("save:77_other")
+		env.plots:claim("save:78_other")
+		env.service:noteArrival(USER, saveId, 2)
+		expect.equal(playChosen(env, saveId, "Plot_01").errorCode, "NoFreePlotTeleporting")
+		expect.equal(#env.teleports, 1)
+		expect.equal(env.teleports[1].data.attempt, 3)
+		env.service:noteArrival(USER, saveId, 3)
+		expect.equal(playChosen(env, saveId, "Plot_01").errorCode, "NoFreePlot")
+		expect.equal(#env.teleports, 1)
+	end)
+
+	t.test("rate-limits Save.Plots like the other save actions", function()
+		local env = setup()
+		local saveId = starter(env)
+		local limit = GameConfig.Saves.RateLimits["Save.Plots"].limit
+		for _ = 1, limit do
+			expect.truthy(plotChoices(env, saveId).ok)
+		end
+		expect.equal(plotChoices(env, saveId).errorCode, "RateLimited")
+	end)
+
+	t.test("a plot taken during the switch gives PlotTaken and loads nothing", function()
+		local env = setup()
+		local saveA = starter(env)
+		local saveB = create(env, "Lot B")
+		local _, _, playedA = play(env, saveA)
+		expect.equal(playedA.plotId, "Plot_01")
+		env.service:setActivationHandlers(function(...)
+			table.insert(env.activated, table.pack(...))
+		end, function(...)
+			table.insert(env.deactivated, table.pack(...))
+			env.plots:claim("save:77_other", "Plot_01")
+		end)
+		local counter = countLoads(env, "save:" .. saveB)
+		local response = playChosen(env, saveB, "Plot_01")
+		expect.equal(response.errorCode, "PlotTaken")
+		expect.equal(env.service:activeCompanyId(USER), nil)
+		expect.equal(env.plots:getPlot("save:" .. saveB), nil)
+		expect.equal(env.plots:holderOf("Plot_01"), "save:77_other")
+		expect.equal(counter.loads, 0)
 	end)
 end

@@ -1523,6 +1523,23 @@ function WorldService.setLotSign(plotId: string, view: LotSignView?): boolean
 	return true
 end
 
+-- CM2-PP: the lot sign's public name text (the broadcast-filtered save name or "<user>'s Tree
+-- Lot") for the plot picker; nil while the sign shows "Lot available" or is missing.
+function WorldService.lotSignName(plotId: string): string?
+	local board = lotSignBoard(plotId)
+	local gui = board and board:FindFirstChild("SignFront")
+	local frame = gui and gui:FindFirstChild("Frame")
+	local nameLabel = frame and frame:FindFirstChild("Name")
+	if not (nameLabel and nameLabel:IsA("TextLabel")) then
+		return nil
+	end
+	local source = nameLabel:GetAttribute("NameSource")
+	if source == nil or source == "Free" or nameLabel.Text == "" then
+		return nil
+	end
+	return nameLabel.Text
+end
+
 -- The part a player must stand near to like the lot (server reach check, CM2-G15).
 function WorldService.lotSignTarget(plotId: string): BasePart?
 	return lotSignBoard(plotId)

@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local MapLayout = require(Shared:WaitForChild("MapLayout"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local SaveSlotShared = require(script.Parent:WaitForChild("SaveSlotShared"))
@@ -211,6 +212,131 @@ function SaveSlotService:_delete(userId: number, profile, payload)
 	return { ok = true, data = { saveId = saveId } }
 end
 
+-- Plot picker (CM2-PP) ----------------------------------------------------------------------
+
+-- The save holds no plot here, nobody plays it here and no load or unload of it is in flight:
+-- its first player on this server picks the plot.
+function SaveSlotService:_needsPick(companyId: string): boolean
+	return self._plots:getPlot(companyId) == nil
+		and self._members[companyId] == nil
+		and (self._pendingLoads[companyId] or 0) == 0
+		and not self._unloading[companyId]
+end
+
+-- The holder is the caller's active save and the caller its only player here, with no load or
+-- unload in flight: a switch releases its plot before the claim.
+function SaveSlotService:_releasesOnLeave(userId: number, holder: string): boolean
+	return holder == self._active[userId]
+		and #self:playersOn(holder) == 1
+		and (self._pendingLoads[holder] or 0) == 0
+		and not self._unloading[holder]
+end
+
+function SaveSlotService:_plotFreeFor(userId: number, plotId: string): boolean
+	if not self._plots:has(plotId) then
+		return false
+	end
+	local holder = self._plots:holderOf(plotId)
+	return holder == nil or self:_releasesOnLeave(userId, holder)
+end
+
+function SaveSlotService:_freeCountFor(userId: number): number
+	local count = 0
+	for _, plotId in ipairs(self._plots:plotIds()) do
+		if self:_plotFreeFor(userId, plotId) then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- The lot sign's public text of a plot; nil without a label lookup or for a bad value.
+function SaveSlotService:_plotLabelOf(plotId: string): string?
+	if self._plotLabel == nil then
+		return nil
+	end
+	local called, label = pcall(self._plotLabel, plotId)
+	if called and type(label) == "string" and #label >= 1 and #label <= 100 then
+		return label
+	end
+	return nil
+end
+
+-- Save.Plots: the plot list for the picker, or pick = false when Save.Play attaches or takes
+-- the automatic path. Nothing is reserved while the player browses.
+function SaveSlotService:_plotChoices(userId: number, profile, payload)
+	local saveId = payload.saveId
+	local entry = SaveProfile.find(profile, saveId)
+	if entry == nil then
+		return failure("SaveNotFound")
+	end
+	local companyId = companyIdOf(saveId)
+	local ids = self._plots:plotIds()
+	if self._active[userId] == companyId or not self:_needsPick(companyId) or self:_freeCountFor(userId) == 0 then
+		return { ok = true, data = { saveId = saveId, pick = false, total = #ids, plots = {} } }
+	end
+	local plots = {}
+	local firstFree = nil
+	for index, plotId in ipairs(ids) do
+		local spot = MapLayout.PLOTS[index]
+		local free = self:_plotFreeFor(userId, plotId)
+		if free and firstFree == nil then
+			firstFree = plotId
+		end
+		table.insert(plots, {
+			plotId = plotId,
+			number = index,
+			side = if spot and spot.z < 0 then "South" else "North",
+			free = free,
+			name = if not free then self:_plotLabelOf(plotId) else nil,
+		})
+	end
+	local lastPlotId = entry.lastPlotId
+	local preselectId = if type(lastPlotId) == "string" and self:_plotFreeFor(userId, lastPlotId)
+		then lastPlotId
+		else firstFree
+	return {
+		ok = true,
+		data = { saveId = saveId, pick = true, total = #ids, preselectId = preselectId, plots = plots },
+	}
+end
+
+-- A chosen plot that cannot be had: InvalidPlotId for an id this server does not hold,
+-- PlotTaken while another plot is free for the caller. nil lets the play go on (attach, the
+-- chosen free plot, or the no-free-plot path).
+function SaveSlotService:_plotRefusal(userId: number, companyId: string, plotId: string): string?
+	if not self._plots:has(plotId) then
+		return "InvalidPlotId"
+	end
+	if not self:_needsPick(companyId) then
+		return nil
+	end
+	if self:_plotFreeFor(userId, plotId) then
+		return nil
+	end
+	if self:_freeCountFor(userId) == 0 then
+		return nil
+	end
+	return "PlotTaken"
+end
+
+-- A cm2NoFreePlot teleport arrival: the player picks a plot for this save, and the next
+-- Save.Play of it carries the attempt, so MaxPlotTeleports still bounds the chain.
+function SaveSlotService:noteArrival(userId: number, saveId: string, attempt: number)
+	if not SaveProfile.isSaveId(saveId) then
+		return
+	end
+	if
+		type(attempt) ~= "number"
+		or attempt ~= math.floor(attempt)
+		or attempt < 1
+		or attempt > SAVES.MaxPlotTeleports
+	then
+		return
+	end
+	self._arrivals[userId] = { saveId = saveId, attempt = attempt }
+end
+
 -- Play, switch and leave --------------------------------------------------------------------
 
 -- Another player plays this save here and its session is live: join that session.
@@ -220,7 +346,7 @@ end
 
 -- Marks the save as played: lastPlayedAt, lastSaveId and the entry size from the record.
 -- The owner of a Duo or larger save without a code gets one.
-function SaveSlotService:_touch(userId: number, saveId: string, companyId: string)
+function SaveSlotService:_touch(userId: number, saveId: string, companyId: string, plotId: string)
 	local info = self._companies:teamInfo(companyId)
 	local now = self._clock()
 	-- CM2-49: every owner play marks the player as offered the guided tutorial.
@@ -233,6 +359,8 @@ function SaveSlotService:_touch(userId: number, saveId: string, companyId: strin
 		local stamped = SaveProfile.find(currentProfile, saveId)
 		if stamped then
 			stamped.lastPlayedAt = now
+			-- CM2-PP: the plot the picker preselects next time.
+			stamped.lastPlotId = plotId
 			if info then
 				stamped.size = info.saveSize
 			end
@@ -276,7 +404,7 @@ function SaveSlotService:_attach(userId: number, saveId: string, companyId: stri
 	end
 	local plotId = self._plots:getPlot(companyId) :: string
 	self:_register(userId, companyId)
-	self:_touch(userId, saveId, companyId)
+	self:_touch(userId, saveId, companyId, plotId)
 	self:_activated(userId, saveId, companyId, plotId, nil, entry)
 	return true, nil, { saveId = saveId, plotId = plotId }
 end
@@ -308,6 +436,13 @@ function SaveSlotService:_play(userId: number, saveId: string, options): (boolea
 	local current = self._active[userId]
 	if current == companyId and self._companies:isAvailable(companyId) and not settings.reload then
 		return true, nil, { saveId = saveId, plotId = self._plots:getPlot(companyId) }
+	end
+	-- CM2-PP: an obvious refusal of a chosen plot is decided before the current save is left.
+	if settings.plotId ~= nil then
+		local refusal = self:_plotRefusal(userId, companyId, settings.plotId)
+		if refusal then
+			return false, refusal, nil
+		end
 	end
 
 	-- a/b. Another save, a failed session or a forced reload: leave it, keeping its plot
@@ -364,7 +499,21 @@ function SaveSlotService:_play(userId: number, saveId: string, options): (boolea
 			-- The last leaver's unload is still in flight; never load under it.
 			loadError = "SessionBusy"
 		else
-			plotId = self._plots:claim(companyId, preferred)
+			if settings.plotId ~= nil then
+				-- CM2-PP: exactly the chosen plot; a taken one with none free goes on to the
+				-- no-free-plot path below.
+				local exactError
+				plotId, exactError = self._plots:claimExact(companyId, settings.plotId)
+				if not plotId and (exactError ~= "PlotTaken" or self._plots:freeCount() > 0) then
+					self:_endLoad(companyId)
+					if self:_idle(companyId) then
+						self:_releaseLocation(saveId)
+					end
+					return false, if exactError == "PlotTaken" then "PlotTaken" else "InvalidPlotId", nil
+				end
+			else
+				plotId = self._plots:claim(companyId, preferred)
+			end
 			if not plotId then
 				self:_endLoad(companyId)
 				-- Amendment A1.1: free the map entry before the player is sent on, so the next
@@ -425,7 +574,7 @@ function SaveSlotService:_play(userId: number, saveId: string, options): (boolea
 	-- h. Register, then mark the save as played.
 	self:_register(userId, companyId)
 	self:_endLoad(companyId)
-	self:_touch(userId, saveId, companyId)
+	self:_touch(userId, saveId, companyId, plotId :: string)
 	-- i.
 	self:_activated(userId, saveId, companyId, plotId :: string, state, entry)
 	return true, nil, { saveId = saveId, plotId = plotId }
@@ -504,6 +653,7 @@ function SaveSlotService:leave(userId: number, final: boolean?): (boolean, strin
 			Protocol.forgetUser(limiter, userId)
 		end
 		self._profiles[userId] = nil
+		self._arrivals[userId] = nil
 		return left, err
 	end)
 	self._leaving[userId] = nil

@@ -91,6 +91,8 @@ GameConfig.Saves = {
 		["Save.Rename"] = { limit = 5, window = 60 },
 		["Save.Delete"] = { limit = 5, window = 60 },
 		["Save.Play"] = { limit = 10, window = 60 },
+		-- Plot picker (CM2-PP, PROVISIONAL, same as Save.List).
+		["Save.Plots"] = { limit = 20, window = 10 },
 		["Save.Join"] = { limit = 5, window = 60 },
 		["Save.LeaveTeam"] = { limit = 5, window = 60 },
 		["Save.Team"] = { limit = 20, window = 10 },

@@ -66,6 +66,10 @@ function SaveSlotService.new(deps)
 	-- teleport into the server that plays a save.
 	self._locator = deps.locator
 	self._teleportToServer = deps.teleportToServer
+	-- CM2-PP: the public lot-sign text of a plot (optional; (plotId) -> string?) and the
+	-- teleport arrivals waiting for a plot pick (userId -> {saveId, attempt}).
+	self._plotLabel = deps.plotLabel
+	self._arrivals = {}
 	self._limiters = {}
 	for action, rule in pairs(SAVES.RateLimits) do
 		self._limiters[action] = Protocol.newRateLimiter(rule.limit, rule.window)
@@ -480,8 +484,18 @@ function SaveSlotService:_handle(userId: number, request)
 		return self:_rename(userId, profile, payload)
 	elseif action == Protocol.SaveActions.Delete then
 		return self:_delete(userId, profile, payload)
+	elseif action == Protocol.SaveActions.Plots then
+		return self:_plotChoices(userId, profile, payload)
 	elseif action == Protocol.SaveActions.Play then
-		local played, playError, data = self:_play(userId, payload.saveId, nil)
+		local arrival = self._arrivals[userId]
+		local options = {
+			plotId = payload.plotId,
+			attempt = if arrival and arrival.saveId == payload.saveId then arrival.attempt else nil,
+		}
+		local played, playError, data = self:_play(userId, payload.saveId, options)
+		if played then
+			self._arrivals[userId] = nil
+		end
 		if not played then
 			return { ok = false, errorCode = playError or "InternalError", data = data }
 		end

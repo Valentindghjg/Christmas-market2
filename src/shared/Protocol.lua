@@ -61,6 +61,8 @@ Protocol.SaveActions = {
 	Rename = "Save.Rename",
 	Delete = "Save.Delete",
 	Play = "Save.Play",
+	-- Plot picker at session start (CM2-PP).
+	Plots = "Save.Plots",
 	-- Co-op saves (CM2-S2).
 	Join = "Save.Join",
 	LeaveTeam = "Save.LeaveTeam",
@@ -440,7 +442,8 @@ local SAVE_PAYLOAD_KEYS = {
 	[Protocol.SaveActions.Create] = { name = true, size = true },
 	[Protocol.SaveActions.Rename] = { saveId = true, name = true },
 	[Protocol.SaveActions.Delete] = { saveId = true, confirmName = true },
-	[Protocol.SaveActions.Play] = { saveId = true },
+	[Protocol.SaveActions.Play] = { saveId = true, plotId = true },
+	[Protocol.SaveActions.Plots] = { saveId = true },
 	[Protocol.SaveActions.Join] = { code = true },
 	[Protocol.SaveActions.LeaveTeam] = { saveId = true },
 	[Protocol.SaveActions.Team] = {},
@@ -517,6 +520,11 @@ function Protocol.validateSaveRequest(request)
 	elseif action == Protocol.SaveActions.Delete then
 		if not isNameText(payload.confirmName) then
 			return false, "InvalidName"
+		end
+	elseif action == Protocol.SaveActions.Play then
+		-- CM2-PP: an optional chosen plot; a number or any non-listed string fails.
+		if payload.plotId ~= nil and table.find(GameConfig.PersonalPlotIds, payload.plotId) == nil then
+			return false, "InvalidPlotId"
 		end
 	end
 	return true, nil

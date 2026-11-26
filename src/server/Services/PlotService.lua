@@ -50,6 +50,27 @@ function PlotService:claim(holderId: string, preferredPlotId: string?): (string?
 	return chosen, nil
 end
 
+-- CM2-PP: claims exactly the requested plot. The client-chosen id is only honoured when free; an
+-- existing claim of the holder keeps its plot and the requested id is ignored.
+function PlotService:claimExact(holderId: string, plotId: string): (string?, string?)
+	if not isHolder(holderId) then
+		return nil, "InvalidHolder"
+	end
+	local existing = self._byHolder[holderId]
+	if existing then
+		return existing, nil
+	end
+	if not self:has(plotId) then
+		return nil, "UnknownPlot"
+	end
+	if self._plots[plotId] ~= false then
+		return nil, "PlotTaken"
+	end
+	self._plots[plotId] = holderId
+	self._byHolder[holderId] = plotId
+	return plotId, nil
+end
+
 function PlotService:release(holderId: string): boolean
 	local plotId = self._byHolder[holderId]
 	if not plotId then
@@ -78,6 +99,16 @@ function PlotService:holderOf(plotId: unknown): string?
 		return holder
 	end
 	return nil
+end
+
+-- CM2-PP: true for a plot id this service manages.
+function PlotService:has(plotId: unknown): boolean
+	return type(plotId) == "string" and self._plots[plotId] ~= nil
+end
+
+-- CM2-PP: the configured plot ids in claim order (a copy).
+function PlotService:plotIds(): { string }
+	return table.clone(self._order)
 end
 
 function PlotService:freeCount(): number

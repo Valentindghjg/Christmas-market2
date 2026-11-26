@@ -316,6 +316,29 @@ return function(t)
 		end
 	end)
 
+	-- CM2-PP: Save.Play may carry a chosen plot; Save.Plots lists the plots for a save.
+	t.test("Save.Play accepts an optional listed plotId", function()
+		local Save = Protocol.SaveActions
+		expect.truthy(saveRequest(Save.Play, { saveId = SAVE_ID, plotId = "Plot_03" }))
+		for _, plotId in { "Plot_07", "Plot_9", 3 } do
+			local _, reason = saveRequest(Save.Play, { saveId = SAVE_ID, plotId = plotId })
+			expect.equal(reason, "InvalidPlotId")
+		end
+		local _, extra = saveRequest(Save.Play, { saveId = SAVE_ID, plotId = "Plot_03", cash = 1 })
+		expect.equal(extra, "UnexpectedField")
+	end)
+
+	t.test("validates Save.Plots payloads", function()
+		local Save = Protocol.SaveActions
+		expect.truthy(saveRequest(Save.Plots, { saveId = SAVE_ID }))
+		local _, missing = saveRequest(Save.Plots, {})
+		expect.equal(missing, "InvalidSaveId")
+		local _, badId = saveRequest(Save.Plots, { saveId = "42_NOTHEX" })
+		expect.equal(badId, "InvalidSaveId")
+		local _, extra = saveRequest(Save.Plots, { saveId = SAVE_ID, plotId = "Plot_01" })
+		expect.equal(extra, "UnexpectedField")
+	end)
+
 	t.test("counts recent requests without recording them", function()
 		local limiter = Protocol.newRateLimiter(3, 60)
 		expect.equal(Protocol.recentCount(limiter, 7, "fail", 100), 0)

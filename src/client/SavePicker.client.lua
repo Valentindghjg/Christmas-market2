@@ -17,6 +17,7 @@ local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local SaveListSync = require(Shared:WaitForChild("SaveListSync"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
 local UiKit = require(script.Parent:WaitForChild("UiKit") :: ModuleScript)
+local PlotPicker = require(script.Parent:WaitForChild("PlotPicker") :: ModuleScript)
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local saveAction = remotes:WaitForChild("SaveAction") :: RemoteFunction
 
@@ -237,6 +238,7 @@ local renamingSaveId: string? = nil
 local deleteTarget: any = nil
 local refreshList: () -> ()
 local redrawRows: () -> ()
+local open: () -> ()
 local close: () -> ()
 
 local function updateConfirmButton()
@@ -278,6 +280,26 @@ local function play(entry)
 		return
 	end
 	status.Text = localized("saveLoading")
+	-- CM2-PP: the first player of a save on this server picks its plot.
+	local choices = request("Save.Plots", { saveId = entry.saveId })
+	if choices == nil then
+		return
+	end
+	if not choices.ok then
+		showError(choices.errorCode)
+		return
+	end
+	if type(choices.data) == "table" and choices.data.pick == true then
+		close()
+		PlotPicker.open(entry.saveId, choices.data, request, {
+			onBack = open,
+			onFailed = function(code: string)
+				open()
+				showError(code)
+			end,
+		})
+		return
+	end
 	local response = request("Save.Play", { saveId = entry.saveId })
 	if response == nil then
 		return
@@ -507,7 +529,7 @@ local function updateBackButton()
 	backToGame.Visible = player:GetAttribute("CompanyReady") == true
 end
 
-local function open()
+open = function()
 	UiKit.closeModals()
 	UiKit.setBaseLayer(close)
 	picker.Visible = true
@@ -616,12 +638,20 @@ player:GetAttributeChangedSignal("CompanyReady"):Connect(function()
 end)
 
 player:GetAttributeChangedSignal("ActiveSaveId"):Connect(function()
+	-- CM2-PP: a switch through the plot picker leaves the old save first.
+	if PlotPicker.isOpen() then
+		return
+	end
 	if player:GetAttribute("ActiveSaveId") == nil and not picker.Visible then
 		open()
 	end
 end)
 
 player:GetAttributeChangedSignal("CompanyError"):Connect(function()
+	-- CM2-PP: the plot picker reports its own failures (onFailed).
+	if PlotPicker.isOpen() then
+		return
+	end
 	local code = player:GetAttribute("CompanyError")
 	if code == nil then
 		return
@@ -654,3 +684,26 @@ if player:GetAttribute("ActiveSaveId") == nil or player:GetAttribute("CompanyErr
 else
 	savesButton.Visible = true
 end
+
+-- CM2-PP: a player teleported here for a free plot picks one for that save.
+local ARRIVAL_POLL_SECONDS = 0.2
+local ARRIVAL_MAX_WAIT_SECONDS = 10
+local function playArrival()
+	local saveId = player:GetAttribute("PlotPickSaveId")
+	if type(saveId) ~= "string" or player:GetAttribute("ActiveSaveId") ~= nil or PlotPicker.isOpen() then
+		return
+	end
+	task.spawn(function()
+		if not picker.Visible then
+			open()
+		end
+		local waited = 0
+		while sync.inFlight() and waited < ARRIVAL_MAX_WAIT_SECONDS do
+			task.wait(ARRIVAL_POLL_SECONDS)
+			waited += ARRIVAL_POLL_SECONDS
+		end
+		play({ saveId = saveId })
+	end)
+end
+player:GetAttributeChangedSignal("PlotPickSaveId"):Connect(playArrival)
+playArrival()

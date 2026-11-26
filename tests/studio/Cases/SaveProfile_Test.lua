@@ -165,4 +165,19 @@ return function(t)
 			expect.falsy(SaveProfile.validate(profile))
 		end
 	end)
+
+	-- CM2-PP: a save entry may remember the last plot it was played on.
+	t.test("accepts an optional lastPlotId string", function()
+		local profile = profileWith(1)
+		for _, valid in { "Plot_03" } do
+			profile.saves[1].lastPlotId = valid
+			expect.truthy(SaveProfile.validate(profile))
+		end
+		profile.saves[1].lastPlotId = nil
+		expect.truthy(SaveProfile.validate(profile))
+		for _, bad in { 5, "", string.rep("p", 33) } do
+			profile.saves[1].lastPlotId = bad :: any
+			expect.falsy(SaveProfile.validate(profile))
+		end
+	end)
 end

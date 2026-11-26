@@ -859,4 +859,21 @@ return function(t)
 		expect.truthy(again)
 		expect.equal(env.a.companies:snapshotForTest(save.companyId).cash, recordOf(env, save.saveId).cash)
 	end)
+
+	-- CM2-PP: a save that already holds a plot here needs no pick; a chosen plot is ignored.
+	t.test("a teammate of a save that holds a plot attaches without a pick", function()
+		local env = setup()
+		local save = coopSave(env)
+		expect.truthy(join(env.a, FRIEND, save.code).ok)
+		local choices = act(env.a, FRIEND, "Save.Plots", { saveId = save.saveId })
+		expect.truthy(choices.ok)
+		expect.equal(choices.data.pick, false)
+		expect.equal(#choices.data.plots, 0)
+		local otherPlot = if save.plotId == "Plot_01" then "Plot_02" else "Plot_01"
+		local played = act(env.a, FRIEND, "Save.Play", { saveId = save.saveId, plotId = otherPlot })
+		expect.truthy(played.ok)
+		expect.equal(played.data.plotId, save.plotId)
+		expect.equal(env.a.plots:holderOf(otherPlot), nil)
+		expect.equal(#env.a.service:playersOn(save.companyId), 2)
+	end)
 end
