@@ -325,3 +325,13 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 | Stores | `ChristmasMarket2_LB_<Key>_v1`; in Studio with suffix `_Studio`, so test values never reach the live boards. |
 | Zero | A value of 0 that was never written is not written. |
 | Names | Usernames only (no display names, no save names); unknown → localized "Player". |
+
+## 2026-11-26 — Tree art in the world, CM2-12W (engineering)
+- Plan: `docs/plans/CM2-12W.md`. Five roles: Display, Pickup, Carried (player), NpcCarried (customer and staff) and Roof; the backlog's "forest" role was already art through CM2-10W (`MapWorld` unchanged, step 64 only confirms it).
+- Scale rule (`src/shared/TreeArt.lua`): Display and Pickup use the art at native size (H 6/8/10); Carried, NpcCarried and Roof scale the art to `11.5 x primitive scale` (Carried 4.6, NpcCarried 4.025 / 4.6 / 5.175, Roof 4.025); a carried art tree drops by `2.5 x scale` so its foot matches the primitive's.
+- Label rule: label height = tree top + `UiTheme.WorldLabels.<layout>.height` (+ stagger). `WorldLabels.DisplayTree.height` 10 -> 1.0 and `WorldLabels.PickupOrder.height` 9 -> 1.5 (stagger 2 stays); both now mean studs above the tree top.
+- Foot at the lot top: display trees 0.6 -> 0.55, pickup trees 0.9 -> 0.55 (`lotTop` = ground top).
+- Staff projection fields: `staffPeekOrder` and `staffPeekRestock` return `speciesId` (read-only; no save field, remote, error code or string key changes), so staff and customers carry the right species.
+
+## 2026-11-26 — Owner: PassCashX2 test purchase skipped (N3b, CM2-46c)
+- Owner decision in chat ("gar nicht testen"): CM2-46b playtest step 7b (PassCashX2 test purchase) is not run, because the test account already owns the pass. Gate A line 13c is ticked on 7a, 7c, 7d and the idempotency replay (PROGRESS 2026-11-26 N3b). The simulated pass path stays covered by CM2-46a steps 51-53. No code or config change.

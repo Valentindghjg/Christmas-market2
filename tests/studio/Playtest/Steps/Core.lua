@@ -428,14 +428,19 @@ return function(ctx: any)
 		local workerLoads, expiries = 0, 0
 		local ok, message = pcall(function()
 			for cycle = 1, 6 do
+				ctx.phase(string.format("cycle %d order", cycle))
 				local start = snap(S.userId)
 				local data = orderTrees(S.userId, 1)
+				ctx.phase(string.format("cycle %d delivery", cycle))
 				advance(DELIVERY_WAIT)
 				awaitDelivery(S.userId, data.orderId)
+				ctx.phase(string.format("cycle %d place", cycle))
 				placeOne(S.userId, data.bay)
+				ctx.phase(string.format("cycle %d visit", cycle))
 				local number = visit(S.userId, 8 + 24 * ((cycle - 1) % 9))
 				local mid = snap(S.userId)
 				if cycle % 2 == 1 then
+					ctx.phase(string.format("cycle %d worker", cycle))
 					call("setStaff", { employeeId = "LotWorker", count = 1 })
 					-- CM2-25/26: the visible Lot Worker walks the order to the car.
 					local done = poll(function()
@@ -445,6 +450,7 @@ return function(ctx: any)
 					check(done, string.format("cycle %d: worker did not load order %d", cycle, number))
 					workerLoads += 1
 				else
+					ctx.phase(string.format("cycle %d expiry", cycle))
 					call("setStaff", { employeeId = "LotWorker", count = 0 })
 					advance(EXPIRY_WAIT)
 					local done = poll(function()
@@ -454,6 +460,7 @@ return function(ctx: any)
 					check(done, string.format("cycle %d: order %d did not expire", cycle, number))
 					expiries += 1
 				end
+				ctx.phase(string.format("cycle %d clean", cycle))
 				local clean = poll(function()
 					return plotClean(S.plotId) and displayedCount(S.plotId) == snap(S.userId).placementCount
 				end, 4)
@@ -463,6 +470,7 @@ return function(ctx: any)
 				)
 			end
 		end)
+		ctx.phase("staff off")
 		call("setStaff", { employeeId = "LotWorker", count = 0 })
 		check(ok, tostring(message))
 		return string.format("6 cycles, %d worker loads, %d expiries, 0 leaks", workerLoads, expiries)

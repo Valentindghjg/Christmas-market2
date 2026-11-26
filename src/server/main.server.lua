@@ -603,6 +603,19 @@ local ORDER_ERROR_KEYS = {
 	OutOfReach = "outOfReach",
 }
 
+-- The species and size of one of the player's open orders (CM2-12W), or nil, nil.
+local function orderLook(player: Player, orderNumber: number): (string?, string?)
+	local companyId = companyIdFor(player.UserId)
+	local summary = if companyId then companies:getCustomerOrders(companyId) else nil
+	local orders = if type(summary) == "table" and type(summary.orders) == "table" then summary.orders else {}
+	for _, order in ipairs(orders) do
+		if order.orderNumber == orderNumber then
+			return order.speciesId, order.sizeId
+		end
+	end
+	return nil, nil
+end
+
 local function afterOrderAction(player: Player, action: string, response, payload)
 	if not response.ok then
 		if response.errorCode == "WrongCar" and type(payload) == "table" then
@@ -614,7 +627,8 @@ local function afterOrderAction(player: Player, action: string, response, payloa
 	end
 	local character = player.Character
 	if action == Protocol.Actions.OrderCarry and character and type(response.data) == "number" then
-		WorldService.attachCarriedTree(character, response.data)
+		local speciesId, sizeId = orderLook(player, response.data)
+		WorldService.attachCarriedTree(character, response.data, speciesId, sizeId)
 	elseif action == Protocol.Actions.OrderLoad or action == Protocol.Actions.OrderRelease then
 		-- The review toast (CM2-G15, reviews handler) replaces the old orderComplete toast.
 		WorldService.detachCarriedTree(character)

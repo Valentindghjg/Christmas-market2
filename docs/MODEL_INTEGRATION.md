@@ -56,7 +56,15 @@ Larger models are Blender MeshParts; small items stay Parts. The `.blend` in `as
 - Paths: `Trees/{DouglasFir,FrasierFir,NobleFir,BlueSpruce}/{Small,Medium,Large}` plus `Trees/FrostcrownFir/Large` and `Trees/HollyberrySpruce/Large`; sources `assets/art/source/Trees/<Species>/<Size>/` built by the shared `assets/art/source/Trees/tree_common.py`, previews `assets/art/previews/Trees/<Species>/<Size>.png`.
 - Heights (total incl. leader/topper) and max radius: Small 6.0 / 1.9, Medium 8.0 / 2.5, Large 10.0 / 3.1, special trees 10.4 / 3.3 studs (below `Placement.FootprintRadius`); origin = trunk foot, `ATT_TreeBase` at (0, 0, 0), collider `COL_Tree` 1.1R x 1.1R x H.
 - Budgets (tier A, `asset.json`): maxTriangles Small 800, Medium 1000, Large 1200, special 1600; maxMeshParts 7 (one MeshPart per colour: Trunk, RootFlare, NeedlesCore, Needles, Snow, then Frost/Topper/Berries).
-- The game still uses the primitive trees; wiring through `ArtLibrary.find("Trees/<species>/<size>")` is CM2-12W (needs the PC-2 upload).
+- Wired by CM2-12W (see below).
+
+## Tree art in the world (CM2-12W)
+- `src/shared/TreeArt.lua` holds the five roles (Display, Pickup, Carried, NpcCarried, Roof), the paths `Trees/<Species>/<Size>` (nil species -> `DouglasFir`, bad size -> `Medium`) and the primitive scales; `WorldService.buildTree` clones the art, else builds the primitive tree and logs `[ART]` once. Models carry `TreeArtMode` (`Art`/`Primitive`), `TreeArtPath` and, for art, `TreeArtScale`.
+- Display and Pickup keep the art's native size (H 6/8/10) with the foot at the lot top 0.55; Carried, NpcCarried and Roof scale the art to the primitive's height (`11.5 x primitive scale`) and drop it by `2.5 x scale` so the foot sits where the primitive's did.
+- Labels sit `UiTheme.WorldLabels[...].height` studs above the tree top (DisplayTree 1.0, PickupOrder 1.5, plus the pickup stagger), for art and primitive alike.
+- The roof tree lies along the car's +Z, resting on `RoofRack` (CM2-14W moves it to `CargoAnchor`); order cars carry `TreeSpeciesId` and `TreeSizeId`.
+- The forest already uses `Environment/ForestFir` (CM2-10W) and stays unchanged.
+
 ## HQ art (CM2-13a)
 - Paths: `Buildings/{SalesTent,TimberPavilion,AlpineHut,MountainChalet}` (tier A, maxMeshParts 10); sources `assets/art/source/Buildings/<Tier>/` built with the shared `assets/art/source/Buildings/hq_common.py`, previews `assets/art/previews/Buildings/<Tier>.png`.
 - Footprint (incl. overhangs) x H in studs, maxTriangles: SalesTent 19.8 x 13.7 x 10.0, 2500; TimberPavilion 23.6 x 17.6 x 12.9, 4000; AlpineHut 27.8 x 19.9 x 16.0, 3600; MountainChalet 31.2 x 23.3 x 20.0, 4000. Origin = footprint centre at ground, bbox centred.

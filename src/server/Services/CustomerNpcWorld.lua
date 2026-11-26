@@ -191,10 +191,10 @@ function CustomerNpcWorld:position(visitId: string): Point?
 	return NpcPath.fromWorld(c, root.Position.X, root.Position.Z)
 end
 
-function CustomerNpcWorld:holdTree(visitId: string, sizeId: string?)
+function CustomerNpcWorld:holdTree(visitId: string, sizeId: string?, speciesId: string?)
 	local model = self:_avatar(visitId)
 	if model then
-		WorldService.attachNpcTree(model, sizeId)
+		WorldService.attachNpcTree(model, sizeId, speciesId)
 	end
 end
 

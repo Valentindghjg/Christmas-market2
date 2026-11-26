@@ -9,7 +9,7 @@
 -- Playtest/Support and steps from Playtest/Steps (CM2-RF); none of them is under Cases, so the
 -- unit-test runners never execute them. Nothing touches a game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-g12b"
+RunPlaytest.BUILD = "cm2-12w-a2"
 
 local PREFIX = "[PLAYTEST]"
 
@@ -34,6 +34,20 @@ function RunPlaytest.guard(
 	end
 	return true, nil
 end
+
+-- Seconds one step may run before the runner aborts it (CM2-12W amendment 1). CLEANUP gets a
+-- short fixed budget; "full" steps 600 s; a soak step lasts its minutes plus 600 s.
+function RunPlaytest.stepTimeout(mode: string, minutes: number, name: string): number
+	if name == "CLEANUP" then
+		return 120
+	end
+	if mode == "soak" then
+		return minutes * 60 + 600
+	end
+	return 600
+end
+
+local DIAG_WAIT_SECONDS = 5
 
 local function validOptions(options: any): (string?, number?, number?)
 	if type(options) ~= "table" then
@@ -99,6 +113,11 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 	ctx.results = results
 	ctx.outcome = outcome
 	ctx.addStep = addStep
+	-- Phase marker: steps call ctx.phase(text); a hung run shows where in ServerStorage.PlaytestPhase.
+	local currentId = ""
+	ctx.phase = function(text: string)
+		ServerStorage:SetAttribute("PlaytestPhase", currentId .. " " .. text)
+	end
 	for _, name in { "Base", "Saves", "Fixtures" } do
 		installer("Support", name)(ctx)
 	end
@@ -118,6 +137,7 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 				"Progression",
 				"DayNight",
 				"Leaderboards",
+				"Trees",
 			}
 		do
 			installer("Steps", name)(ctx)
@@ -141,6 +161,31 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 		)
 	)
 
+	-- Read-only server state of both test users, requested when a step times out.
+	local function collectDiagnosis(): string
+		local result: any = nil
+		local finished = false
+		task.spawn(function()
+			local ok, response = pcall(function()
+				return hook:Invoke("diagnose", { R.userId, ctx.S.userId })
+			end)
+			if ok then
+				result = response
+			end
+			finished = true
+		end)
+		local waitedSince = os.clock()
+		while not finished and os.clock() - waitedSince < DIAG_WAIT_SECONDS do
+			task.wait(0.1)
+		end
+		if not finished or result == nil then
+			return HttpService:JSONEncode("none")
+		end
+		local encoded, text = pcall(HttpService.JSONEncode, HttpService, result)
+		return if encoded then text else HttpService:JSONEncode("none")
+	end
+
+	local aborted: string? = nil
 	for _, step in steps do
 		local unmet: string? = nil
 		for _, need in step.needs do
@@ -149,14 +194,45 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 				break
 			end
 		end
-		if unmet then
+		if aborted ~= nil and step.name ~= "CLEANUP" then
+			record(step.id, step.name, "SKIP", "aborted after timeout in " .. aborted)
+		elseif unmet then
 			record(step.id, step.name, "SKIP", "needs " .. unmet)
 		else
-			local ok, detail = pcall(step.run)
-			if ok then
-				record(step.id, step.name, "PASS", if type(detail) == "string" then detail else "")
+			currentId = step.id
+			ctx.phase("start")
+			local limit = RunPlaytest.stepTimeout(mode, minutes, step.name)
+			local ok, detail: any = false, nil
+			local done = false
+			local thread = task.spawn(function()
+				ok, detail = pcall(step.run)
+				done = true
+			end)
+			local stepStart = os.clock()
+			while not done and os.clock() - stepStart < limit do
+				task.wait(0.5)
+			end
+			if done then
+				if ok then
+					record(step.id, step.name, "PASS", if type(detail) == "string" then detail else "")
+				else
+					record(step.id, step.name, "FAIL", tostring(detail))
+				end
 			else
-				record(step.id, step.name, "FAIL", tostring(detail))
+				emit("TRACE " .. step.id .. " " .. debug.traceback(thread))
+				emit("DIAG " .. collectDiagnosis())
+				pcall(task.cancel, thread)
+				record(
+					step.id,
+					step.name,
+					"FAIL",
+					string.format(
+						"timeout after %d s at %s",
+						limit,
+						tostring(ServerStorage:GetAttribute("PlaytestPhase"))
+					)
+				)
+				aborted = step.id
 			end
 		end
 	end
@@ -209,12 +285,14 @@ function RunPlaytest.run(hook: any, options: any)
 	ServerStorage:SetAttribute("PlaytestStatus", "running")
 	ServerStorage:SetAttribute("PlaytestSummary", nil)
 	ServerStorage:SetAttribute("PlaytestReport", nil)
+	ServerStorage:SetAttribute("PlaytestPhase", nil)
 	local ok, message = pcall(execute, hook, mode, minutes, holdSeconds)
 	if not ok then
 		warn(string.format("%s runner error: %s", PREFIX, tostring(message)))
 		ServerStorage:SetAttribute("PlaytestSummary", "SUMMARY runner error: " .. tostring(message))
 	end
 	ServerStorage:SetAttribute("PlaytestStatus", "done")
+	ServerStorage:SetAttribute("PlaytestPhase", nil)
 end
 
 return RunPlaytest

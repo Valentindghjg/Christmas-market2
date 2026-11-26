@@ -316,6 +316,54 @@ function StudioTestService.install(context)
 		return success(staff:snapshot())
 	end
 
+	-- Read-only state of the given users for a hung playtest (CM2-12W amendment 1). Takes no
+	-- lock and never yields. Reads companies._sessions directly: a Studio-only instrument.
+	function commands.diagnose(arg)
+		if type(arg) ~= "table" then
+			return failure("BadArgument")
+		end
+		local plotsFolder = (function()
+			local world = workspace:FindFirstChild("ChristmasMarketWorld")
+			return world and world:FindFirstChild("Plots")
+		end)()
+		local staffEntries = staff:snapshot().staff
+		local users = {}
+		for _, userId in ipairs(arg) do
+			local entry: { [string]: any } = {}
+			local companyId = if type(userId) == "number" then companyIdFor(userId) else nil
+			if companyId ~= nil then
+				local session = companies._sessions[companyId]
+				if session ~= nil then
+					entry.session = {
+						busy = session.busy,
+						healthy = session.healthy,
+						saving = session.saving,
+						unloading = session.unloading,
+						corrupt = session.corrupt,
+						revision = session.state and session.state.revision,
+					}
+				end
+				local plotId = context.plots:getPlot(companyId)
+				local plot = if plotId ~= nil and plotsFolder ~= nil then plotsFolder:FindFirstChild(plotId) else nil
+				local displayed = plot and plot:FindFirstChild("DisplayedTrees")
+				local orders = plot and plot:FindFirstChild("CustomerOrders")
+				entry.plot = {
+					displayedTrees = if displayed then #displayed:GetChildren() else nil,
+					customerOrders = if orders then #orders:GetChildren() else nil,
+				}
+				local own = {}
+				for _, member in ipairs(staffEntries) do
+					if member.companyId == companyId then
+						table.insert(own, { state = member.state, job = member.job, orderNumber = member.orderNumber })
+					end
+				end
+				entry.staff = own
+			end
+			users[tostring(userId)] = entry
+		end
+		return success({ physicsFps = workspace:GetRealPhysicsFPS(), users = users })
+	end
+
 	-- Sets one role's energy of the shadow's company: the live record and the saved value.
 	function commands.setStaffEnergy(arg)
 		if

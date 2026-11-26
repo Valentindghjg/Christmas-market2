@@ -207,7 +207,12 @@ function CompanyStaff.install(CompanyStateService)
 			if best == nil then
 				return nil
 			end
-			return { orderNumber = best.orderNumber, parkingSpace = best.parkingSpace, sizeId = best.sizeId }
+			return {
+				orderNumber = best.orderNumber,
+				parkingSpace = best.parkingSpace,
+				sizeId = best.sizeId,
+				speciesId = best.speciesId,
+			}
 		end)
 		return peeked
 	end
@@ -293,7 +298,14 @@ function CompanyStaff.install(CompanyStateService)
 				else
 					local bay = chooseBay(state, spot.sizeId, spot.speciesId)
 					if bay ~= nil then
-						return { x = spot.x, z = spot.z, rotation = spot.rotation, sizeId = spot.sizeId, bay = bay }
+						return {
+							x = spot.x,
+							z = spot.z,
+							rotation = spot.rotation,
+							sizeId = spot.sizeId,
+							bay = bay,
+							speciesId = state.bays[bay].speciesId,
+						}
 					end
 					index += 1
 				end

@@ -8,6 +8,7 @@ local AssetCatalog = require(Shared:WaitForChild("AssetCatalog"))
 local Economy = require(Shared:WaitForChild("Economy"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Stocking = require(Shared:WaitForChild("Stocking"))
+local TreeArt = require(Shared:WaitForChild("TreeArt"))
 local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
 local LotFenceWorld = require(script.Parent:WaitForChild("LotFenceWorld"))
@@ -29,6 +30,8 @@ local STRUCTURE_GROUP = GameConfig.Customers.Npc.CollisionGroups.Structure
 local checkoutHandler: ((Player, string) -> ())? = nil
 
 local CAR_DRIVE_SECONDS = 2
+-- Top of the primitive car's roof rack relative to the car pivot (rack centre 4.2 + 0.1 - Body 1.6).
+local ROOF_RACK_TOP = 2.7
 local CAR_COLORS = {
 	Color3.fromRGB(176, 52, 48),
 	Color3.fromRGB(57, 96, 150),
@@ -362,6 +365,75 @@ end
 local function lotPosition(plot: Model, x: number, z: number, y: number): Vector3
 	local center = (plot.PrimaryPart :: BasePart).Position
 	return Vector3.new(center.X + x, y, center.Z + plotFacing(plot) * z)
+end
+
+-- Top surface height of the plot's lot ground (CM2-12W: the foot of every lot tree).
+local function lotTop(plot: Model): number
+	local ground = plot.PrimaryPart :: BasePart
+	return ground.Position.Y + ground.Size.Y / 2
+end
+
+-- Height of a model's bounding-box top above baseY.
+local function treeTop(model: Model, baseY: number): number
+	local box, size = model:GetBoundingBox()
+	return box.Position.Y + size.Y / 2 - baseY
+end
+
+-- A tree of one world role (CM2-12W): the CM2-12 art when ArtAssets has Trees/<Species>/<Size>,
+-- else the primitive tree. `base` is the foot of the tree.
+local function buildTree(
+	root: Instance?,
+	parent: Instance,
+	name: string,
+	role: string,
+	speciesId: string?,
+	sizeId: string?,
+	base: Vector3,
+	yaw: number
+): Model
+	local choice = TreeArt.choose(root, ArtLibrary.find, role, speciesId, sizeId)
+	local model: Model
+	if choice.mode == "Art" then
+		model = ArtLibrary.prepareClone(choice.template)
+		model.Name = name
+		model.Parent = parent
+		local _, size = model:GetBoundingBox()
+		local scale = TreeArt.artScale(role, sizeId, size.Y)
+		if scale ~= 1 then
+			model:ScaleTo(scale)
+		end
+		model:PivotTo(CFrame.new(base) * CFrame.Angles(0, math.rad(yaw), 0))
+		model:SetAttribute("TreeArtScale", scale)
+	else
+		reportMissing(choice.path, choice.code or "MissingArtAsset")
+		model = tree(parent, name, base, choice.primitiveScale)
+		if yaw ~= 0 then
+			model:PivotTo(model:GetPivot() * CFrame.Angles(0, math.rad(yaw), 0))
+		end
+	end
+	model:SetAttribute("TreeArtMode", choice.mode)
+	model:SetAttribute("TreeArtPath", choice.path)
+	return model
+end
+
+-- A label above the tree top: `UiTheme.WorldLabels[layoutId].height` studs above it, plus stagger.
+local function labelTree(
+	model: Model,
+	baseY: number,
+	kind: string,
+	text: string,
+	layoutId: string,
+	stagger: number,
+	attributes
+): TextLabel
+	local adornee = model.PrimaryPart :: BasePart
+	local height = TreeArt.labelOffset(
+		treeTop(model, baseY),
+		adornee.Position.Y - baseY,
+		UiTheme.WorldLabels[layoutId].height,
+		stagger
+	)
+	return billboard(adornee, kind, text, layoutId, height, attributes)
 end
 
 -- Turns a model built for a +Z road side half around its bounding-box centre on -Z plots.
@@ -816,15 +888,22 @@ function WorldService.syncDisplayedTrees(plotId: string, placements, mediumPrice
 	display = Instance.new("Folder")
 	display.Name = "DisplayedTrees"
 	display.Parent = plot
-	local sizeScales = { Small = 0.6, Medium = 0.8, Large = 1.0 }
+	local artRoot = ArtLibrary.root(ReplicatedStorage)
 	for placementId, placement in pairs(placements) do
 		local transform = if type(placement) == "table" then placement.transform else nil
 		if type(transform) == "table" and finiteNumber(transform.x) and finiteNumber(transform.z) then
-			local scale = sizeScales[placement.sizeId] or 0.8
-			local model =
-				tree(display, "DisplayedTree_" .. placementId, lotPosition(plot, transform.x, transform.z, 0.6), scale)
 			local rotation = if finiteNumber(transform.rotation) then transform.rotation else 0
-			model:PivotTo(model:GetPivot() * CFrame.Angles(0, math.rad(rotation), 0))
+			local base = lotPosition(plot, transform.x, transform.z, lotTop(plot))
+			local model = buildTree(
+				artRoot,
+				display,
+				"DisplayedTree_" .. placementId,
+				"Display",
+				placement.speciesId,
+				placement.sizeId,
+				base,
+				rotation
+			)
 			local reserved = type(reservations) == "table" and reservations[placementId] ~= nil
 			model:SetAttribute("PlacementId", placementId)
 			model:SetAttribute("SpeciesId", placement.speciesId)
@@ -847,8 +926,9 @@ function WorldService.syncDisplayedTrees(plotId: string, placements, mediumPrice
 			local tenths = TreeHeight.tenthsFor(placementId, placement.sizeId) or 0
 			local medium = type(mediumPrices) == "table" and mediumPrices[placement.speciesId]
 			local price = if type(medium) == "number" then Economy.priceForSize(medium, placement.sizeId) else 0
-			local label = billboard(
-				model.PrimaryPart :: BasePart,
+			local label = labelTree(
+				model,
+				base.Y,
 				"DisplayTree",
 				string.format(
 					"%s · %s · %s ft · $%d",
@@ -858,7 +938,7 @@ function WorldService.syncDisplayedTrees(plotId: string, placements, mediumPrice
 					price
 				),
 				"DisplayTree",
-				UiTheme.WorldLabels.DisplayTree.height * scale,
+				0,
 				{
 					SpeciesId = placement.speciesId,
 					SizeId = placement.sizeId,
@@ -1089,6 +1169,34 @@ local function decorateCar(carModel: Model, orderNumber: number, callbacks)
 	end
 end
 
+-- The sold tree on a leaving car's roof (CM2-12W): species and size come from the car's
+-- TreeSpeciesId / TreeSizeId attributes; art lies along the car's +Z, resting on the roof rack.
+local function attachRoofTree(carModel: Model, artRoot: Instance?)
+	local speciesAttr, sizeAttr = carModel:GetAttribute("TreeSpeciesId"), carModel:GetAttribute("TreeSizeId")
+	local speciesId = if type(speciesAttr) == "string" then speciesAttr else nil
+	local sizeId = if type(sizeAttr) == "string" then sizeAttr else nil
+	local roof = buildTree(artRoot, carModel, "RoofTree", "Roof", speciesId, sizeId, Vector3.zero, 0)
+	for _, descendant in roof:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.CanCollide = false
+			descendant.CanQuery = false
+		end
+	end
+	if roof:GetAttribute("TreeArtMode") ~= "Art" then
+		roof:PivotTo(carModel:GetPivot() * CFrame.new(0, 4.4, 0.6) * CFrame.Angles(math.rad(90), 0, 0))
+		return
+	end
+	local _, size = roof:GetBoundingBox()
+	local rack = carModel:FindFirstChild("RoofRack")
+	local rackTop
+	if rack and rack:IsA("BasePart") then
+		rackTop = rack.CFrame * CFrame.new(0, rack.Size.Y / 2, 0)
+	else
+		rackTop = carModel:GetPivot() * CFrame.new(0, ROOF_RACK_TOP, 0.6)
+	end
+	roof:PivotTo(rackTop * CFrame.new(0, math.max(size.X, size.Z) / 2, -size.Y / 2) * CFrame.Angles(math.rad(90), 0, 0))
+end
+
 -- Mirrors customer orders into the world: a numbered car per order on its parking space
 -- and the sold tree with an "Order #n – PICK UP" label until someone carries it.
 -- callbacks.carry(orderNumber, part) and callbacks.load(orderNumber, part) receive the
@@ -1105,6 +1213,7 @@ function WorldService.syncCustomerOrders(plotId: string, summary, callbacks)
 		folder.Parent = plot
 	end
 	local center = (plot.PrimaryPart :: BasePart).Position
+	local artRoot = ArtLibrary.root(ReplicatedStorage)
 	local wanted = {}
 	local orders = if type(summary) == "table" and type(summary.orders) == "table" then summary.orders else {}
 	for _, order in ipairs(orders) do
@@ -1130,8 +1239,10 @@ function WorldService.syncCustomerOrders(plotId: string, summary, callbacks)
 					end
 				end
 				if loaded[orderNumber] then
-					local roofTree = tree(child, "RoofTree", Vector3.zero, 0.35)
-					roofTree:PivotTo(child:GetPivot() * CFrame.new(0, 4.4, 0.6) * CFrame.Angles(math.rad(90), 0, 0))
+					local roofOk, roofErr = pcall(attachRoofTree, child, artRoot)
+					if not roofOk then
+						warn(string.format("[ART] RoofBuildFailed %s #%d: %s", plotId, orderNumber, tostring(roofErr)))
+					end
 				end
 				local parked = child:GetPivot()
 				drive(child, parked, roadEntry(parked), CAR_DRIVE_SECONDS, function()
@@ -1148,12 +1259,16 @@ function WorldService.syncCustomerOrders(plotId: string, summary, callbacks)
 		local carModel = folder:FindFirstChild(carName)
 		if carModel and carModel:IsA("Model") then
 			-- A walking customer's adopted visit car (CM2-N1) or an existing order car.
+			carModel:SetAttribute("TreeSpeciesId", order.speciesId)
+			carModel:SetAttribute("TreeSizeId", order.sizeId)
 			decorateCar(carModel, orderNumber, callbacks)
 		elseif not carModel then
 			local parked = parkedAt(plot, order.parkingSpace)
 			local color = CAR_COLORS[(orderNumber - 1) % #CAR_COLORS + 1]
 			local newCar = car(folder, carName, roadEntry(parked), color)
 			newCar:SetAttribute("OrderNumber", orderNumber)
+			newCar:SetAttribute("TreeSpeciesId", order.speciesId)
+			newCar:SetAttribute("TreeSizeId", order.sizeId)
 			decorateCar(newCar, orderNumber, callbacks)
 			drive(newCar, roadEntry(parked), parked, CAR_DRIVE_SECONDS)
 		end
@@ -1167,28 +1282,42 @@ function WorldService.syncCustomerOrders(plotId: string, summary, callbacks)
 		elseif not pickup then
 			-- One pickup spot per parking space, so two waiting orders never overlap. The row
 			-- lies east of the sales stand (x 23..36) and clear of the checkout counter.
-			local column = math.clamp(order.parkingSpace, 1, 4) - 1
-			local position = center + Vector3.new(23 + column * 4.5, 0.6, if center.Z < 0 then 13 else -13)
-			local scales = { Small = 0.6, Medium = 0.8, Large = 1.0 }
-			local pickupTree = tree(folder, treeName, position, scales[order.sizeId] or 0.8)
-			pickupTree:SetAttribute("OrderNumber", orderNumber)
-			setCollisionGroup(pickupTree, GameConfig.Customers.Npc.CollisionGroups.Tree)
-			local trunk = pickupTree.PrimaryPart :: BasePart
-			local pickupLayout = UiTheme.WorldLabels.PickupOrder
-			billboard(
-				trunk,
-				"PickupOrder",
-				string.format("Order #%d · PICK UP", orderNumber),
-				"PickupOrder",
-				pickupLayout.height + (if column % 2 == 0 then pickupLayout.stagger else 0),
-				{ OrderNumber = orderNumber }
-			)
-			local carryPrompt = prompt(trunk, "CarryOrder", "Pick up customer tree", orderNumber)
-			carryPrompt.Triggered:Connect(function(player)
-				if callbacks and callbacks.carry then
-					callbacks.carry(player, orderNumber, trunk)
-				end
+			local pickupOk, pickupErr = pcall(function()
+				local column = math.clamp(order.parkingSpace, 1, 4) - 1
+				local base = Vector3.new(
+					center.X + 23 + column * 4.5,
+					lotTop(plot),
+					center.Z + (if center.Z < 0 then 13 else -13)
+				)
+				local pickupTree =
+					buildTree(artRoot, folder, treeName, "Pickup", order.speciesId, order.sizeId, base, 0)
+				pickupTree:SetAttribute("OrderNumber", orderNumber)
+				setCollisionGroup(pickupTree, GameConfig.Customers.Npc.CollisionGroups.Tree)
+				local trunk = pickupTree.PrimaryPart :: BasePart
+				local pickupLayout = UiTheme.WorldLabels.PickupOrder
+				labelTree(
+					pickupTree,
+					base.Y,
+					"PickupOrder",
+					string.format("Order #%d · PICK UP", orderNumber),
+					"PickupOrder",
+					if column % 2 == 0 then pickupLayout.stagger else 0,
+					{ OrderNumber = orderNumber }
+				)
+				local carryPrompt = prompt(trunk, "CarryOrder", "Pick up customer tree", orderNumber)
+				carryPrompt.Triggered:Connect(function(player)
+					if callbacks and callbacks.carry then
+						callbacks.carry(player, orderNumber, trunk)
+					end
+				end)
 			end)
+			if not pickupOk then
+				local partial = folder:FindFirstChild(treeName)
+				if partial then
+					partial:Destroy()
+				end
+				warn(string.format("[ART] PickupBuildFailed %s #%d: %s", plotId, orderNumber, tostring(pickupErr)))
+			end
 		end
 	end
 	return true
@@ -1210,13 +1339,22 @@ function WorldService.findOrderTarget(plotId: string, kind: string, orderNumber:
 end
 
 -- A carried tree rides on the character until it is loaded, released or expires.
-function WorldService.attachCarriedTree(character: Model, orderNumber: number)
+function WorldService.attachCarriedTree(character: Model, orderNumber: number, speciesId: string?, sizeId: string?)
 	WorldService.detachCarriedTree(character)
 	local root = character:FindFirstChild("HumanoidRootPart")
 	if not (root and root:IsA("BasePart")) then
 		return
 	end
-	local carried = tree(character, "CarriedTree", Vector3.zero, 0.4)
+	local carried = buildTree(
+		ArtLibrary.root(ReplicatedStorage),
+		character,
+		"CarriedTree",
+		"Carried",
+		speciesId,
+		sizeId,
+		Vector3.zero,
+		0
+	)
 	carried:SetAttribute("OrderNumber", orderNumber)
 	for _, descendant in carried:GetDescendants() do
 		if descendant:IsA("BasePart") then
@@ -1225,7 +1363,11 @@ function WorldService.attachCarriedTree(character: Model, orderNumber: number)
 			descendant.Massless = true
 		end
 	end
-	carried:PivotTo(root.CFrame * CFrame.new(1.5, 0, -1.2) * CFrame.Angles(0, 0, math.rad(-20)))
+	local pose = root.CFrame * CFrame.new(1.5, 0, -1.2) * CFrame.Angles(0, 0, math.rad(-20))
+	if carried:GetAttribute("TreeArtMode") == "Art" then
+		pose = pose * CFrame.new(0, -TreeArt.pivotDrop("Carried", sizeId), 0)
+	end
+	carried:PivotTo(pose)
 	for _, descendant in carried:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			local weld = Instance.new("WeldConstraint")
@@ -1450,16 +1592,23 @@ function WorldService.destroyVisitCar(visitCar: Model)
 	visitCar:Destroy()
 end
 
-local NPC_TREE_SCALES = { Small = 0.35, Medium = 0.4, Large = 0.45 }
-
 -- The tree a walking customer carries: welded to the root, massless and non-colliding.
-function WorldService.attachNpcTree(model: Model, sizeId: string?)
+function WorldService.attachNpcTree(model: Model, sizeId: string?, speciesId: string?)
 	WorldService.detachNpcTree(model)
 	local root = model:FindFirstChild("HumanoidRootPart")
 	if not (root and root:IsA("BasePart")) then
 		return
 	end
-	local carried = tree(model, "NpcCarriedTree", Vector3.zero, NPC_TREE_SCALES[sizeId or ""] or 0.4)
+	local carried = buildTree(
+		ArtLibrary.root(ReplicatedStorage),
+		model,
+		"NpcCarriedTree",
+		"NpcCarried",
+		speciesId,
+		sizeId,
+		Vector3.zero,
+		0
+	)
 	for _, descendant in carried:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			descendant.Anchored = false
@@ -1470,7 +1619,11 @@ function WorldService.attachNpcTree(model: Model, sizeId: string?)
 			descendant.CollisionGroup = GameConfig.Customers.Npc.CollisionGroups.Tree
 		end
 	end
-	carried:PivotTo(root.CFrame * CFrame.new(0, 0.2, -1.4) * CFrame.Angles(0, 0, math.rad(-15)))
+	local pose = root.CFrame * CFrame.new(0, 0.2, -1.4) * CFrame.Angles(0, 0, math.rad(-15))
+	if carried:GetAttribute("TreeArtMode") == "Art" then
+		pose = pose * CFrame.new(0, -TreeArt.pivotDrop("NpcCarried", sizeId), 0)
+	end
+	carried:PivotTo(pose)
 	for _, descendant in carried:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			local weld = Instance.new("WeldConstraint")

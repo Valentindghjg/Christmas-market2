@@ -154,7 +154,7 @@ UiTheme.WorldLabels = {
 		h = 44,
 		textSize = UiTheme.TextSize.Small,
 		wrap = true,
-		height = 10,
+		height = 1.0, -- studs above the tree top (CM2-12W)
 		stagger = 0,
 		maxDistance = 40,
 	},
@@ -172,7 +172,7 @@ UiTheme.WorldLabels = {
 		h = 30,
 		textSize = UiTheme.TextSize.Body,
 		wrap = false,
-		height = 9,
+		height = 1.5, -- studs above the tree top (CM2-12W)
 		stagger = 2,
 		maxDistance = 60,
 	},

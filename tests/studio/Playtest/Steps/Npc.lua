@@ -85,10 +85,31 @@ return function(ctx: any)
 	-- The player loads order `number` with prompts (teleport, carry, load), as in step 13;
 	-- within 5 s the waiting customer is gone.
 	local function loadAndAwaitDeparture(visitId: string, number: number)
+		local order = findOrder(snap(R.userId), number)
+		check(order ~= nil, string.format("order %d gone before loading (expired or loaded)", number))
+		check(not order.carried, string.format("order %d already carried before loading", number))
 		local ready = poll(function()
 			return orderPart(R.plotId, "PickupTree_" .. number) ~= nil
 		end, 3)
-		check(ready, "PickupTree_" .. number .. " missing")
+		local plot = plotFolder(R.plotId)
+		local orderFolder = plot and plot:FindFirstChild("CustomerOrders")
+		local names = "none"
+		if orderFolder then
+			local list = {}
+			for _, child in orderFolder:GetChildren() do
+				table.insert(list, child.Name)
+			end
+			names = table.concat(list, ", ")
+		end
+		check(
+			ready,
+			string.format(
+				"PickupTree_%d missing (order open, %.0f s patience left; CustomerOrders: %s)",
+				number,
+				order.expiresAt - call("clock", nil),
+				names
+			)
+		)
 		teleport(orderPart(R.plotId, "PickupTree_" .. number))
 		prompt("carry", number)
 		teleport(orderPart(R.plotId, "CustomerCar_" .. number))
@@ -110,47 +131,9 @@ return function(ctx: any)
 			table.insert(ids, visitId)
 			seen[visitId] = { reserved = false, carried = false }
 		end
-		local waiting: { [string]: any } = {}
-		local deadline = os.clock() + 150
-		while true do
-			-- CM2-N2: the player checks out the customer at the counter.
-			serveCounter()
-			local npcs = npcSnapshot()
+		-- The per-visit checks, run on a fresh snapshot once the visit waits at its car.
+		local function checkWaiting(visitId: string, customer: any)
 			local rSnap = snap(R.userId)
-			local all = true
-			for _, visitId in ids do
-				local customer = findNpc(npcs, visitId)
-				check(customer ~= nil, visitId .. " vanished before WaitingAtCar")
-				if customer.state == "WaitingAtCar" then
-					waiting[visitId] = customer
-				else
-					all = false
-					local placement = findPlacement(rSnap, customer.placementId)
-					-- A placement already sold in between the two snapshots is skipped.
-					if NPC_RESERVED_STATES[customer.state] and placement ~= nil then
-						check(
-							placement.reserved,
-							visitId .. " in " .. customer.state .. " but its tree is not reserved"
-						)
-						local model = displayedTree(customer.placementId)
-						if model and model:GetAttribute("Reserved") == true then
-							seen[visitId].reserved = true
-						end
-						if model and model:GetAttribute("NpcCarried") == true then
-							seen[visitId].carried = true
-						end
-					end
-				end
-			end
-			if all then
-				break
-			end
-			check(os.clock() < deadline, table.concat(ids, ", ") .. " not all WaitingAtCar within 150 s")
-			task.wait(POLL_INTERVAL)
-		end
-		local rSnap = snap(R.userId)
-		for _, visitId in ids do
-			local customer = waiting[visitId]
 			local history = table.concat(customer.history, ">")
 			check(#customer.history == #NPC_FULL_PATH, visitId .. " history " .. history)
 			for index, state in NPC_FULL_PATH do
@@ -180,8 +163,51 @@ return function(ctx: any)
 				string.format("%s is %s studs from its door", visitId, tostring(distance))
 			)
 		end
-		for _, visitId in ids do
-			loadAndAwaitDeparture(visitId, waiting[visitId].orderNumber)
+
+		-- Each visit is loaded the moment it waits at its car (at most one load per iteration),
+		-- so a later visit's order cannot expire while an earlier one is being loaded.
+		local loaded: { [string]: boolean } = {}
+		local deadline = os.clock() + 150
+		while true do
+			-- CM2-N2: the player checks out the customer at the counter.
+			serveCounter()
+			local npcs = npcSnapshot()
+			local rSnap = snap(R.userId)
+			local all = true
+			for _, visitId in ids do
+				if not loaded[visitId] then
+					all = false
+					local customer = findNpc(npcs, visitId)
+					check(customer ~= nil, visitId .. " vanished before WaitingAtCar")
+					if customer.state == "WaitingAtCar" then
+						checkWaiting(visitId, customer)
+						loadAndAwaitDeparture(visitId, customer.orderNumber)
+						loaded[visitId] = true
+						break
+					else
+						local placement = findPlacement(rSnap, customer.placementId)
+						-- A placement already sold in between the two snapshots is skipped.
+						if NPC_RESERVED_STATES[customer.state] and placement ~= nil then
+							check(
+								placement.reserved,
+								visitId .. " in " .. customer.state .. " but its tree is not reserved"
+							)
+							local model = displayedTree(customer.placementId)
+							if model and model:GetAttribute("Reserved") == true then
+								seen[visitId].reserved = true
+							end
+							if model and model:GetAttribute("NpcCarried") == true then
+								seen[visitId].carried = true
+							end
+						end
+					end
+				end
+			end
+			if all then
+				break
+			end
+			check(os.clock() < deadline, table.concat(ids, ", ") .. " not all loaded within 150 s")
+			task.wait(POLL_INTERVAL)
 		end
 	end
 

@@ -447,7 +447,7 @@ end
 
 function ENTRY.PickingUp(self, visit, _now: number)
 	visit.carrying = true
-	self:_call("holdTree", visit.id, visit.sizeId)
+	self:_call("holdTree", visit.id, visit.sizeId, visit.speciesId)
 	self._companies:refreshPlacements(visit.companyId)
 end
 

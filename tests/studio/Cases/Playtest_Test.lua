@@ -21,6 +21,12 @@ return function(t)
 		expect.equal(hookReason, "NoHook")
 	end)
 
+	t.test("gives every step a finite timeout", function()
+		expect.equal(RunPlaytest.stepTimeout("full", 10, "SOAK_FAST"), 600)
+		expect.equal(RunPlaytest.stepTimeout("full", 10, "CLEANUP"), 120)
+		expect.equal(RunPlaytest.stepTimeout("soak", 10, "SOAK_REALTIME"), 1200)
+	end)
+
 	t.test("guard refuses a concurrent run and accepts a valid call", function()
 		local busyOk, busyReason = RunPlaytest.guard(true, true, true, "running")
 		expect.falsy(busyOk)

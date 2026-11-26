@@ -281,6 +281,7 @@ function StaffNpcService:_nextJob(record, now: number): boolean
 			orderNumber = order.orderNumber,
 			space = order.parkingSpace,
 			sizeId = order.sizeId,
+			speciesId = order.speciesId,
 			claimed = false,
 		}
 		self:_walk(record, "WalkingToPickup", Staff.pickupApproach(order.parkingSpace), now)
@@ -339,7 +340,7 @@ function STEP.WalkingToPickup(self, record, now: number)
 	local ok = self._companies:staffClaimOrder(record.companyId, job.orderNumber)
 	if ok then
 		job.claimed = true
-		self:_call("holdTree", record.id, job.sizeId)
+		self:_call("holdTree", record.id, job.sizeId, job.speciesId)
 		self:_walk(record, "CarryingToCar", NpcPath.door(job.space), now)
 	else
 		self:_afterJob(record, now)
@@ -362,7 +363,7 @@ function STEP.WalkingToBay(self, record, now: number)
 		return
 	end
 	local spot = record.job.spot
-	self:_call("holdTree", record.id, spot.sizeId)
+	self:_call("holdTree", record.id, spot.sizeId, spot.speciesId)
 	local approach = NpcPath.approach(spot, record.level) or { x = spot.x, z = spot.z }
 	self:_walk(record, "CarryingToSpot", approach, now)
 end

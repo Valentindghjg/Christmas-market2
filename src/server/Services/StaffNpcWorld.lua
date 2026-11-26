@@ -183,10 +183,10 @@ function StaffNpcWorld:face(staffId: string, p: Point)
 	root.CFrame = CFrame.lookAt(position, Vector3.new(target.X, position.Y, target.Z))
 end
 
-function StaffNpcWorld:holdTree(staffId: string, sizeId: string?)
+function StaffNpcWorld:holdTree(staffId: string, sizeId: string?, speciesId: string?)
 	local model = self:_avatar(staffId)
 	if model then
-		WorldService.attachNpcTree(model, sizeId)
+		WorldService.attachNpcTree(model, sizeId, speciesId)
 	end
 end
 
