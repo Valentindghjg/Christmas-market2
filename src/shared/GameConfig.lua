@@ -547,8 +547,8 @@ GameConfig.Placement = {
 		{ id = "Sign", minX = 18, maxX = 28, minZ = 21, maxZ = 25 }, -- lot sign (CM2-G15)
 	},
 	StandFitMargin = 0.1, -- PROVISIONAL (CM2-G9a A1): HQ art fits KeepClear Stand minus this per side
-	DecorFences = { { x = -34, z = 24 }, { x = 34, z = 24 } }, -- decorative FenceWooden clones, lot frame (WorldService)
-	DecorFenceRadius = 5.5, -- covers the FenceWooden footprint (10.28 x 0.34) from its centre at any yaw
+	DecorFences = { { x = -34, z = 24 }, { x = 34, z = 24 } }, -- decorative fences, lot frame (CM2-13W: FenceRail8 + FencePost art, FenceWooden fallback)
+	DecorFenceRadius = 5.5, -- covers the 8.6 x 0.6 art and the 10.28 x 0.34 FenceWooden fallback from its centre at any yaw
 }
 
 return GameConfig

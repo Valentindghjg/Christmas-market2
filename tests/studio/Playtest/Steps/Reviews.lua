@@ -175,7 +175,7 @@ return function(ctx: any)
 			string.format("board centre (%.2f, %.2f) in the lot frame", bx, bz)
 		)
 		-- Amendment 1: on every plot the sign parts lie inside KeepClear Sign and no part of a
-		-- decorative FenceWooden overlaps it.
+		-- decorative DecorFence overlaps it.
 		local fenceGap = math.huge
 		for _, plotId in GameConfig.PersonalPlotIds do
 			local sign = signBoard(plotId).Parent :: Instance
@@ -199,14 +199,14 @@ return function(ctx: any)
 			local plot = plotFolder(plotId) :: Instance
 			local fences = {}
 			for _, child in plot:GetChildren() do
-				if child:IsA("Model") and child.Name == "FenceWooden" then
+				if child:IsA("Model") and child.Name == "DecorFence" then
 					table.insert(fences, child)
 				end
 			end
 			check(
 				#fences == #GameConfig.Placement.DecorFences,
 				string.format(
-					"plot %s has %d FenceWooden, expected %d",
+					"plot %s has %d DecorFence, expected %d",
 					plotId,
 					#fences,
 					#GameConfig.Placement.DecorFences
@@ -219,7 +219,7 @@ return function(ctx: any)
 						check(
 							not (minX < box.maxX and box.minX < maxX and minZ < box.maxZ and box.minZ < maxZ),
 							string.format(
-								"%s FenceWooden.%s x %.2f..%.2f z %.2f..%.2f overlaps KeepClear Sign",
+								"%s DecorFence.%s x %.2f..%.2f z %.2f..%.2f overlaps KeepClear Sign",
 								plotId,
 								descendant.Name,
 								minX,

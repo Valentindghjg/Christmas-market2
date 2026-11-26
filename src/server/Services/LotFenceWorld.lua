@@ -1,11 +1,14 @@
 --!strict
 -- The lot fence of a plot (CM2-G9a, docs/archive/plans/CM2-G9a.md): ProgressionVisuals.LotFence, built
--- from Progression.fenceBoxes so it moves back with every lot expansion level. Parts only; the
--- helpers (part, lotPosition, paletteColor, setCollisionGroup, group) come from WorldService.
+-- from Progression.fenceBoxes so it moves back with every lot expansion level. FenceRail8 and
+-- FencePost art (CM2-13W) or, without it, Parts; the helpers (part, lotPosition, lotTop, facing,
+-- paletteColor, setCollisionGroup, group, reportMissing) come from WorldService.
 -- Also holds WorldService's lot-frame helpers for fitting the HQ art (Amendment 1), which keep
 -- WorldService under its 1500-line cap.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ArtLibrary = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ArtLibrary"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
+local LotArt = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("LotArt"))
 local Progression = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"))
 
 local LotFenceWorld = {}
@@ -15,16 +18,9 @@ local POST_SIZE = Vector3.new(0.5, 3, 0.5)
 local POST_Y = 2.05
 local POST_SPACING = 8
 
--- Rebuilds `visuals.LotFence` for expansion level `growth`: per box a Model named by its id with
--- Rail_1/Rail_2 over the whole box and posts Post_k at both ends and evenly every <= 8 studs.
-function LotFenceWorld.build(plot: Model, visuals: Instance, growth: number, helpers)
-	local existing = visuals:FindFirstChild("LotFence")
-	if existing then
-		existing:Destroy()
-	end
-	local fence = Instance.new("Model")
-	fence.Name = "LotFence"
-	fence:SetAttribute("LotExpansionLevel", growth)
+-- The Part fallback: per box a Model named by its id with Rail_1/Rail_2 over the whole box and
+-- posts Post_k at both ends and evenly every <= 8 studs.
+local function buildPrimitive(plot: Model, fence: Model, growth: number, helpers)
 	local smooth = Enum.Material.SmoothPlastic
 	local railColor, postColor = helpers.paletteColor("WoodWarm"), helpers.paletteColor("WoodWarmShade")
 	for _, box in Progression.fenceBoxes(growth) do
@@ -57,6 +53,69 @@ function LotFenceWorld.build(plot: Model, visuals: Instance, growth: number, hel
 			descendant.CanCollide = true
 			descendant.CastShadow = false
 		end
+	end
+end
+
+-- The art branch (CM2-13W): per box a Model named by its id with Segment_<k> (FenceRail8) and
+-- EndPost (FencePost) clones from LotArt.fenceSegments, standing on the ground, run along the fence.
+local function buildArt(plot: Model, fence: Model, growth: number, helpers, rail: LotArt.Choice, post: LotArt.Choice)
+	local pieces = LotArt.fenceSegments(growth)
+	local facing = helpers.facing(plot)
+	local baseY = helpers.lotTop(plot) - LotArt.FENCE_BASE_DROP
+	for _, box in Progression.fenceBoxes(growth) do
+		local side = Instance.new("Model")
+		side.Name = box.id
+		side.Parent = fence
+		local segment = 0
+		for _, piece in pieces do
+			if piece.box == box.id then
+				local choice = if piece.kind == "Rail" then rail else post
+				local clone = ArtLibrary.prepareClone(choice.template)
+				if piece.kind == "Rail" then
+					segment += 1
+					clone.Name = "Segment_" .. segment
+				else
+					clone.Name = "EndPost"
+				end
+				clone:PivotTo(
+					CFrame.new(helpers.lotPosition(plot, piece.x, piece.z, baseY))
+						* CFrame.Angles(0, LotArt.runYaw(piece.dirX, piece.dirZ, facing), 0)
+				)
+				clone.Parent = side
+			end
+		end
+	end
+	for _, descendant in fence:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.CastShadow = false
+		end
+	end
+end
+
+-- Rebuilds `visuals.LotFence` for expansion level `growth`: the FenceRail8 / FencePost art when
+-- ArtAssets has both, else the Part fallback.
+function LotFenceWorld.build(plot: Model, visuals: Instance, growth: number, helpers)
+	local existing = visuals:FindFirstChild("LotFence")
+	if existing then
+		existing:Destroy()
+	end
+	local fence = Instance.new("Model")
+	fence.Name = "LotFence"
+	fence:SetAttribute("LotExpansionLevel", growth)
+	local root = ArtLibrary.root(ReplicatedStorage)
+	local rail = LotArt.choose(root, ArtLibrary.find, LotArt.PATHS.Rail)
+	local post = LotArt.choose(root, ArtLibrary.find, LotArt.PATHS.Post)
+	if rail.mode == "Art" and post.mode == "Art" then
+		buildArt(plot, fence, growth, helpers, rail, post)
+		fence:SetAttribute("LotArtMode", "Art")
+	else
+		for _, choice in { rail, post } do
+			if choice.mode ~= "Art" then
+				helpers.reportMissing(choice.path, choice.code or "MissingArtAsset")
+			end
+		end
+		buildPrimitive(plot, fence, growth, helpers)
+		fence:SetAttribute("LotArtMode", "Primitive")
 	end
 	helpers.setCollisionGroup(fence, helpers.group)
 	fence.Parent = visuals

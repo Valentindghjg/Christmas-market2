@@ -7,10 +7,12 @@ local ArtLibrary = require(Shared:WaitForChild("ArtLibrary"))
 local AssetCatalog = require(Shared:WaitForChild("AssetCatalog"))
 local Economy = require(Shared:WaitForChild("Economy"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local LotArt = require(Shared:WaitForChild("LotArt"))
 local Stocking = require(Shared:WaitForChild("Stocking"))
 local TreeArt = require(Shared:WaitForChild("TreeArt"))
 local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
+local LotArtWorld = require(script.Parent:WaitForChild("LotArtWorld"))
 local LotFenceWorld = require(script.Parent:WaitForChild("LotFenceWorld"))
 local MapWorld = require(script.Parent:WaitForChild("MapWorld"))
 
@@ -229,50 +231,6 @@ local function cloneArt(parent: Instance, category: string, assetId: string, gro
 	return model
 end
 
-local function checkout(parent: Instance, position: Vector3): Model
-	local model = Instance.new("Model")
-	model.Name = "CheckoutCounter"
-	model.Parent = parent
-	local base = part(
-		model,
-		"CounterBase",
-		Vector3.new(5, 3, 2),
-		position + Vector3.new(0, 1.5, 0),
-		Color3.fromRGB(107, 68, 38),
-		Enum.Material.WoodPlanks
-	)
-	local register = part(
-		model,
-		"Register",
-		Vector3.new(1.5, 0.7, 1),
-		position + Vector3.new(0, 3.35, 0),
-		Color3.fromRGB(40, 48, 51),
-		Enum.Material.Metal
-	)
-	MapWorld.nightLight(register, GameConfig.DayCycle.PlotLight) -- CM2-G12a
-	-- CM2-N2: the player checks out the customer at the counter; enabled only while one waits.
-	local checkoutPrompt = Instance.new("ProximityPrompt")
-	checkoutPrompt.Name = "CheckoutPrompt"
-	checkoutPrompt.ActionText = "Check Out"
-	checkoutPrompt.ObjectText = ""
-	checkoutPrompt.KeyboardKeyCode = Enum.KeyCode.E
-	checkoutPrompt.HoldDuration = 0
-	checkoutPrompt.MaxActivationDistance = GameConfig.Customers.InteractDistance - 2
-	checkoutPrompt.RequiresLineOfSight = false
-	checkoutPrompt.Enabled = false
-	checkoutPrompt:SetAttribute("PromptKind", "Checkout")
-	checkoutPrompt.Parent = base
-	local plotId = parent:GetAttribute("PlotId")
-	checkoutPrompt.Triggered:Connect(function(player: Player)
-		if checkoutHandler and type(plotId) == "string" then
-			checkoutHandler(player, plotId)
-		end
-	end)
-	model.PrimaryPart = base
-	setCollisionGroup(model, STRUCTURE_GROUP)
-	return model
-end
-
 local function truck(parent: Instance, position: Vector3): Model
 	local model = Instance.new("Model")
 	model.Name = "SupplierTruck"
@@ -373,6 +331,16 @@ local function lotTop(plot: Model): number
 	return ground.Position.Y + ground.Size.Y / 2
 end
 
+-- What LotArtWorld needs from this module (CM2-13W).
+local ART_CTX: LotArtWorld.Ctx = {
+	lotPosition = lotPosition,
+	lotTop = lotTop,
+	facing = plotFacing,
+	setCollisionGroup = setCollisionGroup,
+	group = STRUCTURE_GROUP,
+	reportMissing = reportMissing,
+}
+
 -- Height of a model's bounding-box top above baseY.
 local function treeTop(model: Model, baseY: number): number
 	local box, size = model:GetBoundingBox()
@@ -451,6 +419,69 @@ local function bayDepth(index: number): number
 	return BAY_FIRST_DEPTH + (index - 1) * BAY_DEPTH_STEP
 end
 
+-- The checkout counter (CM2-13W): the CM2-13b art when ArtAssets has it, with today's CounterBase as
+-- an invisible gameplay anchor (prompt, size, position); else the primitive counter and register.
+local function buildCounter(plot: Model): Model
+	local position = lotPosition(plot, LotArt.COUNTER.x, LotArt.COUNTER.z, 0.6)
+	local baseSize = Vector3.new(5, 3, 2)
+	local baseColor = Color3.fromRGB(107, 68, 38)
+	local model = LotArtWorld.counter(plot, ART_CTX)
+	local base: Part
+	local lightParent: BasePart
+	if model then
+		base =
+			part(model, "CounterBase", baseSize, position + Vector3.new(0, 1.5, 0), baseColor, Enum.Material.WoodPlanks)
+		base.Transparency = 1
+		base.CanCollide = false
+		lightParent = base
+		for _, descendant in model:GetDescendants() do
+			if descendant:IsA("BasePart") and descendant.Name == "Register" then
+				lightParent = descendant
+				break
+			end
+		end
+		model:SetAttribute("LotArtMode", "Art")
+	else
+		model = Instance.new("Model")
+		model.Name = "CheckoutCounter"
+		model.Parent = plot
+		base =
+			part(model, "CounterBase", baseSize, position + Vector3.new(0, 1.5, 0), baseColor, Enum.Material.WoodPlanks)
+		lightParent = part(
+			model,
+			"Register",
+			Vector3.new(1.5, 0.7, 1),
+			position + Vector3.new(0, 3.35, 0),
+			Color3.fromRGB(40, 48, 51),
+			Enum.Material.Metal
+		)
+		model.PrimaryPart = base
+		faceRoad(model, plotFacing(plot))
+		model:SetAttribute("LotArtMode", "Primitive")
+	end
+	MapWorld.nightLight(lightParent, GameConfig.DayCycle.PlotLight) -- CM2-G12a
+	-- CM2-N2: the player checks out the customer at the counter; enabled only while one waits.
+	local checkoutPrompt = Instance.new("ProximityPrompt")
+	checkoutPrompt.Name = "CheckoutPrompt"
+	checkoutPrompt.ActionText = "Check Out"
+	checkoutPrompt.ObjectText = ""
+	checkoutPrompt.KeyboardKeyCode = Enum.KeyCode.E
+	checkoutPrompt.HoldDuration = 0
+	checkoutPrompt.MaxActivationDistance = GameConfig.Customers.InteractDistance - 2
+	checkoutPrompt.RequiresLineOfSight = false
+	checkoutPrompt.Enabled = false
+	checkoutPrompt:SetAttribute("PromptKind", "Checkout")
+	checkoutPrompt.Parent = base
+	local plotId = plot:GetAttribute("PlotId")
+	checkoutPrompt.Triggered:Connect(function(player: Player)
+		if checkoutHandler and type(plotId) == "string" then
+			checkoutHandler(player, plotId)
+		end
+	end)
+	setCollisionGroup(model, STRUCTURE_GROUP)
+	return model
+end
+
 -- The receiving area with four bays, a label and a stocking prompt on each (CM2-G14).
 local function buildReceiving(plot: Model)
 	local folder = Instance.new("Folder")
@@ -474,6 +505,13 @@ local function buildReceiving(plot: Model)
 			Enum.Material.WoodPlanks
 		)
 		bay:SetAttribute("BayIndex", index)
+		-- CM2-13W: the deck art stands on the lot ground; Bay_<i> stays as the invisible anchor.
+		local art =
+			LotArtWorld.bay(folder, plot, index, lotPosition(plot, BAY_X, bayDepth(index), lotTop(plot)), ART_CTX)
+		if art then
+			bay.Transparency = 1
+		end
+		bay:SetAttribute("LotArtMode", if art then "Art" else "Primitive")
 		billboard(bay, "BayFree", "Free bay", "Bay", UiTheme.WorldLabels.Bay.height, { BayIndex = index })
 		local stockPrompt = Instance.new("ProximityPrompt")
 		stockPrompt.Name = "StockBay"
@@ -588,102 +626,7 @@ local function lotSign(plot: Model)
 	WorldService.setLotSign(plot.Name, nil)
 end
 
-function WorldService.build()
-	local existing = workspace:FindFirstChild("ChristmasMarketWorld")
-	if existing then
-		return existing
-	end
-	local world = Instance.new("Folder")
-	world.Name = "ChristmasMarketWorld"
-	world.Parent = workspace
-
-	part(
-		world,
-		"MainRoad",
-		Vector3.new(380, 0.3, 32),
-		Vector3.new(0, 0.2, 0),
-		Color3.fromRGB(54, 58, 61),
-		Enum.Material.Asphalt
-	)
-	part(
-		world,
-		"CenterLine",
-		Vector3.new(380, 0.1, 0.5),
-		Vector3.new(0, 0.4, 0),
-		Color3.fromRGB(244, 190, 58),
-		Enum.Material.Neon
-	)
-
-	local plots = Instance.new("Folder")
-	plots.Name = "Plots"
-	plots.Parent = world
-	for index = 1, 6 do
-		local side = index <= 3 and -1 or 1
-		local column = ((index - 1) % 3) - 1
-		local center = Vector3.new(column * 110, 0, side * 75)
-		local plot = Instance.new("Model")
-		plot.Name = string.format("Plot_%02d", index)
-		plot:SetAttribute("PlotId", plot.Name)
-		plot.Parent = plots
-		local ground = part(
-			plot,
-			"LotGround",
-			Vector3.new(80, 0.5, 54),
-			center + Vector3.new(0, 0.3, 0),
-			Color3.fromRGB(224, 239, 244),
-			Enum.Material.Snow
-		)
-		ground.CanCollide = true
-		plot.PrimaryPart = ground
-		-- Plots 4-6 mirror the layout so the lot frame (depth toward the road) matches the world.
-		local facing = plotFacing(plot)
-		local spawn = part(
-			plot,
-			"Spawn",
-			Vector3.new(4, 0.2, 4),
-			lotPosition(plot, -28, 14, 0.7),
-			Color3.fromRGB(69, 132, 82),
-			Enum.Material.Grass
-		)
-		spawn.Transparency = 0.35
-		faceRoad(salesStand(plot, lotPosition(plot, -8, -4, 0.6)), facing)
-		faceRoad(checkout(plot, lotPosition(plot, 16, -14, 0.6)), facing)
-		for _, fence in GameConfig.Placement.DecorFences do
-			cloneArt(
-				plot,
-				"Environment",
-				AssetCatalog.Environment.FenceWooden,
-				lotPosition(plot, fence.x, fence.z, 0.6)
-			)
-		end
-		buildReceiving(plot)
-		lotSign(plot)
-	end
-
-	MapWorld.build(world, { part = part, tree = tree, reportMissing = reportMissing })
-	return world
-end
-
-local function findPlot(plotId: string): Model?
-	local world = workspace:FindFirstChild("ChristmasMarketWorld")
-	local plots = world and world:FindFirstChild("Plots")
-	local plot = plots and plots:FindFirstChild(plotId)
-	if plot and plot:IsA("Model") and plot.PrimaryPart then
-		return plot
-	end
-	return nil
-end
-
--- The lot fence's builders (CM2-G9a, LotFenceWorld).
-local FENCE_HELPERS = {
-	part = part,
-	lotPosition = lotPosition,
-	paletteColor = paletteColor,
-	setCollisionGroup = setCollisionGroup,
-	group = STRUCTURE_GROUP,
-}
-
--- HQ tiers 2-4 (CM2-G9a): Part primitives of the CM2-13a footprints until their art (CM2-13W).
+-- HQ tiers 2-4 (CM2-G9a): Part primitives of the CM2-13a footprints; the fallback when the HQ art is missing.
 -- Palette keys floor, frame, roof per level.
 local HQ_COLORS = {
 	[2] = { "StoneGray", "WoodWarmShade", "RoofGreen" },
@@ -733,6 +676,129 @@ local function hqPrimitive(plot: Model, level: number): Model
 	return model
 end
 
+-- The stand of one HQ level (CM2-13W): the CM2-13a art of its tier; without it the sales tent
+-- (level 1) or the Part primitive (levels 2-4).
+local function buildHQ(plot: Model, level: number): Model
+	local hq = LotArt.hqLevel(level)
+	local model = LotArtWorld.hq(plot, hq, ART_CTX)
+	if model == nil then
+		if hq == 1 then
+			model = salesStand(plot, lotPosition(plot, -8, -4, 0.6))
+			faceRoad(model, plotFacing(plot))
+		else
+			model = hqPrimitive(plot, hq)
+		end
+		model:SetAttribute("HqArtMode", "Primitive")
+		model:SetAttribute("HqArtPath", LotArt.hqPath(hq))
+	end
+	model:SetAttribute("HqLevel", hq)
+	model:SetAttribute("HqTier", GameConfig.Progression.HQ.tiers[hq].id)
+	return model
+end
+
+function WorldService.build()
+	local existing = workspace:FindFirstChild("ChristmasMarketWorld")
+	if existing then
+		return existing
+	end
+	local world = Instance.new("Folder")
+	world.Name = "ChristmasMarketWorld"
+	world.Parent = workspace
+
+	part(
+		world,
+		"MainRoad",
+		Vector3.new(380, 0.3, 32),
+		Vector3.new(0, 0.2, 0),
+		Color3.fromRGB(54, 58, 61),
+		Enum.Material.Asphalt
+	)
+	part(
+		world,
+		"CenterLine",
+		Vector3.new(380, 0.1, 0.5),
+		Vector3.new(0, 0.4, 0),
+		Color3.fromRGB(244, 190, 58),
+		Enum.Material.Neon
+	)
+
+	local plots = Instance.new("Folder")
+	plots.Name = "Plots"
+	plots.Parent = world
+	for index = 1, 6 do
+		local side = index <= 3 and -1 or 1
+		local column = ((index - 1) % 3) - 1
+		local center = Vector3.new(column * 110, 0, side * 75)
+		local plot = Instance.new("Model")
+		plot.Name = string.format("Plot_%02d", index)
+		plot:SetAttribute("PlotId", plot.Name)
+		plot.Parent = plots
+		local ground = part(
+			plot,
+			"LotGround",
+			Vector3.new(80, 0.5, 54),
+			center + Vector3.new(0, 0.3, 0),
+			Color3.fromRGB(224, 239, 244),
+			Enum.Material.Snow
+		)
+		ground.CanCollide = true
+		plot.PrimaryPart = ground
+		-- Plots 4-6 mirror the layout so the lot frame (depth toward the road) matches the world.
+		local spawn = part(
+			plot,
+			"Spawn",
+			Vector3.new(4, 0.2, 4),
+			lotPosition(plot, -28, 14, 0.7),
+			Color3.fromRGB(69, 132, 82),
+			Enum.Material.Grass
+		)
+		spawn.Transparency = 0.35
+		buildHQ(plot, 1)
+		buildCounter(plot)
+		for _, fence in GameConfig.Placement.DecorFences do
+			if LotArtWorld.decorFence(plot, fence.x, fence.z, ART_CTX) == nil then
+				local decor = Instance.new("Model")
+				decor.Name = "DecorFence"
+				decor:SetAttribute("LotArtMode", "Primitive")
+				decor.Parent = plot
+				cloneArt(
+					decor,
+					"Environment",
+					AssetCatalog.Environment.FenceWooden,
+					lotPosition(plot, fence.x, fence.z, 0.6)
+				)
+			end
+		end
+		buildReceiving(plot)
+		lotSign(plot)
+	end
+
+	MapWorld.build(world, { part = part, tree = tree, reportMissing = reportMissing })
+	return world
+end
+
+local function findPlot(plotId: string): Model?
+	local world = workspace:FindFirstChild("ChristmasMarketWorld")
+	local plots = world and world:FindFirstChild("Plots")
+	local plot = plots and plots:FindFirstChild(plotId)
+	if plot and plot:IsA("Model") and plot.PrimaryPart then
+		return plot
+	end
+	return nil
+end
+
+-- The lot fence's builders (CM2-G9a, LotFenceWorld).
+local FENCE_HELPERS = {
+	part = part,
+	lotPosition = lotPosition,
+	lotTop = lotTop,
+	facing = plotFacing,
+	paletteColor = paletteColor,
+	setCollisionGroup = setCollisionGroup,
+	group = STRUCTURE_GROUP,
+	reportMissing = reportMissing,
+}
+
 -- The stand of HQ level 1-4 (CM2-G9a): the sales tent art at 1, a Part primitive above.
 function WorldService.applyHQVisual(plotId: string, level: number): boolean
 	local plot = findPlot(plotId)
@@ -743,17 +809,8 @@ function WorldService.applyHQVisual(plotId: string, level: number): boolean
 	if existing then
 		existing:Destroy()
 	end
-	local hq = math.clamp(math.floor(if level == level then level else 1), 1, GameConfig.Progression.HQ.maxLevel)
-	local model: Model
-	if hq == 1 then
-		model = salesStand(plot, lotPosition(plot, -8, -4, 0.6))
-		faceRoad(model, plotFacing(plot))
-	else
-		model = hqPrimitive(plot, hq)
-	end
-	model:SetAttribute("HqLevel", hq)
-	model:SetAttribute("HqTier", GameConfig.Progression.HQ.tiers[hq].id)
-	plot:SetAttribute("HqLevel", hq)
+	buildHQ(plot, level)
+	plot:SetAttribute("HqLevel", LotArt.hqLevel(level))
 	return true
 end
 
@@ -982,17 +1039,23 @@ local function syncBundles(bay: BasePart, total: number)
 	local model = Instance.new("Model")
 	model.Name = "Bundles"
 	model:SetAttribute("Total", total)
-	for k = 0, math.min(total, MAX_BUNDLES) - 1 do
-		local bundle = part(
-			model,
-			"Bundle",
-			Vector3.new(4, 1, 1),
-			bay.Position + Vector3.new(0, 0.8 + (k // 3), -1.2 + (k % 3) * 1.2),
-			Color3.fromRGB(23, 83, 52),
-			Enum.Material.Grass
-		)
-		bundle.Shape = Enum.PartType.Cylinder
-		bundle.CanCollide = false
+	local count = math.min(total, MAX_BUNDLES)
+	if count > 0 and LotArtWorld.bundles(model, bay, count, ART_CTX) then
+		model:SetAttribute("LotArtMode", "Art")
+	elseif count > 0 then
+		model:SetAttribute("LotArtMode", "Primitive")
+		for k = 0, count - 1 do
+			local bundle = part(
+				model,
+				"Bundle",
+				Vector3.new(4, 1, 1),
+				bay.Position + Vector3.new(0, 0.8 + (k // 3), -1.2 + (k % 3) * 1.2),
+				Color3.fromRGB(23, 83, 52),
+				Enum.Material.Grass
+			)
+			bundle.Shape = Enum.PartType.Cylinder
+			bundle.CanCollide = false
+		end
 	end
 	model.Parent = bay
 end

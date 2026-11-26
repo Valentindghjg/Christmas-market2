@@ -90,6 +90,7 @@ local sourcePaths = {
 	LandView = "src/shared/LandView.lua",
 	LeaderboardView = "src/shared/LeaderboardView.lua",
 	Localization = "src/shared/Localization.lua",
+	LotArt = "src/shared/LotArt.lua",
 	MapLayout = "src/shared/MapLayout.lua",
 	ModalCoordinator = "src/shared/ModalCoordinator.lua",
 	NpcLook = "src/shared/NpcLook.lua",
