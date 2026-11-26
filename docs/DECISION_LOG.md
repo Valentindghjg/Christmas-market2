@@ -368,3 +368,8 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Owner noticed that only one tree of a species can be ordered at a time. Cause: the Supplier tab sends a fixed Medium, quantity 1 for orders and sell back (deferred in CM2-G6 "to CM2-40 and later Supplier tab work", never filed); with one order per bay the 4 bays fill after 4 clicks.
 - New task 18a **CM2-SUP** (tier L, `planner-high`), right after CM2-G11 in the launch order: the reference's buy rows (species × size, −/quantity/+/MAX, demand tags), cart with bay and delivery info, one-click recommended order, sell back per row with ALL; the cart is one atomic, idempotent server order. Protocol shape, bay packing and any schema change are for `planner-high`.
 - Files: docs/CLAUDE_BACKLOG.md (18a, N6).
+
+## 2026-11-26 — owner: missing reference features go into the version 2 update
+- Comparison of the reference game with our game (2026-11-26) found 8 reference features with neither code nor task. Owner: plan them, but for the first update after launch, not before release.
+- Backlog "Version 2 update", lines 38–45: CM2-V2-SPT Robux special trees orderable, CM2-V2-PDC premium decor works, CM2-V2-MOVE move a display tree, CM2-V2-ORD recent orders with status, CM2-V2-SNOW falling snow, CM2-V2-HIDE hide the HUD, CM2-V2-GIFT gift button, CM2-V2-QSKIP quest skip for 5 Robux. At launch the special-tree and premium-decor shop items stay "Coming soon" (`ready = false`).
+- Files: docs/CLAUDE_BACKLOG.md, docs/PRODUCT_SPEC.md ("Monetization and events").
