@@ -309,6 +309,12 @@ end
 -- Boards and signs (both modes) -------------------------------------------------------------
 
 local function addBoardParts(kit: MapKit, model: Model, piece: MapLayout.Piece, pivot: CFrame)
+	-- Art boards carry their own Screen mesh; rename it so Board_<Key>.Screen is the unique screen Part (CM2-G12b A1).
+	for _, child in model:GetChildren() do
+		if child:IsA("BasePart") and (child.Name == "Screen" or child.Name == "Title") then
+			child.Name = child.Name .. "Panel"
+		end
+	end
 	model:SetAttribute("LeaderboardKey", piece.boardKey)
 	local screen = flatPart(
 		kit,

@@ -205,6 +205,19 @@ UiTheme.MapSign = {
 	minTextSize = 14,
 }
 
+-- Leaderboard screens on the square (CM2-G12b, PROVISIONAL): SurfaceGui density and distance,
+-- row layout in px on the 440 x 400 canvas (Screen 11 x 10 studs).
+UiTheme.Leaderboard = {
+	pixelsPerStud = 40,
+	maxDistance = 150,
+	padding = 12,
+	rowHeight = 32,
+	youGap = 10,
+	rankWidth = 48,
+	valueWidth = 140,
+	textSize = 22,
+}
+
 -- The six Lot Manager tabs in the OBSERVED order (REFERENCE_GAME_LIVE_TEST section 4).
 UiTheme.LotManagerTabs = {
 	{ id = "Supplier", labelKey = "tabSupplier", module = "SupplierTab" },

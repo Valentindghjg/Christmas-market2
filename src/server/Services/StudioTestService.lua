@@ -749,6 +749,23 @@ function StudioTestService.install(context)
 		return success(view)
 	end
 
+	-- Leaderboards (CM2-G12b): collect and flush ({force}), read the boards, cache statistics.
+	function commands.leaderboardCollect(arg)
+		if type(arg) ~= "table" or type(arg.force) ~= "boolean" then
+			return failure("BadArgument")
+		end
+		local written, skipped = context.collectLeaderboards(arg.force)
+		return success({ written = written, skipped = skipped })
+	end
+
+	function commands.leaderboardRefresh()
+		return success(context.refreshLeaderboards())
+	end
+
+	function commands.leaderboardStats()
+		return success(context.leaderboards:stats())
+	end
+
 	function commands.runPlaytest(arg)
 		local unitTest = ServerStorage:FindFirstChild("UnitTest")
 		local folder = unitTest and unitTest:FindFirstChild("Playtest")

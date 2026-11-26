@@ -460,6 +460,24 @@ GameConfig.DayCycle = {
 	PlotLight = { range = 14, brightness = 1.2 }, -- PROVISIONAL
 }
 
+-- Four leaderboards on the village square (CM2-G12b, docs/plans/CM2-G12b.md): OrderedDataStore
+-- writes from a server cache (server/Services/LeaderboardService.lua).
+GameConfig.Leaderboards = {
+	Keys = { "CashEarned", "Reputation", "HoursPlayed", "RobuxSpent" }, -- OWNER DECIDED (boards; write/read order)
+	PerSave = { CashEarned = true, Reputation = true },
+	StoreFormat = "ChristmasMarket2_LB_%s_v1",
+	StudioSuffix = "_Studio",
+	TopCount = 10, -- OBSERVED (REFERENCE §8)
+	RankDepth = 100, -- one page
+	WriteIntervalSeconds = 120, -- PROVISIONAL
+	MaxWritesPerFlush = 24,
+	MinWriteBudget = 10,
+	ReadIntervalSeconds = 180, -- PROVISIONAL
+	FirstReadDelaySeconds = 5,
+	PlaytimeTickSeconds = 10,
+	NameMaxLength = 32,
+}
+
 -- Customer reviews, rating and likes (CM2-G15, docs/REFERENCE_GAME_LIVE_TEST.md §3.7).
 GameConfig.Reviews = {
 	-- PROVISIONAL: service seconds (queue + pickup) for 5, 4, 3 and 2 stars; slower is 1 star.

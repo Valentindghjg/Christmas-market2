@@ -127,7 +127,7 @@ Fake ordered store per board: `data`, counters `sets`/`increments`, `failNext`, 
 | Localization_Test | has every leaderboard key in English and German | the 7 `lb*` keys exist in `en` and `de` |
 
 SaveSlotService_Test "keeps every key within 50 characters for a 19-digit user ID": add `#LeaderboardService.playerKey(<its 19-digit id>) <= 50` and `#LeaderboardService.saveKey(<its 36-char save id>) <= 50`.
-Expected: **599 run, 0 failed** (585 after G12a + 14).
+Expected: **630 run, 0 failed** (616 on main @ cd45fac after CM2-SALE2 + 14; amendment 1 A5).
 
 ## Playtest (Studio, via playtester; now: tier L, DataStore writes)
 1. Rojo sync, `BUILD = "cm2-g12b"`; Play (Studio API access on); `runPlaytest {mode="full"}` → **64/64** (62 + 2).
@@ -136,9 +136,28 @@ Expected: **599 run, 0 failed** (585 after G12a + 14).
 4. Queue in "Studio-Test ausstehend" (PC-7): on a real client, each board shows its title, up to 10 rows and the You row (`PlayerGui.Leaderboard_<Key>.Adornee` is that board's `Screen` when standing on the square); the You row matches `Lb<Key>Rank`/`Lb<Key>Value`; one capture of all four boards from the square centre (235, 0) and one close-up; text readable at 20 studs.
 
 ## Acceptance
-- Checks: `stylua --check src tests`, `selene src tests`, `lune run tests/headless/run.luau` (599 run, 0 failed), `rojo build` (both project files).
+- Checks: `stylua --check src tests`, `selene src tests`, `lune run tests/headless/run.luau` (630 run, 0 failed), `rojo build` (both project files).
 - Studio full run 64/64 on BUILD `cm2-g12b`, steps 62 and 63 PASS (server-side).
 - Backlog: "leaderboard writes are cached and rate-limited (test)" = the headless tests "caches reports and writes once", "rate-limits flushes", "caps writes per flush", "stops below the write budget" plus step 62 (e).
 
 ## Out of scope
 Removing a deleted save's entries (follow-up candidate), season resets, friends-only boards, display or save names on boards, the Studio ArtAssets leftover (PC-7 step 4), board art import (PC-2).
+
+## Amendment 1 (2026-11-26): board screen name clash in art mode, log date
+Trigger: batch Studio run (place 92354134900807, main @ cd45fac + uncommitted G12b tree), twice 62/64; step 63 FAIL "Board_CashEarned.Screen LeaderboardScreen nil" (step 62 PASS).
+
+**Cause (code, not the step).** The place builds the map from art (`MAP_WORLD` 302 of 302 art). In art mode `Board_<Key>` is a clone of `Props/LeaderboardBoard`, whose root already holds a MeshPart `Screen` (`assets/art/source/Props/LeaderboardBoard/build.py`: `K.box("Screen", "FabricCream", …)`). `MapWorld.addBoardParts` then adds a second Part `Screen` with `LeaderboardScreen`. `FindFirstChild("Screen")` returns the art mesh, which has no attribute. The client has the same bug: `screenOf` in `Leaderboards.client.lua` adorns the art mesh. That mesh's front face (local z -0.3) is behind the added Panel Part's front face (-0.35), so a real client would see blank boards. Fallback mode is not affected. Attribute names, server/client split and key names all match the contract.
+
+| # | File | Exact change |
+|---|---|---|
+| A1 | `src/server/Services/MapWorld.lua` `addBoardParts` | First statement, before `SetAttribute("LeaderboardKey", …)`: loop `model:GetChildren()`; every child that `IsA("BasePart")` and is named `"Screen"` or `"Title"` is renamed `child.Name .. "Panel"` (`ScreenPanel`, `TitlePanel`). One-line comment above: `-- Art boards carry their own Screen mesh; rename it so Board_<Key>.Screen is the unique screen Part (CM2-G12b A1).` Nothing else changes (sizes, offsets, colours, attributes as before). |
+| A2 | `tests/studio/Playtest/Steps/Leaderboards.lua` step 63 | Inside the per-key loop, after the `board ~= nil` check: count the board's direct children named `"Screen"`; `check(count == 1, string.format("Board_%s has %d Screen children", key, count))`. Return text unchanged. |
+| A3 | `docs/MODEL_INTEGRATION.md` line "For CM2-G12: …" | Append: ` A direct art child BasePart named Screen or Title is renamed ScreenPanel/TitlePanel at build (CM2-G12b A1).` |
+| A4 | `docs/DECISION_LOG.md` G12b entry | Heading date **2026-11-26** (not 2026-11-23; the active log is chronological and the entry goes after "2026-11-26 — Early-lot demand, CM2-SALE2"). Add bullet after the Plan bullet: `- Art boards: the art's own Screen mesh is renamed ScreenPanel at build, so Board_<Key>.Screen is the one Part the SurfaceGui adorns (amendment 1).` |
+| A5 | this plan, Tests and Acceptance | Expected headless count: **630 run, 0 failed** (main @ cd45fac has 616 after CM2-SALE2, + 14). The old "599 (585 + 14)" was based on a stale count. |
+
+`Leaderboards.client.lua` and `LeaderboardService` stay unchanged: after A1 `FindFirstChild("Screen")` finds the right Part on server and client.
+Files table additions: `src/server/Services/MapWorld.lua` (Change, A1), `docs/MODEL_INTEGRATION.md` (Change, A3).
+
+**Re-test (playtester):** Rojo sync with A1–A5 and the CM2-SALE2 amendment 1 fix, Play, `runPlaytest {mode="full"}` → **64/64**; step 63 PASS; step 56 `MAP_WORLD` still PASS (302 of 302 art, board titles). PC-7 queue item (step 4 of "Playtest") unchanged.
+Implementer: `implementer-opus` (plan tier L unchanged; A1–A5 are small and go into the same uncommitted G12b tree).

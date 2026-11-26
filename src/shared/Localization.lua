@@ -419,6 +419,14 @@ Localization.Strings = {
 		tutorialSkipConfirm = "Tap again",
 		tutorialSkipFailed = "Could not skip. Try again.",
 		tutorialArrow = "◀",
+		-- Leaderboards on the square (CM2-G12b).
+		lbYou = "You",
+		lbEmpty = "No entries yet",
+		lbUnknownPlayer = "Player",
+		lbNoRank = "—",
+		lbReputation = "★ %s",
+		lbHours = "%s h",
+		lbRobux = "R$ %s",
 	},
 	de = {
 		cash = "Geld",
@@ -835,6 +843,14 @@ Localization.Strings = {
 		tutorialSkipConfirm = "Noch mal tippen",
 		tutorialSkipFailed = "Überspringen ging nicht. Versuch es noch mal.",
 		tutorialArrow = "◀",
+		-- Bestenlisten auf dem Dorfplatz (CM2-G12b).
+		lbYou = "Du",
+		lbEmpty = "Noch keine Einträge",
+		lbUnknownPlayer = "Spieler",
+		lbNoRank = "—",
+		lbReputation = "★ %s",
+		lbHours = "%s Std.",
+		lbRobux = "R$ %s",
 	},
 }
 

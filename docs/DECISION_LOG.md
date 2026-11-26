@@ -310,3 +310,18 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Simulation (`DemandSimulation_Test`, 1000 visits, reputation 90, default prices, seeds 1-3): 1 Douglas Medium 0.125-0.130 (target 0.10-0.16); 6 Douglas Medium 0.188-0.190 (0.16-0.23); mixed 2 S + 2 M + 2 L Douglas 0.204-0.208 (0.18-0.25); full 12-tree assortment 0.301-0.303 (0.25-0.35).
 - Late game unchanged: the full assortment stays at about 30 % as before. No guaranteed purchase (clamp 0.95 and the roll stay); the tutorial guarantee (CM2-SALE1) is unchanged; no save field, remote or sale-path change.
 - Files: src/shared/GameConfig.lua, Demand.lua, CustomerProfile.lua, CustomerSelection.lua, docs/GAME_DESIGN.md (§4, §5), docs/TEST_PLAN.md (§2).
+
+## 2026-11-26 — Leaderboards (CM2-G12b, engineering)
+- Plan: `docs/plans/CM2-G12b.md`. Config `GameConfig.Leaderboards`, cache and writes in `src/server/Services/LeaderboardService.lua`, rows and formats in `src/shared/LeaderboardView.lua`, screens in `src/client/Leaderboards.client.lua`.
+- Art boards: the art's own Screen mesh is renamed ScreenPanel at build, so Board_<Key>.Screen is the one Part the SurfaceGui adorns (amendment 1).
+
+| Topic | Decision |
+|---|---|
+| Per save vs per player | Cash earned and Reputation are **per save** (one shared company, plot and cash in co-op saves); the row shows the save owner's username. Hours played and Robux spent are **per player**. |
+| Co-op "You" row | Every member sees the rank and value of the save they are playing. |
+| Cash earned | `state.revenue` (sales and tips; Robux cash packs never count). Reputation = `state.reputation`. Robux spent = the ledger's `robuxSpent` (CM2-46a). |
+| Hours played | Seconds with an active, ready save (`CompanyReady`), counted in 10-s ticks; stored as integer seconds by `IncrementAsync` deltas (the ordered store is the only record; a double increment after an ambiguous error is accepted, at most one flush). Shown in hours with one decimal. |
+| Keys | `player_<userId>` and `save_<saveId>` (both contain the user ID; RTBF rule, roblox-server-data). |
+| Stores | `ChristmasMarket2_LB_<Key>_v1`; in Studio with suffix `_Studio`, so test values never reach the live boards. |
+| Zero | A value of 0 that was never written is not written. |
+| Names | Usernames only (no display names, no save names); unknown → localized "Player". |

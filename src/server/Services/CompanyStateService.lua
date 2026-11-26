@@ -1038,6 +1038,16 @@ function CompanyStateService:getLotSignView(companyId: string)
 	return Reviews.signView(session.state)
 end
 
+-- Read-only leaderboard figures of an available save (CM2-G12b): revenue (sales and tips) and
+-- reputation; nil unless the session accepts mutations.
+function CompanyStateService:leaderboardFigures(companyId: string): { revenue: number, reputation: number }?
+	if not self:isAvailable(companyId) then
+		return nil
+	end
+	local state = self._sessions[companyId].state
+	return { revenue = state.revenue, reputation = state.reputation }
+end
+
 -- Server-only projection for world visuals. It deliberately exposes no mutable
 -- company state to clients; callers must be trusted server code.
 function CompanyStateService:getPlacements(companyId: string)

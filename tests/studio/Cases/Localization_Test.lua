@@ -387,4 +387,13 @@ return function(t)
 			expect.equal(type(Localization.Strings.de[key]), "string")
 		end
 	end)
+
+	-- CM2-G12b: the leaderboard screens.
+	t.test("has every leaderboard key in English and German", function()
+		local keys = { "lbYou", "lbEmpty", "lbUnknownPlayer", "lbNoRank", "lbReputation", "lbHours", "lbRobux" }
+		for _, key in ipairs(keys) do
+			expect.equal(type(Localization.Strings.en[key]), "string")
+			expect.equal(type(Localization.Strings.de[key]), "string")
+		end
+	end)
 end

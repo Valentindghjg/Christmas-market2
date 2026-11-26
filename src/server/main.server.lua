@@ -22,6 +22,7 @@ local CompanyStateService = require(script.Parent.Services:WaitForChild("Company
 local CustomerNpcService = require(script.Parent.Services:WaitForChild("CustomerNpcService"))
 local CustomerNpcWorld = require(script.Parent.Services:WaitForChild("CustomerNpcWorld"))
 local InviteCodeService = require(script.Parent.Services:WaitForChild("InviteCodeService"))
+local LeaderboardService = require(script.Parent.Services:WaitForChild("LeaderboardService"))
 local MonetizationService = require(script.Parent.Services:WaitForChild("MonetizationService"))
 local NpcAvatar = require(script.Parent.Services:WaitForChild("NpcAvatar"))
 local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
@@ -286,6 +287,97 @@ local monetization = MonetizationService.new({
 	wait = task.wait,
 	clock = os.time,
 })
+
+-- Leaderboards (CM2-G12b): cached OrderedDataStore writes, published top rows, "You" rows.
+local leaderboardFolder = ReplicatedStorage:FindFirstChild("Leaderboards") or Instance.new("Folder")
+leaderboardFolder.Name = "Leaderboards"
+leaderboardFolder.Parent = ReplicatedStorage
+
+local orderedWrite: Enum.DataStoreRequestType = Enum.DataStoreRequestType.SetIncrementSortedAsync
+do
+	local ok, value = pcall(function()
+		return (Enum.DataStoreRequestType :: any).OrderedWrite
+	end)
+	if ok and value ~= nil then
+		orderedWrite = value
+	end
+end
+
+local leaderboards = LeaderboardService.new({
+	store = function(key: string)
+		return DataStoreService:GetOrderedDataStore(LeaderboardService.storeName(key, RunService:IsStudio()))
+	end,
+	budget = function(): number
+		return DataStoreService:GetRequestBudgetForRequestType(orderedWrite)
+	end,
+	userName = userName,
+	clock = os.clock,
+	publish = function(key: string, rows)
+		leaderboardFolder:SetAttribute(key, HttpService:JSONEncode(rows))
+	end,
+})
+
+-- Cash earned and reputation of a loaded save (per save, `save_<saveId>`).
+local function reportCompany(companyId: string)
+	local saveId = string.match(companyId, "^save:(.+)$")
+	if saveId == nil then
+		return
+	end
+	local figures = companies:leaderboardFigures(companyId)
+	if figures == nil then
+		return
+	end
+	local key = LeaderboardService.saveKey(saveId)
+	leaderboards:report("CashEarned", key, figures.revenue)
+	leaderboards:report("Reputation", key, figures.reputation)
+end
+
+-- Robux spent from the player's ledger; nil means the ledger was not read, so nothing is written.
+local function reportRobux(userId: number)
+	local spent = monetization:robuxSpent(userId)
+	if type(spent) == "number" then
+		leaderboards:report("RobuxSpent", LeaderboardService.playerKey(userId), spent)
+	end
+end
+
+-- The viewer's value and rank per board as `Lb<Key>Value` and `Lb<Key>Rank`.
+local function pushYou(player: Player)
+	for _, key in config.Leaderboards.Keys do
+		local value: number?, rank = nil, 0
+		local entryKey: string? = nil
+		if config.Leaderboards.PerSave[key] then
+			local saveId = player:GetAttribute("ActiveSaveId")
+			if type(saveId) == "string" then
+				entryKey = LeaderboardService.saveKey(saveId)
+			end
+		else
+			entryKey = LeaderboardService.playerKey(player.UserId)
+		end
+		if entryKey ~= nil then
+			value, rank = leaderboards:you(key, entryKey)
+		end
+		player:SetAttribute("Lb" .. key .. "Value", value)
+		player:SetAttribute("Lb" .. key .. "Rank", rank)
+	end
+end
+
+local function collectLeaderboards(force: boolean): (number, string?)
+	for _, companyId in companies:liveCompanyIds() do
+		reportCompany(companyId)
+	end
+	for _, player in Players:GetPlayers() do
+		reportRobux(player.UserId)
+	end
+	return leaderboards:flush(force)
+end
+
+local function refreshLeaderboards(): number
+	local read = leaderboards:refresh()
+	for _, player in Players:GetPlayers() do
+		pushYou(player)
+	end
+	return read
+end
 
 -- Teammate finder (CM2-S3): open finder panels refetch when the listings change.
 saveSlots:setFinderHandler(function()
@@ -687,6 +779,34 @@ every(config.DayCycle.SyncSeconds, "day sync", function()
 	end
 	return true, #ids, 0
 end)
+-- Hours played count only with an active, ready save (CM2-G12b).
+every(config.Leaderboards.PlaytimeTickSeconds, "playtime", function()
+	local counted = 0
+	for _, player in Players:GetPlayers() do
+		if player:GetAttribute("CompanyReady") == true then
+			leaderboards:addPlaytime(player.UserId, config.Leaderboards.PlaytimeTickSeconds)
+			counted += 1
+		end
+	end
+	for _, player in Players:GetPlayers() do
+		pushYou(player)
+	end
+	return true, counted, 0
+end)
+every(config.Leaderboards.WriteIntervalSeconds, "leaderboard writes", function()
+	local written = collectLeaderboards(false)
+	return true, written, 0
+end)
+task.spawn(function()
+	task.wait(config.Leaderboards.FirstReadDelaySeconds)
+	while true do
+		local ok, err = pcall(refreshLeaderboards)
+		if not ok then
+			warn(string.format("[ChristmasMarket2] leaderboard refresh errored: %s", tostring(err)))
+		end
+		task.wait(config.Leaderboards.ReadIntervalSeconds)
+	end
+end)
 task.spawn(function()
 	monetization:refreshPrices()
 end)
@@ -859,6 +979,10 @@ local function onPlayerAdded(player: Player)
 	task.spawn(function()
 		monetization:onPlayerJoined(player.UserId)
 	end)
+	-- The stored hours played (CM2-G12b), so the "You" row has a total before the first write.
+	task.spawn(function()
+		leaderboards:loadPlayer(player.UserId)
+	end)
 	player.CharacterAdded:Connect(function(character)
 		CustomerNpcWorld.assignPlayerCharacter(character)
 		-- A respawn drops the carried tree back at the pickup spot.
@@ -927,12 +1051,23 @@ Players.PlayerAdded:Connect(onPlayerAdded)
 Players.PlayerRemoving:Connect(function(player)
 	joinTeleports[player.UserId] = nil
 	checkoutLast[player.UserId] = nil
+	local userId = player.UserId
+	-- Leaderboard values while the save and the ledger record are still here (CM2-G12b).
+	local companyId = companyIdFor(userId)
+	if companyId then
+		reportCompany(companyId)
+	end
+	reportRobux(userId)
 	local ok, errorCode = saveSlots:leave(player.UserId, true)
 	if not ok then
 		warn(string.format("[ChristmasMarket2] save unload failed for %d: %s", player.UserId, tostring(errorCode)))
 	end
 	companies:forgetUser(player.UserId)
 	monetization:forgetUser(player.UserId)
+	task.spawn(function()
+		leaderboards:flushUser(userId)
+		leaderboards:forgetPlayer(userId)
+	end)
 end)
 
 local ORDER_REACH_ACTIONS = {
@@ -1044,6 +1179,9 @@ if RunService:IsStudio() then
 			saveSlots = saveSlots,
 			monetization = monetization,
 			ledger = ledger,
+			leaderboards = leaderboards,
+			collectLeaderboards = collectLeaderboards,
+			refreshLeaderboards = refreshLeaderboards,
 			orderCallbacks = orderCallbacks,
 			checkoutAt = checkoutAt,
 			companyIdFor = companyIdFor,
@@ -1090,6 +1228,8 @@ game:BindToClose(function()
 	while saveSlots:pendingCount() > 0 and waited < SHUTDOWN_WAIT_SECONDS do
 		waited += task.wait(0.1)
 	end
+	-- Leaderboards last, best effort: the saves come first (CM2-G12b).
+	pcall(leaderboards.flush, leaderboards, true)
 end)
 
 print(string.format("[ChristmasMarket2] Server booted. Starting cash: %d", config.StartingCash))
