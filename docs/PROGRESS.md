@@ -1,5 +1,19 @@
 # Progress log
 
+2026-11-26: CM2-46c test purchases (N3b, PC-10, Gate A line 13c ticked; docs only, no code change)
+Skills: none needed (docs only; roblox-collaboration-mode precedence per CLAUDE.md).
+Run: playtester with the owner at the PC, Studio place 92354134900807, save "Playtest A" 4584569287_9fd0eccb8c4f32cb. The owner clicked Buy; the prompts were sent server-side through `shopAction` `Shop.Prompt`. Deviation: Rojo served the working tree with the uncommitted CM2-12W tree visuals; the shop and monetization code is identical to main at e12cb7b.
+Results:
+- 7a StarterPack: PASS. The owner bought it manually earlier on 2026-11-26: ledger done entry d0fe1772fcf185a635fda23dac0caea9, productKey StarterPack, robux 0, one StarterPack entry only, unlocks.StarterPack = true, owned 1, catalog "Owned". Not re-bought.
+- 7b PassCashX2: NOT TESTED. Owner decision 2026-11-26 in chat: "gar nicht testen" (the test account already owns the pass). Recorded as the owner's decision; the DECISION_LOG line is added later with the CM2-12W commit or by the planner refresh. The simulated pass path stays covered by CM2-46a steps 51-53.
+- 7c CashPinecone: PASS. Cash 56202 -> 57402 (+1200 once, as in ShopConfig), done 33 -> 34, new purchaseId d1f10b0e3a3dbf7bbce9c22cf29553bc, robuxSpent 1387 unchanged, owned 29 -> 30, pending [].
+- 7d BoostCashX2: PASS. boosts.CashX2 0 -> 1770 s (1800 minus elapsed), cash unchanged, owned 3 -> 4, done 34 -> 35, purchaseId c8bf60b681447a1937d870adba724904, robuxSpent unchanged.
+- Idempotency: PASS. Replayed the real 7d and 7c receipts through the `shopReceipt` hook: both answered PurchaseGranted, no second grant (cash 57402, owned unchanged, done 35, robuxSpent 1387).
+- robux 0 is expected: ProcessReceipt takes CurrencySpent only for CurrencyType Robux, and Studio test purchases are free. Grants follow ShopConfig.
+- Console: only the known 6x rbxassetid://203785492 lines; no warnings, no Plus/Subscribe dialog.
+Checks (reviewer, local Windows, `~/.rokit/bin`; the tree also holds the uncommitted CM2-12W work, which is not part of this commit): `stylua --check src tests` PASS; `selene src tests` PASS (0 errors, 0 warnings, 0 parse errors); `lune run tests/headless/run.luau` PASS 637 run, 637 passed, 0 failed (with 12W); `rojo build default.project.json --output build.rbxlx` PASS.
+Studio: 7a, 7c, 7d and idempotency run in Studio by the playtester; 7b not run (owner decision). Queue entry removed; PC-10 Prüfen condition met; the planner moves PC-10 to Erledigt in the end-of-run refresh. Open in Gate A afterwards: line 14 only.
+
 2026-11-26: CM2-G12b Leaderboards (tier L, plan `docs/plans/CM2-G12b.md` with Amendment 1 A1-A5; CM2-G12 line 17 ticked; commit e19857d)
 Skills: roblox-collaboration-mode, roblox-data, roblox-server-data, roblox-security, roblox-networking, roblox-gui, roblox-luau-core, roblox-luau-types.
 Change: `LeaderboardService` (server cache, `SetAsync` of changed entries only, `IncrementAsync` playtime deltas, 120 s flush, at most 24 writes per flush, stops below a request budget of 10, reads of the top 100 every 180 s, top 10 published as JSON in `ReplicatedStorage.Leaderboards`), `LeaderboardView` (shared formats), `Leaderboards.client.lua` (one SurfaceGui per board, rows plus a You row), `GameConfig.Leaderboards`, `CompanyStateService:leaderboardFigures`, wiring and PlayerRemoving/BindToClose flushes in `main.server.lua`, Studio hook commands, `MapWorld.addBoardParts` renames the art board's own Screen/Title meshes to ScreenPanel/TitlePanel (A1). Cash earned and Reputation are per save (`save_<saveId>`), Hours played and Robux spent per player (`player_<userId>`); Studio uses stores with suffix `_Studio`. No new remote, no save-schema change; money, inventory and purchases untouched (read-only figures).
