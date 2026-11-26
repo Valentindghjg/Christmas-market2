@@ -128,3 +128,22 @@ Timing: not forced now (tier M; no save, money, inventory, purchase or geometry 
 - Reputation and price factors, budget range 85–155 %, `PricingService` auto pricing (its `TargetDisplayStock` use is unchanged), `seasonalFactor` (stays 1), night arrival rate.
 - New customer profile cycle or species-weighted preferences (the 12-profile cycle stays).
 - Balance pass on income (launch order 29 CM2-28).
+
+## Amendment 1 (2026-11-26): step 38 NPC_GIVE_UP regression
+Trigger: batch Studio run (place 92354134900807, main @ cd45fac + uncommitted G12b tree): playtest steps 1–4 and 6 PASS; step 5 full run 62/64; `38 NPC_GIVE_UP` FAIL both times ("visit:5 still present after 45 s", then "visit:63 …"). The other failure (63) belongs to CM2-G12b (its Amendment 1).
+
+**Cause (SALE2, test assumption; the game logic is as planned).** Step 38 (a) assumes profile 5 (Fraser Fir Medium, budget 99 %) finds nothing on R's Douglas-only lot. PREFLIGHT `priceToSell` sets Douglas to `PLAYTEST_PRICE` = the minimum bound `ceil(typical × MinPriceMultiplier 0.5)`. Since SALE2's soft `canPurchase`, every customer (≥ 85 %) can afford that tree. `spawnForTest` arrives with roll 0, so the customer always converts: it reserves, waits at the counter, nobody serves it, and it is still there after 45 s. The step 6 reason comment ("99 % is below every benchmark price") holds only at benchmark prices, which the headless cases use. G12b's server changes are not involved (no NPC or selection code).
+
+**Fix (test only)**: `tests/studio/Playtest/Steps/Npc.lua`, `npcGiveUpStep` part (a):
+| # | Exact change |
+|---|---|
+| B1 | Add `local PricingService = ctx.PricingService` and `local actOk = ctx.actOk` to the alphabetical local list at the top. |
+| B2 | After `local startSnap = snap(R.userId)`: build a sorted list `raised` of the distinct `speciesId` of `startSnap.placements` whose `startSnap.mediumPrices[speciesId]` is a number. For each, in order: `local _, maximum = PricingService.bounds(speciesId)`, then `actOk(R.userId, "Pricing.SetMediumPrice", { speciesId = speciesId, mediumPrice = maximum })`. At most 4 species, so 4 + 4 calls stay within the 10 per 10 s action limit. |
+| B3 | Declare `local afterFirst: any = nil` and move everything from `local first = npcVisit(5)` through the `abandonedCustomers` check into `local okA, errA = pcall(function() … end)`, assigning `afterFirst` inside it. After the pcall, restore every species in `raised` with `actOk(R.userId, "Pricing.SetMediumPrice", { speciesId = speciesId, mediumPrice = startSnap.mediumPrices[speciesId] })`, then `if not okA then error(errA, 0) end`. Part (b) is unchanged and runs at the restored price (profile 8 must buy). |
+| B4 | Replace the comment of (a) with: `-- (a) Profile 5 (Fraser Fir Medium) must find nothing. CM2-SALE2: customers buy any tree within budget and PREFLIGHT prices Douglas at its 0.5 x minimum, so every species on the lot is priced at its 2.5 x maximum (above any 155 % budget) during (a) and restored after.` |
+| B5 | Return text: `string.format("no-stock walk-out counted (%d species priced out), give-up released %s", #raised, tostring(placementId))`. |
+| B6 | `docs/TEST_PLAN.md` line "Repeatable run", item `38 NPC_GIVE_UP`: after "profile 5 walks out" insert ` (every species on R's lot at its maximum price during this part, restored after; CM2-SALE2 A1)`. |
+
+No game code, headless test or `RunPlaytest.BUILD` change (BUILD stays as the G12b tree sets it). Headless count unchanged.
+**Tier: S** → `implementer`. Reason: one playtest step and one doc line, with existing helpers. No change to game logic, money, save or remotes.
+**Re-test:** run together with CM2-G12b Amendment 1: full run **64/64**, step 38 PASS. That also passes this plan's playtest step 5. The queue entry "CM2-SALE2" in "Studio-Test ausstehend" can then be ticked (steps 1–4 and 6 already passed); update its "62/62" to "64/64". The reviewer commits this fix separately (`fix(test): …(CM2-SALE2 A1)`), apart from the G12b commit.

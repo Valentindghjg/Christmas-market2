@@ -11,9 +11,11 @@ return function(ctx: any)
 	local NPC_RESERVED_STATES = ctx.NPC_RESERVED_STATES
 	local NpcPath = ctx.NpcPath
 	local POLL_INTERVAL = ctx.POLL_INTERVAL
+	local PricingService = ctx.PricingService
 	local R = ctx.R
 	local SIZE = ctx.SIZE
 	local SPECIES = ctx.SPECIES
+	local actOk = ctx.actOk
 	local addStep = ctx.addStep
 	local advance = ctx.advance
 	local awaitDelivery = ctx.awaitDelivery
@@ -322,33 +324,64 @@ return function(ctx: any)
 	addStep("37", "NPC_WALK", { "03" }, withNpcCleanup(npcWalkStep))
 
 	local function npcGiveUpStep(): string?
-		-- (a) Profile 5 wants Fraser Fir: nothing matches, the customer walks out.
+		-- (a) Profile 5 (Fraser Fir Medium) must find nothing. CM2-SALE2: customers buy any tree within budget and PREFLIGHT prices Douglas at its 0.5 x minimum, so every species on the lot is priced at its 2.5 x maximum (above any 155 % budget) during (a) and restored after.
 		local startSnap = snap(R.userId)
-		local first = npcVisit(5)
-		local history: { string } = {}
-		local goneFirst = poll(function()
-			local customer = findNpc(npcSnapshot(), first)
-			if customer then
-				history = customer.history
-				return false
+		local seen: { [string]: boolean } = {}
+		local raised: { string } = {}
+		for _, placement in startSnap.placements do
+			local speciesId = placement.speciesId
+			if not seen[speciesId] and type(startSnap.mediumPrices[speciesId]) == "number" then
+				seen[speciesId] = true
+				table.insert(raised, speciesId)
 			end
-			return true
-		end, 45)
-		check(goneFirst, first .. " still present after 45 s")
-		local n = #history
-		check(
-			n >= 3 and history[n - 2] == "Browsing" and history[n - 1] == "WalkingOut" and history[n] == "Departing",
-			first .. " history " .. table.concat(history, ">")
-		)
-		local afterFirst = snap(R.userId)
-		check(
-			afterFirst.customerVisits == startSnap.customerVisits + 1,
-			string.format("customerVisits %d -> %d", startSnap.customerVisits, afterFirst.customerVisits)
-		)
-		check(
-			afterFirst.abandonedCustomers == startSnap.abandonedCustomers + 1,
-			string.format("abandonedCustomers %d -> %d", startSnap.abandonedCustomers, afterFirst.abandonedCustomers)
-		)
+		end
+		table.sort(raised)
+		for _, speciesId in raised do
+			local _, maximum = PricingService.bounds(speciesId)
+			actOk(R.userId, "Pricing.SetMediumPrice", { speciesId = speciesId, mediumPrice = maximum })
+		end
+		local afterFirst: any = nil
+		local okA, errA = pcall(function()
+			local first = npcVisit(5)
+			local history: { string } = {}
+			local goneFirst = poll(function()
+				local customer = findNpc(npcSnapshot(), first)
+				if customer then
+					history = customer.history
+					return false
+				end
+				return true
+			end, 45)
+			check(goneFirst, first .. " still present after 45 s")
+			local n = #history
+			check(
+				n >= 3 and history[n - 2] == "Browsing" and history[n - 1] == "WalkingOut" and history[n] == "Departing",
+				first .. " history " .. table.concat(history, ">")
+			)
+			afterFirst = snap(R.userId)
+			check(
+				afterFirst.customerVisits == startSnap.customerVisits + 1,
+				string.format("customerVisits %d -> %d", startSnap.customerVisits, afterFirst.customerVisits)
+			)
+			check(
+				afterFirst.abandonedCustomers == startSnap.abandonedCustomers + 1,
+				string.format(
+					"abandonedCustomers %d -> %d",
+					startSnap.abandonedCustomers,
+					afterFirst.abandonedCustomers
+				)
+			)
+		end)
+		for _, speciesId in raised do
+			actOk(
+				R.userId,
+				"Pricing.SetMediumPrice",
+				{ speciesId = speciesId, mediumPrice = startSnap.mediumPrices[speciesId] }
+			)
+		end
+		if not okA then
+			error(errA, 0)
+		end
 
 		-- (b) Profile 8 gives up while carrying its tree.
 		local second = npcVisit(8)
@@ -377,7 +410,11 @@ return function(ctx: any)
 		check(goneSecond, second .. " still present 30 s after giving up")
 		local final = snap(R.userId)
 		check(final.sales == afterFirst.sales, string.format("sales %d -> %d", afterFirst.sales, final.sales))
-		return "no-stock walk-out counted, give-up released " .. tostring(placementId)
+		return string.format(
+			"no-stock walk-out counted (%d species priced out), give-up released %s",
+			#raised,
+			tostring(placementId)
+		)
 	end
 	addStep("38", "NPC_GIVE_UP", { "03" }, withNpcCleanup(npcGiveUpStep))
 
