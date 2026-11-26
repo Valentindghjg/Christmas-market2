@@ -373,3 +373,8 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Comparison of the reference game with our game (2026-11-26) found 8 reference features with neither code nor task. Owner: plan them, but for the first update after launch, not before release.
 - Backlog "Version 2 update", lines 38–45: CM2-V2-SPT Robux special trees orderable, CM2-V2-PDC premium decor works, CM2-V2-MOVE move a display tree, CM2-V2-ORD recent orders with status, CM2-V2-SNOW falling snow, CM2-V2-HIDE hide the HUD, CM2-V2-GIFT gift button, CM2-V2-QSKIP quest skip for 5 Robux. At launch the special-tree and premium-decor shop items stay "Coming soon" (`ready = false`).
 - Files: docs/CLAUDE_BACKLOG.md, docs/PRODUCT_SPEC.md ("Monetization and events").
+
+## 2026-11-26 — owner: vehicle art and village infrastructure are required for version 1
+- Owner: the vehicle models must ship in version 1, and the surroundings must not look empty: not only decor but infrastructure, so there is something between the plots.
+- CM2-14W (vehicle art in the world) is marked required for version 1. New CM2-10I (infrastructure models and placement contract: utility poles with wires, bus stops, mailboxes, hydrants, road signs, snow stakes, guard rails, utility boxes, bins, a garage shed, a village shop and a fire station) and CM2-10IW (placement in `MapLayout`/`MapWorld`), both in Gate B before CM2-47. Budget on top of CM2-10DW: ≤ 120 models, ≤ 40000 triangles, ≤ 300 MeshParts, ≤ 10 night lights (map ≤ 562 models, ≤ 68 night lights).
+- Files: docs/CLAUDE_BACKLOG.md (launch order, CM2-14W, CM2-10I, CM2-10IW), docs/PRODUCT_SPEC.md ("Art").

@@ -44,6 +44,7 @@ Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST
 
 ## Art
 - **Own palette**, low-poly winter style, with quality over free packs. **All current Codex/CC0 models are removed** and replaced.
+- **Required for version 1 (owner decision 2026-11-26):** the vehicle models in the world (supplier truck and customer cars, CM2-14W), and village infrastructure so the map is not empty between and around the plots: utility poles with wires, bus stops, mailboxes, hydrants, road signs, guard rails, sheds and two small village buildings (CM2-10I, CM2-10IW), in addition to the snow and village dressing (CM2-10D).
 - **Larger and visible models** (buildings, cars, truck, trees, stalls, terrain props) are modeled in **Blender** and imported as MeshParts. Roblox Parts are used only for small items (signs, pallets, slats, small decor), always in the palette and cleanly finished.
 - **Self-review:** Opus 5.5 (medium effort) builds and reviews models itself against the owner's reference images in `docs/art/quality-reference/`. The owner supplied them on 2026-11-22: 3 liked, 3 disliked. The descriptions and the checklist are in its README. Only models that pass are integrated.
 - **Quality tiers (owner decision 2026-11-22):**
