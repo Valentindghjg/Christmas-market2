@@ -50,7 +50,7 @@ Owner decision 2026-11-21 (PRODUCT_SPEC). Every task that changes code, tests, m
 - The main session only orchestrates; it writes no plans, code, models or commits.
 - Start agents with `subagent_type` only; never pass `model` or `effort` (that overrides the agent file).
 - Implementers decide only minor details (rule 3 in `.claude/agents/implementer.md`: local and private helper names, formatting, lint fixes) and stop with a report on any other ambiguity; the planner amends the plan.
-- Studio playtests are batched: now for tier L or MODEL, saves, money, inventory, purchases, world geometry or a milestone's last task, else every third task via the queue "Studio-Test ausstehend" in `docs/CLAUDE_BACKLOG.md` (`cm2-task` step 3). Headless checks run for every task.
+- Studio playtests are batched (owner decision 2026-11-26, speed and usage): now for saves, money, inventory, purchases, world wiring or a milestone's last task, else every fifth task via the queue "Studio-Test ausstehend" in `docs/CLAUDE_BACKLOG.md` (`cm2-task` step 3). A playtest is the smoke run plus the task's own steps; the full run only at the end of a hasseln run, for QA and release tasks and for runner or core-loop changes. Headless checks run for every task; agents print only failures and the summary.
 - **Automatic model switch:** classify each chat message; the switch lasts for that turn. Planning (design, decisions, spec, backlog, priorities, balancing, "how should this work"): invoke `cm2-plan` first (Opus 5.5, high). Work (implement, fix, build models, playtest, carry out a plan): `cm2-task` (Sonnet 5.5 orchestrates, each agent on its own model). Backlog run (the `hasseln` triggers): `hasseln`, which runs `cm2-task` per task. Short questions and conversation: neither, the session model. Switch not applied (`availableModels` or auto mode): the chat keeps its model and the skill raises effort to high, except that `cm2-plan` stops and asks the user to switch to Opus when the chat stays on Sonnet.
 - **Hooks** (`.claude/settings.json`, scripts in `.claude/hooks/`):
   - `route-prompt.js` (UserPromptSubmit) reminds the chat on every message to classify it and invoke `cm2-plan`, `cm2-task` or `hasseln`; only the skills can switch the model.
@@ -61,7 +61,7 @@ Owner decision 2026-11-21 (PRODUCT_SPEC). Every task that changes code, tests, m
 29 Roblox skills from `TabooHarmony/roblox-brain` in `.claude/skills/` (list and pins: `skills-lock.json`), each a `SKILL.md` plus `references/full.md`.
 
 ### Using the skills (mandatory)
-- Before every Roblox task load `roblox-collaboration-mode` first (with the precedence rules below), then each domain skill the change touches: read its `SKILL.md`, and `references/full.md` when the change needs more than the quick reference.
+- The planner loads `roblox-collaboration-mode` first (with the precedence rules below), then each domain skill the change touches (`SKILL.md`; `references/full.md` only when needed), and copies the applicable checks into the plan's "Skill checks"; the other agents read those lines instead of the skills (the implementer of a tier S task without a plan reads the `SKILL.md` files itself). `CLAUDE.md` is in every agent's context already; agents do not read it again.
 - Task → skills:
 
 | Task | Skills |
