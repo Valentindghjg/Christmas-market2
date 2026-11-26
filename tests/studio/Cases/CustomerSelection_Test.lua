@@ -17,15 +17,33 @@ return function(t)
 		expect.truthy(candidate.conversionScore > 0)
 	end)
 
-	t.test("rejects nonmatching or over-budget stock", function()
+	-- Demand is needed by the CM2-SALE2 cases below.
+	local Demand = require(Shared:WaitForChild("Demand"))
+
+	t.test("accepts a non-preferred tree within budget and rejects over-budget stock (CM2-SALE2)", function()
 		local state = BusinessState.new("personal:42", 42)
 		state.layout.placements.noble = { speciesId = "NobleFir", sizeId = "Small" }
+		local candidate = CustomerSelection.choose(state, CustomerProfile.create(1))
+		expect.truthy(candidate)
+		expect.equal(candidate.placementId, "noble")
+		expect.equal(candidate.salePrice, 147)
+		expect.truthy(math.abs(candidate.conversionScore - Demand.score(1, 90, 1, 0.85, 0.68, 0.75)) < 1e-9)
+		state.mediumPrices.NobleFir = 200
 		expect.equal(CustomerSelection.choose(state, CustomerProfile.create(1)), nil)
 	end)
 
-	-- CM2-G7: the price ratio is the sale price over the benchmark of the tree's size.
-	local Demand = require(Shared:WaitForChild("Demand"))
+	t.test("picks the best-scoring tree, not the first sorted one (CM2-SALE2)", function()
+		local state = BusinessState.new("personal:42", 42)
+		state.layout.placements.a = { speciesId = "FrasierFir", sizeId = "Large" }
+		state.layout.placements.b = { speciesId = "DouglasFir", sizeId = "Medium" }
+		local candidate = CustomerSelection.choose(state, CustomerProfile.create(8))
+		expect.truthy(candidate)
+		expect.equal(candidate.placementId, "b")
+		expect.equal(candidate.salePrice, 140)
+		expect.truthy(math.abs(candidate.conversionScore - Demand.score(1, 90, 1, 0.925, 0.76, 1)) < 1e-9)
+	end)
 
+	-- CM2-G7: the price ratio is the sale price over the benchmark of the tree's size.
 	local function douglasState(mediumPrice: number, sizeId: string)
 		local state = BusinessState.new("personal:42", 42)
 		state.mediumPrices.DouglasFir = mediumPrice
@@ -39,7 +57,7 @@ return function(t)
 		local candidate = CustomerSelection.choose(douglasState(154, "Large"), CustomerProfile.create(12))
 		expect.truthy(candidate)
 		expect.equal(candidate.salePrice, 200)
-		expect.equal(candidate.conversionScore, Demand.score(200 / 182, 90, 1, 1 / 3, 1))
+		expect.truthy(math.abs(candidate.conversionScore - Demand.score(200 / 182, 90, 1, 0.85, 1, 1)) < 1e-9)
 	end)
 
 	t.test("scores the benchmark equally for every size and lower above it", function()
@@ -78,7 +96,8 @@ return function(t)
 		expect.equal(candidate.placementId, "b")
 		expect.equal(candidate.salePrice, 147)
 		expect.equal(candidate.conversionScore, 1)
-		expect.equal(CustomerSelection.choose(state, CustomerProfile.create(1)), nil)
+		-- profile 5's budget (99 %) is below 147 and 140, so the soft preference finds nothing.
+		expect.equal(CustomerSelection.choose(state, CustomerProfile.create(5)), nil)
 		state.reservations.b = { customerId = "npc:99", expiresAt = 200, salePrice = 1 }
 		state.reservations.c = { customerId = "npc:99", expiresAt = 200, salePrice = 1 }
 		expect.equal(CustomerSelection.chooseGuaranteed(state), nil)

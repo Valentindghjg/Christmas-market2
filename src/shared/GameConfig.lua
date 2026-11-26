@@ -108,6 +108,17 @@ GameConfig.Saves = {
 
 local validSizes = { Small = true, Medium = true, Large = true }
 
+-- Early-lot demand (CM2-SALE2), all PROVISIONAL (PRODUCT_SPEC "demand tuned later", GAME_DESIGN §4/§5).
+-- Interest: how much a customer wants a tree by how it matches its preferred species and size.
+-- Variety: VarietySingle with one displayed species, rising linearly to 1 at VarietyFullSpecies.
+-- Stock: StockBase with no unreserved tree, rising linearly to 1 at AutoPricing.TargetDisplayStock.
+GameConfig.Demand = {
+	Interest = { Exact = 1, SameSpecies = 0.85, SameSize = 0.75, Other = 0.65 },
+	VarietySingle = 0.85,
+	VarietyFullSpecies = 3,
+	StockBase = 0.6,
+}
+
 -- Price benchmark and pricing panel (CM2-G7, docs/REFERENCE_GAME_LIVE_TEST.md §4.3).
 GameConfig.Pricing = {
 	BenchmarkMultiplier = 5, -- OBSERVED for Douglas, Fraser and Blue Spruce (exactly 5 x medium wholesale); PROVISIONAL extrapolation for species without an observed card

@@ -1,7 +1,7 @@
 --!strict
 -- Deterministic customer preferences; no client-owned customer input is trusted.
--- Budgets follow the size benchmark (Economy.typicalPrice, CM2-G7): 85-155 % of the typical
--- price of the preferred species and size (PROVISIONAL until CM2-N1).
+-- Budgets are 85-155 % (`budgetPercent`) of the benchmark (Economy.typicalPrice, CM2-G7); the same
+-- percent applies to any tree the customer considers (CM2-SALE2, PROVISIONAL).
 local GameConfig = require(script.Parent.GameConfig)
 local Economy = require(script.Parent.Economy)
 
@@ -32,20 +32,49 @@ function CustomerProfile.create(customerNumber: number)
 		preferredSpeciesId = preferredSpeciesId,
 		preferredSizeId = preferredSizeId,
 		budget = budget,
+		budgetPercent = percent,
 		patienceSeconds = 12 + ((customerNumber * 7) % 19),
 	}
 end
 
+-- The profile's budget for any tree: its budget percent applied to that tree's benchmark.
+function CustomerProfile.budgetFor(profile, speciesId: unknown, sizeId: unknown): number?
+	if type(profile) ~= "table" or type(profile.budgetPercent) ~= "number" then
+		return nil
+	end
+	local typical = Economy.typicalPrice(speciesId, sizeId)
+	if typical == nil then
+		return nil
+	end
+	return (typical * profile.budgetPercent + 50) // 100
+end
+
+-- How much the customer wants this tree, by the match with its preferred species and size.
+function CustomerProfile.interestIn(profile, placement): number
+	if type(profile) ~= "table" or type(placement) ~= "table" then
+		return 0
+	end
+	local Interest = GameConfig.Demand.Interest
+	local sameSpecies = placement.speciesId == profile.preferredSpeciesId
+	local sameSize = placement.sizeId == profile.preferredSizeId
+	if sameSpecies and sameSize then
+		return Interest.Exact
+	elseif sameSpecies then
+		return Interest.SameSpecies
+	elseif sameSize then
+		return Interest.SameSize
+	end
+	return Interest.Other
+end
+
+-- Soft preference (CM2-SALE2): any known tree within the budget scaled to its own benchmark;
+-- interestIn weighs the match.
 function CustomerProfile.canPurchase(profile, placement, salePrice: number): boolean
-	return type(profile) == "table"
-		and type(placement) == "table"
-		and type(profile.preferredSpeciesId) == "string"
-		and type(profile.preferredSizeId) == "string"
-		and type(profile.budget) == "number"
-		and type(salePrice) == "number"
-		and placement.speciesId == profile.preferredSpeciesId
-		and placement.sizeId == profile.preferredSizeId
-		and salePrice <= profile.budget
+	if type(profile) ~= "table" or type(placement) ~= "table" or type(salePrice) ~= "number" then
+		return false
+	end
+	local budget = CustomerProfile.budgetFor(profile, placement.speciesId, placement.sizeId)
+	return budget ~= nil and salePrice <= budget
 end
 
 return CustomerProfile

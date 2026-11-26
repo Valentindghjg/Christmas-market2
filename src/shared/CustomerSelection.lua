@@ -22,7 +22,8 @@ local function varietyFactor(state): number
 	if total == 0 then
 		return 0
 	end
-	return math.min(1, distinct / 3)
+	local D = GameConfig.Demand
+	return math.min(1, D.VarietySingle + (1 - D.VarietySingle) * (distinct - 1) / (D.VarietyFullSpecies - 1))
 end
 
 -- The unreserved displayed placement IDs, sorted (a stable pick order).
@@ -37,7 +38,9 @@ local function unreservedIds(state): { string }
 	return candidateIds
 end
 
--- Returns the first stable compatible candidate and its server-computed conversion score.
+-- Returns the highest-scoring compatible candidate (ties: first sorted ID) and its server-computed
+-- conversion score. CM2-SALE2: compatible means within the budget for that tree; the score includes
+-- the customer's interest.
 -- priceTolerance (CM2-46a, Evergreen VIP): the customer judges salePrice / priceTolerance
 -- against its budget and the Demand price ratio; the candidate keeps the real salePrice.
 function CustomerSelection.choose(state, profile, priceTolerance: number?)
@@ -45,11 +48,15 @@ function CustomerSelection.choose(state, profile, priceTolerance: number?)
 		return nil
 	end
 	local candidateIds = unreservedIds(state)
-	local stockFactor = math.min(1, #candidateIds / GameConfig.AutoPricing.TargetDisplayStock)
+	local base = GameConfig.Demand.StockBase
+	local stockFactor = math.min(1, base + (1 - base) * #candidateIds / GameConfig.AutoPricing.TargetDisplayStock)
+	local variety = varietyFactor(state)
 	local tolerance = 1
 	if type(priceTolerance) == "number" and priceTolerance > 0 and priceTolerance ~= math.huge then
 		tolerance = priceTolerance
 	end
+	local best = nil
+	local bestScore = -1
 	for _, placementId in ipairs(candidateIds) do
 		local placement = state.layout.placements[placementId]
 		local mediumPrice = state.mediumPrices[placement.speciesId]
@@ -58,12 +65,16 @@ function CustomerSelection.choose(state, profile, priceTolerance: number?)
 			local typical = Economy.typicalPrice(placement.speciesId, placement.sizeId)
 			local judged = salePrice / tolerance
 			if typical ~= nil and CustomerProfile.canPurchase(profile, placement, judged) then
-				local score = Demand.score(judged / typical, state.reputation, 1, varietyFactor(state), stockFactor)
-				return { placementId = placementId, salePrice = salePrice, conversionScore = score }
+				local interest = CustomerProfile.interestIn(profile, placement)
+				local score = Demand.score(judged / typical, state.reputation, 1, variety, stockFactor, interest)
+				if score > bestScore then
+					bestScore = score
+					best = { placementId = placementId, salePrice = salePrice, conversionScore = score }
+				end
 			end
 		end
 	end
-	return nil
+	return best
 end
 
 -- CM2-SALE1 tutorial customer: the first unreserved displayed tree (sorted placement IDs)

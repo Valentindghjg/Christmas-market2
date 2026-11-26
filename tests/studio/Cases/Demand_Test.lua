@@ -20,4 +20,11 @@ return function(t)
 	t.test("scores the benchmark price at 0.65", function()
 		expect.truthy(math.abs(Demand.score(1, 500, 1, 1, 1) - 0.65) < 1e-9)
 	end)
+
+	-- CM2-SALE2: interest (baseSpeciesInterest) scales the score and defaults to 1.
+	t.test("interest scales the score and defaults to 1 (CM2-SALE2)", function()
+		expect.truthy(math.abs(Demand.score(1, 500, 1, 1, 1, 0.5) - 0.325) < 1e-9)
+		expect.equal(Demand.score(1, 500, 1, 1, 1), Demand.score(1, 500, 1, 1, 1, 1))
+		expect.equal(Demand.score(1, 90, 1, 1, 1, 0), 0.02)
+	end)
 end

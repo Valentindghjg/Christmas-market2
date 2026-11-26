@@ -53,6 +53,7 @@ G5: exploit/race/failure tests, performance budgets, production release checklis
 | SEC-01 | Malformed/oversized remote payload | rejected |
 | SEC-02 | Flood requests | rate-limited |
 | SEC-03 | Spoof plot ID | cannot mutate another plot |
+| DEM-01 | Demand simulation (CM2-SALE2, `DemandSimulation_Test`) | 1000 visits (customers 1-1000, rolls `(seed × 0.1 + i × 0.61803398875) % 1`, seeds 1-3) on four fixed lots; each prints `[SALE2]` with the rate and asserts its target range |
 
 ## 3. Integration playtests
 A. Fresh user joins, gets free plot, starter inventory and tutorial; no unintended Roblox purchases.

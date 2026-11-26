@@ -101,7 +101,7 @@ return function(t)
 		expect.equal(#summary.orders, 1)
 	end)
 
-	t.test("visitForTest reports a non-matching profile", function()
+	t.test("visitForTest reports a profile that cannot afford the tree (CM2-SALE2)", function()
 		local service, state = displayedCompany(1)
 		local ok, reason = service:visitForTest(COMPANY, 5)
 		expect.falsy(ok)
