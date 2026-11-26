@@ -53,6 +53,7 @@ Queue of tasks whose Studio playtest is deferred to the next batch run (skill `c
 Done parts and the 2026-11-24 batch history are archived. Owner decision 2026-11-25 (PC-9 dropped): the art capture items (CM2-12, CM2-13a/13b, CM2-14, CM2-10a/b/c, CM2-10W), "Captures only" and "Desktop FPS" are removed; their tasks are ticked on the passed numeric checks (Edit-mode steps, full run 62/62, `ART_ASSETS`, `MAP_WORLD` 302 of 302 art, reserve numbers).
 
 - CM2-46c test purchases (PC-10, line 13c, code 3c5ac49): CM2-46b playtest step 7a–7d and the idempotency check; procedure, Accept and tick rule in N3b. Never retry the Buy click unattended.
+- CM2-SALE2 early-lot demand (plan `docs/plans/CM2-SALE2.md`, section "Playtest" steps 1-6): fresh 6-tree Douglas Medium lot, a sale within 180 s (second window allowed), mixed decision reasons, full run 62/62. Tick rule: the entry stays open until step 4 and 5 pass.
 
 ## How to work
 - Read CLAUDE.md and the canonical docs before starting.
@@ -170,6 +171,7 @@ From the CM2-SALE1 regression (60/62, plan Amendment 1) and the plan's "Out of s
 - [ ] **CM2-SALE2 Early-lot demand** (added 2026-11-25 from CM2-SALE1 "Out of scope") · M (`planner`; demand logic in shared modules, no save field, no money path change beyond the existing sale) · Depends: 14a CM2-SALE1. Must land before the Gate B build (line 24 CM2-48). Problem (CM2-SALE1 cause table): after the tutorial a small lot almost never sells: exact species-and-size preference (1 of 12 profiles) times conversion (`Demand.score` with variety and stock factors) gives about 1.1 % per visit for 6 Douglas Medium and 3.2 % for a mixed S/M/L lot, one sale every 6-19 minutes at 4-5 visits a minute with 2 parking spaces.
   - Goal (proposal for the planner, values PROVISIONAL, PRODUCT_SPEC "demand tuned later", GAME_DESIGN §4/§5): soft preferences (a non-preferred tree within the budget scaled to its own benchmark, with an interest factor) and gentler variety and stock factors in `CustomerProfile`/`Demand`/`CustomerSelection.choose`; no guaranteed purchases (GAME_DESIGN §4).
   - Accept: a headless conversion simulation (fixed seeds, 1000 visits) reports sales per visit for a 1-tree, a 6-tree single-species and a mixed S/M/L starter lot, and the plan's target ranges hold; existing demand tests updated with reasons; standard checks; Studio: on a fresh 6-tree lot with customers unpaused, at least one sale within 3 minutes and `decisionLog` shows mixed reasons; values recorded in DECISION_LOG.
+  - Status 2026-11-26: code done headless (plan `docs/plans/CM2-SALE2.md`, 616/616, 12 `[SALE2]` rates inside the target ranges, see PROGRESS); the Studio criterion is queued in "Studio-Test ausstehend", the entry stays open until it passes.
 
 ## Recurring task: CM2-SLIM repo hygiene (owner decision 2026-11-24)
 One `cm2-task` per run, ID `CM2-SLIM` plus its date. **Tier S**: no planner; `implementer` (Sonnet medium) works from the plan below; `reviewer` puts `(CM2-SLIM)` in every commit subject (the due check finds the last run by it). Old wording of this section: archive (CM2-SLIM4).
