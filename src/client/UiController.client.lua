@@ -13,6 +13,7 @@ local Localization = require(Shared:WaitForChild("Localization"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
 local UiKit = require(script.Parent:WaitForChild("UiKit") :: ModuleScript)
 local LotManager = require(script.Parent:WaitForChild("LotManager") :: ModuleScript)
+local QuestPanel = require(script.Parent:WaitForChild("QuestPanel") :: ModuleScript)
 
 local localized = UiKit.localized
 local localizedFormat = UiKit.localizedFormat
@@ -69,6 +70,9 @@ local context: LotManager.TabContext = {
 		return lastSummary
 	end,
 }
+
+-- Daily rewards and quests (CM2-G11) render from the same summary poll.
+local questPanel = QuestPanel.new(context)
 
 -- On a phone the open Lot Manager takes the whole safe area, so the HUD and the rail step aside.
 local function updateChrome()
@@ -182,6 +186,7 @@ refreshSummary = function()
 	lastSummary = response.data
 	renderChips(response.data)
 	manager.render(response.data)
+	questPanel.render(response.data)
 end
 player:GetAttributeChangedSignal("CompanyReady"):Connect(refreshSummary)
 -- A switched save starts from its own summary, never the previous save's figures.
@@ -189,6 +194,7 @@ player:GetAttributeChangedSignal("ActiveSaveId"):Connect(function()
 	lastSummary = nil
 	renderChips(nil)
 	manager.render(nil)
+	questPanel.render(nil)
 	refreshSummary()
 end)
 

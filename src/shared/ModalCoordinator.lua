@@ -11,6 +11,8 @@ export type Coordinator = {
 	-- CM2-49: the id of a claimed modal (any holder) and whether a base layer is open.
 	held: () -> string?,
 	hasBase: () -> boolean,
+	-- CM2-G11: listener called after every change; returns its remover.
+	onChange: (listener: () -> ()) -> () -> (),
 }
 
 -- Modal ids that open over the base layer without closing it. PROVISIONAL (CM2-S3 design).
@@ -19,6 +21,13 @@ ModalCoordinator.OverBase = table.freeze({ Finder = true }) :: { [string]: boole
 function ModalCoordinator.new(): Coordinator
 	local holders: { [string]: () -> () } = {}
 	local base: (() -> ())? = nil
+	local listeners: { () -> () } = {}
+
+	local function notify()
+		for _, listener in ipairs(table.clone(listeners)) do
+			listener()
+		end
+	end
 
 	-- All state changes happen before any close callback runs.
 	local function claim(id: string, close: () -> ())
@@ -37,10 +46,12 @@ function ModalCoordinator.new(): Coordinator
 		for _, callback in ipairs(toClose) do
 			callback()
 		end
+		notify()
 	end
 
 	local function release(id: string)
 		holders[id] = nil
+		notify()
 	end
 
 	local function closeAll()
@@ -52,10 +63,12 @@ function ModalCoordinator.new(): Coordinator
 		for _, callback in ipairs(toClose) do
 			callback()
 		end
+		notify()
 	end
 
 	local function setBase(close: (() -> ())?)
 		base = close
+		notify()
 	end
 
 	local function held(): string?
@@ -66,6 +79,16 @@ function ModalCoordinator.new(): Coordinator
 		return base ~= nil
 	end
 
+	local function onChange(listener: () -> ()): () -> ()
+		table.insert(listeners, listener)
+		return function()
+			local index = table.find(listeners, listener)
+			if index then
+				table.remove(listeners, index)
+			end
+		end
+	end
+
 	return {
 		claim = claim,
 		release = release,
@@ -73,6 +96,7 @@ function ModalCoordinator.new(): Coordinator
 		setBase = setBase,
 		held = held,
 		hasBase = hasBase,
+		onChange = onChange,
 	}
 end
 

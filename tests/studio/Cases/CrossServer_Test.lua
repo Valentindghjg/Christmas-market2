@@ -297,6 +297,37 @@ return function(t)
 		end
 	end)
 
+	t.test("a forgotten cached miss shows the foreign server at once", function()
+		local env = setup()
+		local save = coopSave(env)
+		expect.truthy(act(env.a, FRIEND, "Save.Join", { code = save.code }).ok)
+
+		-- A failed lookup caches a miss.
+		env.map.failCount = SAVES.LocatorAttempts
+		local missed = act(env.b, FRIEND, "Save.List")
+		expect.truthy(missed.ok)
+		local missedRow = rowFor(missed, save.saveId)
+		expect.truthy(missedRow)
+		expect.equal(missedRow.elsewhere, nil)
+
+		-- The store works again, but the miss stays cached at the same time.
+		env.map.failCount = 0
+		local cached = act(env.b, FRIEND, "Save.List")
+		expect.truthy(cached.ok)
+		local cachedRow = rowFor(cached, save.saveId)
+		expect.truthy(cachedRow)
+		expect.equal(cachedRow.elsewhere, nil)
+
+		-- Forgetting the cached lookup shows the foreign server on the next list.
+		env.b.service:forgetLocation(save.saveId)
+		local fresh = act(env.b, FRIEND, "Save.List")
+		expect.truthy(fresh.ok)
+		local freshRow = rowFor(fresh, save.saveId)
+		expect.truthy(freshRow)
+		expect.equal(freshRow.elsewhere, true)
+		expect.equal(freshRow.hostName, "OwnerName")
+	end)
+
 	t.test("names the owner, else the longest-playing member", function()
 		local env = setup()
 		local save = coopSave(env)

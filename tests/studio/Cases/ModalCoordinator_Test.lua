@@ -136,4 +136,40 @@ return function(t)
 		modals.release("Shop")
 		expect.equal(modals.held(), nil)
 	end)
+
+	-- CM2-G11: the quest panel re-checks its auto-open after every modal change.
+	t.test("notifies listeners after every change", function()
+		local modals = ModalCoordinator.new()
+		local calls = 0
+		local hasBase: boolean? = nil
+		local heldId: string? = nil
+		modals.onChange(function()
+			calls += 1
+			hasBase = modals.hasBase()
+			heldId = modals.held()
+		end)
+		modals.setBase(function() end)
+		expect.equal(calls, 1)
+		expect.equal(hasBase, true)
+		modals.claim("Team", function() end)
+		expect.equal(calls, 2)
+		expect.equal(hasBase, false)
+		expect.equal(heldId, "Team")
+		modals.release("Team")
+		expect.equal(calls, 3)
+		expect.equal(heldId, nil)
+		modals.closeAll()
+		expect.equal(calls, 4)
+	end)
+
+	t.test("a removed listener is not called", function()
+		local modals = ModalCoordinator.new()
+		local calls = 0
+		local remove = modals.onChange(function()
+			calls += 1
+		end)
+		remove()
+		modals.setBase(nil)
+		expect.equal(calls, 0)
+	end)
 end

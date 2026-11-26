@@ -3,6 +3,7 @@ return function(t)
 	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 	local BusinessState = require(Shared:WaitForChild("BusinessState"))
 	local GameConfig = require(Shared:WaitForChild("GameConfig"))
+	local QuestBoard = require(Shared:WaitForChild("QuestBoard"))
 	local Receiving = require(Shared:WaitForChild("Receiving"))
 	local expect = t.expect
 	-- A purchase derives cost from the server catalog, not caller input.
@@ -59,7 +60,8 @@ return function(t)
 		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(migrated.cash, 84)
 		expect.truthy(migrated.reservations)
-		expect.truthy(migrated.questClaims)
+		expect.equal(migrated.questClaims, nil)
+		expect.truthy(QuestBoard.isValid(migrated.quests))
 	end)
 
 	-- The latest migration must preserve all established persisted domains.
@@ -88,7 +90,8 @@ return function(t)
 		expect.equal(migrated.progression.lotExpansion, 2)
 		expect.equal(migrated.customerVisits, 12)
 		expect.equal(migrated.revenue, 456)
-		expect.truthy(migrated.questClaims)
+		expect.equal(migrated.questClaims, nil)
+		expect.truthy(QuestBoard.isValid(migrated.quests))
 	end)
 
 	-- validate() requires visits >= sales, so the v7 -> v8 step must not reset visits to 0.
@@ -181,7 +184,7 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "personal:42", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(BusinessState.SCHEMA_VERSION, 20)
+		expect.equal(BusinessState.SCHEMA_VERSION, 21)
 		expect.equal(migrated.schemaVersion, BusinessState.SCHEMA_VERSION)
 		expect.equal(migrated.cash, 777)
 		expect.equal(migrated.reputation, 120)
@@ -200,7 +203,7 @@ return function(t)
 		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
 		expect.truthy(migrated)
 		expect.equal(reason, nil)
-		expect.equal(migrated.schemaVersion, 20)
+		expect.equal(migrated.schemaVersion, 21)
 		expect.equal(migrated.progression.lotExpansion, 2)
 		expect.equal(migrated.progression.parkingTier, 2)
 		expect.equal(migrated.progression.hqLevel, 2)
@@ -213,6 +216,25 @@ return function(t)
 		expect.falsy(BusinessState.validate(broken))
 		broken.progression = { lotExpansion = 7, parkingTier = 1, hqLevel = 1 }
 		expect.falsy(BusinessState.validate(broken))
+	end)
+
+	-- CM2-G11: schema 21 replaces the scaffold quest claims with the rotating quest board.
+	t.test("migrates schema 20 records to 21", function()
+		local legacy = BusinessState.new("save:42_x", 42)
+		legacy.schemaVersion = 20
+		legacy.quests = nil
+		legacy.questClaims = { FirstSale = true }
+		legacy.cash = 2468
+		local migrated, reason = BusinessState.migrate(legacy, "save:42_x", 42)
+		expect.truthy(migrated)
+		expect.equal(reason, nil)
+		expect.equal(BusinessState.SCHEMA_VERSION, 21)
+		expect.equal(migrated.schemaVersion, 21)
+		expect.equal(migrated.questClaims, nil)
+		expect.truthy(QuestBoard.isValid(migrated.quests))
+		expect.equal(migrated.quests.period, 0)
+		expect.equal(migrated.cash, 2468)
+		expect.truthy(BusinessState.validate(migrated))
 	end)
 
 	t.test("rejects an invalid save name or size", function()

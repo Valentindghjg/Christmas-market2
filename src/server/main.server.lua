@@ -21,6 +21,7 @@ local PersistenceService = require(script.Parent.Services:WaitForChild("Persiste
 local CompanyStateService = require(script.Parent.Services:WaitForChild("CompanyStateService"))
 local CustomerNpcService = require(script.Parent.Services:WaitForChild("CustomerNpcService"))
 local CustomerNpcWorld = require(script.Parent.Services:WaitForChild("CustomerNpcWorld"))
+local DailyRewardService = require(script.Parent.Services:WaitForChild("DailyRewardService"))
 local InviteCodeService = require(script.Parent.Services:WaitForChild("InviteCodeService"))
 local LeaderboardService = require(script.Parent.Services:WaitForChild("LeaderboardService"))
 local MonetizationService = require(script.Parent.Services:WaitForChild("MonetizationService"))
@@ -778,6 +779,29 @@ end)
 every(ShopConfig.BoostTickSeconds, "boosts", function()
 	return companies:tickBoostsAll(ShopConfig.BoostTickSeconds)
 end)
+-- Daily reward streak (CM2-G11): paid into the active save, 2x for group members.
+local dailyRewards = DailyRewardService.new({
+	saveSlots = saveSlots,
+	companies = companies,
+	clock = businessClock,
+	isInGroup = function(userId: number, groupId: number): boolean
+		local player = Players:GetPlayerByUserId(userId)
+		if not player then
+			return false
+		end
+		return player:IsInGroup(groupId)
+	end,
+	setAttribute = function(userId: number, name: string, value: any)
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			player:SetAttribute(name, value)
+		end
+	end,
+})
+every(config.DailyRewards.RefreshSeconds, "daily rewards", function()
+	dailyRewards:refreshAll(saveSlots:activeUserIds())
+	return true, 0, 0
+end)
 -- The save's day runs only while it is loaded (CM2-G12a); the measured wait is the step.
 task.spawn(function()
 	while true do
@@ -1026,6 +1050,9 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 	player:SetAttribute("ProfileReady", true)
+	task.spawn(function()
+		dailyRewards:onPlayerJoined(player.UserId)
+	end)
 	local arrival = crossServerJoin(player)
 	if arrival then
 		local arrived, arriveError = saveSlots:arrive(player.UserId, arrival)
@@ -1081,6 +1108,7 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 	companies:forgetUser(player.UserId)
 	monetization:forgetUser(player.UserId)
+	dailyRewards:forgetUser(player.UserId)
 	task.spawn(function()
 		leaderboards:flushUser(userId)
 		leaderboards:forgetPlayer(userId)
@@ -1123,6 +1151,9 @@ local function handleBusinessAction(player: Player, request)
 	end
 	if type(request) == "table" and request.action == Protocol.Actions.LotLike then
 		return likeLot(player, request)
+	end
+	if type(request) == "table" and request.action == Protocol.Actions.DailyClaim then
+		return dailyRewards:handle(player.UserId, request)
 	end
 	-- Order interactions need the player next to the tree or car, whichever channel is used.
 	local action = type(request) == "table" and request.action
@@ -1195,6 +1226,7 @@ if RunService:IsStudio() then
 			staff = staff,
 			saveSlots = saveSlots,
 			monetization = monetization,
+			dailyRewards = dailyRewards,
 			ledger = ledger,
 			leaderboards = leaderboards,
 			collectLeaderboards = collectLeaderboards,

@@ -364,6 +364,24 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Decor fences: `Placement.DecorFences` become one `FenceRail8` and one `FencePost` each in a model `DecorFence`; the CC0 `FenceWooden` stays only as the fallback.
 - Road yaw 180 degrees on plots 1-3 and 0 on plots 4-6; the night light moves to the art's `Register` part (else `CounterBase`). No save, remote, error-code, string-key or KeepClear change.
 
+## 2026-11-26 — CM2-G11 daily rewards, quest board and group bonus (engineering)
+- Plan: `docs/plans/CM2-G11.md`. Pure logic in `src/shared/DailyRewards.lua` and `src/shared/QuestBoard.lua`; the claim action in `src/server/Services/DailyRewardService.lua`, the board and reward grants in the mixin `src/server/Services/CompanyQuests.lua`, the panel in `src/client/QuestPanel.lua` (rail slot 30). The scaffold (`QuestService.lua`, the old `GameConfig.Quests`, `questClaims`) is gone; it was never client-reachable.
+
+| Topic | Decision |
+|---|---|
+| Daily streak owner | Per **player** (profile `daily`), paid into the **active save**; one claim per player and UTC day across saves and servers (co-op members claim their own). |
+| Day | `floor(businessClock / 86400)` (UTC). Claimed yesterday → next index; missed ≥ 1 full day → back to day 1; after day 7 → day 1 (PROVISIONAL). Clock behind `lastDay` → `AlreadyClaimed`. |
+| Claim order | Validate → rate limit → in-flight guard → active, available save → group check (may yield) → profile `UpdateAsync` marks the day (atomic guard) → save still active → grant in the company critical section. Grant refused → revert exactly this claim; revert failed → `warn`, reward lost (at most once, never twice). |
+| Group | `GroupId = 0` → hidden, never doubled, no `IsInGroup` call. Else `Player:IsInGroup` in `pcall` at join and each claim; error → cached value (default false). ×2 on cash and reputation inside the one claim. Join button: `GroupService:PromptJoinAsync` in `pcall`; membership may be cached per server, so the text says "from your next visit". |
+| Quest board owner | Per **save** (`state.quests`, schema 21), progress from any member's actions. |
+| Rotation | Windows `floor(clock / 14400)`. A stale board is replaced on the next note, claim or test hook; unclaimed rewards lapse. Progress grows only from play events, so offline time never pays. The view never mutates. |
+| Counting | Orders: quantity of each successful `placeOrder`. Sales: each `completeReservedSale` (sale price, 1 tree, its size); pass/boost bonus not counted. Rewards are not revenue and get no cash multiplier. |
+| Scaffold | `QuestService.lua`, its test, the old `GameConfig.Quests` and `questClaims` are replaced (never client-reachable). |
+
+- Amendment 1 (Studio step 34 ELSEWHERE flake, not caused by G11): the save locator cache stays at `LocatorCacheSeconds` = 15 s. The Studio test instrument drops the cached lookup after its direct map writes (`placeElsewhere`, `clearElsewhere` call the new `SaveSlotService:forgetLocation`), so a miss cached during the save switch no longer hides the fake foreign server.
+- Amendment 2 (B3, auto-open): the quest panel's auto-open check also runs after every modal change (`ModalCoordinator.onChange`, `UiKit.onModalsChanged`: claim, release, closeAll, base layer), so a modal or base layer held at the attribute change no longer blocks it for the session. `QuestUI` carries `AutoOpenState` (`NotReady`, `NotClaimable`, `Tutorial`, `Modal`, `BaseLayer` or `Opened`), the first failing condition of the last check.
+- Amendment 2 (B4, plot picker): the CM2-PP plot picker closes itself when `CompanyReady` turns true for its own save (`ActiveSaveId` equals the picker's save), because Save.Play activates the save before its response arrives; a later Save.Play response finds the picker closed and does nothing.
+
 ## 2026-11-26 — owner: supplier orders with sizes, quantities and a cart (CM2-SUP)
 - Owner noticed that only one tree of a species can be ordered at a time. Cause: the Supplier tab sends a fixed Medium, quantity 1 for orders and sell back (deferred in CM2-G6 "to CM2-40 and later Supplier tab work", never filed); with one order per bay the 4 bays fill after 4 clicks.
 - New task 18a **CM2-SUP** (tier L, `planner-high`), right after CM2-G11 in the launch order: the reference's buy rows (species × size, −/quantity/+/MAX, demand tags), cart with bay and delivery info, one-click recommended order, sell back per row with ALL; the cart is one atomic, idempotent server order. Protocol shape, bay packing and any schema change are for `planner-high`.

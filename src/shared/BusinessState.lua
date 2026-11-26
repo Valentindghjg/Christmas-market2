@@ -4,6 +4,7 @@ local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
 local Progression = require(script.Parent.Progression)
 local Purchases = require(script.Parent.Purchases)
+local QuestBoard = require(script.Parent.QuestBoard)
 local Receiving = require(script.Parent.Receiving)
 local Reviews = require(script.Parent.Reviews)
 local SaveProfile = require(script.Parent.SaveProfile)
@@ -11,7 +12,7 @@ local Staff = require(script.Parent.Staff)
 local Tutorial = require(script.Parent.Tutorial)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 20
+BusinessState.SCHEMA_VERSION = 21
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -168,7 +169,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		staffEnergy = Staff.newEnergy(),
 		breakArea = Staff.defaultBreakArea({ layout = { placements = {} } }),
 		progression = Progression.new(),
-		questClaims = {},
+		quests = QuestBoard.new(0),
 		customerOrders = {},
 		nextOrderNumber = 1,
 		loadedOrders = 0,
@@ -343,6 +344,12 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		-- Schema 20 (CM2-G12a): the save's game day
 		state.dayCycle = DayCycle.new()
 	end
+	if state.schemaVersion == 20 then
+		state.schemaVersion = 21
+		-- Schema 21 (CM2-G11): the rotating quest board replaces the scaffold quest claims.
+		state.questClaims = nil
+		state.quests = QuestBoard.new(0)
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -378,7 +385,8 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.customerVisits = sales(state)
 	state.abandonedCustomers = 0
 	state.walkedOutCustomers = 0
-	state.questClaims = {}
+	state.questClaims = nil
+	state.quests = QuestBoard.new(0)
 	addSchema10Fields(state)
 	state.reviews = Reviews.newReviews()
 	state.likes = Reviews.newLikes()
@@ -702,13 +710,8 @@ function BusinessState.validate(state)
 	if not validProgression(state.progression) then
 		return false
 	end
-	if type(state.questClaims) ~= "table" then
+	if not QuestBoard.isValid(state.quests) then
 		return false
-	end
-	for questId, claimed in pairs(state.questClaims) do
-		if type(questId) ~= "string" or claimed ~= true then
-			return false
-		end
 	end
 	if type(state.layout) ~= "table" or type(state.layout.placements) ~= "table" then
 		return false
@@ -869,6 +872,7 @@ function BusinessState.placeOrder(
 	state.bays[bay].speciesId = species
 	BusinessState.record(state, "OrderPlaced", -cost)
 	Tutorial.advance(state, "Ordered")
+	QuestBoard.note(state, timestamp, "OrderTrees", quantity)
 	return true, { orderId = orderId, cost = cost, bay = bay }
 end
 

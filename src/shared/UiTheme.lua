@@ -294,6 +294,16 @@ UiTheme.Dialogs = {
 		widthScale = 0.92,
 		heightScale = 0.8,
 	},
+	-- Daily rewards and quests panel (CM2-G11).
+	Quests = {
+		listTop = 40,
+		footerHeight = 52,
+		minList = 120,
+		maxWidth = 520,
+		maxHeight = 600,
+		widthScale = 0.92,
+		heightScale = 0.86,
+	},
 } :: { [string]: DialogSpec }
 
 -- Shop category bar (CM2-UVF8): fixed bar, seven tabs share the width; text scales between minText and maxText.

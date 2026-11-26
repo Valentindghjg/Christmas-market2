@@ -30,6 +30,8 @@ Protocol.Actions = {
 	StaffMoveBreakArea = "Staff.MoveBreakArea",
 	-- CM2-49: skip the guided tutorial (any save member).
 	TutorialSkip = "Tutorial.Skip",
+	-- CM2-G11: claim the player's daily reward (main.server.lua -> DailyRewardService, never companies:handle).
+	DailyClaim = "Daily.Claim",
 }
 
 local actionSet = {
@@ -52,6 +54,7 @@ local actionSet = {
 	[Protocol.Actions.LotLike] = true,
 	[Protocol.Actions.StaffMoveBreakArea] = true,
 	[Protocol.Actions.TutorialSkip] = true,
+	[Protocol.Actions.DailyClaim] = true,
 }
 
 -- Save-slot actions travel through their own remote (Remotes.SaveAction).
@@ -390,10 +393,18 @@ function Protocol.validateRequest(request)
 		return true, nil
 	end
 	if request.action == Protocol.Actions.QuestClaim then
+		-- CM2-G11: { slot 1..4 (4 = bonus), period = the board's rotation window }.
+		if not hasOnlyKeys(request.payload, { slot = true, period = true }) then
+			return false, "UnexpectedField"
+		end
+		local slot, period = request.payload.slot, request.payload.period
 		if
-			not hasOnlyKeys(request.payload, { questId = true })
-			or type(request.payload.questId) ~= "string"
-			or not GameConfig.Quests[request.payload.questId]
+			not isFiniteInteger(slot)
+			or slot < 1
+			or slot > 4
+			or not isFiniteInteger(period)
+			or period < 0
+			or period > 2 ^ 31 - 1
 		then
 			return false, "InvalidQuest"
 		end
@@ -412,6 +423,12 @@ function Protocol.validateRequest(request)
 		return true, nil
 	end
 	if request.action == Protocol.Actions.TutorialSkip then
+		if next(request.payload) ~= nil then
+			return false, "UnexpectedField"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.DailyClaim then
 		if next(request.payload) ~= nil then
 			return false, "UnexpectedField"
 		end

@@ -13,7 +13,7 @@ return function(t)
 		{ name = "tablet 960x542", w = 960, h = 542, compact = false },
 		{ name = "pc 1920x1022", w = 1920, h = 1022, compact = false },
 	}
-	local DIALOGS = { "Picker", "DeleteConfirm", "Team", "Finder" }
+	local DIALOGS = { "Picker", "DeleteConfirm", "Team", "Finder", "Quests" }
 
 	local function absolute(parent, relative)
 		return { x = parent.x + relative.x, y = parent.y + relative.y, w = relative.w, h = relative.h }

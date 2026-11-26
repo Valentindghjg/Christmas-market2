@@ -363,6 +363,19 @@ backButton.Activated:Connect(back)
 yesButton.Activated:Connect(accept)
 noButton.Activated:Connect(decline)
 
+-- CM2-G11: Save.Play activates the save before its response; the picker closes as soon as this
+-- save is ready (accept and plotTaken then return on state ~= current).
+player:GetAttributeChangedSignal("CompanyReady"):Connect(function()
+	local current = state
+	if
+		current
+		and player:GetAttribute("CompanyReady") == true
+		and player:GetAttribute("ActiveSaveId") == current.saveId
+	then
+		exit()
+	end
+end)
+
 local function handler(callback: () -> ())
 	return function(_: string, inputState: Enum.UserInputState, _: InputObject): Enum.ContextActionResult
 		if inputState == Enum.UserInputState.Begin then

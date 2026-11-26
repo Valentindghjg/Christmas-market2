@@ -5,6 +5,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared:WaitForChild("Economy"))
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local QuestBoard = require(Shared:WaitForChild("QuestBoard"))
 
 local CustomerService = {}
 
@@ -117,6 +118,7 @@ function CustomerService.completeReservedSale(state, placementId: string, custom
 	state.sales += 1
 	state.reputation += GameConfig.Customers.SaleReputation
 	BusinessState.record(state, "Sale", salePrice)
+	QuestBoard.noteSale(state, timestamp, salePrice, placement.sizeId)
 	return true,
 		{
 			salePrice = salePrice,

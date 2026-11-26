@@ -291,7 +291,7 @@ return function(t)
 			["Company.GetSummary"] = {},
 			["Supplier.RequestQuote"] = { speciesId = "FrasierFir", sizeId = "Medium" },
 			["Pricing.SetAuto"] = { enabled = false },
-			["Quest.Claim"] = { questId = "FirstSale" },
+			["Quest.Claim"] = { slot = 1, period = 0 },
 			["Employee.Hire"] = { employeeId = "Cashier" },
 		}
 		local actions =
@@ -1167,5 +1167,60 @@ return function(t)
 		expect.equal(none, 0)
 		expect.equal(state.purchases.boosts.CashX2, 95)
 		expect.equal(service:boostSeconds("personal:42"), nil)
+	end)
+
+	-- CM2-G11: Quest.Claim pays once through the request ledger and the board's own claim flag.
+	t.test("claims a quest through handle exactly once", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end)
+		expect.truthy(service:loadCompany("personal:42", 42))
+		local before = service:snapshotForTest("personal:42").cash
+		expect.truthy(service:setQuestProgressForTest("personal:42", 1, 10))
+		local function claim(requestId: string)
+			return service:handle("personal:42", 42, {
+				version = 1,
+				requestId = requestId,
+				action = "Quest.Claim",
+				payload = { slot = 1, period = 0 },
+			})
+		end
+		local response = claim("quest_0001")
+		expect.truthy(response.ok)
+		expect.equal(response.data.slot, 1)
+		expect.equal(response.data.cash, 150)
+		expect.equal(response.data.reputation, 0)
+		expect.equal(service:snapshotForTest("personal:42").cash, before + 150)
+		local replay = claim("quest_0001")
+		expect.equal(replay.errorCode, "DuplicateRequest")
+		local second = claim("quest_0002")
+		expect.equal(second.errorCode, "AlreadyClaimed")
+		local snapshot = service:snapshotForTest("personal:42")
+		expect.equal(snapshot.cash, before + 150)
+		expect.equal(snapshot.quests.claimed[1], true)
+	end)
+
+	t.test("fills the board from orders and puts it in the summary", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end)
+		expect.truthy(service:loadCompany("personal:42", 42))
+		local placed = service:handle("personal:42", 42, {
+			version = 1,
+			requestId = "quest_order_1",
+			action = "Supplier.PlaceOrder",
+			payload = { speciesId = "DouglasFir", sizeId = "Small", quantity = 3 },
+		})
+		expect.truthy(placed.ok)
+		local summary = service:handle("personal:42", 42, {
+			version = 1,
+			requestId = "quest_summary",
+			action = "Company.GetSummary",
+			payload = {},
+		})
+		expect.truthy(summary.ok)
+		expect.equal(summary.data.quests.period, 0)
+		expect.equal(summary.data.quests.quests[1].kind, "OrderTrees")
+		expect.equal(summary.data.quests.quests[1].progress, 3)
 	end)
 end

@@ -327,6 +327,11 @@ return function(ctx: any)
 			"map entry for " .. SAVE_FAR .. " is not released"
 		)
 		call("placeElsewhere", { userId = R.userId, saveId = far })
+		local placed = locatorEntry(far)
+		check(
+			type(placed) == "table" and placed.jobId == "studio-test-elsewhere",
+			"map entry for " .. SAVE_FAR .. " is " .. tostring(type(placed) == "table" and placed.jobId or placed)
+		)
 		call("lockSave", { userId = R.userId, saveId = far })
 		local listed = saveActOk("Save.List", {})
 		local row = nil
@@ -335,7 +340,8 @@ return function(ctx: any)
 				row = entry
 			end
 		end
-		check(row ~= nil and row.elsewhere == true, SAVE_FAR .. " row is not marked elsewhere")
+		check(row ~= nil, SAVE_FAR .. " is not listed")
+		check(row.elsewhere == true, SAVE_FAR .. " row elsewhere " .. tostring(row.elsewhere))
 		saveRefused("Save.Play", { saveId = far }, "SaveInUseElsewhere")
 		saveRefused("Save.Teleport", { saveId = far }, "TeleportUnavailable")
 		local cleared = call("clearElsewhere", { userId = R.userId, saveId = far })

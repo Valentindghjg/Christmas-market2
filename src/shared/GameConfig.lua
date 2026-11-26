@@ -44,9 +44,48 @@ GameConfig.CustomerReservationSeconds = 30
 GameConfig.AutoPricingIntervalSeconds = 3
 GameConfig.CustomerVisitIntervalSeconds = 5
 GameConfig.MaxCustomerVisitsPerTick = 3
+-- Quest board per save (CM2-G11, docs/plans/CM2-G11.md, shared/QuestBoard.lua): 3 rotating
+-- quests plus a bonus. Non-observed variants (15, 20, 2000, 3500, Medium 3, Large 2) are
+-- PROVISIONAL; rewardReputation absent = 0.
 GameConfig.Quests = {
-	FirstSale = { metric = "sales", target = 1, rewardCash = 50 },
-	SalesFive = { metric = "sales", target = 5, rewardCash = 150 },
+	RotationSeconds = 14400, -- OBSERVED about 4 h ("New quests in 3h 55m"); exact length PROVISIONAL
+	MaxProgress = 1000000000,
+	Slots = {
+		{
+			{ kind = "OrderTrees", target = 10, rewardCash = 150 }, -- OBSERVED
+			{ kind = "OrderTrees", target = 15, rewardCash = 150 },
+			{ kind = "OrderTrees", target = 20, rewardCash = 150 },
+		},
+		{
+			{ kind = "SalesCash", target = 2800, rewardCash = 150 }, -- OBSERVED
+			{ kind = "SalesCash", target = 2000, rewardCash = 150 },
+			{ kind = "SalesCash", target = 3500, rewardCash = 150 },
+		},
+		{
+			{ kind = "SellSize", sizeId = "Small", target = 3, rewardCash = 150 }, -- OBSERVED
+			{ kind = "SellSize", sizeId = "Medium", target = 3, rewardCash = 150 },
+			{ kind = "SellSize", sizeId = "Large", target = 2, rewardCash = 150 },
+		},
+	},
+	Bonus = { kind = "SellTrees", target = 15, rewardCash = 550, rewardReputation = 100 }, -- OBSERVED
+}
+
+-- Daily reward streak per player (CM2-G11, shared/DailyRewards.lua), paid into the active save.
+GameConfig.DailyRewards = {
+	Days = { -- OBSERVED (REFERENCE_GAME_LIVE_TEST §1.3)
+		{ cash = 400, reputation = 0 },
+		{ cash = 500, reputation = 0 },
+		{ cash = 0, reputation = 150 },
+		{ cash = 700, reputation = 0 },
+		{ cash = 900, reputation = 0 },
+		{ cash = 0, reputation = 300 },
+		{ cash = 2500, reputation = 0 },
+	},
+	DaySeconds = 86400, -- UTC day (DECISION_LOG 2026-11-21)
+	GroupId = 0, -- supplied by the owner; 0 hides the group bonus
+	GroupMultiplier = 2, -- OWNER DECIDED (PRODUCT_SPEC "2x daily rewards")
+	ClaimLimit = { limit = 5, window = 60 }, -- PROVISIONAL
+	RefreshSeconds = 30, -- PROVISIONAL attribute refresh
 }
 GameConfig.AutoPricing = {
 	TargetDisplayStock = 5,

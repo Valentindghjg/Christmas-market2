@@ -268,6 +268,11 @@ function UiKit.baseLayerOpen(): boolean
 	return modals.hasBase()
 end
 
+-- CM2-G11: called after every claim, release, closeAll or base change; returns its remover.
+function UiKit.onModalsChanged(listener: () -> ()): () -> ()
+	return modals.onChange(listener)
+end
+
 -- Rail --------------------------------------------------------------------------------------
 
 local railFrame: ScrollingFrame? = nil

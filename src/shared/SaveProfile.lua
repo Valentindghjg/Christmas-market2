@@ -1,6 +1,7 @@
 --!strict
 -- Pure player-profile schema (CM2-S1): the saves a player can choose from. The profile is
 -- lock-free; SaveSlotService applies every change as one UpdateAsync transform.
+local DailyRewards = require(script.Parent.DailyRewards)
 local GameConfig = require(script.Parent.GameConfig)
 
 local SaveProfile = {}
@@ -203,6 +204,10 @@ function SaveProfile.validate(profile): boolean
 		end
 	end
 	if profile.tutorialOffered ~= nil and type(profile.tutorialOffered) ~= "boolean" then
+		return false
+	end
+	-- CM2-G11: optional daily reward streak; nil = never claimed.
+	if not DailyRewards.isValid(profile.daily) then
 		return false
 	end
 	return true

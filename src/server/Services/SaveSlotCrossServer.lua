@@ -81,6 +81,11 @@ function SaveSlotService:_releaseLocation(saveId: string?)
 	self._locationCache[saveId] = nil
 end
 
+-- Drops the cached lookup (Studio test instrument after a direct map write).
+function SaveSlotService:forgetLocation(saveId: string)
+	self._locationCache[saveId] = nil
+end
+
 -- Renews the entry of every save played here (main runs it every LocatorRenewSeconds).
 function SaveSlotService:renewLocations(): (boolean, number, number)
 	if self._locator == nil then

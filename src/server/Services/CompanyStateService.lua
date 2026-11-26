@@ -25,6 +25,7 @@ local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
 local CompanyDayCycle = require(script.Parent:WaitForChild("CompanyDayCycle"))
 local CompanyProgression = require(script.Parent:WaitForChild("CompanyProgression"))
 local CompanyPurchases = require(script.Parent:WaitForChild("CompanyPurchases"))
+local CompanyQuests = require(script.Parent:WaitForChild("CompanyQuests"))
 local CompanyStaff = require(script.Parent:WaitForChild("CompanyStaff"))
 local CompanyTutorial = require(script.Parent:WaitForChild("CompanyTutorial"))
 local CustomerOrderService = require(script.Parent:WaitForChild("CustomerOrderService"))
@@ -34,16 +35,17 @@ local SupplierStockService = require(script.Parent:WaitForChild("SupplierStockSe
 local EmployeeService = require(script.Parent:WaitForChild("EmployeeService"))
 local PlacementService = require(script.Parent:WaitForChild("PlacementService"))
 local PricingService = require(script.Parent:WaitForChild("PricingService"))
-local QuestService = require(script.Parent:WaitForChild("QuestService"))
 
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
--- Mixins: staff (CM2-25/26), Robux purchases (CM2-46a), tutorial (CM2-49), ladder (CM2-G9a), day (CM2-G12a).
+-- Mixins: staff (CM2-25/26), Robux purchases (CM2-46a), tutorial (CM2-49), ladder (CM2-G9a), day (CM2-G12a),
+-- quests and reward grants (CM2-G11).
 CompanyStaff.install(CompanyStateService)
 CompanyPurchases.install(CompanyStateService)
 CompanyTutorial.install(CompanyStateService)
 CompanyProgression.install(CompanyStateService)
 CompanyDayCycle.install(CompanyStateService)
+CompanyQuests.install(CompanyStateService)
 
 -- Persistence results that mean this server no longer owns a valid writable session.
 local FAIL_CLOSED_SAVE_ERRORS = { SessionLocked = true, NotLoaded = true }
@@ -861,6 +863,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 				shop = CompanyPurchases.summary(self, companyId, state),
 				day = state.dayCycle.day,
 				night = DayCycle.isNight(state.dayCycle.elapsed),
+				quests = self:questView(state), -- CM2-G11
 			},
 		}
 	end
@@ -917,7 +920,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 	elseif CompanyProgression.ACTIONS[action] then
 		succeeded, result = CompanyProgression.buy(state, action, payload)
 	elseif action == Protocol.Actions.QuestClaim then
-		succeeded, result = QuestService.claim(state, payload.questId)
+		succeeded, result = self:_claimQuest(state, payload)
 	elseif action == Protocol.Actions.OrderCarry then
 		succeeded, result = CustomerOrderService.carry(state, userId, payload.orderNumber)
 	elseif action == Protocol.Actions.OrderLoad then
@@ -1503,6 +1506,11 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 		tutorial = table.clone(state.tutorial), -- CM2-49
 		progression = table.clone(state.progression), -- CM2-G9a
 		dayCycle = table.clone(state.dayCycle), -- CM2-G12a
+		quests = { -- CM2-G11
+			period = state.quests.period,
+			progress = table.clone(state.quests.progress),
+			claimed = table.clone(state.quests.claimed),
+		},
 	}
 end
 

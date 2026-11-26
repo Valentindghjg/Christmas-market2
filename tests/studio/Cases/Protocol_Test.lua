@@ -145,15 +145,47 @@ return function(t)
 		end
 	end)
 
-	t.test("rejects unknown quest IDs before they reach the company lock", function()
-		local ok, reason = Protocol.validateRequest({
-			version = 1,
-			requestId = "quest_1234",
-			action = Protocol.Actions.QuestClaim,
-			payload = { questId = "FreeMoney" },
-		})
+	-- CM2-G11: Quest.Claim carries only a board slot and the board's period.
+	t.test("validates Quest.Claim payloads", function()
+		local function check(payload)
+			return Protocol.validateRequest({
+				version = 1,
+				requestId = "quest_1234",
+				action = Protocol.Actions.QuestClaim,
+				payload = payload,
+			})
+		end
+		local ok, reason = check({ questId = "SalesFive" })
 		expect.falsy(ok)
-		expect.equal(reason, "InvalidQuest")
+		expect.equal(reason, "UnexpectedField")
+		for _, payload in ipairs({
+			{ slot = 0, period = 1 },
+			{ slot = 5, period = 1 },
+			{ slot = 1.5, period = 1 },
+			{ slot = 1, period = -1 },
+		}) do
+			ok, reason = check(payload)
+			expect.falsy(ok)
+			expect.equal(reason, "InvalidQuest")
+		end
+		ok, reason = check({ slot = 4, period = 7 })
+		expect.truthy(ok)
+		expect.equal(reason, nil)
+	end)
+
+	t.test("validates Daily.Claim payloads", function()
+		local function check(payload)
+			return Protocol.validateRequest({
+				version = 1,
+				requestId = "daily_1234",
+				action = Protocol.Actions.DailyClaim,
+				payload = payload,
+			})
+		end
+		expect.truthy(check({}))
+		local ok, reason = check({ a = 1 })
+		expect.falsy(ok)
+		expect.equal(reason, "UnexpectedField")
 	end)
 	-- G1/G5 actions accept only bounded integers and known items.
 	t.test("validates order carry, load and sell-back payloads", function()

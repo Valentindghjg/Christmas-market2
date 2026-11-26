@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
+local DailyRewards = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DailyRewards"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
@@ -511,6 +512,7 @@ function StudioTestService.install(context)
 				renewedAt = os.time(),
 			}, ELSEWHERE_SECONDS)
 		end)
+		saveSlots:forgetLocation(saveId)
 		if not ok then
 			return failure("LocatorUnavailable")
 		end
@@ -532,6 +534,7 @@ function StudioTestService.install(context)
 			locatorMap:RemoveAsync(key)
 			return true
 		end)
+		saveSlots:forgetLocation(saveId)
 		if not ok then
 			return failure("LocatorUnavailable")
 		end
@@ -795,6 +798,84 @@ function StudioTestService.install(context)
 			return failure("NoActiveSave")
 		end
 		return success(view)
+	end
+
+	local function isWhole(value: unknown, minimum: number, maximum: number): boolean
+		return type(value) == "number"
+			and value == math.floor(value)
+			and (value :: number) >= minimum
+			and (value :: number) <= maximum
+	end
+
+	-- Daily rewards (CM2-G11): clears ({userId, clear = true}) or sets ({userId, daysAgo 0..30,
+	-- streak 1..7}) the profile's daily streak, then refreshes the player's attributes.
+	function commands.dailySet(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
+			return failure("BadArgument")
+		end
+		local daily = nil
+		if arg.clear ~= true then
+			if not isWhole(arg.daysAgo, 0, 30) or not isWhole(arg.streak, 1, 7) then
+				return failure("BadArgument")
+			end
+			local today = DailyRewards.dayOf(context.businessClock())
+			daily = { lastDay = today - arg.daysAgo, streak = arg.streak }
+		end
+		if companyIdFor(arg.userId) == nil then
+			return failure("NoActiveSave")
+		end
+		local written = saveSlots:setDailyForTest(arg.userId, daily)
+		context.dailyRewards:refresh(arg.userId)
+		return success(written)
+	end
+
+	-- Overrides the group ID and membership ({groupId?, member?}; {} clears the override).
+	function commands.dailyGroup(arg)
+		if
+			type(arg) ~= "table"
+			or (arg.groupId ~= nil and not isWhole(arg.groupId, 0, 2 ^ 53))
+			or (arg.member ~= nil and type(arg.member) ~= "boolean")
+		then
+			return failure("BadArgument")
+		end
+		context.dailyRewards:setGroupForTest(arg.groupId, arg.member)
+		context.dailyRewards:refreshAll(saveSlots:activeUserIds())
+		return success(true)
+	end
+
+	-- Quest board (CM2-G11): sets a slot's progress ({userId, slot, progress}) on the current
+	-- board, or ages the board ({userId}) so the next access rotates it.
+	function commands.questSet(arg)
+		if
+			type(arg) ~= "table"
+			or type(arg.userId) ~= "number"
+			or not isWhole(arg.slot, 1, 4)
+			or not isWhole(arg.progress, 0, GameConfig.Quests.MaxProgress)
+		then
+			return failure("BadArgument")
+		end
+		local companyId = companyIdFor(arg.userId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		if not companies:setQuestProgressForTest(companyId, arg.slot, arg.progress) then
+			return failure("NoSession")
+		end
+		return success(true)
+	end
+
+	function commands.questAge(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
+			return failure("BadArgument")
+		end
+		local companyId = companyIdFor(arg.userId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		if not companies:ageQuestBoardForTest(companyId) then
+			return failure("NoSession")
+		end
+		return success(true)
 	end
 
 	-- Leaderboards (CM2-G12b): collect and flush ({force}), read the boards, cache statistics.

@@ -20,6 +20,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local DailyRewards = require(Shared:WaitForChild("DailyRewards"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
@@ -550,6 +551,72 @@ function SaveSlotService:handle(userId: number, request)
 		return failure("InternalError")
 	end
 	return response
+end
+
+-- Daily reward streak (CM2-G11) ---------------------------------------------------------------
+
+-- The open profile's `daily` field: (true, daily?) with a cached profile, else (false, nil).
+function SaveSlotService:dailyOf(userId: number): (boolean, any?)
+	local cached = self._profiles[userId]
+	if cached == nil then
+		return false, nil
+	end
+	return true, cached.daily
+end
+
+-- Marks today's claim in the stored profile (the atomic once-per-day guard). Returns
+-- (index, previousDaily, nil) or (nil, nil, errorCode).
+function SaveSlotService:claimDaily(userId: number, today: number): (number?, any?, string?)
+	local index, previous = nil, nil
+	local updated, updateError = self:_updateProfile(userId, function(stored)
+		index, previous = nil, nil
+		local current, storedError = storedProfile(stored)
+		if not current then
+			return nil, false, storedError
+		end
+		local nextDaily, claimed = DailyRewards.claim(current.daily, today)
+		if nextDaily == nil then
+			return nil, false, claimed
+		end
+		index, previous = claimed, current.daily
+		current.daily = nextDaily
+		return current, true
+	end)
+	if updated == nil then
+		return nil, nil, updateError
+	end
+	return index, previous, nil
+end
+
+-- Undoes exactly this claim: writes `previous` back only while the stored field is still
+-- { lastDay = today, streak = index }. True when the store answered.
+function SaveSlotService:revertDaily(userId: number, today: number, index: number, previous: any?): boolean
+	local updated = self:_updateProfile(userId, function(stored)
+		local current, storedError = storedProfile(stored)
+		if not current then
+			return nil, false, storedError
+		end
+		local daily = current.daily
+		if type(daily) ~= "table" or daily.lastDay ~= today or daily.streak ~= index then
+			return current, false
+		end
+		current.daily = previous
+		return current, true
+	end)
+	return updated ~= nil
+end
+
+-- Studio test instrument only (StudioTestService): writes the `daily` field (nil clears it).
+function SaveSlotService:setDailyForTest(userId: number, daily: any?): boolean
+	local updated = self:_updateProfile(userId, function(stored)
+		local current, storedError = storedProfile(stored)
+		if not current then
+			return nil, false, storedError
+		end
+		current.daily = daily
+		return current, true
+	end)
+	return updated ~= nil
 end
 
 -- The parts add their methods to the class (CM2-RF); a name defined twice is a bug.
