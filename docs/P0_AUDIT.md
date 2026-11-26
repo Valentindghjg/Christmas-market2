@@ -25,4 +25,5 @@ The running Rojo Studio plugin synchronized changes to existing source instances
 - There is no versioned company schema/migration, session lock, DataStore persistence, remote action protocol or authoritative command queue yet (CM2-06 through CM2-09).
 - `buyStock` currently places stock directly into the aggregate stock map; the required pending/delivered/stored/displayed/reserved lifecycle has not been implemented.
 - Studio output emitted repeated `rbxassetid://203785492` asset-type warnings. This is not introduced by project source and should be investigated before visual QA.
+  - Closed 2026-11-26 (CM2-ASSETWARN): engine/Studio noise, 0 hits in Edit, Play server and Play client; see DECISION_LOG 2026-11-26 "CM2-ASSETWARN closed as engine noise".
 - No map, UI, delivery simulation, NPCs, published content or paid products were created.
