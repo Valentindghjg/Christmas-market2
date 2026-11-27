@@ -3,6 +3,7 @@
 -- field `advent = { year, opened }` (bit d-1 = door d) and the save's `decorInventory`. Dates
 -- come from integer maths on the server's UTC time, never os.date/os.time(table), whose time
 -- zone differs between Roblox and Lune.
+local EventConfig = require(script.Parent.EventConfig)
 local GameConfig = require(script.Parent.GameConfig)
 
 local Config = GameConfig.Advent
@@ -30,7 +31,8 @@ local function isDoor(value: unknown): boolean
 end
 
 local function isDecorItem(value: unknown): boolean
-	return type(value) == "string" and table.find(Config.DecorItems, value) ~= nil
+	-- CM2-45: event decor shares the crate
+	return type(value) == "string" and table.find(Config.DecorItems, value) ~= nil or EventConfig.isDecorItem(value)
 end
 
 local function doorBit(door: number): number

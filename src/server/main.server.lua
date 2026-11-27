@@ -13,6 +13,7 @@ local TextService = game:GetService("TextService")
 
 local config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local BusinessState = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BusinessState"))
+local EventConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("EventConfig"))
 local Progression = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
@@ -827,6 +828,18 @@ every(config.Advent.RefreshSeconds, "advent", function()
 	advent:refreshAll(saveSlots:activeUserIds())
 	return true, 0, 0
 end)
+-- Event shop (CM2-45): the open event's ID ("" = none) and seconds left for every client; the
+-- shop rows come with Company.GetSummary.event.
+local function publishEvent()
+	local view = companies:eventView()
+	ReplicatedStorage:SetAttribute("EventId", view.id)
+	ReplicatedStorage:SetAttribute("EventEndsIn", view.endsIn)
+end
+publishEvent()
+every(EventConfig.RefreshSeconds, "event", function()
+	publishEvent()
+	return true, 0, 0
+end)
 -- The save's day runs only while it is loaded (CM2-G12a); the measured wait is the step.
 task.spawn(function()
 	while true do
@@ -1260,6 +1273,7 @@ if RunService:IsStudio() then
 			monetization = monetization,
 			dailyRewards = dailyRewards,
 			advent = advent,
+			publishEvent = publishEvent,
 			ledger = ledger,
 			leaderboards = leaderboards,
 			collectLeaderboards = collectLeaderboards,

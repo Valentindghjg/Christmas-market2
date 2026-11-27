@@ -521,4 +521,25 @@ return function(t)
 		})
 		expect.equal(business, "UnknownAction")
 	end)
+
+	-- CM2-45: Event.Buy carries exactly an event ID and an item key; the price is the server's.
+	t.test("validates Event.Buy payloads", function()
+		local function buy(payload)
+			return Protocol.validateRequest({
+				version = 1,
+				requestId = "event_0001",
+				action = "Event.Buy",
+				payload = payload,
+			})
+		end
+		expect.truthy(buy({ eventId = "Advent1", itemKey = "CandlelightPack" }))
+		local _, extra = buy({ eventId = "Advent1", itemKey = "CandlelightPack", price = 0 })
+		expect.equal(extra, "UnexpectedField")
+		local _, numberId = buy({ eventId = 5, itemKey = "CandlelightPack" })
+		expect.equal(numberId, "InvalidItem")
+		local _, empty = buy({ eventId = "Advent1", itemKey = "" })
+		expect.equal(empty, "InvalidItem")
+		local _, missing = buy({ eventId = "Advent1" })
+		expect.equal(missing, "InvalidItem")
+	end)
 end

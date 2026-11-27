@@ -23,6 +23,7 @@ local SupplierCatalog = require(Shared:WaitForChild("SupplierCatalog"))
 local Tutorial = require(Shared:WaitForChild("Tutorial"))
 local AnalyticsService = require(script.Parent:WaitForChild("AnalyticsService"))
 local CompanyDayCycle = require(script.Parent:WaitForChild("CompanyDayCycle"))
+local CompanyEvents = require(script.Parent:WaitForChild("CompanyEvents"))
 local CompanyProgression = require(script.Parent:WaitForChild("CompanyProgression"))
 local CompanyPurchases = require(script.Parent:WaitForChild("CompanyPurchases"))
 local CompanyQuests = require(script.Parent:WaitForChild("CompanyQuests"))
@@ -39,13 +40,14 @@ local PricingService = require(script.Parent:WaitForChild("PricingService"))
 local CompanyStateService = {}
 CompanyStateService.__index = CompanyStateService
 -- Mixins: staff (CM2-25/26), Robux purchases (CM2-46a), tutorial (CM2-49), ladder (CM2-G9a), day (CM2-G12a),
--- quests and reward grants (CM2-G11).
+-- quests and reward grants (CM2-G11), event shop (CM2-45).
 CompanyStaff.install(CompanyStateService)
 CompanyPurchases.install(CompanyStateService)
 CompanyTutorial.install(CompanyStateService)
 CompanyProgression.install(CompanyStateService)
 CompanyDayCycle.install(CompanyStateService)
 CompanyQuests.install(CompanyStateService)
+CompanyEvents.install(CompanyStateService)
 
 -- Persistence results that mean this server no longer owns a valid writable session.
 local FAIL_CLOSED_SAVE_ERRORS = { SessionLocked = true, NotLoaded = true }
@@ -758,6 +760,7 @@ local MEMBER_ACTIONS = {
 	[Protocol.Actions.CompanyGetSummary] = true,
 	[Protocol.Actions.StaffMoveBreakArea] = true,
 	[Protocol.Actions.TutorialSkip] = true,
+	[Protocol.Actions.EventBuy] = true,
 }
 
 local function canPerformAction(state, userId: number, action: string): boolean
@@ -868,6 +871,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 				day = state.dayCycle.day,
 				night = DayCycle.isNight(state.dayCycle.elapsed),
 				quests = self:questView(state), -- CM2-G11
+				event = CompanyEvents.summary(state, self:eventNow()), -- CM2-45
 			},
 		}
 	end
@@ -941,6 +945,8 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 		succeeded, result = Staff.moveBreakArea(state, payload.x, payload.z, payload.rotation)
 	elseif action == Protocol.Actions.TutorialSkip then
 		succeeded, result = self:_skipTutorial(state)
+	elseif action == Protocol.Actions.EventBuy then
+		succeeded, result = CompanyEvents.buy(state, payload, self:eventNow())
 	end
 	Protocol.finishRequest(record, succeeded and "Success" or tostring(result))
 	-- The request record changed even when the action was rejected.
@@ -1443,6 +1449,15 @@ function CompanyStateService:resetLikesForTest(companyId: string): boolean
 	return entered
 end
 
+-- Deep copy of eventPurchases { [eventId]: { [itemKey]: count } } (CM2-45).
+local function eventPurchasesCopy(purchases): { [string]: { [string]: number } }
+	local copy = {}
+	for eventId, items in pairs(purchases) do
+		copy[eventId] = table.clone(items)
+	end
+	return copy
+end
+
 -- Detached copy of the figures a playtest compares; nil without a healthy session.
 function CompanyStateService:snapshotForTest(companyId: string): {}?
 	local session = self._sessions[companyId]
@@ -1518,6 +1533,7 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 			claimed = table.clone(state.quests.claimed),
 		},
 		decorInventory = table.clone(state.decorInventory), -- CM2-A1
+		eventPurchases = eventPurchasesCopy(state.eventPurchases), -- CM2-45
 	}
 end
 

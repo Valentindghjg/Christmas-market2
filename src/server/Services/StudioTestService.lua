@@ -869,6 +869,36 @@ function StudioTestService.install(context)
 		return success(written)
 	end
 
+	-- Event shop (CM2-45): overrides the event clock only ({at >= 0}) or clears the override
+	-- ({clear = true}), then republishes EventId and EventEndsIn.
+	function commands.eventNow(arg)
+		if type(arg) ~= "table" then
+			return failure("BadArgument")
+		end
+		local at = nil
+		if arg.clear ~= true then
+			if not isWhole(arg.at, 0, 2 ^ 53) then
+				return failure("BadArgument")
+			end
+			at = arg.at
+		end
+		companies:setEventNowForTest(at)
+		context.publishEvent()
+		return success(true)
+	end
+
+	-- Forgets the event purchases of a user's active save ({userId}); the decor stays.
+	function commands.eventReset(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
+			return failure("BadArgument")
+		end
+		local companyId = companyIdFor(arg.userId)
+		if companyId == nil then
+			return failure("NoActiveSave")
+		end
+		return success(companies:clearEventPurchasesForTest(companyId))
+	end
+
 	-- Overrides the group ID and membership ({groupId?, member?}; {} clears the override).
 	function commands.dailyGroup(arg)
 		if

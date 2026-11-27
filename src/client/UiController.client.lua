@@ -15,6 +15,7 @@ local UiKit = require(script.Parent:WaitForChild("UiKit") :: ModuleScript)
 local LotManager = require(script.Parent:WaitForChild("LotManager") :: ModuleScript)
 local QuestPanel = require(script.Parent:WaitForChild("QuestPanel") :: ModuleScript)
 local AdventPanel = require(script.Parent:WaitForChild("AdventPanel") :: ModuleScript)
+local EventShopPanel = require(script.Parent:WaitForChild("EventShopPanel") :: ModuleScript)
 
 local localized = UiKit.localized
 local localizedFormat = UiKit.localizedFormat
@@ -76,6 +77,8 @@ local context: LotManager.TabContext = {
 local questPanel = QuestPanel.new(context)
 -- Advent calendar (CM2-A1) renders from the Advent* player attributes.
 AdventPanel.new(context)
+-- Event shop (CM2-45) renders summary.event from the same summary poll.
+local eventPanel = EventShopPanel.new(context)
 
 -- On a phone the open Lot Manager takes the whole safe area, so the HUD and the rail step aside.
 local function updateChrome()
@@ -190,6 +193,7 @@ refreshSummary = function()
 	renderChips(response.data)
 	manager.render(response.data)
 	questPanel.render(response.data)
+	eventPanel.render(response.data)
 end
 player:GetAttributeChangedSignal("CompanyReady"):Connect(refreshSummary)
 -- A switched save starts from its own summary, never the previous save's figures.
@@ -198,6 +202,7 @@ player:GetAttributeChangedSignal("ActiveSaveId"):Connect(function()
 	renderChips(nil)
 	manager.render(nil)
 	questPanel.render(nil)
+	eventPanel.render(nil)
 	refreshSummary()
 end)
 

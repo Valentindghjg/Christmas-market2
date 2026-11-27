@@ -35,6 +35,8 @@ Protocol.Actions = {
 	DailyClaim = "Daily.Claim",
 	-- CM2-A1: open one Advent calendar door (main.server.lua -> AdventService, never companies:handle).
 	AdventOpen = "Advent.Open",
+	-- CM2-45: buy an event shop item (companies:handle)
+	EventBuy = "Event.Buy",
 }
 
 local actionSet = {
@@ -59,6 +61,7 @@ local actionSet = {
 	[Protocol.Actions.TutorialSkip] = true,
 	[Protocol.Actions.DailyClaim] = true,
 	[Protocol.Actions.AdventOpen] = true,
+	[Protocol.Actions.EventBuy] = true,
 }
 
 -- Save-slot actions travel through their own remote (Remotes.SaveAction).
@@ -456,6 +459,16 @@ function Protocol.validateRequest(request)
 		local door = request.payload.door
 		if not isFiniteInteger(door) or door < 1 or door > GameConfig.Advent.LastDay then
 			return false, "InvalidDoor"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.EventBuy then
+		-- CM2-45: exactly { eventId, itemKey }; price, limit and decor come from EventConfig.
+		if not hasOnlyKeys(request.payload, { eventId = true, itemKey = true }) then
+			return false, "UnexpectedField"
+		end
+		if not ShopConfig.isKey(request.payload.eventId) or not ShopConfig.isKey(request.payload.itemKey) then
+			return false, "InvalidItem"
 		end
 		return true, nil
 	end

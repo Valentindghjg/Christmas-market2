@@ -340,6 +340,16 @@ UiTheme.Dialogs = {
 		widthScale = 0.92,
 		heightScale = 0.86,
 	},
+	-- Event shop panel (CM2-45): title, countdown and hint above the item list.
+	Event = {
+		listTop = 92,
+		footerHeight = 52,
+		minList = 120,
+		maxWidth = 560,
+		maxHeight = 600,
+		widthScale = 0.94,
+		heightScale = 0.86,
+	},
 } :: { [string]: DialogSpec }
 
 -- Shop category bar (CM2-UVF8): fixed bar, seven tabs share the width; text scales between minText and maxText.
