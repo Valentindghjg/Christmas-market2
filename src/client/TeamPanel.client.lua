@@ -20,10 +20,10 @@ local localizedFormat = UiKit.localizedFormat
 local BUTTON_HEIGHT = UiTheme.MinTouch
 local MEMBER_ROW_HEIGHT = 56
 local SIZES = { "Solo", "Duo", "Trio", "Quad" }
-local CREAM = UiKit.Colors.Cream
 local PANEL = UiKit.Colors.Panel
 local ROW = UiKit.Colors.Row
 local GOLD = UiKit.Colors.Gold
+local PRIMARY = UiKit.Colors.Primary
 local SAND = UiKit.Colors.Sand
 local RED = UiKit.Colors.Red
 
@@ -49,6 +49,7 @@ UiKit.window(panel)
 UiKit.padding(panel, 12)
 
 local title = textLabel(panel, "Title", localized("teamTitle"), 22)
+UiKit.headerBand(title)
 title.Size = UDim2.new(1, 0, 0, 30)
 
 local seatsLine = textLabel(panel, "SeatsLine", "", 15)
@@ -102,20 +103,19 @@ for index, size in ipairs(SIZES) do
 	sizeButtons[size] = button
 end
 
-local newCode = textButton(footer, "NewCode", localized("teamNewCode"), GOLD)
+local newCode = textButton(footer, "NewCode", localized("teamNewCode"), PRIMARY)
 newCode.AnchorPoint = Vector2.new(0, 1)
 newCode.Position = UDim2.fromScale(0, 1)
 newCode.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 newCode.Visible = false
 
 local leaveTeam = textButton(footer, "LeaveTeam", localized("teamLeave"), RED)
-leaveTeam.TextColor3 = CREAM
 leaveTeam.AnchorPoint = Vector2.new(0, 1)
 leaveTeam.Position = UDim2.fromScale(0, 1)
 leaveTeam.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 leaveTeam.Visible = false
 
-local closeButton = textButton(footer, "Close", localized("teamClose"), SAND)
+local closeButton = textButton(footer, "Close", localized("teamClose"), RED)
 closeButton.AnchorPoint = Vector2.new(1, 1)
 closeButton.Position = UDim2.fromScale(1, 1)
 closeButton.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
@@ -223,7 +223,7 @@ local function buildRow(index: number, member, viewerIsOwner: boolean)
 
 	if viewerIsOwner and member.role ~= "Owner" then
 		local armed = removeArmed == member.userId
-		local remove = textButton(row, "Remove", localized(if armed then "teamRemoveConfirm" else "teamRemove"), SAND)
+		local remove = textButton(row, "Remove", localized(if armed then "teamRemoveConfirm" else "teamRemove"), RED)
 		remove.AnchorPoint = Vector2.new(1, 0.5)
 		remove.Position = UDim2.fromScale(1, 0.5)
 		remove.Size = UDim2.new(0.38, 0, 0, BUTTON_HEIGHT)

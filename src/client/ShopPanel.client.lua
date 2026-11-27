@@ -23,6 +23,9 @@ local ROW_HEIGHT = 96
 local PANEL = UiKit.Colors.Panel
 local ROW = UiKit.Colors.Row
 local GOLD = UiKit.Colors.Gold
+local GOLD_TEXT = UiKit.Colors.GoldText
+local PRIMARY = UiKit.Colors.Primary
+local RED = UiKit.Colors.Red
 local SAND = UiKit.Colors.Sand
 
 local textLabel = UiKit.label
@@ -52,13 +55,14 @@ UiKit.window(panel)
 UiKit.padding(panel, 12)
 
 local title = textLabel(panel, "Title", localized("shopTitle"), 22)
+UiKit.headerBand(title)
 title.Size = UDim2.new(0.5, 0, 0, 30)
 
 local boostLine = textLabel(panel, "BoostLine", "", UiTheme.TextSize.Small)
 boostLine.Position = UDim2.new(0.5, 0, 0, 4)
 boostLine.Size = UDim2.new(0.5, 0, 0, 22)
 boostLine.TextXAlignment = Enum.TextXAlignment.Right
-boostLine.TextColor3 = GOLD
+boostLine.TextColor3 = GOLD_TEXT
 boostLine.Visible = false
 
 local categoryBar = Instance.new("Frame")
@@ -97,7 +101,7 @@ listLayout.Parent = productList
 
 local status = UiKit.listStatus(productList, "ShopStatus")
 
-local closeButton = textButton(footer, "Close", localized("shopClose"), SAND)
+local closeButton = textButton(footer, "Close", localized("shopClose"), RED)
 closeButton.AnchorPoint = Vector2.new(0, 1)
 closeButton.Position = UDim2.fromScale(0, 1)
 closeButton.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
@@ -192,7 +196,7 @@ local function buildRow(index: number, entry: any, product: ShopConfig.Product)
 
 	local state = entry.state
 	local textKey = if state == "Buy" then "shopBuy" elseif state == "Owned" then "shopOwned" else "shopComingSoon"
-	local action = textButton(row, "Action", localized(textKey), if state == "Buy" then GOLD else SAND)
+	local action = textButton(row, "Action", localized(textKey), if state == "Buy" then PRIMARY else SAND)
 	action.AnchorPoint = Vector2.new(1, 0.5)
 	action.Position = UDim2.fromScale(1, 0.5)
 	action.Size = UDim2.fromOffset(140, BUTTON_HEIGHT)

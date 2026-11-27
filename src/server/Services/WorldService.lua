@@ -249,7 +249,7 @@ local function billboard(
 	textLabel.Size = UDim2.fromScale(1, 1)
 	textLabel.BackgroundColor3 = Color3.fromRGB(table.unpack(UiTheme.Colors.Panel))
 	textLabel.BackgroundTransparency = 0.15
-	textLabel.TextColor3 = Color3.fromRGB(table.unpack(UiTheme.Colors.Cream))
+	textLabel.TextColor3 = Color3.fromRGB(table.unpack(UiTheme.Colors.DarkText))
 	textLabel.FontFace = UiTheme.fontFace("Title")
 	textLabel.TextScaled = false
 	textLabel.TextSize = layout.textSize
@@ -523,7 +523,7 @@ local function signFace(board: BasePart, name: string, face: Enum.NormalId)
 	frame.BorderSizePixel = 0
 	Instance.new("UICorner", frame).CornerRadius = UDim.new(0, UiTheme.CornerRadius.Panel)
 	frame.Parent = gui
-	local nameLabel = signLine(frame, "Name", 0.04, 0.44, "Gold")
+	local nameLabel = signLine(frame, "Name", 0.04, 0.44, "GoldText")
 	nameLabel.TextScaled = true
 	nameLabel.TextWrapped = false
 	nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -533,10 +533,10 @@ local function signFace(board: BasePart, name: string, face: Enum.NormalId)
 	constraint.MaxTextSize = tokens.nameMaxTextSize
 	constraint.MinTextSize = tokens.nameMinTextSize
 	constraint.Parent = nameLabel
-	local rating = signLine(frame, "Rating", 0.46, 0.72, "Cream")
+	local rating = signLine(frame, "Rating", 0.46, 0.72, "DarkText")
 	rating.TextSize = tokens.lineTextSize
 	rating:SetAttribute("LabelKind", "LotSignRating")
-	local likes = signLine(frame, "Likes", 0.72, 0.98, "Cream")
+	local likes = signLine(frame, "Likes", 0.72, 0.98, "DarkText")
 	likes.TextSize = tokens.lineTextSize
 	likes:SetAttribute("LabelKind", "LotSignLikes")
 end

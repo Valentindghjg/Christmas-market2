@@ -34,8 +34,10 @@ local corner = UiKit.corner
 local PANEL = UiKit.Colors.Panel
 local ROW = UiKit.Colors.Row
 local GOLD = UiKit.Colors.Gold
+local GOLD_TEXT = UiKit.Colors.GoldText
+local PRIMARY = UiKit.Colors.Primary
+local RED = UiKit.Colors.Red
 local SAND = UiKit.Colors.Sand
-local CREAM = UiKit.Colors.Cream
 local DARK = UiKit.Colors.DarkText
 
 local ERROR_KEYS: { [string]: string } = {
@@ -112,6 +114,7 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 	UiKit.padding(panel, 12)
 
 	local title = textLabel(panel, "Title", localized("questsTitle"), 22)
+	UiKit.headerBand(title)
 	title.Size = UDim2.new(1, 0, 0, 30)
 
 	local list = Instance.new("ScrollingFrame")
@@ -139,7 +142,7 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 	status.Size = UDim2.new(1, -(CLAIM_WIDTH + 8), 1, 0)
 	status.TextWrapped = true
 
-	local closeButton = textButton(footer, "CloseButton", localized("questsClose"), SAND)
+	local closeButton = textButton(footer, "CloseButton", localized("questsClose"), RED)
 	closeButton.AnchorPoint = Vector2.new(1, 1)
 	closeButton.Position = UDim2.fromScale(1, 1)
 	closeButton.Size = UDim2.fromOffset(CLAIM_WIDTH, BUTTON_HEIGHT)
@@ -184,7 +187,7 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 	local groupText = textLabel(groupLine, "Text", "", UiTheme.TextSize.Small)
 	groupText.TextWrapped = true
 	groupText.TextTruncate = Enum.TextTruncate.None
-	local groupJoinButton = textButton(groupLine, "GroupJoinButton", localized("dailyGroupJoinButton"), GOLD)
+	local groupJoinButton = textButton(groupLine, "GroupJoinButton", localized("dailyGroupJoinButton"), PRIMARY)
 	groupJoinButton.AnchorPoint = Vector2.new(1, 0.5)
 	groupJoinButton.Position = UDim2.fromScale(1, 0.5)
 	groupJoinButton.Size = UDim2.fromOffset(CLAIM_WIDTH, BUTTON_HEIGHT)
@@ -236,7 +239,7 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 			local label = textLabel(frame, "Bonus", localized("questErrorLocked"), UiTheme.TextSize.Small)
 			label.Position = UDim2.new(0.4, 0, 0, 22)
 			label.Size = UDim2.new(0.6, -(CLAIM_WIDTH + 8), 0, 18)
-			label.TextColor3 = GOLD
+			label.TextColor3 = GOLD_TEXT
 			label.Visible = false
 			bonus = label
 		end
@@ -304,7 +307,7 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 		for index, label in ipairs(dayLabels) do
 			local color = if index == nextDay and claimable then GOLD elseif index < nextDay then SAND else ROW
 			label.BackgroundColor3 = color
-			label.TextColor3 = if color == ROW then CREAM else DARK
+			label.TextColor3 = DARK
 		end
 		if claimable then
 			setButton(dailyButton, localizedFormat("dailyClaim", nextDay), not inFlight)

@@ -154,20 +154,25 @@ export type StockingBarLayout = {
 
 -- UI colours as RGB tuples; they stay separate from ArtPalette (3D materials).
 UiTheme.Colors = {
-	Panel = { 20, 68, 48 },
-	Row = { 38, 89, 63 },
-	ListWell = { 13, 50, 35 },
+	Panel = { 255, 244, 217 },
+	Row = { 246, 231, 196 },
+	ListWell = { 236, 218, 178 },
 	Gold = { 201, 153, 53 },
 	Sand = { 237, 212, 142 },
 	Cream = { 255, 244, 217 },
 	DarkText = { 30, 48, 35 },
-	Red = { 196, 58, 52 },
-	Disabled = { 120, 120, 120 },
+	Red = { 168, 62, 54 },
+	Disabled = { 104, 104, 104 },
 	Placeholder = { 120, 110, 90 },
 	Outline = { 22, 48, 34 },
 	Shadow = { 0, 0, 0 },
-	Toast = { 24, 74, 50 },
+	Toast = { 255, 244, 217 },
 	Valid = { 114, 172, 113 },
+	-- CM2-UI2: title bands, primary actions, muted and highlight text on cream surfaces.
+	Header = { 20, 68, 48 },
+	Primary = { 38, 89, 63 },
+	Muted = { 92, 80, 56 },
+	GoldText = { 128, 88, 16 },
 } :: { [string]: { number } }
 
 -- CM2-UI1: one family, weights by role (PROVISIONAL look values except those named in 22a).
@@ -190,6 +195,7 @@ UiTheme.Style = {
 	ShadowOffset = 4,
 	ShadowTransparency = 0.7,
 	DimTransparency = 0.45,
+	HeaderInset = 10,
 }
 
 -- Times in seconds, scales as UIScale values.

@@ -27,6 +27,8 @@ local DEFAULT_SIZE = "Duo"
 local PANEL = UiKit.Colors.Panel
 local ROW = UiKit.Colors.Row
 local GOLD = UiKit.Colors.Gold
+local PRIMARY = UiKit.Colors.Primary
+local RED = UiKit.Colors.Red
 local SAND = UiKit.Colors.Sand
 
 local textLabel = UiKit.label
@@ -56,6 +58,7 @@ UiKit.window(panel, { dim = true })
 UiKit.padding(panel, 12)
 
 local title = textLabel(panel, "Title", localized("finderTitle"), 22)
+UiKit.headerBand(title)
 title.Size = UDim2.new(1, 0, 0, 30)
 
 local hint = textLabel(panel, "Hint", localized("finderHint"), UiTheme.TextSize.Small)
@@ -109,7 +112,7 @@ for index, size in ipairs(SIZES) do
 	sizeButtons[size] = button
 end
 
-local startListing = textButton(footer, "StartListing", localized("finderStart"), GOLD)
+local startListing = textButton(footer, "StartListing", localized("finderStart"), PRIMARY)
 startListing.AnchorPoint = Vector2.new(0, 1)
 startListing.Position = UDim2.new(0, 0, 1, -START_BOTTOM)
 startListing.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
@@ -134,7 +137,7 @@ stopListing.Position = UDim2.new(0, 0, 1, -HINT_BOTTOM)
 stopListing.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
 stopListing.Visible = false
 
-local closeButton = textButton(footer, "Close", localized("teamClose"), SAND)
+local closeButton = textButton(footer, "Close", localized("teamClose"), RED)
 closeButton.AnchorPoint = Vector2.new(0, 1)
 closeButton.Position = UDim2.new(0, 0, 1, -CLOSE_BOTTOM)
 closeButton.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
@@ -244,7 +247,7 @@ local function buildRow(index: number, listing)
 	seatsLabel.Position = UDim2.fromOffset(0, 28)
 	seatsLabel.Size = UDim2.new(0.68, 0, 0, 22)
 
-	local join = textButton(row, "JoinListing", localized("finderJoin"), GOLD)
+	local join = textButton(row, "JoinListing", localized("finderJoin"), PRIMARY)
 	join.AnchorPoint = Vector2.new(1, 0.5)
 	join.Position = UDim2.fromScale(1, 0.5)
 	join.Size = UDim2.new(0.3, 0, 0, BUTTON_HEIGHT)

@@ -172,9 +172,13 @@ local function applyInteraction(button: GuiButton, state: string)
 	play(press, "Scale", tweenInfo(spec.time, spec.style, spec.direction), { Scale = spec.scale })
 end
 
+local function isInteractive(button: GuiButton): boolean
+	return UiStyle.interactive(button.Active, button:GetAttribute("KitDisabled") == true)
+end
+
 local function bindInteraction(button: GuiButton)
 	button.InputBegan:Connect(function(input: InputObject)
-		if not button.Active then
+		if not isInteractive(button) then
 			return
 		end
 		if input.UserInputType == Enum.UserInputType.MouseMovement then
@@ -189,14 +193,14 @@ local function bindInteraction(button: GuiButton)
 	button.InputEnded:Connect(function(input: InputObject)
 		if input.UserInputType == Enum.UserInputType.MouseMovement then
 			hovering[button] = false
-			if button.Active then
+			if isInteractive(button) then
 				applyInteraction(button, "idle")
 			end
 		elseif
 			input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch
 		then
-			if button.Active then
+			if isInteractive(button) then
 				applyInteraction(button, "release")
 			end
 		end
@@ -217,12 +221,64 @@ function UiKit.onActivated(button: GuiButton, handler: (...any) -> ()): RBXScrip
 	end)
 end
 
--- Selected tabs and mode buttons: a thicker Cream outline.
+-- Text colour for a fill: the Colors entry whose value equals color decides (UiStyle.textOn);
+-- an unknown colour gets DarkText.
+function UiKit.textOn(color: Color3): Color3
+	for name, value in pairs(colors) do
+		if value == color then
+			return colors[UiStyle.textOn(name)]
+		end
+	end
+	return colors.DarkText
+end
+
+-- Sets a button's fill and, for text buttons, the matching text colour.
+function UiKit.setFill(button: GuiButton, color: Color3)
+	button.BackgroundColor3 = color
+	if button:IsA("TextButton") then
+		button.TextColor3 = UiKit.textOn(color)
+	end
+end
+
+-- Marks a button disabled (no hover or press motion); with fill, also swaps the fill between fill
+-- and Disabled.
+function UiKit.setEnabled(button: GuiButton, enabled: boolean, fill: Color3?)
+	button:SetAttribute("KitDisabled", if enabled then nil else true)
+	if fill then
+		UiKit.setFill(button, if enabled then fill else colors.Disabled)
+	end
+	if not enabled then
+		hovering[button] = false
+		local press = button:FindFirstChild("Press")
+		if press and press:IsA("UIScale") then
+			play(press, "Scale", tweenInfo(0, "Quad", "Out"), { Scale = 1 })
+		end
+	end
+end
+
+-- Title band for a window's Title label: Header fill, Cream text, rounded and shaded.
+function UiKit.headerBand(title: TextLabel)
+	UiKit.decorate(title, "header")
+	title.BackgroundTransparency = 0
+	title.BackgroundColor3 = colors.Header
+	title.TextColor3 = colors.Cream
+	local inset = title:FindFirstChild("HeaderInset")
+	if not (inset and inset:IsA("UIPadding")) then
+		inset = Instance.new("UIPadding")
+		inset.Name = "HeaderInset"
+		inset.Parent = title
+	end
+	local pad = inset :: UIPadding
+	pad.PaddingLeft = UDim.new(0, UiTheme.Style.HeaderInset)
+	pad.PaddingRight = UDim.new(0, UiTheme.Style.HeaderInset)
+end
+
+-- Selected tabs and mode buttons: a thicker Header-green outline.
 function UiKit.setSelected(button: GuiButton, selected: boolean)
 	local stroke = button:FindFirstChild("Outline")
 	if stroke and stroke:IsA("UIStroke") then
 		stroke.Thickness = if selected then UiTheme.Style.StrokeSelected else UiTheme.Style.StrokeControl
-		stroke.Color = if selected then colors.Cream else colors.Outline
+		stroke.Color = if selected then colors.Header else colors.Outline
 	end
 end
 
@@ -366,24 +422,33 @@ function UiKit.animateToast(toast: TextLabel, box: UiTheme.Box, shown: boolean)
 	end
 end
 
+-- Dark outline for text that sits over the world (title sizes get it from label).
+function UiKit.outlineText(label: TextLabel)
+	local stroke = label:FindFirstChild("TitleOutline")
+	if not (stroke and stroke:IsA("UIStroke")) then
+		stroke = Instance.new("UIStroke")
+		stroke.Name = "TitleOutline"
+		stroke.Parent = label
+	end
+	local value = stroke :: UIStroke
+	value.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+	value.Color = colors.Outline
+	value.Thickness = UiTheme.Style.StrokeTitle
+end
+
 -- playerText marks save names, usernames, codes and typed text: never auto-translated.
 function UiKit.label(parent: Instance, name: string, text: string, textSize: number, playerText: boolean?): TextLabel
 	local value = Instance.new("TextLabel")
 	value.Name = name
 	value.BackgroundTransparency = 1
 	value.Text = text
-	value.TextColor3 = colors.Cream
+	value.TextColor3 = colors.DarkText
 	value.TextSize = textSize
 	value.TextXAlignment = Enum.TextXAlignment.Left
 	value.TextTruncate = Enum.TextTruncate.AtEnd
 	if textSize >= UiTheme.TextSize.Title then
 		value.FontFace = UiTheme.fontFace("Title")
-		local stroke = Instance.new("UIStroke")
-		stroke.Name = "TitleOutline"
-		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
-		stroke.Color = colors.Outline
-		stroke.Thickness = UiTheme.Style.StrokeTitle
-		stroke.Parent = value
+		UiKit.outlineText(value)
 	else
 		value.FontFace = UiTheme.fontFace("Body")
 	end
@@ -398,7 +463,7 @@ function UiKit.button(parent: Instance, name: string, text: string, color: Color
 	local value = Instance.new("TextButton")
 	value.Name = name
 	value.BackgroundColor3 = color
-	value.TextColor3 = colors.DarkText
+	value.TextColor3 = UiKit.textOn(color)
 	value.FontFace = UiTheme.fontFace("Body")
 	value.TextSize = textSize or UiTheme.TextSize.Body
 	value.TextWrapped = true
@@ -478,6 +543,9 @@ local function studioHook(action: string, path: string, state: string?): { [stri
 		end
 		return { ok = true, handlers = #list }
 	elseif action == "interact" and target:IsA("GuiButton") and type(state) == "string" then
+		if not isInteractive(target) then
+			return { ok = false, error = "Disabled" }
+		end
 		if state == "hover" then
 			hovering[target] = true
 		elseif state == "idle" then

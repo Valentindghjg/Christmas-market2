@@ -63,10 +63,12 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 	local inset = UiKit.padding(frame, 12)
 
 	local title = UiKit.label(frame, "Title", UiKit.localized("lotManagerTitle"), UiTheme.TextSize.Title)
+	UiKit.headerBand(title)
 	local closeButton =
-		UiKit.button(frame, "CloseLotManager", UiKit.localized("lotManagerClose"), colors.Sand, UiTheme.TextSize.Body)
+		UiKit.button(frame, "CloseLotManager", UiKit.localized("lotManagerClose"), colors.Red, UiTheme.TextSize.Body)
 	local cashLabel = UiKit.label(frame, "ManagerCash", "", UiTheme.TextSize.Chip, true)
 	cashLabel.TextXAlignment = Enum.TextXAlignment.Right
+	cashLabel.TextColor3 = colors.GoldText
 	cashLabel.Visible = false
 
 	local tabBar = Instance.new("ScrollingFrame")
@@ -95,7 +97,7 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 	-- The outline and the indicator bar mark the selection, so it is not shown by colour alone.
 	local indicator = Instance.new("Frame")
 	indicator.Name = "Indicator"
-	indicator.BackgroundColor3 = colors.Cream
+	indicator.BackgroundColor3 = colors.Header
 	indicator.BorderSizePixel = 0
 	indicator.Active = false
 	indicator.ZIndex = 2

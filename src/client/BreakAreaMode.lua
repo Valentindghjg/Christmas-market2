@@ -176,7 +176,7 @@ end
 local function setButton(button: TextButton, text: string, enabled: boolean?)
 	button.Text = text
 	if enabled ~= nil then
-		button.BackgroundColor3 = if enabled then UiKit.Colors.Gold else UiKit.Colors.Disabled
+		UiKit.setEnabled(button, enabled, UiKit.Colors.Primary)
 	end
 end
 
@@ -269,7 +269,7 @@ local function buildBar(current: Session)
 	UiKit.window(frame)
 	local header = UiKit.label(frame, "Header", "", UiTheme.TextSize.Body)
 	local reason = UiKit.label(frame, "Reason", "", UiTheme.TextSize.Small)
-	reason.TextColor3 = UiKit.Colors.Sand
+	reason.TextColor3 = UiKit.Colors.Muted
 	current.header = header
 	current.reason = reason
 	local order = { "Rotate", "Place", "Cancel" }
@@ -283,7 +283,7 @@ local function buildBar(current: Session)
 		end,
 	}
 	for _, id in ipairs(order) do
-		local color = if id == "Place" then UiKit.Colors.Gold else UiKit.Colors.Sand
+		local color = if id == "Place" then UiKit.Colors.Primary else UiKit.Colors.Sand
 		local button = UiKit.button(frame, id, "", color, UiTheme.TextSize.Small)
 		UiKit.onActivated(button, actions[id])
 		current.buttons[id] = button

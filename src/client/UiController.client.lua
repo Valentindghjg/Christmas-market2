@@ -53,6 +53,8 @@ local chipLabels: { [string]: TextLabel } = {
 local status = UiKit.label(hud, "SaveStatus", "Christmas Market 2", UiTheme.TextSize.Small)
 status.TextXAlignment = Enum.TextXAlignment.Right
 status.TextWrapped = true
+status.TextColor3 = UiKit.Colors.Cream
+UiKit.outlineText(status)
 
 local lotManagerButton = UiKit.addRailButton("LotManagerButton", "lotManagerButton", 10)
 

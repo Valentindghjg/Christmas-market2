@@ -98,6 +98,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	local function setEnabled(button: TextButton, enabled: boolean)
 		enabledState[button] = enabled
 		button.TextTransparency = if enabled then 0 else DISABLED_TRANSPARENCY
+		UiKit.setEnabled(button, enabled)
 	end
 	local function isEnabled(button: TextButton): boolean
 		return enabledState[button] == true
@@ -112,7 +113,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	local refreshLabel = UiKit.label(page, "RefreshLabel", "", 13)
 	refreshLabel.TextXAlignment = Enum.TextXAlignment.Right
 
-	local orderButton = UiKit.button(page, "OrderTrees", localized("placeOrder"), colors.Gold, 15)
+	local orderButton = UiKit.button(page, "OrderTrees", localized("placeOrder"), colors.Primary, 15)
 	local clearButton = UiKit.button(page, "ClearCart", localized("clearCart"), colors.Sand, 13)
 	local recommendButton = UiKit.button(page, "AddRecommended", localized("loading"), colors.Sand, 13)
 	local status = UiKit.label(page, "SupplierStatus", localized("loading"), 13)
@@ -150,7 +151,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 				minus = UiKit.button(frame, "Minus", "−", colors.Sand, 17),
 				plus = UiKit.button(frame, "Plus", "+", colors.Sand, 17),
 				max = UiKit.button(frame, "Max", localized("maxButton"), colors.Sand, 13),
-				sell = UiKit.button(frame, "Sell", "", colors.Gold, 12),
+				sell = UiKit.button(frame, "Sell", "", colors.Primary, 12),
 			}
 			table.insert(rows, row)
 		end

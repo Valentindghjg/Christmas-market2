@@ -32,7 +32,8 @@ local textButton = UiKit.button
 
 local PANEL = UiKit.Colors.Panel
 local ROW = UiKit.Colors.Row
-local GOLD = UiKit.Colors.Gold
+local PRIMARY = UiKit.Colors.Primary
+local RED = UiKit.Colors.Red
 local SAND = UiKit.Colors.Sand
 
 local ERROR_KEYS: { [string]: string } = {
@@ -77,6 +78,7 @@ function EventShopPanel.new(context: LotManager.TabContext): Panel
 	UiKit.padding(panel, 12)
 
 	local title = textLabel(panel, "Title", "", 22)
+	UiKit.headerBand(title)
 	title.Size = UDim2.new(1, 0, 0, 30)
 
 	local countdown = textLabel(panel, "Countdown", "", UiTheme.TextSize.Small)
@@ -113,7 +115,7 @@ function EventShopPanel.new(context: LotManager.TabContext): Panel
 	status.Size = UDim2.new(1, -(CLOSE_WIDTH + 8), 1, 0)
 	status.TextWrapped = true
 
-	local closeButton = textButton(footer, "CloseButton", localized("eventClose"), SAND)
+	local closeButton = textButton(footer, "CloseButton", localized("eventClose"), RED)
 	closeButton.AnchorPoint = Vector2.new(1, 1)
 	closeButton.Position = UDim2.fromScale(1, 1)
 	closeButton.Size = UDim2.fromOffset(CLOSE_WIDTH, BUTTON_HEIGHT)
@@ -206,7 +208,7 @@ function EventShopPanel.new(context: LotManager.TabContext): Panel
 			text, color, active = localized("eventBoughtButton"), SAND, false
 		else
 			local price = if isNumber(item.price) then item.price else 0
-			text, color, active = localizedFormat("eventPriceCash", UiTheme.formatMoney(price)), GOLD, not inFlight
+			text, color, active = localizedFormat("eventPriceCash", UiTheme.formatMoney(price)), PRIMARY, not inFlight
 		end
 		local button = textButton(row, "BuyButton", text, color)
 		button.AnchorPoint = Vector2.new(1, 0.5)

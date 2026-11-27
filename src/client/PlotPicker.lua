@@ -38,9 +38,8 @@ local CONFIG = UiTheme.PlotPicker
 local localized = UiKit.localized
 local localizedFormat = UiKit.localizedFormat
 local PANEL = UiKit.Colors.Panel
-local GOLD = UiKit.Colors.Gold
+local PRIMARY = UiKit.Colors.Primary
 local SAND = UiKit.Colors.Sand
-local DISABLED = UiKit.Colors.Disabled
 
 local ACTION_PREV = "PlotPickerPrev"
 local ACTION_NEXT = "PlotPickerNext"
@@ -66,6 +65,7 @@ end
 
 local panel = frame("Panel")
 local title = UiKit.label(panel, "Title", localized("plotPickerTitle"), UiTheme.TextSize.Title)
+UiKit.headerBand(title)
 local prevButton = UiKit.button(panel, "Prev", localized("plotPickerPrev"), SAND, 20)
 local nextButton = UiKit.button(panel, "Next", localized("plotPickerNext"), SAND, 20)
 local plotNumber = UiKit.label(panel, "PlotNumber", "", CONFIG.numberTextSize)
@@ -76,13 +76,13 @@ plotStatus.AutoLocalize = false
 local message = UiKit.label(panel, "Message", "", UiTheme.TextSize.Small)
 message.AutoLocalize = false
 local backButton = UiKit.button(panel, "Back", localized("plotPickerBack"), SAND, 16)
-local chooseButton = UiKit.button(panel, "Choose", localized("plotPickerChoose"), GOLD, 16)
+local chooseButton = UiKit.button(panel, "Choose", localized("plotPickerChoose"), PRIMARY, 16)
 
 local confirm = frame("Confirm")
 confirm.ZIndex = 2
 local confirmText = UiKit.label(confirm, "ConfirmText", "", 16)
 confirmText.TextWrapped = true
-local yesButton = UiKit.button(confirm, "Yes", localized("plotPickerYes"), GOLD)
+local yesButton = UiKit.button(confirm, "Yes", localized("plotPickerYes"), PRIMARY)
 local noButton = UiKit.button(confirm, "No", localized("plotPickerNo"), SAND)
 
 local function place(object: GuiObject, b: UiTheme.Box)
@@ -167,7 +167,7 @@ local function redraw()
 		plotStatus.Text = localized("plotPickerOccupied")
 	end
 	chooseButton.Active = row.free
-	chooseButton.BackgroundColor3 = if row.free then GOLD else DISABLED
+	UiKit.setEnabled(chooseButton, row.free, PRIMARY)
 	gui:SetAttribute("SelectedPlotId", row.plotId)
 end
 

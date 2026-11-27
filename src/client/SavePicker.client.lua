@@ -27,14 +27,13 @@ local localizedFormat = UiKit.localizedFormat
 local BUTTON_HEIGHT = UiTheme.MinTouch
 local SAVE_ROW = UiTheme.SaveRow
 local ROW_HEIGHT = SAVE_ROW.height
-local CREAM = UiKit.Colors.Cream
 local PANEL = UiKit.Colors.Panel
 local ROW = UiKit.Colors.Row
 local LIST_WELL = UiKit.Colors.ListWell
 local GOLD = UiKit.Colors.Gold
 local SAND = UiKit.Colors.Sand
 local RED = UiKit.Colors.Red
-local DISABLED = UiKit.Colors.Disabled
+local PRIMARY = UiKit.Colors.Primary
 
 local textLabel = UiKit.label
 local textBox = UiKit.textBox
@@ -66,6 +65,7 @@ local picker = dialogFrame("Picker")
 picker.Visible = false
 
 local title = textLabel(picker, "Title", localized("savePickerTitle"), 22)
+UiKit.headerBand(title)
 title.Size = UDim2.new(0.6, -4, 0, 30)
 
 local hint = textLabel(picker, "Hint", localized("savePickerHint"), UiTheme.TextSize.Small)
@@ -145,7 +145,7 @@ newName.AnchorPoint = Vector2.new(0, 1)
 newName.Position = UDim2.new(0, 0, 1, -(FOOTER_ROW * 2))
 newName.Size = UDim2.new(0.6, -4, 0, BUTTON_HEIGHT)
 
-local createSave = textButton(footer, "CreateSave", localized("saveNew"), GOLD)
+local createSave = textButton(footer, "CreateSave", localized("saveNew"), PRIMARY)
 createSave.AnchorPoint = Vector2.new(1, 1)
 createSave.Position = UDim2.new(1, 0, 1, -(FOOTER_ROW * 2))
 createSave.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
@@ -156,7 +156,7 @@ joinCode.AnchorPoint = Vector2.new(0, 1)
 joinCode.Position = UDim2.new(0, 0, 1, -FOOTER_ROW)
 joinCode.Size = UDim2.new(0.6, -4, 0, BUTTON_HEIGHT)
 
-local joinSave = textButton(footer, "JoinSave", localized("joinButton"), GOLD)
+local joinSave = textButton(footer, "JoinSave", localized("joinButton"), PRIMARY)
 joinSave.AnchorPoint = Vector2.new(1, 1)
 joinSave.Position = UDim2.new(1, 0, 1, -FOOTER_ROW)
 joinSave.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
@@ -173,6 +173,7 @@ confirm.ZIndex = 2
 confirm.Visible = false
 
 local confirmTitle = textLabel(confirm, "Title", localized("saveDeleteTitle"), 22)
+UiKit.headerBand(confirmTitle)
 confirmTitle.Size = UDim2.new(1, 0, 0, 30)
 
 local warning = textLabel(confirm, "Warning", localized("saveDeleteWarning"), 15)
@@ -193,7 +194,6 @@ confirmName.Position = UDim2.fromOffset(0, 150)
 confirmName.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
 
 local confirmDelete = textButton(confirm, "ConfirmDelete", localized("saveDeleteConfirm"), RED)
-confirmDelete.TextColor3 = CREAM
 confirmDelete.Position = UDim2.fromOffset(0, 202)
 confirmDelete.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 
@@ -244,7 +244,7 @@ local close: () -> ()
 local function updateConfirmButton()
 	local matches = deleteTarget ~= nil and SaveProfile.confirmMatches(deleteTarget.name, confirmName.Text)
 	confirmDelete.Active = matches
-	confirmDelete.BackgroundColor3 = if matches then RED else DISABLED
+	UiKit.setEnabled(confirmDelete, matches, RED)
 end
 confirmName:GetPropertyChangedSignal("Text"):Connect(updateConfirmButton)
 
@@ -420,7 +420,7 @@ local function buildRow(index: number, entry)
 	end
 
 	local elsewhere = entry.elsewhere == true
-	local playButton = rowButton("Play", localized(if elsewhere then "saveJoinServer" else "savePlay"), GOLD, 0)
+	local playButton = rowButton("Play", localized(if elsewhere then "saveJoinServer" else "savePlay"), PRIMARY, 0)
 	UiKit.onActivated(playButton, function()
 		if elsewhere then
 			teleportTo({ saveId = entry.saveId })
@@ -432,7 +432,7 @@ local function buildRow(index: number, entry)
 	if member then
 		-- Members cannot rename; they leave instead of deleting (two taps).
 		local armed = leaveArmedSaveId == entry.saveId
-		local leaveButton = rowButton("Leave", localized(if armed then "teamLeaveConfirm" else "saveLeave"), SAND, 2)
+		local leaveButton = rowButton("Leave", localized(if armed then "teamLeaveConfirm" else "saveLeave"), RED, 2)
 		UiKit.onActivated(leaveButton, function()
 			if leaveArmedSaveId ~= entry.saveId then
 				leaveArmedSaveId = entry.saveId
@@ -447,7 +447,12 @@ local function buildRow(index: number, entry)
 	end
 
 	local renameButton = rowButton("Rename", localized(if renaming then "saveRenameConfirm" else "saveRename"), SAND, 1)
-	local deleteButton = rowButton("Delete", localized(if renaming then "saveCancel" else "saveDelete"), SAND, 2)
+	local deleteButton = rowButton(
+		"Delete",
+		localized(if renaming then "saveCancel" else "saveDelete"),
+		if renaming then SAND else RED,
+		2
+	)
 
 	UiKit.onActivated(renameButton, function()
 		if renaming and nameBox then

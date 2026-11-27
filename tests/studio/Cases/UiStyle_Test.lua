@@ -73,6 +73,32 @@ return function(t)
 		expect.equal(#find(window, "UIScale", "Press"), 0)
 	end)
 
+	t.test("header decorations", function()
+		local specs = UiStyle.decorations("header")
+		expect.equal(#specs, 2)
+		local corner = find(specs, "UICorner", "Corner")
+		expect.equal(#corner, 1)
+		expect.equal(corner[1].props.CornerRadius, 8)
+		expect.equal(#find(specs, "UIGradient", "Shade"), 1)
+		expect.equal(#find(specs, "UIStroke", "Outline"), 0)
+		expect.equal(#find(specs, "UIScale", "Press"), 0)
+	end)
+
+	t.test("text colour follows the fill", function()
+		for _, fill in ipairs({ "Primary", "Header", "Red", "Disabled" }) do
+			expect.equal(UiStyle.textOn(fill), "Cream")
+		end
+		for _, fill in ipairs({ "Panel", "Row", "ListWell", "Sand", "Gold", "Cream" }) do
+			expect.equal(UiStyle.textOn(fill), "DarkText")
+		end
+	end)
+
+	t.test("disabled buttons do not animate", function()
+		expect.equal(UiStyle.interactive(true, nil), true)
+		expect.equal(UiStyle.interactive(true, true), false)
+		expect.equal(UiStyle.interactive(false, nil), false)
+	end)
+
 	t.test("gradient is a grey multiplier within 8 %", function()
 		for _, kind in ipairs({ "button", "tab", "window" }) do
 			local shade = find(UiStyle.decorations(kind), "UIGradient", "Shade")[1]

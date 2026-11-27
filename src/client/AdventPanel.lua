@@ -32,8 +32,7 @@ local PANEL = UiKit.Colors.Panel
 local ROW = UiKit.Colors.Row
 local GOLD = UiKit.Colors.Gold
 local SAND = UiKit.Colors.Sand
-local CREAM = UiKit.Colors.Cream
-local DARK = UiKit.Colors.DarkText
+local RED = UiKit.Colors.Red
 
 local ERROR_KEYS: { [string]: string } = {
 	CalendarClosed = "adventErrorClosed",
@@ -102,6 +101,7 @@ function AdventPanel.new(context: LotManager.TabContext): Panel
 	UiKit.padding(panel, 12)
 
 	local title = textLabel(panel, "Title", localized("adventTitle"), 22)
+	UiKit.headerBand(title)
 	title.Size = UDim2.new(1, 0, 0, 30)
 
 	local hint = textLabel(panel, "Hint", localized("adventHint"), UiTheme.TextSize.Small)
@@ -135,7 +135,7 @@ function AdventPanel.new(context: LotManager.TabContext): Panel
 	status.Size = UDim2.new(1, -(CLOSE_WIDTH + 8), 1, 0)
 	status.TextWrapped = true
 
-	local closeButton = textButton(footer, "CloseButton", localized("adventClose"), SAND)
+	local closeButton = textButton(footer, "CloseButton", localized("adventClose"), RED)
 	closeButton.AnchorPoint = Vector2.new(1, 1)
 	closeButton.Position = UDim2.fromScale(1, 1)
 	closeButton.Size = UDim2.fromOffset(CLOSE_WIDTH, BUTTON_HEIGHT)
@@ -182,8 +182,7 @@ function AdventPanel.new(context: LotManager.TabContext): Panel
 				stateKey, color, active = "adventDoorLocked", ROW, false
 			end
 			button.Text = localizedFormat(stateKey, door)
-			button.BackgroundColor3 = color
-			button.TextColor3 = if color == ROW then CREAM else DARK
+			UiKit.setFill(button, color)
 			button.Active = active
 		end
 	end

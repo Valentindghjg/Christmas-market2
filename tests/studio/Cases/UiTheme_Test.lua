@@ -1,7 +1,9 @@
 --!strict
 -- CM2-40: layout math and money format for the HUD, the Lot Manager and the dialogs.
 return function(t)
-	local UiTheme = require(game:GetService("ReplicatedStorage"):WaitForChild("Shared"):WaitForChild("UiTheme"))
+	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+	local UiTheme = require(Shared:WaitForChild("UiTheme"))
+	local UiStyle = require(Shared:WaitForChild("UiStyle"))
 	local expect = t.expect
 
 	-- Safe-area sizes (W x H): the first three are phones.
@@ -593,22 +595,38 @@ return function(t)
 		local function luminance(rgb: { number }): number
 			return 0.2126 * linear(rgb[1]) + 0.7152 * linear(rgb[2]) + 0.0722 * linear(rgb[3])
 		end
-		local function ratio(foreground: string, background: string): number
-			local a = luminance(UiTheme.Colors[foreground])
-			local b = luminance(UiTheme.Colors[background])
+		-- scale multiplies both colours: the kit gradient tints fill and text alike (worst case at the bottom).
+		local function ratio(foreground: string, background: string, scale: number?): number
+			local k = scale or 1
+			local a = luminance(UiTheme.Colors[foreground]) * k
+			local b = luminance(UiTheme.Colors[background]) * k
 			return (math.max(a, b) + 0.05) / (math.min(a, b) + 0.05)
 		end
 		local pairs4_5 = {
-			{ "Cream", "Panel" },
-			{ "Cream", "Row" },
-			{ "Cream", "ListWell" },
+			{ "DarkText", "Panel" },
+			{ "DarkText", "Row" },
+			{ "DarkText", "ListWell" },
 			{ "DarkText", "Sand" },
 			{ "DarkText", "Gold" },
 			{ "DarkText", "Cream" },
+			{ "DarkText", "Toast" },
+			{ "Muted", "Panel" },
+			{ "Muted", "Row" },
+			{ "Muted", "ListWell" },
+			{ "GoldText", "Panel" },
+			{ "GoldText", "Row" },
+			{ "GoldText", "ListWell" },
+			{ "Cream", "Header" },
+			{ "Cream", "Primary" },
 			{ "Cream", "Red" },
+			{ "Cream", "Disabled" },
 		}
 		for _, pair in ipairs(pairs4_5) do
 			expect.truthy(ratio(pair[1], pair[2]) >= 4.5)
+		end
+		-- Shaded fills carry the text colour UiStyle.textOn names.
+		for _, fill in ipairs({ "Panel", "Sand", "Gold", "Red", "Disabled", "Header", "Primary" }) do
+			expect.truthy(ratio(UiStyle.textOn(fill), fill, UiTheme.Style.GradientBottom) >= 4.5)
 		end
 		expect.truthy(ratio("Placeholder", "Cream") >= 3.0)
 		expect.truthy(UiTheme.TextSize.Small >= 13)

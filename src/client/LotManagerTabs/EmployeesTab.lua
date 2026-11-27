@@ -114,7 +114,7 @@ function EmployeesTab.create(page: ScrollingFrame, context: TabContext): TabHand
 		placeWide(statusLine, 10, 74, textInset, 18)
 		local locked = UiKit.label(frame, "Locked", localized("staffLocked"), UiTheme.TextSize.Small)
 		placeWide(locked, 10, 74, textInset, 36)
-		locked.TextColor3 = colors.Sand
+		locked.TextColor3 = colors.Muted
 		wrap(locked)
 		local bar = Instance.new("Frame")
 		bar.Name = "EnergyBar"
@@ -128,7 +128,7 @@ function EmployeesTab.create(page: ScrollingFrame, context: TabContext): TabHand
 		fill.BorderSizePixel = 0
 		place(fill, 0, 0, 0, BAR_HEIGHT)
 		fill.Parent = bar
-		local button = UiKit.button(frame, "Hire", localized("staffHire"), colors.Gold, UiTheme.TextSize.Small)
+		local button = UiKit.button(frame, "Hire", localized("staffHire"), colors.Primary, UiTheme.TextSize.Small)
 		button.Position = UDim2.new(1, -(BUTTON_WIDTH + 10), 0, math.floor((CARD_HEIGHT - BUTTON_HEIGHT) / 2))
 		button.Size = UDim2.fromOffset(BUTTON_WIDTH, BUTTON_HEIGHT)
 
@@ -146,7 +146,7 @@ function EmployeesTab.create(page: ScrollingFrame, context: TabContext): TabHand
 	end
 
 	local noCashier = UiKit.label(page, "NoCashier", localized("staffNoCashier"), UiTheme.TextSize.Small)
-	noCashier.TextColor3 = colors.Sand
+	noCashier.TextColor3 = colors.Muted
 	wrap(noCashier)
 	noCashier.Visible = false
 	local noWages = UiKit.label(page, "NoWages", localized("staffNoWages"), UiTheme.TextSize.Small)
@@ -166,7 +166,7 @@ function EmployeesTab.create(page: ScrollingFrame, context: TabContext): TabHand
 	local function setButton(button: TextButton, text: string, enabled: boolean)
 		button.Text = text
 		button.Active = enabled
-		button.BackgroundColor3 = if enabled then colors.Gold else colors.Disabled
+		UiKit.setEnabled(button, enabled, colors.Primary)
 	end
 
 	-- Whether the role's button may send a hire.

@@ -112,7 +112,7 @@ function LandTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 		wrap(cardNext)
 		local button: TextButton? = nil
 		if withButton then
-			local made = UiKit.button(frame, "Buy", localized("landBuy"), colors.Gold, UiTheme.TextSize.Small)
+			local made = UiKit.button(frame, "Buy", localized("landBuy"), colors.Primary, UiTheme.TextSize.Small)
 			made.Position = UDim2.new(1, -(BUTTON_WIDTH + 10), 0, 8)
 			made.Size = UDim2.fromOffset(BUTTON_WIDTH, BUTTON_HEIGHT)
 			button = made
@@ -169,7 +169,7 @@ function LandTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 			state.Position = UDim2.new(1, -(STATE_WIDTH + 10), 0, y)
 			state.Size = UDim2.fromOffset(STATE_WIDTH, ROW_HEIGHT)
 			state.TextXAlignment = Enum.TextXAlignment.Right
-			state.TextColor3 = if line.met == true then colors.Gold else colors.Sand
+			state.TextColor3 = if line.met == true then colors.GoldText else colors.Muted
 			table.insert(card.dynamic, label)
 			table.insert(card.dynamic, state)
 			y += ROW_PITCH
@@ -195,7 +195,7 @@ function LandTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 	local function setButton(button: TextButton, label: string, enabled: boolean)
 		button.Text = label
 		button.Active = enabled
-		button.BackgroundColor3 = if enabled then colors.Gold else colors.Disabled
+		UiKit.setEnabled(button, enabled, colors.Primary)
 	end
 
 	local function renderButton(kind: string, offer: any?)
@@ -258,7 +258,7 @@ function LandTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 			workshop.status.Text =
 				localized(if shop.unlocked == true then "landWorkshopUnlocked" else "landWorkshopLocked")
 			workshop.next.Text = localized("landComingSoon")
-			workshop.next.TextColor3 = colors.Sand
+			workshop.next.TextColor3 = colors.Muted
 			local height = addRows(workshop, shop.rows) + CARD_BOTTOM
 			placeWide(workshop.frame, 0, y, CARD_INSET, height)
 			y += height + CARD_GAP

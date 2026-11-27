@@ -6,7 +6,7 @@ local UiTheme = require(script.Parent.UiTheme)
 
 local UiStyle = {}
 
-export type Kind = "button" | "tab" | "card" | "window"
+export type Kind = "button" | "tab" | "card" | "window" | "header"
 
 export type DecorSpec = {
 	className: string,
@@ -82,8 +82,29 @@ function UiStyle.decorations(kind: string): { DecorSpec }
 			shade(),
 			{ className = "UIScale", name = "Open", props = { Scale = 1 } },
 		}
+	elseif kind == "header" then
+		return { corner(UiTheme.CornerRadius.Button), shade() }
 	end
 	return {}
+end
+
+-- CM2-UI2: fills that carry Cream text; every other fill carries DarkText.
+local LightTextFills: { [string]: boolean } = table.freeze({
+	Primary = true,
+	Header = true,
+	Red = true,
+	Disabled = true,
+})
+UiStyle.LightTextFills = LightTextFills
+
+-- fill names a UiTheme.Colors entry; returns the name of the text colour.
+function UiStyle.textOn(fill: string): string
+	return if LightTextFills[fill] == true then "Cream" else "DarkText"
+end
+
+-- A disabled button gets no hover or press motion.
+function UiStyle.interactive(active: boolean, disabled: boolean?): boolean
+	return active and disabled ~= true
 end
 
 return UiStyle
