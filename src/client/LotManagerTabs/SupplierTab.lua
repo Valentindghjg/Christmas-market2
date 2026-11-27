@@ -352,7 +352,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		sellHint.Visible = not buy
 
 		local layout = UiTheme.supplierPanelLayout(metrics, page.AbsoluteSize.X)
-		local rowLayout = UiTheme.supplierRowLayout(page.AbsoluteSize.X, not buy)
+		local rowLayout = UiTheme.supplierRowLayout(page.AbsoluteSize.X, not buy, metrics.compact)
 		local rowsTop = if buy then layout.rowsTopBuy else layout.rowsTopSell
 		local shownRows = 0
 		for _, row in ipairs(rows) do
@@ -364,8 +364,8 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 			if visible then
 				row.frame.Position = UDim2.fromOffset(0, rowsTop + shownRows * layout.rowPitch)
 				row.frame.Size = UDim2.fromOffset(layout.width, layout.rowHeight)
-				place(row.name, { x = rowLayout.text.x, y = 0, w = rowLayout.text.w, h = 22 })
-				place(row.info, { x = rowLayout.text.x, y = 22, w = rowLayout.text.w, h = 22 })
+				place(row.name, { x = rowLayout.text.x, y = rowLayout.text.y, w = rowLayout.text.w, h = 22 })
+				place(row.info, { x = rowLayout.text.x, y = rowLayout.text.y + 22, w = rowLayout.text.w, h = 22 })
 				place(row.minus, rowLayout.minus)
 				place(row.qty, rowLayout.qty)
 				place(row.plus, rowLayout.plus)
@@ -384,9 +384,10 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 			end
 		end
 		local footerTop = rowsTop + shownRows * layout.rowPitch
-		place(stockingHint, { x = 0, y = footerTop, w = layout.width, h = 36 })
-		place(customerLine, { x = 0, y = footerTop + 38, w = layout.width, h = 18 })
-		page.CanvasSize = UDim2.fromOffset(0, rowsTop + shownRows * layout.rowPitch + 70)
+		place(stockingHint, { x = 0, y = footerTop, w = layout.width, h = layout.footerHint })
+		place(customerLine, { x = 0, y = footerTop + layout.footerHint + 2, w = layout.width, h = layout.footerLine })
+		page.CanvasSize =
+			UDim2.fromOffset(0, rowsTop + shownRows * layout.rowPitch + layout.footerHint + layout.footerLine + 16)
 
 		if buy then
 			renderCart()

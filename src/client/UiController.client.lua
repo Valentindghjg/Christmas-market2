@@ -82,7 +82,7 @@ AdventPanel.new(context)
 -- Event shop (CM2-45) renders summary.event from the same summary poll.
 local eventPanel = EventShopPanel.new(context)
 
--- On a phone the open Lot Manager takes the whole safe area, so the HUD and the rail step aside.
+-- On a phone the open Lot Manager covers the middle of the safe area (70 % x 80 %), so the HUD and the rail step aside.
 local function updateChrome()
 	local hide = managerOpen and currentMetrics.compact
 	hud.Visible = not hide

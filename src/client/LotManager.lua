@@ -164,6 +164,20 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 		end
 	end
 
+	-- Keeps the selected tab inside the scrolling phone tab column (22a3c).
+	local function revealSelected()
+		local tabButton = tabButtons[selectedId]
+		local top = tabButton.Position.Y.Offset
+		local bottom = top + tabButton.Size.Y.Offset
+		local view = tabBar.AbsoluteWindowSize.Y
+		local y = tabBar.CanvasPosition.Y
+		if top < y then
+			tabBar.CanvasPosition = Vector2.new(0, top)
+		elseif view > 0 and bottom > y + view then
+			tabBar.CanvasPosition = Vector2.new(0, bottom - view)
+		end
+	end
+
 	local function updateTabs(animate: boolean?)
 		for tabId, tabButton in pairs(tabButtons) do
 			local selected = tabId == selectedId
@@ -171,6 +185,7 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 			UiKit.setSelected(tabButton, selected)
 		end
 		placeIndicator(animate == true)
+		revealSelected()
 	end
 
 	local function message(page: ScrollingFrame, name: string, key: string)
@@ -312,24 +327,21 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 			end
 			tabBar.Position = UDim2.fromOffset(layout.tabBar.x, layout.tabBar.y)
 			tabBar.Size = UDim2.fromOffset(layout.tabBar.w, layout.tabBar.h)
-			tabBar.ScrollingDirection = if layout.horizontal
-				then Enum.ScrollingDirection.X
-				else Enum.ScrollingDirection.Y
-			local canvasWidth, canvasHeight = 0, 0
+			tabBar.ScrollingDirection = Enum.ScrollingDirection.Y
+			tabBar.ScrollBarThickness = if layout.tabScrolls then 4 else 0
+			local canvasHeight = 0
 			for index, tab in ipairs(UiTheme.LotManagerTabs) do
 				local tabBox = layout.tabs[index]
 				local tabButton = tabButtons[tab.id]
 				if tabBox then
 					tabButton.Position = UDim2.fromOffset(tabBox.x, tabBox.y)
 					tabButton.Size = UDim2.fromOffset(tabBox.w, tabBox.h)
-					canvasWidth = math.max(canvasWidth, tabBox.x + tabBox.w)
 					canvasHeight = math.max(canvasHeight, tabBox.y + tabBox.h)
 				end
 			end
-			tabBar.CanvasSize = if layout.horizontal
-				then UDim2.fromOffset(canvasWidth, 0)
-				else UDim2.fromOffset(0, canvasHeight)
+			tabBar.CanvasSize = UDim2.fromOffset(0, canvasHeight)
 			placeIndicator(false)
+			revealSelected()
 			body.Position = UDim2.fromOffset(layout.body.x, layout.body.y)
 			body.Size = UDim2.fromOffset(layout.body.w, layout.body.h)
 		end,

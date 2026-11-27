@@ -336,7 +336,7 @@ return function(t)
 				expect.falsy(UiTheme.overlaps(layout.manager, absolute(layout.hud, layout.status)))
 			end
 			local inner = UiTheme.managerLayout(m, layout.manager)
-			expect.equal(inner.horizontal, m.compact)
+			expect.equal(inner.tabScrolls, m.compact)
 			expect.equal(#inner.tabs, 6)
 			for _, tab in ipairs(inner.tabs) do
 				expect.truthy(tab.w >= 88)
@@ -606,6 +606,7 @@ return function(t)
 			end
 			expect.truthy(layout.rowsTopBuy >= layout.cartLines.y + layout.cartLines.h)
 			expect.truthy(layout.rowsTopSell >= layout.status.y + layout.status.h)
+			expect.truthy(layout.rowsTopSell >= layout.sellHint.y + layout.sellHint.h)
 			expect.truthy(layout.rowHeight >= UiTheme.MinTouch)
 			expect.truthy(layout.rowPitch >= layout.rowHeight)
 		end
@@ -617,10 +618,17 @@ return function(t)
 
 	t.test("supplier rows fit both views", function()
 		for _, size in ipairs(SUPPLIER_SIZES) do
-			local _, body = supplierBody(size)
+			local m, body = supplierBody(size)
+			local panel = UiTheme.supplierPanelLayout(m, body.w)
 			for _, sellView in ipairs({ false, true }) do
-				local row = UiTheme.supplierRowLayout(body.w, sellView)
+				local row = UiTheme.supplierRowLayout(body.w, sellView, m.compact)
 				expect.truthy(row.text.w > 0)
+				if m.compact then
+					expect.equal(row.text.w, panel.width)
+					for _, b in ipairs({ row.minus, row.qty, row.plus, row.max }) do
+						expect.equal(b.y, 44)
+					end
+				end
 				local boxes = { row.text, row.minus, row.qty, row.plus, row.max }
 				if sellView then
 					expect.truthy(row.sell ~= nil)
@@ -629,7 +637,7 @@ return function(t)
 					expect.equal(row.sell, nil)
 				end
 				for index, b in ipairs(boxes) do
-					expect.truthy(UiTheme.inside(b, body.w - 8, 44))
+					expect.truthy(UiTheme.inside(b, body.w - 8, panel.rowHeight))
 					if index > 1 then
 						expect.truthy(b.w >= UiTheme.MinTouch)
 						expect.truthy(b.h >= UiTheme.MinTouch)
@@ -664,7 +672,7 @@ return function(t)
 		expect.equal(pc.controlsY, 128)
 		expect.truthy(pc.controlsY + pc.controlsHeight <= pc.cardHeight)
 		local compactCard = UiTheme.pricingCardLayout(UiTheme.metrics(666, 374))
-		expect.equal(compactCard.controlsY, 120)
+		expect.equal(compactCard.controlsY, 112)
 		expect.truthy(compactCard.controlsY + compactCard.controlsHeight <= compactCard.cardHeight)
 	end)
 
@@ -796,6 +804,8 @@ return function(t)
 			for _, b in ipairs(manager.tabs) do
 				within(b, 44, 52)
 			end
+			local supplierText = UiTheme.supplierPanelLayout(m, manager.body.w).textSize
+			expect.truthy(supplierText >= 14 and supplierText <= 16)
 		end
 		local sizes = UiTheme.TextSize
 		for _, value in ipairs({ sizes.Body, sizes.Input, sizes.Chip, UiTheme.TutorialBar.textSize }) do
@@ -804,6 +814,114 @@ return function(t)
 		for _, value in ipairs({ sizes.Title, UiTheme.SaveRow.nameTextSize, UiTheme.PlotPicker.numberTextSize }) do
 			expect.truthy(value <= 24)
 		end
+	end)
+
+	local function expectBox(b, x, y, w, h)
+		expect.equal(b.x, x)
+		expect.equal(b.y, y)
+		expect.equal(b.w, w)
+		expect.equal(b.h, h)
+	end
+
+	-- 22a3c: the phone Lot Manager is at most 70 % x 80 % with a scrolling tab column.
+	t.test("phone Lot Manager fits 70 % x 80 % (22a3c)", function()
+		for _, size in ipairs(PHONES) do
+			local m = UiTheme.metrics(size[1], size[2])
+			local manager = UiTheme.hudLayout(m, 0).manager
+			expect.truthy(manager.w <= math.floor(0.7 * size[1]))
+			expect.truthy(manager.h <= math.floor(0.8 * size[2]))
+			expect.truthy(UiTheme.inside(manager, size[1], size[2]))
+			local base = BASELINE[size[1] .. "x" .. size[2]]
+			if base then
+				expect.truthy(manager.w <= base.manager[1])
+				expect.truthy(manager.h <= base.manager[2])
+			end
+			local inner = UiTheme.managerLayout(m, manager)
+			local cw, ch = manager.w - 2 * inner.padding, manager.h - 2 * inner.padding
+			local cash = inner.cash :: UiTheme.Box
+			local parts = { inner.title, cash, inner.close, inner.tabBar, inner.body }
+			for index, b in ipairs(parts) do
+				noNegativeSize(b)
+				expect.truthy(UiTheme.inside(b, cw, ch))
+				for other = index + 1, #parts do
+					expect.falsy(UiTheme.overlaps(b, parts[other]))
+				end
+			end
+			for index, tab in ipairs(inner.tabs) do
+				expect.equal(tab.x, 0)
+				expect.equal(tab.y, (index - 1) * 48)
+				if inner.tabScrolls then
+					expect.equal(tab.w, inner.tabBar.w - 6)
+				end
+				expect.truthy(tab.h >= 44 and tab.h <= 52)
+				expect.truthy(tab.w >= 88)
+				expect.truthy(UiTheme.inside(tab, inner.tabBar.w, math.huge))
+			end
+
+			local body = inner.body
+			local panel = UiTheme.supplierPanelLayout(m, body.w)
+			expect.equal(panel.textSize, 14)
+			for _, id in ipairs({ "modeBuy", "modeSell", "refresh", "placeOrder", "clear", "recommend" }) do
+				expect.truthy(UiTheme.inside(panel[id], panel.width, math.huge))
+			end
+			for _, id in ipairs({ "modeBuy", "modeSell", "placeOrder", "clear", "recommend" }) do
+				expect.truthy(panel[id].h >= 44 and panel[id].h <= 52)
+			end
+			for _, sellView in ipairs({ false, true }) do
+				local row = UiTheme.supplierRowLayout(body.w, sellView, true)
+				expect.truthy(row.text.w >= 240)
+				local controls = { row.minus, row.qty, row.plus, row.max }
+				if row.sell then
+					table.insert(controls, row.sell)
+				end
+				for _, b in ipairs(controls) do
+					expect.truthy(b.h >= 44 and b.h <= 52)
+					expect.truthy(UiTheme.inside(b, panel.width, panel.rowHeight))
+				end
+			end
+
+			local card = UiTheme.pricingCardLayout(m)
+			expect.truthy(324 <= body.w - 8)
+			expect.truthy(card.cardHeight <= body.h)
+			expect.truthy(UiTheme.inside(card.price, 324, card.cardHeight))
+			expect.truthy(card.controlsY + card.controlsHeight <= card.cardHeight)
+		end
+		local small = UiTheme.metrics(780, 281)
+		local smallManager = UiTheme.hudLayout(small, 0).manager
+		expectBox(smallManager, 117, 28, 546, 224)
+		expectBox(UiTheme.managerLayout(small, smallManager).body, 106, 50, 428, 162)
+	end)
+
+	t.test("desktop Lot Manager boxes unchanged (22a3c)", function()
+		local pcMetrics = UiTheme.metrics(1920, 1022)
+		local manager = UiTheme.hudLayout(pcMetrics, 0).manager
+		expectBox(manager, 578, 94, 920, 640)
+		local inner = UiTheme.managerLayout(pcMetrics, manager)
+		expectBox(inner.tabBar, 0, 52, 168, 564)
+		expectBox(inner.body, 180, 52, 716, 564)
+		expectBox(inner.close, 800, 0, 96, 44)
+		for index, tab in ipairs(inner.tabs) do
+			expectBox(tab, 0, (index - 1) * 54, 168, 48)
+		end
+		expect.falsy(inner.tabScrolls)
+		expect.equal(inner.cash, nil)
+		expectBox(UiTheme.hudLayout(UiTheme.metrics(960, 542), 0).manager, 168, 94, 780, 436)
+
+		local panel = UiTheme.supplierPanelLayout(pcMetrics, 716)
+		expect.equal(panel.rowPitch, 48)
+		expect.equal(panel.rowHeight, 44)
+		expect.equal(panel.footerHint, 36)
+		expect.equal(panel.footerLine, 18)
+		expect.equal(panel.status.h, 18)
+		expect.equal(panel.refresh.x, 292)
+		expect.equal(panel.textSize, 13)
+		local plain = UiTheme.supplierRowLayout(716, true)
+		local explicit = UiTheme.supplierRowLayout(716, true, false)
+		for _, id in ipairs({ "text", "minus", "qty", "plus", "max", "sell" }) do
+			local a, b = plain[id] :: UiTheme.Box, explicit[id] :: UiTheme.Box
+			expectBox(a, b.x, b.y, b.w, b.h)
+		end
+		expect.equal(plain.text.w, 400)
 	end)
 
 	-- 22a3b: every dialog fits 70 % x 80 % of the safe area on phones.

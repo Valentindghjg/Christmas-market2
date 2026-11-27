@@ -69,7 +69,7 @@ export type ManagerLayout = {
 	tabBar: Box,
 	tabs: { Box },
 	body: Box,
-	horizontal: boolean,
+	tabScrolls: boolean,
 }
 
 export type SupplierPanelLayout = {
@@ -87,6 +87,8 @@ export type SupplierPanelLayout = {
 	rowsTopSell: number,
 	rowPitch: number,
 	rowHeight: number,
+	footerHint: number,
+	footerLine: number,
 	footer: number,
 	textSize: number,
 	width: number,
@@ -480,6 +482,9 @@ local RAIL_SCROLLBAR = 6
 local TOAST_MAX_WIDTH = 460
 local MANAGER_MAX_WIDTH = 920
 local MANAGER_MAX_HEIGHT = 640
+local PHONE_MANAGER_PADDING = 6 -- PROVISIONAL (22a3c)
+local PHONE_TAB_WIDTH = 100 -- PROVISIONAL (22a3c)
+local TAB_SCROLLBAR = 6 -- PROVISIONAL (22a3c)
 local CHIP_DEFS = {
 	{ id = "Cash", width = 128 },
 	{ id = "Reputation", width = 104 },
@@ -568,7 +573,10 @@ function UiTheme.hudLayout(m: Metrics, railButtons: number): HudLayout
 
 	local manager: Box
 	if m.compact then
-		manager = box(m.margin, m.margin, m.width - 2 * m.margin, m.height - 2 * m.margin)
+		-- Phones cap the Lot Manager at 70 % x 80 % of the safe area (22a3c).
+		local w = math.max(0, math.min(math.floor(0.7 * m.width), m.width - 2 * m.margin))
+		local h = math.max(0, math.min(math.floor(0.8 * m.height), m.height - 2 * m.margin))
+		manager = box(math.floor((m.width - w) / 2), math.floor((m.height - h) / 2), w, h)
 	else
 		local left = m.margin + m.railWidth + GAP
 		local top = m.margin + HUD_HEIGHT + GAP
@@ -616,7 +624,7 @@ function UiTheme.tutorialBarLayout(m: Metrics, docked: boolean?): TutorialBarLay
 end
 
 function UiTheme.managerLayout(m: Metrics, manager: Box): ManagerLayout
-	local padding = if m.compact then 8 else 12
+	local padding = if m.compact then PHONE_MANAGER_PADDING else 12
 	local cw = math.max(0, manager.w - 2 * padding)
 	local ch = math.max(0, manager.h - 2 * padding)
 	local closeWidth = 96
@@ -634,9 +642,12 @@ function UiTheme.managerLayout(m: Metrics, manager: Box): ManagerLayout
 	local tabs: { Box } = {}
 	local count = #UiTheme.LotManagerTabs
 	if m.compact then
-		local tabWidth = math.clamp(math.floor((cw - 30) / 6), 88, 140)
+		-- Phones: a scrolling vertical tab column on the left (22a3c).
+		local phoneTabBar = box(0, 50, PHONE_TAB_WIDTH, ch - 50)
+		local phoneScrolls = count * 48 - 4 > phoneTabBar.h
+		local tw = PHONE_TAB_WIDTH - (if phoneScrolls then TAB_SCROLLBAR else 0)
 		for index = 1, count do
-			table.insert(tabs, box((index - 1) * (tabWidth + 6), 0, tabWidth, BUTTON_HEIGHT))
+			table.insert(tabs, box(0, (index - 1) * 48, tw, BUTTON_HEIGHT))
 		end
 		return {
 			padding = padding,
@@ -644,25 +655,26 @@ function UiTheme.managerLayout(m: Metrics, manager: Box): ManagerLayout
 			title = title,
 			close = close,
 			cash = cash,
-			tabBar = box(0, 52, cw, BUTTON_HEIGHT),
+			tabBar = phoneTabBar,
 			tabs = tabs,
-			body = box(0, 104, cw, ch - 104),
-			horizontal = true,
+			body = box(PHONE_TAB_WIDTH + 6, 50, cw - PHONE_TAB_WIDTH - 6, ch - 50),
+			tabScrolls = phoneScrolls,
 		}
 	end
 	for index = 1, count do
 		table.insert(tabs, box(0, (index - 1) * (48 + 6), 168, 48))
 	end
+	local tabBar = box(0, 52, 168, ch - 52)
 	return {
 		padding = padding,
 		header = header,
 		title = title,
 		close = close,
 		cash = nil,
-		tabBar = box(0, 52, 168, ch - 52),
+		tabBar = tabBar,
 		tabs = tabs,
 		body = box(180, 52, cw - 180, ch - 52),
-		horizontal = false,
+		tabScrolls = count * 54 - 6 > tabBar.h,
 	}
 end
 
@@ -670,9 +682,34 @@ end
 -- keeps 8 px clear of the page scroll bar; every button is at least 44 x 44.
 function UiTheme.supplierPanelLayout(m: Metrics, pageWidth: number): SupplierPanelLayout
 	local W = math.max(0, math.floor(pageWidth) - 8)
-	local c = m.compact
-	local h1 = if c then 32 else 36
 	local pw = math.floor((W - 88) / 2)
+	if m.compact then
+		-- Phones stack the row text over the controls so 14 px text keeps the full width (22a3c).
+		local mw = math.floor((W - 4) / 2)
+		local ch1 = 40
+		return {
+			modeBuy = box(0, 0, mw, 44),
+			modeSell = box(mw + 4, 0, W - mw - 4, 44),
+			refresh = box(0, 48, W, 20),
+			placeOrder = box(0, 94, pw, 44),
+			clear = box(pw + 4, 94, 80, 44),
+			recommend = box(pw + 88, 94, W - pw - 88, 44),
+			sellHint = box(0, 94, W, 100),
+			status = box(0, 70, W, 20),
+			cartInfo = box(0, 142, W, ch1),
+			cartLines = box(0, 144 + ch1, W, ch1),
+			rowsTopBuy = 148 + 2 * ch1,
+			rowsTopSell = 198,
+			rowPitch = 92,
+			rowHeight = 88,
+			footerHint = 40,
+			footerLine = 20,
+			footer = 64,
+			textSize = 14,
+			width = W,
+		}
+	end
+	local h1 = 36
 	return {
 		modeBuy = box(0, 0, 140, 44),
 		modeSell = box(144, 0, 140, 44),
@@ -688,28 +725,33 @@ function UiTheme.supplierPanelLayout(m: Metrics, pageWidth: number): SupplierPan
 		rowsTopSell = 118,
 		rowPitch = 48,
 		rowHeight = 44,
+		footerHint = 36,
+		footerLine = 18,
 		footer = 58,
-		textSize = if c then 12 else 13,
+		textSize = 13,
 		width = W,
 	}
 end
 
 -- CM2-SUP: one supplier row (species x size); the sell view adds a SELL button on the right.
-function UiTheme.supplierRowLayout(pageWidth: number, sellView: boolean): SupplierRowLayout
+function UiTheme.supplierRowLayout(pageWidth: number, sellView: boolean, compact: boolean?): SupplierRowLayout
 	local W = math.max(0, math.floor(pageWidth) - 8)
 	local o = if sellView then 100 else 0
+	-- Compact (22a3c): the text takes its own 44 px line and the controls sit below it.
+	local stacked = compact == true
+	local y = if stacked then 44 else 0
 	return {
-		text = box(0, 0, math.max(0, W - 208 - o), 44),
-		minus = box(W - 200 - o, 0, 44, 44),
-		qty = box(W - 152 - o, 0, 44, 44),
-		plus = box(W - 104 - o, 0, 44, 44),
-		max = box(W - 56 - o, 0, 56, 44),
-		sell = if sellView then box(W - 96, 0, 96, 44) else nil,
+		text = if stacked then box(0, 0, W, 44) else box(0, 0, math.max(0, W - 208 - o), 44),
+		minus = box(W - 200 - o, y, 44, 44),
+		qty = box(W - 152 - o, y, 44, 44),
+		plus = box(W - 104 - o, y, 44, 44),
+		max = box(W - 56 - o, y, 56, 44),
+		sell = if sellView then box(W - 96, y, 96, 44) else nil,
 	}
 end
 
--- CM2-UVF12: Pricing card boxes relative to the card. Compact screens use a 168 px card (page clip
--- is about 180 px) so the whole card with its 44 px -5/-1/+1/+5 row fits the page at once.
+-- CM2-UVF12: Pricing card boxes relative to the card. Compact screens use a 160 px card so one
+-- whole card with its 44 px -5/-1/+1/+5 row fits the phone page (>= 162 px high, 22a3c).
 function UiTheme.pricingCardLayout(m: Metrics): PricingCardLayout
 	if not m.compact then
 		return {
@@ -726,15 +768,15 @@ function UiTheme.pricingCardLayout(m: Metrics): PricingCardLayout
 		}
 	end
 	return {
-		cardHeight = 168,
-		pitch = 176,
-		name = box(10, 4, 304, 18),
-		sentiment = box(10, 22, 304, 16),
-		wholesaleTypical = box(10, 38, 304, 28),
-		margin = box(10, 66, 304, 16),
-		sizes = box(10, 82, 304, 28),
-		price = box(130, 120, 64, BUTTON_HEIGHT),
-		controlsY = 120,
+		cardHeight = 160,
+		pitch = 168,
+		name = box(10, 2, 304, 18),
+		sentiment = box(10, 20, 304, 16),
+		wholesaleTypical = box(10, 36, 304, 28),
+		margin = box(10, 64, 304, 16),
+		sizes = box(10, 80, 304, 28),
+		price = box(130, 112, 64, BUTTON_HEIGHT),
+		controlsY = 112,
 		controlsHeight = BUTTON_HEIGHT,
 	}
 end
