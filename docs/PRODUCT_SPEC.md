@@ -6,6 +6,7 @@ Source: owner interview after the reference play-test ([REFERENCE_GAME_LIVE_TEST
 ## Frame
 - **Title:** Christmas Tree Village. The repository and project name stay "Christmas Market 2".
 - **Release target:** 1st Advent, **2026-11-29**, only if the owner declares it finished. Otherwise the 2nd Advent, **2026-12-06**, is the latest date. The owner decides on **2026-11-28**.
+- **1st Advent launch scope (owner decision 2026-11-27):** the owner aims for launch on the 1st Advent (2026-11-29), most important first. The launch scope is the "1st Advent launch list" in `docs/CLAUDE_BACKLOG.md` (Launch order), the UI redesign CM2-UI included; everything else moves to 2026-12-06 (Gate C) or after launch. The Go/No-Go on 2026-11-28 stays the owner's: launch on 11-29 with the reduced scope, or on 12-06. Record: DECISION_LOG 2026-11-27.
 - **Scope:** as much as possible at a high quality bar. Priority order: the core loop must be fully playable first, then everything else in priority order. Quality over quantity (for example, not 150 decor items at launch).
 - **Fidelity:** **all functions and all numbers** of the reference game are adopted (OWNER DECIDED). Unknown numbers get extrapolated values marked PROVISIONAL and are replaced once observed. Look, map, names and models are our own.
 - **Language:** launch in **English only**; Roblox automatic translation covers other languages. Keep all text key-based and in full sentences (no concatenated fragments). An in-game language switch (DE, ES, …) comes in a later update. *Supersedes "German and English" / "DE/EN".*
