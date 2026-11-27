@@ -62,6 +62,16 @@ function CompanyTutorial.install(CompanyStateService)
 		end)
 		return entered
 	end
+
+	-- Studio test instrument only (CM2-TUTHOOK): puts the save back on the first step, the state
+	-- a new save with the tutorial offered starts in. Returns that step, nil without a session.
+	function CompanyStateService:resetTutorialForTest(companyId: string): string?
+		local first = Tutorial.new(true).step
+		if self:setTutorialForTest(companyId, first) then
+			return first
+		end
+		return nil
+	end
 end
 
 return CompanyTutorial

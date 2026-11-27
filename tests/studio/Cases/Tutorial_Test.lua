@@ -255,6 +255,23 @@ return function(t)
 		expect.equal(limited.errorCode, "RateLimited")
 	end)
 
+	t.test("resetTutorialForTest puts a Done save back on the first step (CM2-TUTHOOK)", function()
+		local service = CompanyStateService.new(fakePersistence(), function()
+			return 100
+		end)
+		local notified = {}
+		service:setTutorialChangedHandler(function(_, value)
+			table.insert(notified, value)
+		end)
+		expect.equal(service:resetTutorialForTest(COMPANY), nil)
+		local state = service:loadCompany(COMPANY, 42)
+		expect.equal(state.tutorial.step, "Done")
+		expect.equal(service:resetTutorialForTest(COMPANY), Tutorial.Steps[1])
+		expect.equal(service:tutorialAttribute(COMPANY), Tutorial.Steps[1])
+		expect.equal(service:snapshotForTest(COMPANY).tutorial.step, Tutorial.Steps[1])
+		expect.equal(notified[#notified], Tutorial.Steps[1])
+	end)
+
 	t.test("guaranteesSale only on the Checkout step (CM2-SALE1)", function()
 		expect.equal(Tutorial.guaranteesSale({ tutorial = { step = "Checkout", skipped = false } }), true)
 		for _, step in ipairs({ "Order", "Stock", "Done" }) do

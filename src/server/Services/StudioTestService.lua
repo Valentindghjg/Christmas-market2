@@ -760,6 +760,22 @@ function StudioTestService.install(context)
 		return success(arg.step)
 	end
 
+	-- CM2-TUTHOOK: resets the save's tutorial to the first step ({userId?}, default the first
+	-- player); the TutorialStep attribute follows through the tutorial handler.
+	function commands.resetTutorial(arg)
+		local userId = if type(arg) == "table" then arg.userId else nil
+		if userId == nil then
+			local first = Players:GetPlayers()[1]
+			userId = if first then first.UserId else nil
+		end
+		local companyId = if type(userId) == "number" then companyIdFor(userId) else nil
+		local step = if companyId ~= nil then companies:resetTutorialForTest(companyId) else nil
+		if step == nil then
+			return { ok = false, error = "NoSession", errorCode = "NoSession" }
+		end
+		return { ok = true, step = step }
+	end
+
 	-- Reads ({userId}) or writes ({userId, offered}) the profile's tutorialOffered flag.
 	function commands.tutorialOffer(arg)
 		if
