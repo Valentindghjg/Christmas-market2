@@ -1,6 +1,6 @@
 # Decision log and repository sync policy
 Updated: 2026-11-19
-Archive (CM2-SLIM3, 2026-11-25): entries of 2026-11-19..2026-11-23 that are not owner entries moved unchanged to `docs/archive/DECISION_LOG_2026-11-19_to_2026-11-23.md`; they stay binding. Grep `docs/archive/DECISION_LOG_*.md` too.
+Archive (CM2-SLIM run 3, 2026-11-27): engineering entries of 2026-11-24..2026-11-25 (CM2-UVF8, 13a/13b, 14, 10a/b/c, SALE1, line 14 timing rule) and two superseded owner entries (Swarve UI pack) moved unchanged to `docs/archive/DECISION_LOG_2026-11-24_to_2026-11-25.md`; they stay binding. Archive (CM2-SLIM3, 2026-11-25): entries of 2026-11-19..2026-11-23 that are not owner entries moved unchanged to `docs/archive/DECISION_LOG_2026-11-19_to_2026-11-23.md`; they stay binding. Grep `docs/archive/DECISION_LOG_*.md` too.
 
 ## Standing owner instruction
 All **project-relevant outcomes** developed in this chat (decisions, architecture, mechanics, implementation tasks, test findings and material changes) should be committed to `Valentindghjg/Christmas-market2` without requesting routine permission. When a decision changes, update the canonical documents and record what changed here. Avoid copying unrelated conversation, private details, secrets or credentials into the public repository. This policy applies when the assistant is actively working in a conversation with GitHub access; it is **not** autonomous background syncing.
@@ -191,19 +191,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Revert: if the playtest reports get too thin, set `model: claude-sonnet-5-5` and `effort: medium` in .claude/agents/playtester.md again.
 - Files: .claude/agents/playtester.md, CLAUDE.md, .claude/skills/cm2-task/SKILL.md, docs/PRODUCT_SPEC.md, docs/plans/TEMPLATE.md.
 
-## 2026-11-24 — owner: UI graphics from the Essential UI Pack (Swarve Studios)
-- Owner: CM2-UI uses the "Essential UI Pack" by Swarve Studios (owner's local `.rbxl`).
-- Inspection (engineering, Lune, the file's scripts not run): one ScreenGui with a simulator-style HUD (left button rail, money and strength labels), frames Shop, Upgrades, Rebirth, Index, Wheel and Notifications; 68 Frames, 82 TextLabels, 29 TextButtons, 79 ImageLabels (all ScaleType Stretch, no 9-slice), 113 UIStrokes, 22 UIGradients; about 40 image IDs and 2 sound IDs uploaded by the author, no image files in the pack; fonts Gotham SSm, Source Sans Pro, Builder Sans and one font asset. Scripts: hover and click tweens with sounds, leaderstats coins and strength through `Touched`, four scripts that each set `ProcessReceipt`. No backdoor patterns found (no `require(<id>)`, `getfenv`, `loadstring`, `HttpService`).
-- Rule (planner): only the look is used (styling values rebuilt in `UiTheme`/`UiKit`, icons, the button tween and sounds). Its scripts, remotes, leaderstats and the paid wheel are not used; they conflict with server authority, the action protocol and "no paid random items in version 1". Icons for strength, gems and dumbbells are replaced with Christmas-market icons; colours are recoloured to the palette.
-- Licence: unknown. The pack's README names only a Discord invite and swarve.lol (unreachable on 2026-11-24); a BuiltByBit listing with a similar name ("Essential STUD UI Pack", ProfileStore, 11+ systems) describes a different, larger product. Precondition for CM2-UI: a written licence from Swarve Studios in `assets/third_party/swarve-essential-ui/LICENSE.md`; without it CM2-UI falls back to a CC0 set.
-- Files: docs/CLAUDE_BACKLOG.md (CM2-UI (b), owner inputs).
-
-## 2026-11-24 — CM2-UVF8 (engineering)
-- The shop category bar no longer scrolls. The 7 tabs share the width, with text scaled 9–13 px.
-- The Cash Rush line sits at the top right of the shop in every category.
-- PREFLIGHT clears boosts and R's pass overrides.
-- CM2-UVF8 A1: the full-run PREFLIGHT sets R's Lot Worker and Cashier to 0 (`setStaff` takes an optional `userId`) and names the reset in its detail, because manual checks left a Lot Worker on R's save.
-- CM2-UVF8 A3: ChatTags assigns `TextChatService.OnChatWindowAdded` with `ChatWindowConfiguration:DeriveNewMessageProperties()`, the documented hook for chat-window prefixes; `OnIncomingMessage` produced no [VIP] line.
+- 2026-11-24 owner: UI graphics from the Essential UI Pack (Swarve Studios), superseded by 2026-11-26 "owner: own polished UI, no Swarve pack in the game"; text in `docs/archive/DECISION_LOG_2026-11-24_to_2026-11-25.md`.
 
 ## 2026-11-24 — owner: planner by tier
 - Owner: the product questions are settled (grill-me interview), so the Opus planner at high effort for every task costs too much. The planner now depends on the task's tier:
@@ -221,29 +209,12 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Planner decisions: hover 106 %, press 95 %, 0.1 s tween through a `UIScale` so layout does not move; the font is picked in the CM2-UI plan from Roblox's built-in heavy fonts after a Device Simulator comparison. CM2-UI stays the last task before release (owner decision 2026-11-22).
 - Files: docs/PRODUCT_SPEC.md, docs/CLAUDE_BACKLOG.md (22a (b), (c), (e); owner inputs).
 
-## 2026-11-24 — CM2-13a and CM2-13b import branch I (engineering)
-- Import: the 4 HQ tiers and 6 lot props were uploaded and normalized with yaw 0 (`IMPORT_YAW_DEGREES` stays 0, CM2-12 probe). Model asset IDs: SalesTent 76796067556800, TimberPavilion 129908851202139, AlpineHut 96170871620807, MountainChalet 80346869419890, CheckoutCounter 86195605998455, ReceivingBay 71806299594619, TreeBundle 92004701506028, FenceRail8 81344383315482, FenceRail6 130024785437685, FencePost 80498840265993. The four buildings normalize with scale 0.0100 / 0.0115 / 0.0136 / 0.0152 (the importer shrank meshes larger than about 2048 units; `normalize` reads the scale from `report.json`, final sizes are correct).
-- Deviation (implementer-side fix outside the plans' file list, accepted by the reviewer): `tools/art/lib/Normalize.luau` set `Attachment.Position`, which Lune does not serialize, so every attachment in the saved `.rbxm` sat at (0, 0, 0). It now sets `Attachment.CFrame`; test N10 saves and reloads the model (fails without the fix). The 14 CM2-12 trees are unaffected (their only attachment `TreeBase` is at (0, 0, 0), confirmed by reading a tree `.rbxm`).
-- SalesTent H is 10.05 against the plan's 10.0 +- 0.3: accepted. Play checks (row-clone captures, `runPlaytest full` with `ART_ASSETS`, no `[ART]` warning) are BLOCKED by PC-9 and queued; CM2-13a, CM2-13b and CM2-13 are not ticked.
-- Files: assets/art/rbxm/{Buildings,Props,Environment}/*.rbxm, assets/art/source/**/asset.json, tools/art/lib/Normalize.luau, tests/tools/art_pipeline.luau.
-
 ## 2026-11-24 — owner: Robux products created (PC-8)
 - Source: reported to the orchestrator by the owner's other Claude session (~19:30); the IDs were not typed by the owner in the hasseln chat. That session checked them with an Open Cloud list GET at 18:32Z (universe 10777859950): all 12 `isForSale = true`, prices as in `docs/RELEASE_CHECKLIST.md`. Icons are own art previews from `assets/art/previews`. The other 15 products were not created. Engineering created and activated nothing.
 - Game passes (Config-Key → ID, name, Robux): PassCashX2 → 2101828296 (Golden Till, 99); PassReputationX2 → 2099729097 (Shining Star, 79); PassInstantDelivery → 2099165138 (Express Sleigh, 149); PassVip → 2098973055 (Evergreen VIP, 199).
 - Developer products: StarterPack → 3735805319 (Tree Lot Starter Kit, 79); CashPinecone → 3735805373 (Pinecone Purse, 29); CashSleigh → 3735805396 (Sleigh Sack, 99); CashCabin → 3735805416 (Cabin Chest, 249); CashVillage → 3735805452 (Village Vault, 599); CashMountain → 3735805469 (Mountain Treasury, 1499); BoostCashX2 → 3735805526 (Cash Rush, 10); BoostRested → 3735805549 (Hot Cider Round, 5).
 - Planner decision: PC-8 is resolved; CM2-46c (line 13c) enters these IDs only after a Studio `MarketplaceService:GetProductInfo` check of all 12 returns the expected name and price (any mismatch stops CM2-46c with a report). Publication stays the owner's action.
 - Files: docs/CLAUDE_BACKLOG.md (PC-8, line 13c, N3, run record), docs/DECISION_LOG.md.
-
-## 2026-11-24 — CM2-14 import branch I (engineering)
-- Import: the 4 vehicles were uploaded and normalized with yaw 0 and scale 0.0100. Model asset IDs: SupplierTruck 130326245862058, CustomerHatchback 92060776256909, CustomerWagon 111886456380527, CustomerSuv 105457478334599. Sizes in the plan (Truck 5.98 x 6.00 x 13.01, Hatchback 5 x 4 x 8, Wagon 5 x 4 x 9, Suv 5 x 4.6 x 9); `CargoAnchor` positions read back from the saved `.rbxm` are correct (the Normalize CFrame fix from the CM2-13a/13b import applies).
-- Play checks (capture with bundle stand-ins and `Paint` colour, `runPlaytest full` with `ART_ASSETS`, no `[ART]` warning) are BLOCKED by PC-9 and queued; CM2-14 is not ticked. Wiring stays CM2-14W.
-- Files: assets/art/rbxm/Vehicles/*.rbxm, assets/art/source/Vehicles/*/asset.json.
-
-## 2026-11-24 — CM2-10a, CM2-10b and CM2-10c import branch I (engineering)
-- Import: the 13 map models were uploaded and normalized with yaw 0. Model asset IDs (scale): Buildings/CoveredBridge 109589026509855 (0.0274), Environment/VillageTree 110105358193881 (0.0217), Props/LeaderboardBoard 105589306514399 (0.0100), Buildings/VillageHouse 137762068173947 (0.0113), Props/SignBoard 132704641565793 (0.0100), Props/LampPost 87108177014078 (0.0100), Props/Bench 117040393139740 (0.0100), Environment/MountainRidge 136804962948038 (0.1465), MountainPeak 112662539846046 (0.1074), ForestFir 118200481007814 (0.0100), ForestClusterA 119118625032761 (0.0129), ForestClusterB 119327449245936 (0.0100), RockCluster 100391001748906 (0.0100). Sizes and attachments match the plans and `MapLayout.ART`.
-- Studio (Edit and Play, instance `d0521b88`): the 13 models sit at their plan paths; `MapLayout.plan` 302 placements, art 302, fallback 0, skip 0, missing 0; `runPlaytest full` PASS 62/62 with `ART_ASSETS` 41 Blender models, 238 meshes, 0 failed, 0 duplicates and `MAP_WORLD` overlaps 0, server fps 60. A Rojo live-sync glitch dropped the PrimaryPart of VillageHouse once in Edit mode; touching the `.rbxm` timestamp fixed it, no repo change. Not read: a `[ART]` warning line in the Play log (the log had rotated past startup; recorded as inferred from `MAP_WORLD` art 302).
-- Not done, BLOCKED by PC-9 (black Play viewport): the captures of CM2-10a/b/c playtest step 2 and the CM2-10W bridge and square art re-check captures; queued in "Studio-Test ausstehend". CM2-10, CM2-10W and CM2-10a to 10c are not ticked.
-- Files: assets/art/rbxm/{Buildings,Environment,Props}/*.rbxm (13 new), assets/art/source/<artPath>/asset.json (13).
 
 ## 2026-11-24 — owner: recurring repo hygiene task CM2-SLIM
 - Owner: the repo grows faster than it should (about 27,000 lines in `src`, a 175 KB backlog and a 145 KB decision log that agents read every task). A clean-up task runs again and again, at the smallest tier that fits.
@@ -261,12 +232,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Swarve Studios answered the owner's ticket (2026-11-25): any use, modification and re-upload is allowed, no credit required; only reselling or charging money for the assets themselves is not. Record: `assets/third_party/swarve-essential-ui/LICENSE.md`.
 - The `.rbxl` stays out of the public repository (`.gitignore`). The CM2-UI look stays as decided on 2026-11-24 (own cream look); whether CM2-UI also uses the pack's pieces is the owner's call.
 
-## 2026-11-25 — owner: CM2-UI built on the Swarve pack, also in the template
-- Owner: "wir nutzen alles und bauen unsere UI darauf". Replaces "own UI look, Swarve pack dropped" (2026-11-24): CM2-UI uses the pack's layout patterns, images, icons, fonts, strokes, gradients, sounds and button tween (110 % hover in 0.2 s, 90 % press in 0.1 s). The rule of 2026-11-24 "only the look is used" stays: no pack scripts, remotes, receipt handlers, leaderstats, rebirth or paid wheel.
-- Planner decisions: the cream direction of 2026-11-24 still decides panel fills, text colours and tap sizes; a clashing pack image is tinted or re-uploaded recoloured. Pack asset IDs are tried first; IDs that do not load in our place are re-uploaded under the owner's account (PC-2). Contents and IDs: `assets/third_party/swarve-essential-ui/INVENTORY.md`.
-- Owner: the pack goes into the template repo, usable but not forced. The template gets the licence record, the inventory and a gitignored slot now; the reusable kit follows as 22b **CM2-UI-TPL** (tier S, after CM2-UI), off by default. The `.rbxl` is not committed to either public repo: the licence forbids only reselling, but a public copy would hand the whole pack to anyone; the owner's games get everything they need from the IDs and rebuilt values.
-- Files: docs/CLAUDE_BACKLOG.md (22a (b), (c), 22b, launch order, N7), docs/PRODUCT_SPEC.md ("UI look"), assets/third_party/swarve-essential-ui/INVENTORY.md.
-- Superseded for the game by 2026-11-26 "owner: own polished UI, no Swarve pack in the game"; the template part stays.
+- 2026-11-25 owner: CM2-UI built on the Swarve pack, also in the template, superseded by 2026-11-26 "owner: own polished UI, no Swarve pack in the game"; text in `docs/archive/DECISION_LOG_2026-11-24_to_2026-11-25.md`.
 
 ## 2026-11-25 — decision-log archive window and CM2-SLIM follow-ups (planner)
 - The 14-day window of CM2-SLIM moved nothing (the oldest entry is 6 days old) and left the log at 147 KB against 60 KB. New rule: keep the top sections, every owner entry and every entry dated on the run day or the day before; every other entry goes unchanged to `docs/archive/DECISION_LOG_<first>_to_<last>.md`. Archived entries stay binding and grep-findable. If still over 60 KB, an owner entry that a later owner entry supersedes may move with a one-line pointer. Applied once by CM2-SLIM3, then by every CM2-SLIM run.
@@ -289,22 +255,6 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Planner decisions: the limits are checked headlessly from the `UiTheme` layout functions for the phone sizes in `UiTheme_Test` (box areas and sizes, a baseline of today's phone boxes taken before CM2-UI starts) and visually in the Device Simulator shots. Hover growth (110 %) runs through a `UIScale` and does not count against the limits.
 - Files: docs/PRODUCT_SPEC.md ("UI look"), docs/CLAUDE_BACKLOG.md (22a (c), (e)).
 
-## 2026-11-25 — Tutorial customer and pick diagnostics, CM2-SALE1 (engineering)
-- Cause: no broken code path; the demand model refused every pick on the one-tree tutorial lot. Exact preference lets only 1 of 12 customers want Douglas Medium, and that customer converts at 0.026 (price 0.65 × reputation 0.59 × variety 1/3 × stock 1/5), so about 0.2 % of visits buy.
-- Decision: on tutorial step `Checkout` the walking customer's pick ignores preference, budget and roll and takes the first unreserved displayed tree (sorted placement IDs) at its current price (`Tutorial.guaranteesSale`, `CustomerSelection.chooseGuaranteed`; PROVISIONAL, the reference tutorial is not observed). The guarantee depends only on the saved tutorial step and ends with the first sale (`Sold` → `Done`) or a skip. Money stays server-authoritative: the price comes from `state.mediumPrices`.
-- `npcDecide` reports `NoStock` instead of `NoEligibleStock` when every displayed tree is reserved.
-- `npcSnapshot` gains `decision` per visit and `decisionLog` (the last 20 picks); `npcReset` clears it.
-- `forceCustomer n` now sets the per-save arrival override (profile `n`, roll 0, like `npcNextArrival`) for every loaded save; the server-wide forced roll (`forcedRolls`, `setForcedRolls`) is removed because the next `npcDecide` of any visit took it.
-- Correction of the backlog counter note (14a): visits are counted only in `beginVisit`, and `npcArrive` refuses an empty lot before counting, so all visits and drive-pasts of the N1 reading saw the tree; the baseline was read after placement.
-- Follow-up (out of scope here): early-lot demand after the tutorial stays low (about 1.1 % per visit for 6 Douglas Medium, 3.2 % for a mixed lot); a tier M task tunes it before Gate B.
-- Files: src/shared/Tutorial.lua, src/shared/CustomerSelection.lua, src/server/Services/CustomerSimulationService.lua, src/server/Services/CompanyStateService.lua, src/server/Services/CustomerNpcService.lua, src/server/Services/StudioTestService.lua, src/server/main.server.lua, docs/GAME_DESIGN.md (§5), docs/TEST_PLAN.md (§3b).
-
-## 2026-11-25 — line 14 timing rule for agent-driven runs (planner proposal, reviewer finding: not adopted)
-- Context: the N1 (b) re-run (Studio af5facc4, iPhone 7 666x374, fresh Solo save "Tree Lot 316") passed every functional and layout step of CM2-49; wall clock from save creation to `tutorial.step == "Done"` was about 341 s (28 s create to `Order`, 28 s `Order`, about 248 s `Stock`, 37 s `Checkout`), agent tool latency and test-client `Humanoid:MoveTo` retries included. The Accept says "a fresh save completes the tutorial in under 3 minutes on the phone simulator".
-- Proposed rule (planner): in an agent-driven run, judge the time per tutorial step. A step counts at its measured time; a step made only of player actions (no game-imposed wait such as delivery ETA or customer arrival) that passed functionally counts at most 60 s, because agent latency and test-client retries are not player time. Applied: 28 + 28 + 60 + 37 = 153 s < 180. An owner hand-test over 3 minutes reopens line 14.
-- Reviewer finding: the rule does not cover the step it was used on. The 248 s step is `Stock`: it contains the game-imposed delivery ETA (`GameConfig.DeliverySeconds` = 30 s, plus unloading), so under the rule's own wording it counts at its measured time, and the total stays 341 s. Even a 30 s wait plus the 60 s cap gives 28 + 28 + 90 + 37 = 183 s, over 180. The 60 s cap is also not derived from a measurement of agent latency.
-- Decision (reviewer, within the backlog): line 14 stays open; the functional PASS is recorded in PROGRESS and in the line 14 status. The rule is kept here as a proposal only. Line 14 closes on (a) an owner hand-test of a fresh phone save under 3 minutes to `Done`, or (b) a planner decision on a rule backed by a measurement that separates agent latency from game time, for example server-side timestamps of the step changes read after the run. No `src` change.
-
 ## 2026-11-26 — Early-lot demand, CM2-SALE2 (engineering)
 - Problem: CM2-SALE1 found that a fresh 6-tree Douglas Medium lot converted only about 1.1 % of visits, because a customer wanted exactly its preferred species and size and variety (1/3, 2/3, 1) and stock (0.2, 0.4, 1) factors were harsh for a starter lot.
 - Decision (all PROVISIONAL, `GameConfig.Demand`): preferences are soft. A customer considers every displayed tree within its budget percent (85-155 %) applied to that tree's own benchmark (`CustomerProfile.budgetFor`) and picks the highest-scoring one (ties keep the first sorted ID). Interest in the tree: exact species and size 1, same species 0.85, same size 0.75, other 0.65 (`Demand.score` gains an optional `interest`). varietyFactor 0.85 / 0.925 / 1 for 1 / 2 / 3+ species; stockFactor 0.6 + 0.4 × unreserved trees / 5, capped at 1. Price factor, reputation factor, clamp 0.02..0.95 and the roll are unchanged.
@@ -313,7 +263,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Files: src/shared/GameConfig.lua, Demand.lua, CustomerProfile.lua, CustomerSelection.lua, docs/GAME_DESIGN.md (§4, §5), docs/TEST_PLAN.md (§2).
 
 ## 2026-11-26 — Leaderboards (CM2-G12b, engineering)
-- Plan: `docs/plans/CM2-G12b.md`. Config `GameConfig.Leaderboards`, cache and writes in `src/server/Services/LeaderboardService.lua`, rows and formats in `src/shared/LeaderboardView.lua`, screens in `src/client/Leaderboards.client.lua`.
+- Plan: `docs/archive/plans/CM2-G12b.md`. Config `GameConfig.Leaderboards`, cache and writes in `src/server/Services/LeaderboardService.lua`, rows and formats in `src/shared/LeaderboardView.lua`, screens in `src/client/Leaderboards.client.lua`.
 - Art boards: the art's own Screen mesh is renamed ScreenPanel at build, so Board_<Key>.Screen is the one Part the SurfaceGui adorns (amendment 1).
 
 | Topic | Decision |
@@ -328,7 +278,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 | Names | Usernames only (no display names, no save names); unknown → localized "Player". |
 
 ## 2026-11-26 — Tree art in the world, CM2-12W (engineering)
-- Plan: `docs/plans/CM2-12W.md`. Five roles: Display, Pickup, Carried (player), NpcCarried (customer and staff) and Roof; the backlog's "forest" role was already art through CM2-10W (`MapWorld` unchanged, step 64 only confirms it).
+- Plan: `docs/archive/plans/CM2-12W.md`. Five roles: Display, Pickup, Carried (player), NpcCarried (customer and staff) and Roof; the backlog's "forest" role was already art through CM2-10W (`MapWorld` unchanged, step 64 only confirms it).
 - Scale rule (`src/shared/TreeArt.lua`): Display and Pickup use the art at native size (H 6/8/10); Carried, NpcCarried and Roof scale the art to `11.5 x primitive scale` (Carried 4.6, NpcCarried 4.025 / 4.6 / 5.175, Roof 4.025); a carried art tree drops by `2.5 x scale` so its foot matches the primitive's.
 - Label rule: label height = tree top + `UiTheme.WorldLabels.<layout>.height` (+ stagger). `WorldLabels.DisplayTree.height` 10 -> 1.0 and `WorldLabels.PickupOrder.height` 9 -> 1.5 (stagger 2 stays); both now mean studs above the tree top.
 - Foot at the lot top: display trees 0.6 -> 0.55, pickup trees 0.9 -> 0.55 (`lotTop` = ground top).
@@ -338,7 +288,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Owner decision in chat ("gar nicht testen"): CM2-46b playtest step 7b (PassCashX2 test purchase) is not run, because the test account already owns the pass. Gate A line 13c is ticked on 7a, 7c, 7d and the idempotency replay (PROGRESS 2026-11-26 N3b). The simulated pass path stays covered by CM2-46a steps 51-53. No code or config change.
 
 ## 2026-11-26 — CM2-PP engineering decisions
-- Plan: `docs/plans/CM2-PP.md` (owner decision "plot picker at session start", 2026-11-24). Picker UI in `src/client/PlotPicker.lua`, server parts in `SaveSlotPicker.lua` ("Plot picker (CM2-PP)") and `PlotService.claimExact`.
+- Plan: `docs/archive/plans/CM2-PP.md` (owner decision "plot picker at session start", 2026-11-24). Picker UI in `src/client/PlotPicker.lua`, server parts in `SaveSlotPicker.lua` ("Plot picker (CM2-PP)") and `PlotService.claimExact`.
 
 | Topic | Decision |
 |---|---|
@@ -366,7 +316,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Road yaw 180 degrees on plots 1-3 and 0 on plots 4-6; the night light moves to the art's `Register` part (else `CounterBase`). No save, remote, error-code, string-key or KeepClear change.
 
 ## 2026-11-26 — CM2-G11 daily rewards, quest board and group bonus (engineering)
-- Plan: `docs/plans/CM2-G11.md`. Pure logic in `src/shared/DailyRewards.lua` and `src/shared/QuestBoard.lua`; the claim action in `src/server/Services/DailyRewardService.lua`, the board and reward grants in the mixin `src/server/Services/CompanyQuests.lua`, the panel in `src/client/QuestPanel.lua` (rail slot 30). The scaffold (`QuestService.lua`, the old `GameConfig.Quests`, `questClaims`) is gone; it was never client-reachable.
+- Plan: `docs/archive/plans/CM2-G11.md`. Pure logic in `src/shared/DailyRewards.lua` and `src/shared/QuestBoard.lua`; the claim action in `src/server/Services/DailyRewardService.lua`, the board and reward grants in the mixin `src/server/Services/CompanyQuests.lua`, the panel in `src/client/QuestPanel.lua` (rail slot 30). The scaffold (`QuestService.lua`, the old `GameConfig.Quests`, `questClaims`) is gone; it was never client-reachable.
 
 | Topic | Decision |
 |---|---|
