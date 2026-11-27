@@ -330,11 +330,9 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 			else {}
 		local refunds = if type(supplier) == "table" and type(supplier.refunds) == "table" then supplier.refunds else {}
 		local bound = sellBound(row.key)
-		local qty = math.min(sellQty[row.key] or 0, bound)
-		sellQty[row.key] = if qty > 0 then qty else nil
+		local qty = SupplierCart.applySellQty(sellQty, row.key, bound, row.qty)
 		local refund = number(refunds[row.key])
 		row.info.Text = localizedFormat("supplierSellRowInfo", number(sellable[row.key]), refund)
-		row.qty.Text = tostring(qty)
 		setEnabled(row.minus, qty > 0)
 		setEnabled(row.plus, qty < bound)
 		row.max.Text = localized("sellAll")
@@ -369,6 +367,9 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		for _, row in ipairs(rows) do
 			local visible = buy or sellBound(row.key) > 0
 			row.frame.Visible = visible
+			if not visible then
+				SupplierCart.applySellQty(sellQty, row.key, 0, row.qty)
+			end
 			if visible then
 				row.frame.Position = UDim2.fromOffset(0, rowsTop + shownRows * layout.rowPitch)
 				row.frame.Size = UDim2.fromOffset(layout.width, layout.rowHeight)

@@ -244,4 +244,18 @@ function SupplierCart.deliveryArea(counts: { [string]: number }, freeBays: numbe
 	return math.max(0, capacity - total), capacity
 end
 
+-- CM2-SUPQ: clamps the sell-back quantity of one row to `bound` (clearing it at 0) and writes the
+-- clamped value to the row's Qty label, so a hidden or sold-out row never keeps a stale number.
+function SupplierCart.applySellQty(
+	sellQty: { [string]: number },
+	key: string,
+	bound: number,
+	label: { Text: string }
+): number
+	local qty = math.min(sellQty[key] or 0, math.max(0, bound))
+	sellQty[key] = if qty > 0 then qty else nil
+	label.Text = tostring(qty)
+	return qty
+end
+
 return SupplierCart

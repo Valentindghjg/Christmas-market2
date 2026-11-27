@@ -193,4 +193,25 @@ return function(t)
 			0
 		)
 	end)
+
+	-- CM2-SUPQ: the Qty label follows every clamp or clear of the sell-back quantity.
+	t.test("applySellQty writes the clamped quantity to the row label", function()
+		local label = { Text = "1" }
+		local sellQty: { [string]: number } = { ["DouglasFir:Small"] = 1 }
+		-- Sold 1 of 1: nothing remains, the label reads 0 and the entry is gone.
+		expect.equal(SupplierCart.applySellQty(sellQty, "DouglasFir:Small", 0, label), 0)
+		expect.equal(label.Text, "0")
+		expect.equal(sellQty["DouglasFir:Small"], nil)
+		-- Sold 2 of 5 with quantity 2 selected earlier: 3 remain, quantity 2 stays valid.
+		sellQty["DouglasFir:Small"] = 5
+		expect.equal(SupplierCart.applySellQty(sellQty, "DouglasFir:Small", 3, label), 3)
+		expect.equal(label.Text, "3")
+		expect.equal(sellQty["DouglasFir:Small"], 3)
+		sellQty["DouglasFir:Small"] = 2
+		expect.equal(SupplierCart.applySellQty(sellQty, "DouglasFir:Small", 3, label), 2)
+		expect.equal(label.Text, "2")
+		-- A negative bound never produces a negative label.
+		expect.equal(SupplierCart.applySellQty(sellQty, "DouglasFir:Small", -4, label), 0)
+		expect.equal(label.Text, "0")
+	end)
 end

@@ -9,6 +9,12 @@ Archived 2026-11-26 (entries CM2-12W, CM2-46c, CM2-G12b, CM2-SALE2 incl. Amendme
 Archived 2026-11-27 (entries CM2-G11, CM2-SLIM run 2, CM2-13W): [archive/PROGRESS_2026-11-26_to_2026-11-26_G11-SLIM2-13W.md](archive/PROGRESS_2026-11-26_to_2026-11-26_G11-SLIM2-13W.md).
 Archived 2026-11-27 (entries CM2-PP, CM2-FAST, CM2-FLICK): [archive/PROGRESS_2026-11-26_to_2026-11-27_PP-FAST-FLICK.md](archive/PROGRESS_2026-11-26_to_2026-11-27_PP-FAST-FLICK.md).
 
+2026-11-27: CM2-SUPQ Supplier sell-back row Qty label after a sale (tier S, no plan; backlog 18a3 ticked)
+Skills: none loaded (tier S, client display only). Cause: `renderSellRow` wrote the clamped value, but rows hidden by `renderView` at `sellBound` 0 (e.g. sell 1 of 1) were never re-rendered and kept the old text. Fix: pure helper `SupplierCart.applySellQty(sellQty, key, bound, label)` (clamps, clears at 0, writes the label); `renderSellRow` and the hidden-row branch of `renderView` call it. Buy rows unchanged; no money, remote or string change.
+Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 761 run, 761 passed (760 + 1 Studio-case test run in the headless set); rojo build PASS.
+Accept (b) via the extracted helper with fake labels (sell 1 of 1 -> "0" and entry cleared; bound 3 with qty 5 -> 3, qty 2 stays 2; negative bound -> "0"); the `renderView` hidden-row call is not exercised headlessly (SupplierTab cannot load headlessly), accepted.
+Studio: deferred (batch); the reading (Max + Sell, label reads the clamped value) is part of 18a4 CM2-SUPP (b), queued in "Studio-Test ausstehend".
+
 2026-11-27: CM2-SUPC Client readings batch (tier S, Studio readings and docs only; backlog 18a1 stays OPEN, 18a, 19, 20 not ticked: phone readings remain)
 Build: Studio e36ff47a, main fc683ca, desktop client viewport 1564x730, no BUILD attribute exposed. Save chosen through the `StudioTestHook` `saveAction` (GUI mouse clicks on SavePickerUI had no effect, firesignal unavailable); test save "SUPC Test" created and deleted. Console: only the known six "ContentId rbxassetid://203785492" warnings, no [ChristmasMarket2] error.
 (a) PASS: viewport 1564x730; `LotManagerButton` 142x44 after Save.Play. (c) PASS: smoke only {"70"} 14/14, step 70 SUPPLIER_CART PASS.
