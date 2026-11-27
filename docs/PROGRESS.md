@@ -10,6 +10,14 @@ Archived 2026-11-27 (entries CM2-G11, CM2-SLIM run 2, CM2-13W): [archive/PROGRES
 Archived 2026-11-27 (entries CM2-PP, CM2-FAST, CM2-FLICK): [archive/PROGRESS_2026-11-26_to_2026-11-27_PP-FAST-FLICK.md](archive/PROGRESS_2026-11-26_to_2026-11-27_PP-FAST-FLICK.md).
 Archived 2026-11-27 (entries CM2-SUP, CM2-GATE, CM2-A1, CM2-GATEW, CM2-45, CM2-TUTHOOK): [archive/PROGRESS_2026-11-27_to_2026-11-27_SUP-GATE-A1-GATEW-45-TUTHOOK.md](archive/PROGRESS_2026-11-27_to_2026-11-27_SUP-GATE-A1-GATEW-45-TUTHOOK.md).
 
+2026-11-28: CM2-UI3 part 1 Phone baseline and plot-picker fix (tier S, plan `docs/plans/CM2-UI3.md`; backlog 22a3 stays open)
+Commits: baseline test only (775/775), then `plotPickerLayout` (short screens: one-row 64 px confirm, both frames capped at 70 % width on phone) with two tests and the UI_STYLE line.
+Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings; headless 777 run, 777 passed (775 after commit 1); `ui_scan` 0 hits; rojo build PASS.
+Studio (playtester, Studio e36ff47a, desktop): smoke 13/13 PASS; picker confirm 360x120 clear of the panel PASS; H4b 0 violations (playtester applied the outside-screen, <44 px and TextFits rules itself; the overlap rule was not run, the headless box test covers it); cleanup PASS. Queued CM2-UI2 Advent (adventNow 1796299200) and Event (eventNow 1795953600) audits PASS, H4b 0. Console: only engine warning "rbxassetid://203785492 Asset type does not match" x6.
+Harness note for the planner: server `StudioTestHook` saveAction returned BadArgument for every shape tried; the playtester used the client SaveAction remote instead. Phone and tablet readings: not run (22a4).
+Review: matches the plan. Own decisions accepted (locals cx/tall/cap/confirm*, helper names, placement of PHONES/BASELINE). Logged: `TextSize.Small` (13) counts as caption text, not body text.
+Status 22a3: part 1 done (a), (c), (d); (b) split into UI3D/UI3M/UI3H by the planner (phone dialogs, Lot Manager, HUD <= 20 %; HUD needs an owner decision).
+
 2026-11-28: CM2-UI2 Cream palette, header bands and style guide (tier M, plan `docs/plans/CM2-UI2.md`; backlog 22a2 ticked, 22a stays open)
 Change: `UiTheme` cream palette plus Header, Primary, Muted, GoldText tokens; `UiStyle` header kind, `textOn`, `interactive`; `UiKit` textOn, setFill, setEnabled, headerBand, outlineText, disabled buttons get no hover or press and the hook returns `Disabled`; 9 window titles banded, Primary/Red fills and Muted/GoldText/DarkText text over 17 client files; world billboard and lot sign colours; `docs/UI_STYLE.md` (2.0 KB), `docs/art/ui-reference/README.md`.
 Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 774 run, 774 passed (771 + 3); `ui_scan` 0 hits (23 client, 111 src files); rojo build PASS.
