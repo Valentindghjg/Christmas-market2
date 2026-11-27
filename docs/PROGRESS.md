@@ -10,6 +10,12 @@ Archived 2026-11-27 (entries CM2-G11, CM2-SLIM run 2, CM2-13W): [archive/PROGRES
 Archived 2026-11-27 (entries CM2-PP, CM2-FAST, CM2-FLICK): [archive/PROGRESS_2026-11-26_to_2026-11-27_PP-FAST-FLICK.md](archive/PROGRESS_2026-11-26_to_2026-11-27_PP-FAST-FLICK.md).
 Archived 2026-11-27 (entries CM2-SUP, CM2-GATE, CM2-A1, CM2-GATEW, CM2-45, CM2-TUTHOOK): [archive/PROGRESS_2026-11-27_to_2026-11-27_SUP-GATE-A1-GATEW-45-TUTHOOK.md](archive/PROGRESS_2026-11-27_to_2026-11-27_SUP-GATE-A1-GATEW-45-TUTHOOK.md).
 
+2026-11-28: CM2-UI3D Phone dialogs at 70 % x 80 % (tier M, plan `docs/plans/CM2-UI3D.md`; backlog 22a3b ticked, 22a3 stays open for 22a3c/d)
+Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 779 run, 779 passed (777 + 2); ui_scan 0 hits; rojo build PASS.
+Studio (playtester, desktop 1564x730): Rojo sync PASS; smoke 13/13 PASS; Picker 480x600, DeleteConfirm 480x577 + Cancel, Finder over Picker 420x537, Team 420x537, Shop 560x577, Quests 520x577 each equal `dialogLayout` compact=false; H4b inline rules (outside screen, <44 px, TextFits) 0 violations; the overlap rule was not run (no runner probe). Console: only the known "rbxassetid://203785492 Asset type does not match" x6.
+BLOCKED: Advent and Event desktop windows (server adventNow/eventNow returned ok, rail buttons stayed Visible=false for 20 s, press returned Hidden; the CM2-UI3 run an hour earlier opened both with the same hooks; clocks cleared). Queued in "Studio-Test ausstehend". Phone and locale readings BLOCKED (PC-14) -> 22a4.
+Review: matches the plan; own decisions accepted (UiKit place/restore/remember at module level with an Original alias, originals-first parameters; sorted-key test helper; local compactItems table in TeammateFinder). Planner notes: Shop and Event `minList` 120 -> 100 (PROVISIONAL, 108 px list at 780x281 still fits one 96 px row); on phones Find teammates sits left of Back in the last footer row (Picker list shows one whole 140 px save row at 780x281); Team seats, invite code and hint lines take the left column on phones; hint text 13 px counts as caption.
+
 2026-11-28: CM2-UI3 part 1 Phone baseline and plot-picker fix (tier S, plan `docs/plans/CM2-UI3.md`; backlog 22a3 stays open)
 Commits: baseline test only (775/775), then `plotPickerLayout` (short screens: one-row 64 px confirm, both frames capped at 70 % width on phone) with two tests and the UI_STYLE line.
 Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings; headless 777 run, 777 passed (775 after commit 1); `ui_scan` 0 hits; rojo build PASS.
