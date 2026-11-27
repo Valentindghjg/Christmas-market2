@@ -124,7 +124,7 @@ One `cm2-task` per run, ID `CM2-SLIM` plus its date. **Tier S**: no planner; `im
 
 **Plan:** Goal, Method, Find, Fix, File-do-not-fix and Accept stand unchanged in the standing plan `docs/plans/CM2-SLIM.md` (tier S; moved by CM2-SLIM4b); each run passes that path to `implementer`.
 
-Runs: 2026-11-25 (first run); 2026-11-26 (run 2, 5c3a7ef, 8c08663); 2026-11-27 (run 3, a3c0ba5, 919bb1e); 2026-11-28 (run 4, SHAS_PLACEHOLDER). Follow-ups: CM2-SLIM1..5, SLIM4b, SLIM6, SLIM7 (all done) and the splits 25a–25c (after launch).
+Runs: 2026-11-25 (first run); 2026-11-26 (run 2, 5c3a7ef, 8c08663); 2026-11-27 (run 3, a3c0ba5, 919bb1e); 2026-11-28 (run 4, 88c5151, 701cc4c). Follow-ups: CM2-SLIM1..5, SLIM4b, SLIM6, SLIM7 (all done) and the splits 25a–25c (after launch).
 
 ## Follow-up tasks (created 2026-11-26 from CM2-SLIM run 2)
 CM2-SLIM1..5, SLIM4b and both tasks below are done (archive; SLIM6 and SLIM7 in run 3, 2026-11-27). The Luau file over 800 lines that run 2 left open (`StudioTestService.lua`) is in 25b.
