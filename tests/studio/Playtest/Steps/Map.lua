@@ -1,5 +1,5 @@
 --!strict
--- Playtest steps 56-57 (full mode): the map in the world (CM2-10W, docs/plans/CM2-10W.md).
+-- Playtest steps 56-57 and 69 (full mode): the map in the world (CM2-10W, docs/plans/CM2-10W.md).
 -- Installed by RunPlaytest.execute (CM2-RF) after Steps/Tutorial. Step 56 scans the built
 -- world; step 57 moves the reserve rows of the real plot through every lot expansion level.
 return function(ctx: any)
@@ -7,6 +7,7 @@ return function(ctx: any)
 	local ReplicatedStorage = ctx.ReplicatedStorage
 	local addStep = ctx.addStep
 	local check = ctx.check
+	local emit = ctx.emit
 	local plotFolder = ctx.plotFolder
 
 	local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -241,5 +242,132 @@ return function(ctx: any)
 		expectRows(MapLayout.hiddenRowCount(prev), "restored level " .. tostring(prev))
 		check(ok, tostring(failure))
 		return string.format("hidden %s; restored level %s", table.concat(hiddenCounts, ","), tostring(prev))
+	end)
+
+	-- Step 69 (CM2-FLICK, read-only): flat ground-level Parts must not share a top height where
+	-- they overlap (z-fighting). Scans the world folder and the direct children of workspace.
+	addStep("69", "SURFACE_GAPS", {}, function()
+		local MapLayout = require(Shared:WaitForChild("MapLayout")) :: any
+		local world = workspace:FindFirstChild("ChristmasMarketWorld")
+		check(world ~= nil, "ChristmasMarketWorld is missing")
+
+		local function underHumanoidModel(instance: Instance): boolean
+			local current = instance.Parent
+			while current and current ~= workspace do
+				if current:IsA("Model") and current:FindFirstChildOfClass("Humanoid") then
+					return true
+				end
+				current = current.Parent
+			end
+			return false
+		end
+
+		local pool: { Instance } = (world :: Instance):GetDescendants()
+		for _, child in workspace:GetChildren() do
+			table.insert(pool, child)
+		end
+
+		local tops: { any } = {}
+		local named: { any } = {}
+		local skipped = 0
+		for _, instance in pool do
+			if
+				instance:IsA("Part")
+				and instance.Shape == Enum.PartType.Block
+				and instance.Transparency < 1
+				and not underHumanoidModel(instance)
+			then
+				local cf = instance.CFrame
+				local top = instance.Position.Y + instance.Size.Y / 2
+				if top >= -4 and top <= 2 then
+					local axisAligned = math.abs(cf.UpVector.Y) > 0.999
+						and (math.abs(cf.RightVector.X) > 0.999 or math.abs(cf.RightVector.Z) > 0.999)
+					if axisAligned then
+						local halfX = instance.Size.X / 2
+						local halfZ = instance.Size.Z / 2
+						if math.abs(cf.RightVector.Z) > 0.999 then
+							halfX, halfZ = halfZ, halfX
+						end
+						local entry = {
+							id = instance:GetFullName(),
+							minX = instance.Position.X - halfX,
+							maxX = instance.Position.X + halfX,
+							minZ = instance.Position.Z - halfZ,
+							maxZ = instance.Position.Z + halfZ,
+							top = top,
+						}
+						table.insert(tops, entry)
+						table.insert(named, { name = instance.Name, entry = entry })
+					else
+						skipped += 1
+					end
+				end
+			end
+		end
+
+		local found = MapLayout.coplanarPairs(tops, MapLayout.COPLANAR_TOLERANCE, MapLayout.COPLANAR_MIN_AREA)
+		if #found > 0 then
+			local prefix = "Workspace.ChristmasMarketWorld."
+			local function short(id: string): string
+				if string.find(id, prefix, 1, true) == 1 then
+					return string.sub(id, #prefix + 1)
+				end
+				return id
+			end
+			for index, pair in found do
+				emit(
+					string.format(
+						"69 PAIR %d/%d %s | %s area %.2f gap %.3f",
+						index,
+						#found,
+						short(pair.a),
+						short(pair.b),
+						pair.area,
+						pair.gap
+					)
+				)
+			end
+			check(
+				false,
+				string.format(
+					"%d coplanar pairs, see 69 PAIR lines; first: %s | %s",
+					#found,
+					short(found[1].a),
+					short(found[1].b)
+				)
+			)
+		end
+		check(workspace:FindFirstChild("Baseplate") == nil, "Workspace.Baseplate still present")
+
+		-- Read (a) evidence: candidates that overlap the strips between lots and sidewalks.
+		local seen: { [string]: boolean } = {}
+		local stripNames: { string } = {}
+		for _, plot in MapLayout.PLOTS do
+			local stripMinZ, stripMaxZ = 20, 48
+			if plot.z < 0 then
+				stripMinZ, stripMaxZ = -48, -20
+			end
+			for _, item in named do
+				local entry = item.entry
+				local width = math.min(entry.maxX, plot.x + 40) - math.max(entry.minX, plot.x - 40)
+				local depth = math.min(entry.maxZ, stripMaxZ) - math.max(entry.minZ, stripMinZ)
+				if math.max(0, width) * math.max(0, depth) > 0.1 then
+					local label = string.format("%s@%.2f", item.name, entry.top)
+					if not seen[label] then
+						seen[label] = true
+						table.insert(stripNames, label)
+					end
+				end
+			end
+		end
+		table.sort(stripNames)
+
+		return string.format(
+			"candidates %d, skipped %d, pairs 0, strip: %s, removed baseplate: %s",
+			#tops,
+			skipped,
+			table.concat(stripNames, ", "),
+			(world :: Instance):GetAttribute("RemovedBaseplate") or "none"
+		)
 	end)
 end

@@ -50,9 +50,14 @@ export type Zone = {
 	rocks: number,
 }
 export type PlotSpot = { x: number, z: number, facing: number }
+export type FlatTop = { id: string, minX: number, maxX: number, minZ: number, maxZ: number, top: number }
+export type CoplanarPair = { a: string, b: string, area: number, gap: number }
 
 MapLayout.SEED = 1010
 MapLayout.MAX_LEVEL = 6
+-- CM2-FLICK: technical thresholds of the coplanar-surface check (not contract values).
+MapLayout.COPLANAR_TOLERANCE = 0.02
+MapLayout.COPLANAR_MIN_AREA = 0.1
 
 local BRIDGE = "Buildings/CoveredBridge"
 local TREE = "Environment/VillageTree"
@@ -552,6 +557,52 @@ function MapLayout.surfaces(): { Surface }
 		)
 	end
 	return list
+end
+
+-- CM2-FLICK: top rectangles of the flat (Part) surfaces; all have yaw 0. Wedges are skipped.
+function MapLayout.surfaceTops(): { FlatTop }
+	local tops: { FlatTop } = {}
+	for _, surface in MapLayout.surfaces() do
+		if surface.kind == "Part" then
+			table.insert(tops, {
+				id = surface.id,
+				minX = surface.x - surface.sx / 2,
+				maxX = surface.x + surface.sx / 2,
+				minZ = surface.z - surface.sz / 2,
+				maxZ = surface.z + surface.sz / 2,
+				top = surface.y + surface.sy / 2,
+			})
+		end
+	end
+	return tops
+end
+
+-- CM2-FLICK: pairs of flat tops within `tolerance` in height whose footprints overlap by more
+-- than `minArea`; those z-fight. Pure; the input is not mutated.
+function MapLayout.coplanarPairs(tops: { FlatTop }, tolerance: number, minArea: number): { CoplanarPair }
+	local sorted: { FlatTop } = table.clone(tops)
+	table.sort(sorted, function(left: FlatTop, right: FlatTop)
+		if left.top ~= right.top then
+			return left.top < right.top
+		end
+		return left.id < right.id
+	end)
+	local pairsFound: { CoplanarPair } = {}
+	for i = 1, #sorted do
+		local first = sorted[i]
+		local j = i + 1
+		while j <= #sorted and sorted[j].top - first.top <= tolerance do
+			local second = sorted[j]
+			local width = math.min(first.maxX, second.maxX) - math.max(first.minX, second.minX)
+			local depth = math.min(first.maxZ, second.maxZ) - math.max(first.minZ, second.minZ)
+			local area = math.max(0, width) * math.max(0, depth)
+			if area > minArea then
+				table.insert(pairsFound, { a = first.id, b = second.id, area = area, gap = second.top - first.top })
+			end
+			j += 1
+		end
+	end
+	return pairsFound
 end
 
 function MapLayout.walls(): { Wall }

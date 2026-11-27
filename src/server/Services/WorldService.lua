@@ -696,6 +696,25 @@ local function buildHQ(plot: Model, level: number): Model
 	return model
 end
 
+-- CM2-FLICK: the Studio template's Baseplate (top y 0) z-fights with MapLayout's snow ground;
+-- the Rojo/release place has none. Records what it removed on the world folder.
+local function removeDefaultBaseplate(world: Folder)
+	local baseplate = workspace:FindFirstChild("Baseplate")
+	if baseplate and baseplate:IsA("BasePart") then
+		world:SetAttribute(
+			"RemovedBaseplate",
+			string.format(
+				"top %.2f size %gx%gx%g",
+				baseplate.Position.Y + baseplate.Size.Y / 2,
+				baseplate.Size.X,
+				baseplate.Size.Y,
+				baseplate.Size.Z
+			)
+		)
+		baseplate:Destroy()
+	end
+end
+
 function WorldService.build()
 	local existing = workspace:FindFirstChild("ChristmasMarketWorld")
 	if existing then
@@ -704,6 +723,7 @@ function WorldService.build()
 	local world = Instance.new("Folder")
 	world.Name = "ChristmasMarketWorld"
 	world.Parent = workspace
+	removeDefaultBaseplate(world)
 
 	part(
 		world,
@@ -748,7 +768,8 @@ function WorldService.build()
 			plot,
 			"Spawn",
 			Vector3.new(4, 0.2, 4),
-			lotPosition(plot, -28, 14, 0.7),
+			-- CM2-FLICK: top 0.90 clears Parking_1 (top 0.82), which it overlaps.
+			lotPosition(plot, -28, 14, 0.8),
 			Color3.fromRGB(69, 132, 82),
 			Enum.Material.Grass
 		)

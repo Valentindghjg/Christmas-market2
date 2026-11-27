@@ -241,4 +241,80 @@ return function(t)
 			end
 		end
 	end)
+
+	-- CM2-FLICK: coplanar flat surfaces z-fight.
+	local function flat(id, minX, maxX, minZ, maxZ, top)
+		return { id = id, minX = minX, maxX = maxX, minZ = minZ, maxZ = maxZ, top = top }
+	end
+	local TOLERANCE, MIN_AREA = MapLayout.COPLANAR_TOLERANCE, MapLayout.COPLANAR_MIN_AREA
+
+	-- Every flat surface of the built world: MapLayout.surfaces() plus the grounds WorldService.build adds.
+	local function worldTops()
+		local tops = MapLayout.surfaceTops()
+		-- Values from WorldService.build: MainRoad 380 x 0.3 x 32 at y 0.2; LotGround 80 x 0.5 x 54 at y 0.3.
+		table.insert(tops, flat("MainRoad", -190, 190, -16, 16, 0.35))
+		for index = 1, 6 do
+			local side = index <= 3 and -1 or 1
+			local cx = (((index - 1) % 3) - 1) * 110
+			local cz = side * 75
+			table.insert(tops, flat("LotGround_" .. index, cx - 40, cx + 40, cz - 27, cz + 27, 0.55))
+		end
+		return tops
+	end
+
+	t.test("coplanarPairs reports only overlaps within the tolerance", function()
+		local a = flat("A", 0, 10, 0, 10, 0)
+		local b = flat("B", 5, 15, 5, 15, 0.01)
+		local pairsFound = MapLayout.coplanarPairs({ a, b }, TOLERANCE, MIN_AREA)
+		expect.equal(#pairsFound, 1)
+		expect.equal(pairsFound[1].a, "A")
+		expect.equal(pairsFound[1].b, "B")
+		expect.equal(pairsFound[1].area, 25)
+		expect.equal(math.abs(pairsFound[1].gap - 0.01) < 1e-9, true)
+
+		local c = flat("C", 0, 10, 0, 10, 0.03)
+		expect.equal(#MapLayout.coplanarPairs({ a, c }, TOLERANCE, MIN_AREA), 0)
+		local d = flat("D", 10, 20, 0, 10, 0)
+		expect.equal(#MapLayout.coplanarPairs({ a, d }, TOLERANCE, MIN_AREA), 0)
+		local e = flat("E", 9.9, 10.9, 9.9, 10.9, 0)
+		expect.equal(#MapLayout.coplanarPairs({ a, e }, TOLERANCE, MIN_AREA), 0)
+
+		local input = { b, a }
+		MapLayout.coplanarPairs(input, TOLERANCE, MIN_AREA)
+		expect.equal(input[1].id, "B")
+		expect.equal(input[2].id, "A")
+	end)
+
+	t.test("surfaceTops lists every Part surface", function()
+		local tops = MapLayout.surfaceTops()
+		expect.equal(#tops, 13)
+		local byId = {}
+		for _, entry in ipairs(tops) do
+			byId[entry.id] = entry
+		end
+		expect.equal(math.abs(byId.Ground_East.top) < 1e-9, true)
+		expect.falsy(byId.MainRoad)
+		expect.equal(math.abs(byId.Sidewalk_N.top - 0.45) < 1e-9, true)
+		expect.equal(math.abs(byId.TruckLane_Plot_01.top - 0.05) < 1e-9, true)
+		expect.falsy(byId.Bank_West)
+	end)
+
+	t.test("map surfaces and world grounds have no coplanar pair", function()
+		expect.equal(#MapLayout.coplanarPairs(worldTops(), TOLERANCE, MIN_AREA), 0)
+	end)
+
+	t.test("the template Baseplate would z-fight with the snow ground", function()
+		local tops = worldTops()
+		table.insert(tops, flat("Baseplate", -1024, 1024, -1024, 1024, 0))
+		local found = {}
+		for _, pair in ipairs(MapLayout.coplanarPairs(tops, TOLERANCE, MIN_AREA)) do
+			if pair.a == "Baseplate" then
+				found[pair.b .. "/Baseplate"] = true
+			elseif pair.b == "Baseplate" then
+				found[pair.a .. "/Baseplate"] = true
+			end
+		end
+		expect.truthy(found["Ground_West/Baseplate"])
+		expect.truthy(found["Ground_East/Baseplate"])
+	end)
 end
