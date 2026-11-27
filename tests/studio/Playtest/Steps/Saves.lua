@@ -1,6 +1,24 @@
 --!strict
 -- Playtest steps 24-35 (full mode): save slots, co-op saves and cross-server saves.
 -- Installed by RunPlaytest.execute (CM2-RF).
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- `24 SAVE_CREATE` (create "Playtest B", replayed request ID deduplicated), `25 SAVE_SWITCH` (same
+-- plot, saves isolated), `26 SAVE_RENAME`, `27 SAVE_DELETE` (typed-name confirmation, active save
+-- refused), `28 FAIL_CLOSED` (a stolen lock shows `SessionLocked` and refuses orders), `29
+-- COOP_JOIN` (create and play "Playtest Duo"; the shadow joins with the code and shares the plot),
+-- `30 COOP_SHARED_CASH` (both members act on one cash balance; one request ID debits once), `31
+-- COOP_RULES` (member actions `OwnerOnly`, seat limit, the old code stops working, resizing), `32
+-- COOP_REMOVE` (a removed member loses access, re-joins, plays while the owner is elsewhere; the
+-- Duo is deleted from the members' lists), `33 LOCATOR_CLAIM` (the save-to-server map holds
+-- "Playtest A" for job `studio` with the player as host; a renewal succeeds), `34 ELSEWHERE`
+-- ("Playtest Far" is released after a switch; with a fake foreign map entry and a stolen lock its
+-- row shows `elsewhere`, Play returns `SaveInUseElsewhere` and `Save.Teleport` returns
+-- `TeleportUnavailable` in Studio; it plays again once cleared and is deleted), `35 FINDER` (the
+-- shadow first stops any listing, plays its own Solo save (created if absent) and deletes every
+-- other shadow-owned co-op save; then the shadow's search creates a Duo, the player joins it
+-- through the finder as a Member on the returned plot, the full listing disappears and a third user
+-- gets `ListingGone`; leave, relist the same save, stop, relist, a switch removes the listing, the
+-- save is deleted)
 return function(ctx: any)
 	local GameConfig = ctx.GameConfig
 	local HttpService = ctx.HttpService

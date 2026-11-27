@@ -5,6 +5,20 @@
 -- Daily* attributes and the saved claim after a rejoin; step 68 drives the save's quest board
 -- through Quest.Claim (order hook, bonus lock, claims, rotation) and checks it after a rejoin.
 -- A run that crosses UTC midnight or a 4-h quest boundary inside a step is re-run once.
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- CM2-G11: `67 DAILY_REWARD` and `68 QUEST_BOARD` in `Steps/Quests.lua` (67: with the group
+-- override and the streak cleared, `DailyGroup` `Hidden`, `DailyClaimable` true, `DailyNext` 1;
+-- `Daily.Claim` pays day 1 $400 once (`AlreadyClaimed` after); yesterday at streak 2 gives day 3
+-- +150 reputation and no cash; a missed day resets to day 1 +$400; `dailyGroup {groupId = 1, member
+-- = true}` shows `Active` and day 4 pays exactly +$1400 with `doubled`; a non-member sees `Join`
+-- and day 5 pays +$900 (the clock first moves past the 60-s claim window); after `flush` and
+-- `rejoin` cash is equal and the day stays claimed. 68: an aged board shows 4 rows with the bonus
+-- locked, the clock's period and `0 < endsIn <= 14400`; one shadow order raises its order quest by
+-- 1 (capped); the bonus is `BonusLocked` while 1–3 are open; quests 1–3 pay $450 in total once
+-- (replay `DuplicateRequest`, new ID `AlreadyClaimed`); the bonus pays $550 and 100 reputation; all
+-- claims and the cash survive a rejoin; an aged board shows fresh rows, a current-period claim is
+-- `Incomplete` and an old-period claim `QuestsRotated` with cash unchanged. A run crossing UTC
+-- midnight or a 4-h boundary inside 67/68 is re-run once).
 return function(ctx: any)
 	local HttpService = ctx.HttpService
 	local R = ctx.R

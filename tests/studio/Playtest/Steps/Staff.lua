@@ -4,6 +4,35 @@
 -- (setStaff, setStaffEnergy); the real company R changes only through normal actions. Steps
 -- 48 and 50 (part b) check the server side here; their client UI checks (Employees tab, the
 -- break-area bar and ghost) are done by the playtester in the client (docs/archive/plans/CM2-25-26b.md).
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- `44 STAFF_CASHIER` (CM2-25/26: S orders 4 Douglas Medium and places 3 (one stays in the bay);
+-- with `setStaff Cashier 1` and `setStaffEnergy Cashier 100` `Staff_Cashier` in S's `Staff` folder
+-- is `OnDuty` within 20 s, its root within 1.5 studs of the staff point, with an `Apron`; customers
+-- 8 and 20 on S are served within 90 s (sales +2, `walkedOutCustomers` unchanged) while R's
+-- character stays > 40 studs from S's counter), `45 STAFF_BREAK` (S's `BreakArea` has `Pad`,
+-- `FireRing`, `Embers`, `Seat_1..3` at the save's `breakArea`; `setStaffEnergy Cashier 21` brings
+-- the Cashier to `Resting` within 2 studs of rest point 1 within 30 s and back `OnDuty` with energy
+-- ≥ 99 within 90 s), `46 STAFF_LOT_WORKER` (`setStaff LotWorker 1`; one customer (profile 8) on S:
+-- its order is loaded within 60 s of the sale (`loadedOrders` +1 or more, `missedPickups`
+-- unchanged); within 90 s at least one new `staff:` placement appears; every new `staff:` placement
+-- stands at a sold spot (step 44, 46 or an earlier run's `vacatedSpots`), no two share a spot, and
+-- bay Medium drops by their count), `47 STAFF_SAVE_CLEAN` (S's `staffEnergy` whole numbers 0..100,
+-- `breakArea` a candidate with rotation 0; `setStaff` 0 for both removes every `Staff_*` model and
+-- S's staff records within 3 s, no stray Humanoid), `48 EMPLOYEES_TAB` (CM2-25/26 part b, server
+-- side: R's summary `staff` lists Cashier, Lot Worker, Lot Manager in order with the config costs,
+-- `hiredCount` = R's hired staff, `capacity` 2 (or the HQ's), the Lot Manager `locked` and not
+-- hired, `breakArea` = the snapshot's; the playtester checks the tab in the client: "N / 2 hired",
+-- three cards, Lot Manager "Locked" and inactive with the locked line, the Cashier button "Hired",
+-- "Hire" or "Not enough cash" matching R, `staffNoCashier` iff R has no Cashier, the
+-- `breakAreaMove` button), `49 BREAK_AREA_MOVE` (S: with its Cashier resting (`setStaff Cashier 1`,
+-- `setStaffEnergy Cashier 21`), `Staff.MoveBreakArea` to the first other free candidate is ok, S's
+-- `BreakArea*` attributes follow within 2 s and the Cashier rests at the new seat within 20 s; (16,
+-- −14) `KeepClear`, (60, 0) `OutsideLot` and the 0.5-grid spot of an S tree `TooClose` leave
+-- `breakArea` unchanged; the area moves back and `setStaff Cashier 0`), `50 BREAK_AREA_MODE`
+-- (server side: R moves its break area to a free candidate and back through the normal action, the
+-- plot follows each time; the playtester first clicks `breakAreaMove` in the client: `BreakAreaBar`
+-- and `BreakAreaGhost` exist, the Lot Manager is closed; Cancel removes both and leaves `breakArea`
+-- unchanged)
 return function(ctx: any)
 	local DELIVERY_WAIT = ctx.DELIVERY_WAIT
 	local GameConfig = ctx.GameConfig

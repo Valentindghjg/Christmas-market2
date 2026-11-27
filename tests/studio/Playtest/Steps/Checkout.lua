@@ -1,6 +1,20 @@
 --!strict
 -- Playtest step 41 (full mode): manual checkout and queue (CM2-N2, CM2-UVF3).
 -- Installed by RunPlaytest.execute after Steps/Npc (it uses npcVisit and ensureDouglas).
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- `41 CHECKOUT_MANUAL` (CM2-N2, CM2-UVF3: on a save without a Cashier, R's trees in lot x
+-- 7.5..24.5, z −21.5..4.5 are stored back, 2 Douglas Medium shown; customers 8 and 20 form a queue
+-- of 2 within 120 s, one `CheckingOut`, one `Queued`; once both have stopped (two 0.25-s samples,
+-- each within 1.5 studs of its slot (2 and 1) at horizontal speed < 0.5), the queued one stands
+-- within 1.5 studs of queue slot 2, the two HumanoidRootParts are ≥ 3 studs apart and the counter
+-- avatar's `UpVector.Y` ≥ 0.98; the `CheckoutPrompt` is enabled with `SpeciesId`, `SizeId`, `Price`
+-- = the visit's `salePrice`, `HeightTenths` > 0 and an ObjectText with "Douglas Fir" and
+-- "$<price>"; a prompt from the plot spawn changes nothing; two prompts in the same frame at the
+-- counter sell exactly once at the reserved price; the second customer moves up and is checked out;
+-- sales +2, cash + both prices, order numbers in join order; the prompt hides within 2 s)
+-- Option `holdSeconds` (integer 0..60, default 0; e.g. `{ mode = "full", holdSeconds = 20 }`) makes
+-- step 41 print `[PLAYTEST] HOLD 41 checkout queue ready for capture` and wait that long at the
+-- counter for screen captures.
 return function(ctx: any)
 	local ACTION_PAUSE = ctx.ACTION_PAUSE
 	local NpcPath = ctx.NpcPath

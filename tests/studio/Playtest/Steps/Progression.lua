@@ -4,6 +4,11 @@
 -- buys every ladder kind once through the real actions (with setProgression fixtures for cash
 -- and prerequisites) and restores S; step 59 moves S's stand through HQ 1-4 and its lot through
 -- levels 0-6 and checks the G19 clearances, then restores S's visuals.
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- CM2-G9a: `58 PROGRESSION_LADDER` (S buys lot 1, parking 2, HQ 2 and 4 and the Lot Manager once
+-- each through the real actions, a replayed request and a second request charge nothing, the
+-- workshop unlocks, S restored) and `59 HQ_FOOTPRINTS` (HQ 1-4 inside KeepClear `Stand` and clear
+-- of counter, parking and KeepClear boxes; fence for lot levels 0-6) in `Steps/Progression.lua`.
 return function(ctx: any)
 	local GameConfig = ctx.GameConfig
 	local HttpService = ctx.HttpService

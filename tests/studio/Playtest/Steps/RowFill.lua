@@ -1,6 +1,11 @@
 --!strict
 -- Playtest step 36 (full mode): row fill (CM2-G14).
 -- Installed by RunPlaytest.execute (CM2-RF).
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- `36 ROW_FILL` (CM2-G14: `OutsideLot`, `KeepClear` and a blocked row change nothing; a row of 5
+-- lands as a whole (CM2-25/26: at x −24.4, z −20, clear of every break-area candidate; TooClose
+-- probe at x −19.3) and its replay is `DuplicateRequest`; `TooClose`; store back ×5 and a second
+-- store is `UnknownPlacement`; the Douglas Medium total is unchanged)
 return function(ctx: any)
 	local DELIVERY_WAIT = ctx.DELIVERY_WAIT
 	local HttpService = ctx.HttpService

@@ -2,6 +2,27 @@
 -- Playtest steps 37-40 (full mode) and their helpers: walking customers (CM2-N1). Since
 -- CM2-N2 the player checks out the customer at the counter by prompt (serveCounter).
 -- Installed by RunPlaytest.execute (CM2-RF).
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- `37 NPC_WALK` (CM2-N1: walking customers 8 and 20, then 32, on R's plot each walk the 10 states
+-- with 0 snaps; while walking to the tree up to checkout the placement is reserved, the tree model
+-- shows `Reserved` and `NpcCarried`; the order uses the visit's parking space, `CustomerCar_<n>`
+-- replaces the `VisitCar_`, the avatar waits within 3 studs of its door; after a player loads the
+-- tree the NPC is gone within 5 s; sales +3 and nothing left), `38 NPC_GIVE_UP` (profile 5 walks
+-- out (every species on R's lot at its maximum price during this part, restored after; CM2-SALE2
+-- A1): Browsing, WalkingOut, Departing, visits +1, abandoned +1; profile 8 gives up while carrying:
+-- the tree is unreserved and visible within 3 s, sales unchanged), `39 NPC_REJOIN_CLEANUP` (a
+-- rejoin removes the reserved customer, its car and the reservation within 5 s; no stray Humanoid),
+-- `40 NPC_REAL_ARRIVAL` (CM2-N1 fix round 1: with 2 Douglas Medium shown, `npcNextArrival {userId,
+-- 8}` and unpaused customers bring a live arrival with customer number 8 on R's plot within 12 s;
+-- it walks the 10 states with 0 snaps, the player loads its order and sales rise by at least 1)
+-- Step 37 first checks that each plot's `StarterSalesTent` lies within KeepClear `Stand` ± 0.5
+-- (AABB over every part's corners) and is lot-aligned (±1°), with every part in `LotStructure`, and
+-- that the player's character parts are in `PlayerCharacter`; a snap FAIL lists the visit's
+-- snap-log entries.
+-- CM2-N2: steps 37, 40 and 41 and soak 03 check out the customer at R's counter by prompt
+-- (`serveCounter`: teleport to `CheckoutCounter.CounterBase`, then `prompt("checkout", 0)`), never
+-- with a fixture Cashier; in soak mode the shadow has a Cashier hired (`setStaff`), and cleanup
+-- sets the shadow's Cashier back to 0.
 return function(ctx: any)
 	local ArtLibrary = ctx.ArtLibrary
 	local Customers = ctx.Customers

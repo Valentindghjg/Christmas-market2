@@ -1,6 +1,25 @@
 --!strict
 -- Playtest soak steps 01a, 01, 02, 03, 03a, 04 and 05 (soak mode).
 -- Installed by RunPlaytest.execute (CM2-RF).
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- `{ mode = "soak", minutes = 10 }` runs the literal real-time soak (7 steps: `01a ACTIVE_SAVE`
+-- first, no clock advance until its final drain; `03 SOAK_REALTIME` runs with customers unpaused
+-- (CM2-25/26 Amendment 2: a forced visit without a free space becomes the next arrival (roll 0)
+-- through `npcNextArrival`, counted as `next-arrival <n>` after `forced`) and fails when a walking
+-- customer snaps (`npc snaps <n>` in its detail); CM2-N2 Amendment 1: its detail adds, per company,
+-- the deltas of sales, visits, abandoned, walked out and drive-pasts and `at counter` (distinct
+-- non-load visits seen in `CheckingOut` on that plot, one `npcSnapshot` per 5-s tick), for R also
+-- `served` and `refused` with the first refusal (`serveCounter` returns `none`, `served`,
+-- `handsFull` when the player held a customer's tree, else `refused`), for S `cashier` (its hired
+-- Cashier count at the end), and `forced <ok>/<tries>` for the forced visits; after the mismatch
+-- check it fails with "shadow lost its Cashier" unless S still has 1 Cashier, "S customers walked
+-- out despite the Cashier" when S counted a walk-out, and "R checkout refused (<first refusal>)"
+-- when a counter prompt sold nothing; `03a NPC_LOAD` pauses and resets customers and runs
+-- `npcLoadTest {seconds = 60, staff = true}`: PASS when 24 NPCs are spawned and live on plots 1–6,
+-- 12 load staff are spawned (`staffSpawned` 12, `peakStaff` ≥ 12), every 5-s window ≥ 55 FPS, 0
+-- snaps (customers and staff) and none left; `04 LEAK_CHECK` waits up to 180 s for every walking
+-- customer to leave, expiring open orders from the server clock while one waits at its car, without
+-- an NPC reset).
 return function(ctx: any)
 	local R = ctx.R
 	local S = ctx.S

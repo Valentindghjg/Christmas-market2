@@ -1,6 +1,17 @@
 --!strict
 -- Playtest steps 01, 02a, 02, 03 and 04-21 (full mode).
 -- Installed by RunPlaytest.execute (CM2-RF).
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- unit runner (at least 418 tests), `02a ACTIVE_SAVE` (play the save "Playtest A", creating it if
+-- absent), shadow join, order, delivery into the order's bay, `06 BAY_VIEW` (the bay part's
+-- attributes match the snapshot), place from the bay, NPC sale, carry, hands-full, respawn, wrong
+-- car, load, plot isolation, expiry, Lot Worker (CM2-25/26: the visible Lot Worker walks the order
+-- to the car; steps 17 and 20 poll up to 45 s, no clock advance), sell-back, in-session rejoin,
+-- accelerated soak, `ART_ASSETS` (ArtAssets exists, at most one ArtAssets folder holds assets and
+-- asset-less ones are ignored with one warning (CM2-ART2), no duplicate names, every Blender mesh
+-- preloads)
+-- CM2-G15: step 13 `LOAD` expects the gain `ReputationByStars[s]` with `s` = `starsFor(clock −
+-- soldAt)` or `starsFor(clock − soldAt + 2)` (either passes, star-boundary safety).
 return function(ctx: any)
 	local Customers = ctx.Customers
 	local DELIVERY_WAIT = ctx.DELIVERY_WAIT

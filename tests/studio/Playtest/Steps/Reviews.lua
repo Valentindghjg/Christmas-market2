@@ -1,6 +1,22 @@
 --!strict
 -- Playtest steps 42 and 43 (full mode): customer reviews, the lot sign and lot likes (CM2-G15).
 -- Installed by RunPlaytest.execute after Steps/Checkout (it uses ensureDouglas from Steps/Npc).
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- `42 REVIEW_SIGN` (CM2-G15: every plot has `LotSign.Board`; R's board centre in the lot frame is
+-- (23, 23) ± 0.1; on every plot the sign parts (`Post_L`, `Post_R`, `Board`, `Cap`) lie inside
+-- `Sign`, the plot has `#Placement.DecorFences` `DecorFence` models and no `DecorFence` part
+-- overlaps it (the detail reports the smallest `fence gap`); no displayed tree of R inside that
+-- box; open orders expire first; a visit of profile 8 loaded at once gives reputation +9 and
+-- `reviewCount` +1, and within 2 s `SignFront.Frame.Rating` shows the snapshot's `ReviewCount` and
+-- `RatingTenths`; a second visit loaded after `advance(80)` gives +4 (2 stars, less than 9);
+-- `reviewsRecent` gains the 5 (then the 2) at its end, trimmed to `RatingWindow`, `ratingTenths`
+-- equals its rounded mean and the sign follows within 2 s; the window length is min(`reviewCount`,
+-- 50); after `rejoin` `reviewCount`, `ratingTenths`, `likes` and `reviewsRecent` are unchanged and
+-- the sign shows them again within 2 s; the sign's `NameSource` is `Filtered` (non-empty text) or
+-- `Owner` (text "<player name>'s Tree Lot")), `43 LOT_LIKE` (CM2-G15: `resetLikes` on S; at S's
+-- sign R's `Lot.Like` returns ok with `data.likes` = S likes + 1 and S's sign `Likes` attribute
+-- follows within 2 s; a second like is `AlreadyLikedToday` with likes unchanged; at R's own sign
+-- `OwnLot`; from R's counter a like of S is `OutOfReach`)
 return function(ctx: any)
 	local GameConfig = ctx.GameConfig
 	local R = ctx.R

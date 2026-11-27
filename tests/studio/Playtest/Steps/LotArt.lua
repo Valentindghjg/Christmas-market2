@@ -3,6 +3,12 @@
 -- Installed by RunPlaytest.execute after Steps/PlotPicker. Read-only on all six plots: HQ, counter,
 -- bays, decorative fences and the lot fence show the art at the lot-frame positions, facing the
 -- road; bundles are checked on a free plot through syncReceiving, which is cleared again.
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- CM2-13W: `66 LOT_ART` in `Steps/LotArt.lua` (on all six plots the HQ art, the counter art with
+-- its invisible `CounterBase`, `CheckoutPrompt`, `Checkout1` and `CashierStand`, the four
+-- `BayArt_<i>` with their `BundleBase`, the `DecorFence` models and the lot fence art with 11 + 2 x
+-- level pieces face the road at their lot-frame positions within 0.05-0.1 studs; five bundles on a
+-- free plot's `Bay_1` show as art on the deck top and its second row, then the bay is cleared).
 return function(ctx: any)
 	local R = ctx.R
 	local S = ctx.S

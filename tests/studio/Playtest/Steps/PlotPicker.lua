@@ -4,6 +4,17 @@
 -- (Save.Plots), refuses the shadow's plot with PlotTaken while the running save stays, plays the
 -- fresh save on a chosen free plot, then plays "Playtest A" back onto its original plot and
 -- refuses an unknown plot id.
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- CM2-PP: `65 PLOT_PICK` in `Steps/PlotPicker.lua` (a fresh save "Playtest P": `Save.Plots` lists 6
+-- plots `Plot_01`..`Plot_06` with `number` 1-6, `side` South for 1-3 and North for 4-6, the
+-- shadow's plot taken (`name` nil or non-empty), R's own plot free and a free `preselectId`;
+-- `Save.Play {saveId, plotId = S's plot}` is `PlotTaken` while R stays on "Playtest A"; the save
+-- plays on the first other free plot within 10 s, after which `Save.Plots` offers no pick;
+-- "Playtest A" plays back on its original plot; `plotId = "Plot_9"` is `InvalidPlotId`; "Playtest
+-- P" is deleted). The teleport-arrival picker (`PlotPickSaveId`) stays BLOCKED in Studio
+-- (TeleportService) and is covered headless.
+-- The teleport-arrival picker (`PlotPickSaveId`) stays BLOCKED in Studio (TeleportService) and is
+-- covered headless.
 return function(ctx: any)
 	local R = ctx.R
 	local S = ctx.S

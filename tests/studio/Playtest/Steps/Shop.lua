@@ -4,6 +4,21 @@
 -- receipt path (StudioTestHook shopReceipt); nothing prompts or charges. The owner's product IDs
 -- exist for 12 products (ShopConfig CREATED_IDS); step 53 never prompts one of them, so real test
 -- purchases stay a manual PC-10 check.
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- `51 SHOP_RECEIPT` (CM2-46a: `shopReceipt {R, CashPinecone, pt51-<clock>, 29}` is
+-- `PurchaseGranted`, cash +1200, the save's last receipt is the ID, `owned.CashPinecone` +1; the
+-- same call again is `PurchaseGranted` with cash unchanged; `shopLedger` `robuxSpent` +29 over both
+-- calls, the ID in `done`, not in `pending`; after `rejoin` the receipt is still in the save and
+-- cash is equal), `52 SHOP_PERKS` (`shopClearBoosts` first; S places 2 Douglas Medium; with
+-- `shopPasses {PassCashX2}` and a Cash Rush receipt (`boosts.CashX2` 1795–1800) `visit {S, 8}` pays
+-- 4 × the Douglas Medium price, without the pass 2 ×; `shopClearBoosts` leaves `boosts.CashX2` 0;
+-- `setStaff Cashier 1`, `setStaffEnergy Cashier 21`, a Hot Cider Round receipt brings the Cashier's
+-- energy to ≥ 99 within 3 s, `setStaff Cashier 0`; with `shopPasses {PassInstantDelivery}` an order
+-- of 1 Douglas Small is in its bay within 3 s without a clock advance; passes cleared, open orders
+-- expired), `53 SHOP_GUARD` (R's `Shop.Catalog` lists 27 products: the 12 products with an ID are
+-- `Buy` or `Owned`, the other 15 `ComingSoon`; `Shop.Prompt DecorFatherChristmas` is `ComingSoon`,
+-- `Nope` is `UnknownProduct`; a receipt for user 999000123 (no player, no save) is
+-- `NotProcessedYet` at once; `shopPrompts` = 0)
 return function(ctx: any)
 	local DELIVERY_WAIT = ctx.DELIVERY_WAIT
 	local EXPIRY_WAIT = ctx.EXPIRY_WAIT

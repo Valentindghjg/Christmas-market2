@@ -3,13 +3,22 @@
 --   game.ServerStorage.StudioTestHook:Invoke("runPlaytest", { mode = "full" })
 --   game.ServerStorage.StudioTestHook:Invoke("runPlaytest", { mode = "soak", minutes = 10 })
 --   game.ServerStorage.StudioTestHook:Invoke("runPlaytest", { mode = "full", holdSeconds = 20 })
+--   game.ServerStorage.StudioTestHook:Invoke("runPlaytest", { mode = "smoke" })
+--   game.ServerStorage.StudioTestHook:Invoke("runPlaytest", { mode = "smoke", only = { "36" } })
+-- smoke runs SMOKE only: 12 core steps plus CLEANUP (CM2-FAST). Mapping: active save 02a;
+-- preflight 02 shadow join + 03; order 04; delivery into the bay 05; place from the bay 07;
+-- sale 08 (feeds carry/load); carry 09; load 13; flush and rejoin 19; NPC sale with manual
+-- checkout 41 (its withNpcCleanup also expires the open order B, so 22 stays clean); leak
+-- check 22; cleanup 23. Left out: 06, 11, 12 (checks only). `only` adds those steps and,
+-- transitively, their needs; a need outside the run counts as met.
 -- holdSeconds (0..60, default 0) pauses step 41 at the checkout queue for screen captures.
 -- It drives the real player and a shadow company through StudioTestHook and prints
 -- PASS/FAIL/SKIP per step prefixed with [PLAYTEST]. The runner installs helpers from
 -- Playtest/Support and steps from Playtest/Steps (CM2-RF); none of them is under Cases, so the
 -- unit-test runners never execute them. Nothing touches a game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-g11a"
+RunPlaytest.BUILD = "cm2-fast"
+RunPlaytest.SMOKE = { "02a", "02", "03", "04", "05", "07", "08", "09", "13", "19", "41", "22", "23" }
 
 local PREFIX = "[PLAYTEST]"
 
@@ -49,19 +58,20 @@ end
 
 local DIAG_WAIT_SECONDS = 5
 
-local function validOptions(options: any): (string?, number?, number?)
+-- Validates the options of runPlaytest. Returns mode, minutes, holdSeconds, only; all nil on failure.
+function RunPlaytest.parseOptions(options: any): (string?, number?, number?, { string }?)
 	if type(options) ~= "table" then
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	end
-	if options.mode ~= "full" and options.mode ~= "soak" then
-		return nil, nil, nil
+	if options.mode ~= "full" and options.mode ~= "smoke" and options.mode ~= "soak" then
+		return nil, nil, nil, nil
 	end
 	local minutes = options.minutes
 	if minutes == nil then
 		minutes = 10
 	end
 	if type(minutes) ~= "number" or minutes ~= math.floor(minutes) or minutes < 1 or minutes > 30 then
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	end
 	local holdSeconds = options.holdSeconds
 	if holdSeconds == nil then
@@ -73,9 +83,96 @@ local function validOptions(options: any): (string?, number?, number?)
 		or holdSeconds < 0
 		or holdSeconds > 60
 	then
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	end
-	return options.mode, minutes, holdSeconds
+	local only: { string }? = nil
+	local rawOnly = options.only
+	if rawOnly ~= nil then
+		if type(rawOnly) ~= "table" or options.mode == "soak" then
+			return nil, nil, nil, nil
+		end
+		local count = #rawOnly
+		if count < 1 or count > 20 then
+			return nil, nil, nil, nil
+		end
+		local copy: { string } = {}
+		for index = 1, count do
+			local id = rawOnly[index]
+			if type(id) ~= "string" or #id < 1 or #id > 4 then
+				return nil, nil, nil, nil
+			end
+			copy[index] = id
+		end
+		-- Any other key (non-sequence) fails: the table must hold exactly `count` entries.
+		local total = 0
+		for _ in rawOnly do
+			total += 1
+		end
+		if total ~= count then
+			return nil, nil, nil, nil
+		end
+		only = copy
+	end
+	return options.mode, minutes, holdSeconds, only
+end
+
+-- Picks the steps a run executes. Returns the selected ID set, or nil and the first unknown ID.
+function RunPlaytest.selectSteps(
+	steps: { { id: string, needs: { string } } },
+	mode: string,
+	only: { string }?
+): ({ [string]: boolean }?, string?)
+	local byId: { [string]: { id: string, needs: { string } } } = {}
+	for _, step in steps do
+		byId[step.id] = step
+	end
+	local selected: { [string]: boolean } = {}
+	if mode == "full" and only == nil then
+		for _, step in steps do
+			selected[step.id] = true
+		end
+		return selected, nil
+	end
+	for _, id in RunPlaytest.SMOKE do
+		if byId[id] == nil then
+			return nil, id
+		end
+		selected[id] = true
+	end
+	if only ~= nil then
+		for _, id in only do
+			if byId[id] == nil then
+				return nil, id
+			end
+		end
+		-- Closure over the needs of every `only` step; it walks through smoke steps too.
+		local visited: { [string]: boolean } = {}
+		local queue: { string } = {}
+		for _, id in only do
+			table.insert(queue, id)
+		end
+		local head = 1
+		while head <= #queue do
+			local id = queue[head]
+			head += 1
+			local step = byId[id]
+			if step ~= nil and visited[id] ~= true then
+				visited[id] = true
+				selected[id] = true
+				for _, need in step.needs do
+					if byId[need] ~= nil then
+						table.insert(queue, need)
+					end
+				end
+			end
+		end
+	end
+	return selected, nil
+end
+
+-- A need outside the run counts as met (for example 07 -> 06 in smoke).
+function RunPlaytest.needMet(selected: { [string]: boolean }, outcome: { [string]: string }, need: string): boolean
+	return selected[need] ~= true or outcome[need] == "PASS"
 end
 
 -- Requires one installer from Playtest/Support or Playtest/Steps (CM2-RF).
@@ -86,13 +183,14 @@ local function installer(group: string, name: string): (any) -> ()
 	return require(module :: ModuleScript) :: any
 end
 
-local function execute(hook: any, mode: string, minutes: number, holdSeconds: number)
+local function execute(hook: any, mode: string, minutes: number, holdSeconds: number, only: { string }?)
 	local HttpService = game:GetService("HttpService")
 	local ServerStorage = game:GetService("ServerStorage")
 
 	local startedAt = os.clock()
 	local results: { { id: string, name: string, result: string, detail: string } } = {}
 	local outcome: { [string]: string } = {}
+	local pickedSteps: { [string]: boolean } = {}
 
 	-- Steps --------------------------------------------------------------------------------
 	type Step = { id: string, name: string, needs: { string }, run: () -> string? }
@@ -121,7 +219,7 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 	for _, name in { "Base", "Saves", "Fixtures" } do
 		installer("Support", name)(ctx)
 	end
-	if mode == "full" then
+	if mode ~= "soak" then
 		for _, name in
 			{
 				"Core",
@@ -147,8 +245,26 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 		end
 		addStep("22", "LEAK_CHECK", { "02" }, ctx.leakCheck)
 		addStep("23", "CLEANUP", {}, ctx.cleanup)
+		local selected, unknown = RunPlaytest.selectSteps(steps, mode, only)
+		if selected == nil then
+			local refusal = "REFUSED UnknownStep " .. tostring(unknown)
+			print(PREFIX .. " " .. refusal)
+			ServerStorage:SetAttribute("PlaytestSummary", refusal)
+			return
+		end
+		pickedSteps = selected
+		local kept: { Step } = {}
+		for _, step in steps do
+			if selected[step.id] == true then
+				table.insert(kept, step)
+			end
+		end
+		steps = kept
 	else
 		installer("Steps", "Soak")(ctx)
+		for _, step in steps do
+			pickedSteps[step.id] = true
+		end
 	end
 	local emit, record, R, player = ctx.emit, ctx.record, ctx.R, ctx.player
 
@@ -192,7 +308,7 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 	for _, step in steps do
 		local unmet: string? = nil
 		for _, need in step.needs do
-			if outcome[need] ~= "PASS" then
+			if not RunPlaytest.needMet(pickedSteps, outcome, need) then
 				unmet = need
 				break
 			end
@@ -280,7 +396,7 @@ function RunPlaytest.run(hook: any, options: any)
 		print(string.format("%s REFUSED %s", PREFIX, tostring(reason)))
 		return
 	end
-	local mode, minutes, holdSeconds = validOptions(options)
+	local mode, minutes, holdSeconds, only = RunPlaytest.parseOptions(options)
 	if mode == nil or minutes == nil or holdSeconds == nil then
 		print(string.format("%s REFUSED BadOptions", PREFIX))
 		return
@@ -289,7 +405,7 @@ function RunPlaytest.run(hook: any, options: any)
 	ServerStorage:SetAttribute("PlaytestSummary", nil)
 	ServerStorage:SetAttribute("PlaytestReport", nil)
 	ServerStorage:SetAttribute("PlaytestPhase", nil)
-	local ok, message = pcall(execute, hook, mode, minutes, holdSeconds)
+	local ok, message = pcall(execute, hook, mode, minutes, holdSeconds, only)
 	if not ok then
 		warn(string.format("%s runner error: %s", PREFIX, tostring(message)))
 		ServerStorage:SetAttribute("PlaytestSummary", "SUMMARY runner error: " .. tostring(message))

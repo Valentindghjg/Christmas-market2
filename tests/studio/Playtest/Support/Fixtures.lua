@@ -1,6 +1,30 @@
 --!strict
 -- Playtest fixtures: shadow join, resets, NPC cleanup, preflight, leak check and cleanup.
 -- Installed by RunPlaytest.execute (CM2-RF).
+-- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
+-- leak check (also: no `CheckoutPrompt` enabled on R's or S's plot; no live NPC, an empty
+-- `<plot>.Customers`, no `VisitCar_` or `NpcCarriedTree` outside a `Staff` folder; Humanoids of
+-- live NPCs and of live staff (`StaffId` in `staffSnapshot`) are not stray), cleanup (back on
+-- "Playtest A", test saves including "Playtest Duo", "Playtest Far" and the finder save removed,
+-- the fake map entry cleared, both synthetic users leave, no NPC left on the shadow plot within 3
+-- s)
+-- **Reset rule (CM2-N1 fix round 1):** `resetCustomers()` pauses customers, calls `npcReset`, lets
+-- open customer orders of R (and S while joined) expire from the server clock (`snapshot.clock`, at
+-- most 3 rounds of `advance(max(expiresAt) − clock + 1)`), then waits up to 8 s for clean plots, no
+-- NPC objects and no reserved placement on R; it never loads an order or changes cash. It runs at
+-- the start of PREFLIGHT (both modes), in soak 03a and at the start of cleanup; steps 37–40 always
+-- end with it, and the step's own error wins over the reset error. CM2-ART2 Amendment 1: PREFLIGHT
+-- lands in-flight deliveries of R and S (advance to the latest arrivesIn + 1), stores every tree on
+-- the shadow's lot back into its bays (CM2-PT35b), sells back every tree in the shadow's bays and
+-- requires 0 shadow bays in use and 0 trees on the shadow's lot; step 52 sells its Express Sleigh
+-- tree back; a supplier sell-out retry advances to refreshIn + 1.
+-- Request IDs in playtest steps are unique per run (`<prefix>_` .. GUID): S's save and its
+-- `recentRequests` persist across Play sessions, so a fixed ID replays as `DuplicateRequest` in the
+-- next run (CM2-G9a A2).
+-- PREFLIGHT (03) first ends every Cash Rush (`shopClearBoosts`) and clears R's test pass overrides
+-- (`shopPasses`), so manual shop checks before a run cannot double sale cash (CM2-UVF8). It also
+-- sets R's Lot Worker and Cashier to 0 (`setStaff` with `userId`) and names the reset in its
+-- detail.
 return function(ctx: any)
 	local Players = ctx.Players
 	local R = ctx.R
