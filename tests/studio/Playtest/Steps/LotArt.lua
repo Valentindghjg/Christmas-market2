@@ -1,5 +1,5 @@
 --!strict
--- Playtest step 66 (full mode): lot and HQ art in the world (CM2-13W, docs/plans/CM2-13W.md).
+-- Playtest step 66 (full mode): lot and HQ art in the world (CM2-13W, docs/archive/plans/CM2-13W.md).
 -- Installed by RunPlaytest.execute after Steps/PlotPicker. Read-only on all six plots: HQ, counter,
 -- bays, decorative fences and the lot fence show the art at the lot-frame positions, facing the
 -- road; bundles are checked on a free plot through syncReceiving, which is cleared again.

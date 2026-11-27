@@ -1,5 +1,5 @@
 --!strict
--- Tree art in the world (CM2-12W, docs/plans/CM2-12W.md): which CM2-12 Blender tree
+-- Tree art in the world (CM2-12W, docs/archive/plans/CM2-12W.md): which CM2-12 Blender tree
 -- (Trees/<Species>/<Size>) a world role shows, how the primitive fallback is scaled and where a
 -- label sits. Pure data and maths; WorldService clones the models.
 local TreeArt = {}

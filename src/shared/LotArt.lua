@@ -1,5 +1,5 @@
 --!strict
--- Lot and HQ art in the world (CM2-13W, docs/plans/CM2-13W.md): which art path each lot element
+-- Lot and HQ art in the world (CM2-13W, docs/archive/plans/CM2-13W.md): which art path each lot element
 -- uses, how it is turned to the road and where the lot fence pieces stand. Pure data and maths;
 -- LotArtWorld and LotFenceWorld clone the models.
 local GameConfig = require(script.Parent.GameConfig)

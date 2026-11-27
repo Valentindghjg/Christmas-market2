@@ -1,5 +1,5 @@
 --!strict
--- Daily reward streak (CM2-G11, docs/plans/CM2-G11.md): the validated, rate-limited
+-- Daily reward streak (CM2-G11, docs/archive/plans/CM2-G11.md): the validated, rate-limited
 -- Daily.Claim action and the Daily* player attributes. Headless: every engine call comes in
 -- through injected deps (main.server.lua wires Players and the group check).
 --

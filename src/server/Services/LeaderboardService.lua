@@ -1,5 +1,5 @@
 --!strict
--- Four leaderboards (CM2-G12b, docs/plans/CM2-G12b.md): a server cache of the board values,
+-- Four leaderboards (CM2-G12b, docs/archive/plans/CM2-G12b.md): a server cache of the board values,
 -- cached and rate-limited OrderedDataStore writes, playtime increments and the top-list reads.
 -- Headless: every engine call comes in through injected deps (main.server.lua wires
 -- DataStoreService, the request budget, usernames, the clock and the published folder).

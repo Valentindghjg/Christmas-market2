@@ -1,5 +1,5 @@
 --!strict
--- Robux purchases of the company service (CM2-46a, docs/plans/CM2-46a.md): a mixin that
+-- Robux purchases of the company service (CM2-46a, docs/archive/plans/CM2-46a.md): a mixin that
 -- CompanyStateService installs. Server-trusted callers only (MonetizationService and the
 -- server loop); no client request reaches these methods.
 -- Pass perks are runtime only (never saved): MonetizationService sets them per company from

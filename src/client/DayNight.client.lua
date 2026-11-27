@@ -1,5 +1,5 @@
 --!strict
--- Day/night sky and night lights (CM2-G12a, docs/plans/CM2-G12a.md). The server owns each
+-- Day/night sky and night lights (CM2-G12a, docs/archive/plans/CM2-G12a.md). The server owns each
 -- save's clock and mirrors it into the `DayNumber`, `DayElapsed` and `DaySyncAt` attributes;
 -- this script extrapolates the active save's elapsed time and writes the local Lighting only.
 -- Without an active save the sky stays at DefaultClockTime and the night lights stay off.

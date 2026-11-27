@@ -1,5 +1,5 @@
 --!strict
--- Playtest step 64 (full mode): tree art in the world (CM2-12W, docs/plans/CM2-12W.md).
+-- Playtest step 64 (full mode): tree art in the world (CM2-12W, docs/archive/plans/CM2-12W.md).
 -- Installed by RunPlaytest.execute after Steps/Leaderboards. Builds 12 display trees, 12 pickup
 -- trees with their cars, 12 roof trees, 12 carried and 12 walking-customer trees of the four
 -- species and three sizes on a free plot, and checks art mode, size, ground contact and label

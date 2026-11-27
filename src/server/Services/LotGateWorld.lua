@@ -1,5 +1,5 @@
 --!strict
--- The entrance gate at each lot's road edge (CM2-GATEW, docs/plans/CM2-GATEW.md): the LotGate art
+-- The entrance gate at each lot's road edge (CM2-GATEW, docs/archive/plans/CM2-GATEW.md): the LotGate art
 -- (Part fallback without it), two night lights and a name board that mirrors the lot sign. `ctx`
 -- comes from WorldService.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

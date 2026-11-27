@@ -1,5 +1,5 @@
 --!strict
--- Quest board and reward grants of the company service (CM2-G11, docs/plans/CM2-G11.md): a
+-- Quest board and reward grants of the company service (CM2-G11, docs/archive/plans/CM2-G11.md): a
 -- mixin that CompanyStateService installs. The board lives in the company record
 -- (shared/QuestBoard.lua, schema 21); Quest.Claim pays inside the company's critical section.
 -- grantReward pays a player's daily reward (DailyRewardService) or Advent door (AdventService,

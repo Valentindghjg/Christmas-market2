@@ -1,5 +1,5 @@
 --!strict
--- Daily rewards and quests panel (CM2-G11, docs/plans/CM2-G11.md): the 7-day streak with its
+-- Daily rewards and quests panel (CM2-G11, docs/archive/plans/CM2-G11.md): the 7-day streak with its
 -- claim button and the group line from the Daily* player attributes, and the save's quest
 -- board from the company summary (`summary.quests`). It only sends Daily.Claim and
 -- Quest.Claim through the validated BusinessAction remote; the server owns every reward.

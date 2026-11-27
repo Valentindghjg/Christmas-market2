@@ -1,5 +1,5 @@
 --!strict
--- The player purchase ledger (CM2-46a, docs/plans/CM2-46a.md): one record per player in its
+-- The player purchase ledger (CM2-46a, docs/archive/plans/CM2-46a.md): one record per player in its
 -- own store. It binds a Robux purchase to the save that receives it before the grant
 -- (`pending`), keeps the finished purchases (`done`), the player's Robux spent, the passes
 -- already counted and the per-player unlocks. The company save holds the receipt itself.

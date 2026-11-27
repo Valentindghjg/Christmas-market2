@@ -1,5 +1,5 @@
 --!strict
--- Playtest steps 60-61 (full mode): day/night per save (CM2-G12a, docs/plans/CM2-G12a.md).
+-- Playtest steps 60-61 (full mode): day/night per save (CM2-G12a, docs/archive/plans/CM2-G12a.md).
 -- Installed by RunPlaytest.execute after Steps/Progression. Step 60 drives the real player's
 -- day clock through dusk and a day rollover and checks the attributes, the summary and the
 -- saved day after a rejoin; step 61 counts the server's night lights (all off on the server):

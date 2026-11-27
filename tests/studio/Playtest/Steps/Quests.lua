@@ -1,6 +1,6 @@
 --!strict
 -- Playtest steps 67-68 (full mode): daily reward streak, quest board and group bonus (CM2-G11,
--- docs/plans/CM2-G11.md). Installed by RunPlaytest.execute after Steps/LotArt. Step 67 drives
+-- docs/archive/plans/CM2-G11.md). Installed by RunPlaytest.execute after Steps/LotArt. Step 67 drives
 -- the real player's daily streak through Daily.Claim (claim, reset, group bonus) and checks the
 -- Daily* attributes and the saved claim after a rejoin; step 68 drives the save's quest board
 -- through Quest.Claim (order hook, bonus lock, claims, rotation) and checks it after a rejoin.

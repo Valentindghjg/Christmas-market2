@@ -1,5 +1,5 @@
 --!strict
--- Day/night clock maths of one save (CM2-G12a, docs/plans/CM2-G12a.md). Pure functions over the
+-- Day/night clock maths of one save (CM2-G12a, docs/archive/plans/CM2-G12a.md). Pure functions over the
 -- saved `dayCycle = { day, elapsed }` (schema 20): the server advances it while the save is
 -- loaded and the client turns the synced elapsed time into the sky and the night lights.
 local GameConfig = require(script.Parent.GameConfig)

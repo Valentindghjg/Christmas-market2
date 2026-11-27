@@ -1,5 +1,5 @@
 --!strict
--- Playtest steps 51-53 (full mode): the Robux shop server (CM2-46a, docs/plans/CM2-46a.md).
+-- Playtest steps 51-53 (full mode): the Robux shop server (CM2-46a, docs/archive/plans/CM2-46a.md).
 -- Installed by RunPlaytest.execute after Steps/Staff. Receipts are simulated through the real
 -- receipt path (StudioTestHook shopReceipt); nothing prompts or charges. The owner's product IDs
 -- exist for 12 products (ShopConfig CREATED_IDS); step 53 never prompts one of them, so real test

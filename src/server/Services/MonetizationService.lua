@@ -1,5 +1,5 @@
 --!strict
--- Robux shop server (CM2-46a, docs/plans/CM2-46a.md): developer-product receipts, game-pass
+-- Robux shop server (CM2-46a, docs/archive/plans/CM2-46a.md): developer-product receipts, game-pass
 -- ownership and perks, Robux spent and the validated Shop.* actions. Headless: every engine
 -- call comes in through injected deps (main.server.lua wires MarketplaceService and Players).
 --

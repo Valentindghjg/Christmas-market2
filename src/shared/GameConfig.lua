@@ -44,7 +44,7 @@ GameConfig.CustomerReservationSeconds = 30
 GameConfig.AutoPricingIntervalSeconds = 3
 GameConfig.CustomerVisitIntervalSeconds = 5
 GameConfig.MaxCustomerVisitsPerTick = 3
--- Quest board per save (CM2-G11, docs/plans/CM2-G11.md, shared/QuestBoard.lua): 3 rotating
+-- Quest board per save (CM2-G11, docs/archive/plans/CM2-G11.md, shared/QuestBoard.lua): 3 rotating
 -- quests plus a bonus. Non-observed variants (15, 20, 2000, 3500, Medium 3, Large 2) are
 -- PROVISIONAL; rewardReputation absent = 0.
 GameConfig.Quests = {
@@ -524,7 +524,7 @@ GameConfig.Customers = {
 	},
 }
 
--- Day/night per save (CM2-G12a, docs/plans/CM2-G12a.md): an 18-minute game day that runs only
+-- Day/night per save (CM2-G12a, docs/archive/plans/CM2-G12a.md): an 18-minute game day that runs only
 -- while the save is loaded (shared/DayCycle.lua).
 GameConfig.DayCycle = {
 	DaySeconds = 720, -- OWNER DECIDED
@@ -545,7 +545,7 @@ GameConfig.DayCycle = {
 	GateLight = { range = 12, brightness = 1.2 }, -- PROVISIONAL (CM2-GATEW)
 }
 
--- Four leaderboards on the village square (CM2-G12b, docs/plans/CM2-G12b.md): OrderedDataStore
+-- Four leaderboards on the village square (CM2-G12b, docs/archive/plans/CM2-G12b.md): OrderedDataStore
 -- writes from a server cache (server/Services/LeaderboardService.lua).
 GameConfig.Leaderboards = {
 	Keys = { "CashEarned", "Reputation", "HoursPlayed", "RobuxSpent" }, -- OWNER DECIDED (boards; write/read order)

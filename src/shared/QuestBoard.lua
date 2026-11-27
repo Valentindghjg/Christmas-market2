@@ -1,5 +1,5 @@
 --!strict
--- Quest board of one save (CM2-G11, docs/plans/CM2-G11.md): 3 rotating quests plus a bonus,
+-- Quest board of one save (CM2-G11, docs/archive/plans/CM2-G11.md): 3 rotating quests plus a bonus,
 -- stored as `quests = { period, progress {x4}, claimed {x4} }` (schema 21, index 4 = bonus).
 -- Progress grows only from play events, so offline time never pays; a stale board is replaced
 -- on the next note or claim. This module never touches cash and must not require

@@ -1,5 +1,5 @@
 --!strict
--- Robux shop products (CM2-46a, docs/plans/CM2-46a.md; PRODUCT_SPEC 2026-11-21 "Monetization
+-- Robux shop products (CM2-46a, docs/archive/plans/CM2-46a.md; PRODUCT_SPEC 2026-11-21 "Monetization
 -- and events", REFERENCE_GAME_LIVE_TEST §7). Pure data plus lookups.
 -- Every `id` is 0: the owner creates the passes and developer products on Roblox and enters
 -- their IDs here later. A product with id 0 or `ready = false` is never prompted. Prices are

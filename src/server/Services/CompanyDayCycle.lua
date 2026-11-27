@@ -1,5 +1,5 @@
 --!strict
--- Day/night clock of the company service (CM2-G12a, docs/plans/CM2-G12a.md): a mixin that
+-- Day/night clock of the company service (CM2-G12a, docs/archive/plans/CM2-G12a.md): a mixin that
 -- CompanyStateService installs. Each save keeps its own `dayCycle` (shared/DayCycle.lua,
 -- schema 20). It runs only while the save's session is healthy and not unloading, so there is
 -- no offline progress. A day rollover marks the session dirty without a revision; trusted

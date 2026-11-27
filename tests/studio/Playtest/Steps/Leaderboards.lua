@@ -1,5 +1,5 @@
 --!strict
--- Playtest steps 62-63 (full mode): leaderboards (CM2-G12b, docs/plans/CM2-G12b.md).
+-- Playtest steps 62-63 (full mode): leaderboards (CM2-G12b, docs/archive/plans/CM2-G12b.md).
 -- Installed by RunPlaytest.execute after Steps/DayNight. Step 62 forces a collect and flush
 -- into the `_Studio` ordered stores, checks the stored values against the save, the ledger and
 -- the playtime, the rate limit, and the published rows and "You" attributes after a refresh;

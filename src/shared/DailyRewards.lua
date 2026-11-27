@@ -1,5 +1,5 @@
 --!strict
--- Daily reward streak maths (CM2-G11, docs/plans/CM2-G11.md). Pure functions over the player
+-- Daily reward streak maths (CM2-G11, docs/archive/plans/CM2-G11.md). Pure functions over the player
 -- profile field `daily = { lastDay, streak }`; the server's UTC day decides the streak.
 local GameConfig = require(script.Parent.GameConfig)
 

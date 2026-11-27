@@ -1,5 +1,5 @@
 --!strict
--- Pure leaderboard view helpers (CM2-G12b, docs/plans/CM2-G12b.md): sanitizes the published
+-- Pure leaderboard view helpers (CM2-G12b, docs/archive/plans/CM2-G12b.md): sanitizes the published
 -- rows from `ReplicatedStorage.Leaderboards` and formats a board's value per board key.
 local GameConfig = require(script.Parent.GameConfig)
 local UiTheme = require(script.Parent.UiTheme)

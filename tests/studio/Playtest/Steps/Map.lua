@@ -1,5 +1,5 @@
 --!strict
--- Playtest steps 56-57 and 69 (full mode): the map in the world (CM2-10W, docs/plans/CM2-10W.md).
+-- Playtest steps 56-57 and 69 (full mode): the map in the world (CM2-10W, docs/archive/plans/CM2-10W.md).
 -- Installed by RunPlaytest.execute (CM2-RF) after Steps/Tutorial. Step 56 scans the built
 -- world; step 57 moves the reserve rows of the real plot through every lot expansion level.
 return function(ctx: any)

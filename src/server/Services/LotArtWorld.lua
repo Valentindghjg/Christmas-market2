@@ -1,5 +1,5 @@
 --!strict
--- Clones the CM2-13a HQ art and the CM2-13b lot props into a plot (CM2-13W, docs/plans/CM2-13W.md):
+-- Clones the CM2-13a HQ art and the CM2-13b lot props into a plot (CM2-13W, docs/archive/plans/CM2-13W.md):
 -- HQ, checkout counter, receiving bays, tree bundles and decorative fences, fronts facing the
 -- road. Every builder returns nil (or false) when the art is missing, so WorldService can build
 -- today's primitive. `ctx` comes from WorldService.

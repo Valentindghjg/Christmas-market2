@@ -1,5 +1,5 @@
 --!strict
--- Leaderboard screens on the village square (CM2-G12b, docs/plans/CM2-G12b.md). The server
+-- Leaderboard screens on the village square (CM2-G12b, docs/archive/plans/CM2-G12b.md). The server
 -- publishes each board's top rows as JSON in `ReplicatedStorage.Leaderboards` and the viewer's
 -- value and rank as `Lb<Key>Value` / `Lb<Key>Rank`; this script only draws them on one
 -- SurfaceGui per board in PlayerGui, adorned to the board's `Screen` part.
