@@ -29,7 +29,6 @@ local ROW = UiKit.Colors.Row
 local GOLD = UiKit.Colors.Gold
 local SAND = UiKit.Colors.Sand
 
-local corner = UiKit.corner
 local textLabel = UiKit.label
 local textButton = UiKit.button
 
@@ -53,7 +52,7 @@ panel.BorderSizePixel = 0
 panel.Active = true
 panel.Visible = false
 panel.Parent = gui
-corner(panel, UiTheme.CornerRadius.Panel)
+UiKit.window(panel, { dim = true })
 UiKit.padding(panel, 12)
 
 local title = textLabel(panel, "Title", localized("finderTitle"), 22)
@@ -225,7 +224,7 @@ local function buildRow(index: number, listing)
 	row.BackgroundColor3 = ROW
 	row.BorderSizePixel = 0
 	row.Size = UDim2.new(1, -8, 0, LISTING_ROW_HEIGHT)
-	corner(row, 10)
+	UiKit.card(row)
 	local rowPadding = Instance.new("UIPadding")
 	rowPadding.PaddingTop = UDim.new(0, 6)
 	rowPadding.PaddingBottom = UDim.new(0, 6)
@@ -249,7 +248,7 @@ local function buildRow(index: number, listing)
 	join.AnchorPoint = Vector2.new(1, 0.5)
 	join.Position = UDim2.fromScale(1, 0.5)
 	join.Size = UDim2.new(0.3, 0, 0, BUTTON_HEIGHT)
-	join.Activated:Connect(function()
+	UiKit.onActivated(join, function()
 		if type(listing.saveId) == "string" then
 			act("Save.FinderJoin", { saveId = listing.saveId }, true)
 		end
@@ -297,23 +296,23 @@ close = function()
 end
 
 for size, button in pairs(sizeButtons) do
-	button.Activated:Connect(function()
+	UiKit.onActivated(button, function()
 		selectedSize = size
 		updateSizeButtons()
 	end)
 end
 updateSizeButtons()
 
-startListing.Activated:Connect(function()
+UiKit.onActivated(startListing, function()
 	act("Save.FinderStart", { size = selectedSize }, player:GetAttribute("CompanyReady") ~= true)
 end)
 
-stopListing.Activated:Connect(function()
+UiKit.onActivated(stopListing, function()
 	act("Save.FinderStop", {}, false)
 end)
 
-closeButton.Activated:Connect(close)
-finderButton.Activated:Connect(function()
+UiKit.onActivated(closeButton, close)
+UiKit.onActivated(finderButton, function()
 	if panel.Visible then
 		close()
 	else

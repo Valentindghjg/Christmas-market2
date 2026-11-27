@@ -35,7 +35,7 @@ local function chip(name: string, text: string, playerText: boolean): TextLabel
 	value.BackgroundColor3 = UiKit.Colors.Panel
 	value.BackgroundTransparency = 0.1
 	value.TextXAlignment = Enum.TextXAlignment.Center
-	UiKit.corner(value, UiTheme.CornerRadius.Row)
+	UiKit.card(value)
 	return value
 end
 -- CashLabel is named so playtests can compare the HUD cash with the server cash (CM2-S2).
@@ -206,7 +206,7 @@ player:GetAttributeChangedSignal("ActiveSaveId"):Connect(function()
 	refreshSummary()
 end)
 
-lotManagerButton.Activated:Connect(manager.toggle)
+UiKit.onActivated(lotManagerButton, manager.toggle)
 UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessedEvent: boolean)
 	if gameProcessedEvent then
 		return

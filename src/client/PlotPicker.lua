@@ -60,7 +60,7 @@ local function frame(name: string): Frame
 	value.Active = true
 	value.Visible = false
 	value.Parent = gui
-	UiKit.corner(value, UiTheme.CornerRadius.Panel)
+	UiKit.window(value)
 	return value
 end
 
@@ -167,7 +167,6 @@ local function redraw()
 		plotStatus.Text = localized("plotPickerOccupied")
 	end
 	chooseButton.Active = row.free
-	chooseButton.AutoButtonColor = row.free
 	chooseButton.BackgroundColor3 = if row.free then GOLD else DISABLED
 	gui:SetAttribute("SelectedPlotId", row.plotId)
 end
@@ -352,16 +351,16 @@ local function decline()
 	hideConfirm()
 end
 
-prevButton.Activated:Connect(function()
+UiKit.onActivated(prevButton, function()
 	browse(-1)
 end)
-nextButton.Activated:Connect(function()
+UiKit.onActivated(nextButton, function()
 	browse(1)
 end)
-chooseButton.Activated:Connect(choose)
-backButton.Activated:Connect(back)
-yesButton.Activated:Connect(accept)
-noButton.Activated:Connect(decline)
+UiKit.onActivated(chooseButton, choose)
+UiKit.onActivated(backButton, back)
+UiKit.onActivated(yesButton, accept)
+UiKit.onActivated(noButton, decline)
 
 -- CM2-G11: Save.Play activates the save before its response; the picker closes as soon as this
 -- save is ready (accept and plotTaken then return on state ~= current).

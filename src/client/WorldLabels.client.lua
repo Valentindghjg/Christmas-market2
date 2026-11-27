@@ -247,16 +247,18 @@ end)
 local gui = UiKit.screenGui("ChristmasMarketNotifications", 30)
 local toast = Instance.new("TextLabel")
 toast.Name = "Toast"
-toast.BackgroundColor3 = Color3.fromRGB(24, 74, 50)
+toast.BackgroundColor3 = UiKit.Colors.Toast
 toast.TextColor3 = UiKit.Colors.Cream
-toast.Font = Enum.Font.GothamBold
+toast.FontFace = UiTheme.fontFace("Body")
 toast.TextSize = UiTheme.TextSize.Body
 toast.TextWrapped = true
 toast.Visible = false
 toast.Parent = gui
-UiKit.corner(toast, UiTheme.CornerRadius.Row)
+UiKit.card(toast)
+local toastBox: UiTheme.Box = { x = 0, y = 0, w = 0, h = 0 }
 UiKit.onLayout(gui, function(m)
 	local box = UiTheme.hudLayout(m, 0).toast
+	toastBox = box
 	toast.Position = UDim2.fromOffset(box.x, box.y)
 	toast.Size = UDim2.fromOffset(box.w, box.h)
 end)
@@ -265,8 +267,14 @@ local shownAt = 0
 local function showToast(text: string)
 	toast.Text = text
 	toast.Visible = true
+	UiKit.animateToast(toast, toastBox, true)
 	local token = os.clock()
 	shownAt = token
+	task.delay(2.8, function()
+		if shownAt == token then
+			UiKit.animateToast(toast, toastBox, false)
+		end
+	end)
 	task.delay(3, function()
 		if shownAt == token then
 			toast.Visible = false

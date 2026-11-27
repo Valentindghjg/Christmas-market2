@@ -100,7 +100,7 @@ function EmployeesTab.create(page: ScrollingFrame, context: TabContext): TabHand
 		frame.BorderSizePixel = 0
 		frame.Visible = false
 		frame.Parent = page
-		UiKit.corner(frame, UiTheme.CornerRadius.Row)
+		UiKit.card(frame)
 		local textInset = BUTTON_WIDTH + 30
 
 		local name = UiKit.label(frame, "Name", localized("staff" .. role), UiTheme.TextSize.Body)
@@ -165,7 +165,6 @@ function EmployeesTab.create(page: ScrollingFrame, context: TabContext): TabHand
 
 	local function setButton(button: TextButton, text: string, enabled: boolean)
 		button.Text = text
-		button.AutoButtonColor = enabled
 		button.Active = enabled
 		button.BackgroundColor3 = if enabled then colors.Gold else colors.Disabled
 	end
@@ -284,11 +283,11 @@ function EmployeesTab.create(page: ScrollingFrame, context: TabContext): TabHand
 	end
 
 	for _, role in ipairs(ROLES) do
-		cards[role].button.Activated:Connect(function()
+		UiKit.onActivated(cards[role].button, function()
 			hire(role)
 		end)
 	end
-	moveButton.Activated:Connect(function()
+	UiKit.onActivated(moveButton, function()
 		local plotId = (Players.LocalPlayer :: Player):GetAttribute("PlotId")
 		if type(plotId) == "string" then
 			BreakAreaMode.start(plotId, context.request, context.refresh)

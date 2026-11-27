@@ -19,8 +19,8 @@ local BreakAreaMode = {}
 local player = Players.LocalPlayer :: Player
 
 local MODAL_ID = "BreakAreaMode"
-local VALID_COLOR = Color3.fromRGB(114, 172, 113)
-local INVALID_COLOR = Color3.fromRGB(196, 58, 52)
+local VALID_COLOR = UiKit.Colors.Valid
+local INVALID_COLOR = UiKit.Colors.Red
 local GHOST_SIZE = Vector3.new(8, 0.2, 8)
 local ROTATION_STEP = 90
 local PREVIEW_SECONDS = 0.25
@@ -176,7 +176,6 @@ end
 local function setButton(button: TextButton, text: string, enabled: boolean?)
 	button.Text = text
 	if enabled ~= nil then
-		button.AutoButtonColor = enabled
 		button.BackgroundColor3 = if enabled then UiKit.Colors.Gold else UiKit.Colors.Disabled
 	end
 end
@@ -267,7 +266,7 @@ local function buildBar(current: Session)
 	frame.BackgroundTransparency = 0.05
 	frame.Active = true
 	frame.Parent = gui
-	UiKit.corner(frame, UiTheme.CornerRadius.Panel)
+	UiKit.window(frame)
 	local header = UiKit.label(frame, "Header", "", UiTheme.TextSize.Body)
 	local reason = UiKit.label(frame, "Reason", "", UiTheme.TextSize.Small)
 	reason.TextColor3 = UiKit.Colors.Sand
@@ -286,7 +285,7 @@ local function buildBar(current: Session)
 	for _, id in ipairs(order) do
 		local color = if id == "Place" then UiKit.Colors.Gold else UiKit.Colors.Sand
 		local button = UiKit.button(frame, id, "", color, UiTheme.TextSize.Small)
-		button.Activated:Connect(actions[id])
+		UiKit.onActivated(button, actions[id])
 		current.buttons[id] = button
 	end
 	-- On PC the pointer stays put while the mouse is over the bar, so its buttons can be used.

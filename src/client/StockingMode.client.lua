@@ -21,8 +21,8 @@ local remote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("BusinessA
 local MODAL_ID = "Stocking"
 local PLACEMENT = GameConfig.Placement
 local GHOST_POOL = 10
-local VALID_COLOR = Color3.fromRGB(114, 172, 113)
-local INVALID_COLOR = Color3.fromRGB(196, 58, 52)
+local VALID_COLOR = UiKit.Colors.Valid
+local INVALID_COLOR = UiKit.Colors.Red
 local TREE_HEIGHT = 7 -- studs of needles at display scale 1.0
 local SIZE_SCALES = { Small = 0.6, Medium = 0.8, Large = 1.0 }
 local PREVIEW_SECONDS = 0.25
@@ -278,7 +278,6 @@ end
 local function setButton(button: TextButton, text: string, enabled: boolean?)
 	button.Text = text
 	if enabled ~= nil then
-		button.AutoButtonColor = enabled
 		button.BackgroundColor3 = if enabled then UiKit.Colors.Gold else UiKit.Colors.Disabled
 	end
 end
@@ -496,7 +495,7 @@ local function buildBar(current: Session)
 	frame.BackgroundColor3 = UiKit.Colors.Panel
 	frame.BackgroundTransparency = 0.05
 	frame.Parent = gui
-	UiKit.corner(frame, UiTheme.CornerRadius.Panel)
+	UiKit.window(frame)
 	local header = UiKit.label(frame, "Header", "", UiTheme.TextSize.Body)
 	local reason = UiKit.label(frame, "Reason", "", UiTheme.TextSize.Small)
 	reason.TextColor3 = UiKit.Colors.Sand
@@ -530,10 +529,7 @@ local function buildBar(current: Session)
 	for id, action in pairs(actions) do
 		local color = if id == "Place" then UiKit.Colors.Gold else UiKit.Colors.Sand
 		local button = UiKit.button(frame, id, "", color, UiTheme.TextSize.Small)
-		if id == "Gap" then
-			button.AutoButtonColor = false
-		end
-		button.Activated:Connect(action)
+		UiKit.onActivated(button, action)
 		current.buttons[id] = button
 	end
 	local function placeBox(item: GuiObject, box: UiTheme.Box)

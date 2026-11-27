@@ -61,7 +61,6 @@ local function setButton(button: TextButton, text: string, active: boolean)
 	button.Text = text
 	button.BackgroundColor3 = if active then GOLD else SAND
 	button.Active = active
-	button.AutoButtonColor = active
 end
 
 local function questText(row: any): string
@@ -109,7 +108,7 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 	panel.Active = true
 	panel.Visible = false
 	panel.Parent = gui
-	corner(panel, UiTheme.CornerRadius.Panel)
+	UiKit.window(panel)
 	UiKit.padding(panel, 12)
 
 	local title = textLabel(panel, "Title", localized("questsTitle"), 22)
@@ -216,7 +215,7 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 		frame.BorderSizePixel = 0
 		frame.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
 		frame.Parent = list
-		corner(frame, UiTheme.CornerRadius.Row)
+		UiKit.card(frame)
 		local rowPadding = Instance.new("UIPadding")
 		rowPadding.PaddingTop = UDim.new(0, 6)
 		rowPadding.PaddingBottom = UDim.new(0, 6)
@@ -407,13 +406,13 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 	end
 
 	for slot, view in ipairs(questRows) do
-		view.claim.Activated:Connect(function()
+		UiKit.onActivated(view.claim, function()
 			claimQuest(slot)
 		end)
 	end
-	dailyButton.Activated:Connect(claimDaily)
+	UiKit.onActivated(dailyButton, claimDaily)
 
-	groupJoinButton.Activated:Connect(function()
+	UiKit.onActivated(groupJoinButton, function()
 		local ok, result = pcall(GroupService.PromptJoinAsync, GroupService, GameConfig.DailyRewards.GroupId)
 		if ok and result == Enum.GroupMembershipStatus.Joined then
 			status.Text = localized("dailyGroupJoined")
@@ -452,8 +451,8 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 		panel.Visible = false
 	end
 
-	closeButton.Activated:Connect(close)
-	railButton.Activated:Connect(function()
+	UiKit.onActivated(closeButton, close)
+	UiKit.onActivated(railButton, function()
 		if panel.Visible then
 			close()
 		else

@@ -27,7 +27,6 @@ local localized = UiKit.localized
 local localizedFormat = UiKit.localizedFormat
 local textLabel = UiKit.label
 local textButton = UiKit.button
-local corner = UiKit.corner
 
 local PANEL = UiKit.Colors.Panel
 local ROW = UiKit.Colors.Row
@@ -99,7 +98,7 @@ function AdventPanel.new(context: LotManager.TabContext): Panel
 	panel.Active = true
 	panel.Visible = false
 	panel.Parent = gui
-	corner(panel, UiTheme.CornerRadius.Panel)
+	UiKit.window(panel)
 	UiKit.padding(panel, 12)
 
 	local title = textLabel(panel, "Title", localized("adventTitle"), 22)
@@ -152,11 +151,7 @@ function AdventPanel.new(context: LotManager.TabContext): Panel
 		local button = textButton(list, "Door_" .. door, "", ROW, UiTheme.TextSize.Small)
 		button.LayoutOrder = door
 		if SPECIAL_DOORS[door] then
-			local stroke = Instance.new("UIStroke")
-			stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-			stroke.Color = GOLD
-			stroke.Thickness = 2
-			stroke.Parent = button
+			UiKit.setOutlineColor(button, GOLD)
 		end
 		doors[door] = button
 	end
@@ -190,7 +185,6 @@ function AdventPanel.new(context: LotManager.TabContext): Panel
 			button.BackgroundColor3 = color
 			button.TextColor3 = if color == ROW then CREAM else DARK
 			button.Active = active
-			button.AutoButtonColor = active
 		end
 	end
 
@@ -222,7 +216,7 @@ function AdventPanel.new(context: LotManager.TabContext): Panel
 	end
 
 	for door, button in ipairs(doors) do
-		button.Activated:Connect(function()
+		UiKit.onActivated(button, function()
 			openDoor(door)
 		end)
 	end
@@ -243,8 +237,8 @@ function AdventPanel.new(context: LotManager.TabContext): Panel
 		panel.Visible = false
 	end
 
-	closeButton.Activated:Connect(close)
-	railButton.Activated:Connect(function()
+	UiKit.onActivated(closeButton, close)
+	UiKit.onActivated(railButton, function()
 		if panel.Visible then
 			close()
 		else

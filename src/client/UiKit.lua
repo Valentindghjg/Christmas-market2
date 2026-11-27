@@ -5,10 +5,14 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Localization = require(Shared:WaitForChild("Localization"))
 local ModalCoordinator = require(Shared:WaitForChild("ModalCoordinator"))
+local UiStyle = require(Shared:WaitForChild("UiStyle"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
 
 local UiKit = {}
@@ -73,6 +77,295 @@ function UiKit.padding(parent: Instance, px: number): UIPadding
 	return value
 end
 
+-- Style kit (CM2-UI1) -------------------------------------------------------------------------
+
+-- One running tween per instance and key: a new tween replaces the old one.
+local running: { [Instance]: { [string]: Tween } } = setmetatable({}, { __mode = "k" }) :: any
+
+local function play(instance: Instance, key: string, info: TweenInfo, goal: { [string]: any }): Tween
+	local perInstance = running[instance]
+	if not perInstance then
+		perInstance = {}
+		running[instance] = perInstance
+	end
+	local previous = perInstance[key]
+	if previous then
+		previous:Cancel()
+	end
+	local tween = TweenService:Create(instance, info, goal)
+	perInstance[key] = tween
+	tween:Play()
+	return tween
+end
+
+local function tweenInfo(time: number, style: string, direction: string): TweenInfo
+	return TweenInfo.new(time, Enum.EasingStyle[style], Enum.EasingDirection[direction])
+end
+
+local function applyProps(instance: Instance, props: { [string]: any })
+	local loose = instance :: any
+	for key, value in pairs(props) do
+		if key == "CornerRadius" then
+			loose.CornerRadius = UDim.new(0, value)
+		elseif key == "ApplyStrokeMode" then
+			loose.ApplyStrokeMode = Enum.ApplyStrokeMode[value]
+		elseif key == "Color" then
+			loose.Color = colors[value]
+		elseif key == "Top" then
+			-- UIGradient tints text: a grey multiplier, white at the top.
+			local top = value
+			local bottom = props.Bottom or 1
+			loose.Color = ColorSequence.new(Color3.new(top, top, top), Color3.new(bottom, bottom, bottom))
+		elseif key ~= "Bottom" then
+			loose[key] = value
+		end
+	end
+end
+
+-- Adds the kit decorations to target; reuses a child of the same class and name, and destroys an
+-- unnamed UICorner first.
+function UiKit.decorate(target: GuiObject, kind: UiStyle.Kind)
+	for _, child in ipairs(target:GetChildren()) do
+		if child:IsA("UICorner") and child.Name == "UICorner" then
+			child:Destroy()
+		end
+	end
+	for _, spec in ipairs(UiStyle.decorations(kind)) do
+		local existing = target:FindFirstChild(spec.name)
+		local instance: Instance
+		if existing and existing.ClassName == spec.className then
+			instance = existing
+		else
+			instance = Instance.new(spec.className)
+			instance.Name = spec.name
+		end
+		applyProps(instance, spec.props)
+		instance.Parent = target
+	end
+end
+
+-- Buttons whose Activated handlers the Studio hook can call (weak keys).
+local handlers: { [GuiButton]: { (...any) -> () } } = setmetatable({}, { __mode = "k" }) :: any
+-- Hover state per button, so a release returns to hover or idle.
+local hovering: { [GuiButton]: boolean } = setmetatable({}, { __mode = "k" }) :: any
+
+local function ensureClickSound(): Sound
+	local existing = SoundService:FindFirstChild("UiClick")
+	if existing and existing:IsA("Sound") then
+		return existing
+	end
+	local sound = Instance.new("Sound")
+	sound.Name = "UiClick"
+	sound.SoundId = UiTheme.ClickSound.id
+	sound.Volume = UiTheme.ClickSound.volume
+	sound.Parent = SoundService
+	return sound
+end
+local clickSound = ensureClickSound()
+
+local function applyInteraction(button: GuiButton, state: string)
+	local press = button:FindFirstChild("Press")
+	if not (press and press:IsA("UIScale")) then
+		return
+	end
+	local spec = UiStyle.interaction(state, hovering[button])
+	play(press, "Scale", tweenInfo(spec.time, spec.style, spec.direction), { Scale = spec.scale })
+end
+
+local function bindInteraction(button: GuiButton)
+	button.InputBegan:Connect(function(input: InputObject)
+		if not button.Active then
+			return
+		end
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			hovering[button] = true
+			applyInteraction(button, "hover")
+		elseif input.UserInputType == Enum.UserInputType.MouseButton1 then
+			applyInteraction(button, "press")
+		elseif input.UserInputType == Enum.UserInputType.Touch then
+			applyInteraction(button, "touchPress")
+		end
+	end)
+	button.InputEnded:Connect(function(input: InputObject)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			hovering[button] = false
+			if button.Active then
+				applyInteraction(button, "idle")
+			end
+		elseif
+			input.UserInputType == Enum.UserInputType.MouseButton1
+			or input.UserInputType == Enum.UserInputType.Touch
+		then
+			if button.Active then
+				applyInteraction(button, "release")
+			end
+		end
+	end)
+end
+
+-- Connects handler to Activated (click sound first) and registers it for the Studio hook.
+function UiKit.onActivated(button: GuiButton, handler: (...any) -> ()): RBXScriptConnection
+	local list = handlers[button]
+	if not list then
+		list = {}
+		handlers[button] = list
+	end
+	table.insert(list, handler)
+	return button.Activated:Connect(function(...)
+		clickSound:Play()
+		handler(...)
+	end)
+end
+
+-- Selected tabs and mode buttons: a thicker Cream outline.
+function UiKit.setSelected(button: GuiButton, selected: boolean)
+	local stroke = button:FindFirstChild("Outline")
+	if stroke and stroke:IsA("UIStroke") then
+		stroke.Thickness = if selected then UiTheme.Style.StrokeSelected else UiTheme.Style.StrokeControl
+		stroke.Color = if selected then colors.Cream else colors.Outline
+	end
+end
+
+function UiKit.setOutlineColor(button: GuiButton, color: Color3)
+	local stroke = button:FindFirstChild("Outline")
+	if stroke and stroke:IsA("UIStroke") then
+		stroke.Color = color
+	end
+end
+
+function UiKit.card(frame: GuiObject)
+	UiKit.decorate(frame, "card")
+end
+
+-- A drop shadow or dim layer behind a window.
+local function backdrop(parent: Instance, name: string, zIndex: number, transparency: number): Frame
+	local value = Instance.new("Frame")
+	value.Name = name
+	value.BackgroundColor3 = colors.Shadow
+	value.BackgroundTransparency = transparency
+	value.BorderSizePixel = 0
+	value.Active = false
+	value.ZIndex = zIndex
+	value.Visible = false
+	value.Parent = parent
+	return value
+end
+
+-- Window chrome: kit decorations, a shadow (and optionally a dim layer) that follows the frame's
+-- Visible, and the open motion. The frame itself hides at once.
+function UiKit.window(frame: Frame, options: { dim: boolean? }?)
+	UiKit.decorate(frame, "window")
+	local open = frame:FindFirstChild("Open") :: UIScale
+	local parent = frame.Parent :: Instance
+	local style = UiTheme.Style
+	local motion = UiTheme.Motion
+
+	local dimmed = options ~= nil and options.dim == true
+	if dimmed then
+		frame.ZIndex = math.max(frame.ZIndex, 3)
+	end
+	local shadow = backdrop(parent, frame.Name .. "Shadow", frame.ZIndex - 1, style.ShadowTransparency)
+	UiKit.corner(shadow, UiTheme.CornerRadius.Panel)
+	local dim: Frame? = nil
+	if dimmed then
+		local layer = backdrop(parent, frame.Name .. "Dim", frame.ZIndex - 2, style.DimTransparency)
+		layer.Size = UDim2.fromScale(1, 1)
+		dim = layer
+	end
+
+	local function mirror()
+		local position = frame.Position
+		shadow.AnchorPoint = frame.AnchorPoint
+		shadow.Size = frame.Size
+		shadow.Position = UDim2.new(
+			position.X.Scale,
+			position.X.Offset + style.ShadowOffset,
+			position.Y.Scale,
+			position.Y.Offset + style.ShadowOffset
+		)
+	end
+	mirror()
+	frame:GetPropertyChangedSignal("AnchorPoint"):Connect(mirror)
+	frame:GetPropertyChangedSignal("Size"):Connect(mirror)
+	frame:GetPropertyChangedSignal("Position"):Connect(mirror)
+
+	local layers: { { layer: Frame, shown: number } } = { { layer = shadow, shown = style.ShadowTransparency } }
+	if dim then
+		table.insert(layers, { layer = dim, shown = style.DimTransparency })
+	end
+
+	local function show(animate: boolean)
+		for _, item in ipairs(layers) do
+			item.layer.Visible = true
+			if animate then
+				item.layer.BackgroundTransparency = 1
+				play(
+					item.layer,
+					"Fade",
+					tweenInfo(motion.openTime, "Quad", "Out"),
+					{ BackgroundTransparency = item.shown }
+				)
+			else
+				item.layer.BackgroundTransparency = item.shown
+			end
+		end
+		if animate then
+			open.Scale = motion.openScale
+			play(open, "Scale", tweenInfo(motion.openTime, "Quad", "Out"), { Scale = 1 })
+		else
+			open.Scale = 1
+		end
+	end
+
+	local function hide()
+		for _, item in ipairs(layers) do
+			local layer = item.layer
+			local tween =
+				play(layer, "Fade", tweenInfo(motion.closeTime, "Quad", "Out"), { BackgroundTransparency = 1 })
+			tween.Completed:Connect(function(status: Enum.PlaybackState)
+				if status == Enum.PlaybackState.Completed and not frame.Visible then
+					layer.Visible = false
+				end
+			end)
+		end
+	end
+
+	if frame.Visible then
+		show(false)
+	end
+	frame:GetPropertyChangedSignal("Visible"):Connect(function()
+		if frame.Visible then
+			show(true)
+		else
+			hide()
+		end
+	end)
+	frame.Destroying:Connect(function()
+		shadow:Destroy()
+		if dim then
+			dim:Destroy()
+		end
+	end)
+end
+
+-- Toast: slides in 12 px and fades; the caller owns Visible.
+function UiKit.animateToast(toast: TextLabel, box: UiTheme.Box, shown: boolean)
+	local motion = UiTheme.Motion
+	local info = tweenInfo(motion.toastTime, "Quad", "Out")
+	if shown then
+		toast.Position = UDim2.fromOffset(box.x, box.y - motion.toastSlide)
+		toast.BackgroundTransparency = 1
+		toast.TextTransparency = 1
+		play(toast, "Toast", info, {
+			Position = UDim2.fromOffset(box.x, box.y),
+			BackgroundTransparency = 0,
+			TextTransparency = 0,
+		})
+	else
+		play(toast, "Toast", info, { BackgroundTransparency = 1, TextTransparency = 1 })
+	end
+end
+
 -- playerText marks save names, usernames, codes and typed text: never auto-translated.
 function UiKit.label(parent: Instance, name: string, text: string, textSize: number, playerText: boolean?): TextLabel
 	local value = Instance.new("TextLabel")
@@ -80,10 +373,20 @@ function UiKit.label(parent: Instance, name: string, text: string, textSize: num
 	value.BackgroundTransparency = 1
 	value.Text = text
 	value.TextColor3 = colors.Cream
-	value.Font = Enum.Font.GothamBold
 	value.TextSize = textSize
 	value.TextXAlignment = Enum.TextXAlignment.Left
 	value.TextTruncate = Enum.TextTruncate.AtEnd
+	if textSize >= UiTheme.TextSize.Title then
+		value.FontFace = UiTheme.fontFace("Title")
+		local stroke = Instance.new("UIStroke")
+		stroke.Name = "TitleOutline"
+		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+		stroke.Color = colors.Outline
+		stroke.Thickness = UiTheme.Style.StrokeTitle
+		stroke.Parent = value
+	else
+		value.FontFace = UiTheme.fontFace("Body")
+	end
 	if playerText == true then
 		value.AutoLocalize = false
 	end
@@ -96,12 +399,14 @@ function UiKit.button(parent: Instance, name: string, text: string, color: Color
 	value.Name = name
 	value.BackgroundColor3 = color
 	value.TextColor3 = colors.DarkText
-	value.Font = Enum.Font.GothamBold
+	value.FontFace = UiTheme.fontFace("Body")
 	value.TextSize = textSize or UiTheme.TextSize.Body
 	value.TextWrapped = true
+	value.AutoButtonColor = false
 	value.Text = text
 	value.Parent = parent
-	UiKit.corner(value, UiTheme.CornerRadius.Button)
+	UiKit.decorate(value, "button")
+	bindInteraction(value)
 	return value
 end
 
@@ -112,20 +417,83 @@ function UiKit.textBox(parent: Instance, name: string, placeholder: string): Tex
 	value.TextColor3 = colors.DarkText
 	value.PlaceholderText = placeholder
 	value.PlaceholderColor3 = colors.Placeholder
-	value.Font = Enum.Font.Gotham
-	value.TextSize = 16
+	value.FontFace = UiTheme.fontFace("Light")
+	value.TextSize = UiTheme.TextSize.Input
 	value.Text = ""
 	value.ClearTextOnFocus = false
 	value.TextXAlignment = Enum.TextXAlignment.Left
 	-- Typed names and codes are player text, never auto-translated.
 	value.AutoLocalize = false
 	value.Parent = parent
-	UiKit.corner(value, UiTheme.CornerRadius.Button)
+	UiKit.decorate(value, "card")
 	local inset = Instance.new("UIPadding")
 	inset.PaddingLeft = UDim.new(0, 8)
 	inset.PaddingRight = UDim.new(0, 8)
 	inset.Parent = value
 	return value
+end
+
+-- Studio hook (CM2-UI1): the playtester presses buttons and sets interaction states without a
+-- mouse. Only in Studio; "press" runs the registered Activated handlers.
+local function resolve(path: string): Instance?
+	local current: Instance? = (Players.LocalPlayer :: Player):FindFirstChild("PlayerGui")
+	for segment in string.gmatch(path, "[^/]+") do
+		if not current then
+			return nil
+		end
+		current = current:FindFirstChild(segment)
+	end
+	return current
+end
+
+local function isHidden(instance: Instance): boolean
+	local current: Instance? = instance
+	while current do
+		if current:IsA("GuiObject") and not current.Visible then
+			return true
+		end
+		if current:IsA("ScreenGui") and not current.Enabled then
+			return true
+		end
+		current = current.Parent
+	end
+	return false
+end
+
+local function studioHook(action: string, path: string, state: string?): { [string]: any }
+	local target = resolve(path)
+	if not (target and target:IsA("GuiObject")) then
+		return { ok = false, error = "NotFound" }
+	end
+	if action == "press" then
+		if isHidden(target) then
+			return { ok = false, error = "Hidden" }
+		end
+		local list = if target:IsA("GuiButton") then handlers[target] else nil
+		if not list or #list == 0 then
+			return { ok = false, error = "NoHandler" }
+		end
+		for _, handler in ipairs(list) do
+			pcall(handler)
+		end
+		return { ok = true, handlers = #list }
+	elseif action == "interact" and target:IsA("GuiButton") and type(state) == "string" then
+		if state == "hover" then
+			hovering[target] = true
+		elseif state == "idle" then
+			hovering[target] = false
+		end
+		applyInteraction(target, state)
+		return { ok = true }
+	end
+	return { ok = false, error = "NotFound" }
+end
+
+if RunService:IsStudio() and Players.LocalPlayer then
+	local hook = Instance.new("BindableFunction")
+	hook.Name = "StudioUiHook"
+	hook.OnInvoke = studioHook
+	hook.Parent = Players.LocalPlayer
 end
 
 -- CM2-UVF4: a dialog's status line is the first, wrapped, auto-sized entry of its list (hidden

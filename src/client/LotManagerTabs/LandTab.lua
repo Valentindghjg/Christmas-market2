@@ -100,7 +100,7 @@ function LandTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 		frame.BorderSizePixel = 0
 		frame.Visible = false
 		frame.Parent = page
-		UiKit.corner(frame, UiTheme.CornerRadius.Row)
+		UiKit.card(frame)
 		local textInset = if withButton then BUTTON_WIDTH + 30 else 20
 		local cardTitle = UiKit.label(frame, "Title", localized(titleKey), UiTheme.TextSize.Body)
 		placeWide(cardTitle, 10, 8, textInset, 20)
@@ -194,7 +194,6 @@ function LandTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 
 	local function setButton(button: TextButton, label: string, enabled: boolean)
 		button.Text = label
-		button.AutoButtonColor = enabled
 		button.Active = enabled
 		button.BackgroundColor3 = if enabled then colors.Gold else colors.Disabled
 	end
@@ -316,7 +315,7 @@ function LandTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 	for _, spec in ipairs(SPECS) do
 		local button = cards[spec.kind].button
 		if button ~= nil then
-			button.Activated:Connect(function()
+			UiKit.onActivated(button, function()
 				buy(spec)
 			end)
 		end

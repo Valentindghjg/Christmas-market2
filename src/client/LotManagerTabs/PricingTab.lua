@@ -139,7 +139,7 @@ function PricingTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 		frame.BorderSizePixel = 0
 		frame.Visible = false
 		frame.Parent = page
-		UiKit.corner(frame, 10)
+		UiKit.card(frame)
 
 		local nameLabel = UiKit.label(frame, "Name", "", 15)
 		place(nameLabel, 10, 6, 304, 20)
@@ -163,7 +163,7 @@ function PricingTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 			place(stepButton, spec.x, 128, 56, 44)
 			table.insert(stepButtons, { button = stepButton, x = spec.x })
 			local delta = spec.delta
-			stepButton.Activated:Connect(function()
+			UiKit.onActivated(stepButton, function()
 				step(speciesId, delta)
 			end)
 		end
@@ -203,7 +203,7 @@ function PricingTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 		applyLayout(UiTheme.metrics(1920, 1080))
 	end
 
-	autoButton.Activated:Connect(function()
+	UiKit.onActivated(autoButton, function()
 		local pricing = lastPricing
 		if autoBusy or type(pricing) ~= "table" then
 			return

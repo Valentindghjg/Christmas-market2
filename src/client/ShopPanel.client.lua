@@ -25,7 +25,6 @@ local ROW = UiKit.Colors.Row
 local GOLD = UiKit.Colors.Gold
 local SAND = UiKit.Colors.Sand
 
-local corner = UiKit.corner
 local textLabel = UiKit.label
 local textButton = UiKit.button
 
@@ -49,7 +48,7 @@ panel.BorderSizePixel = 0
 panel.Active = true
 panel.Visible = false
 panel.Parent = gui
-corner(panel, UiTheme.CornerRadius.Panel)
+UiKit.window(panel)
 UiKit.padding(panel, 12)
 
 local title = textLabel(panel, "Title", localized("shopTitle"), 22)
@@ -167,7 +166,7 @@ local function buildRow(index: number, entry: any, product: ShopConfig.Product)
 	row.BackgroundColor3 = ROW
 	row.BorderSizePixel = 0
 	row.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
-	corner(row, 10)
+	UiKit.card(row)
 	local rowPadding = Instance.new("UIPadding")
 	rowPadding.PaddingTop = UDim.new(0, 6)
 	rowPadding.PaddingBottom = UDim.new(0, 6)
@@ -198,12 +197,11 @@ local function buildRow(index: number, entry: any, product: ShopConfig.Product)
 	action.Position = UDim2.fromScale(1, 0.5)
 	action.Size = UDim2.fromOffset(140, BUTTON_HEIGHT)
 	if state == "Buy" then
-		action.Activated:Connect(function()
+		UiKit.onActivated(action, function()
 			buy(product.key)
 		end)
 	else
 		action.Active = false
-		action.AutoButtonColor = false
 	end
 
 	row.Parent = productList
@@ -308,14 +306,14 @@ close = function()
 end
 
 for id, button in pairs(categoryButtons) do
-	button.Activated:Connect(function()
+	UiKit.onActivated(button, function()
 		selected = id
 		render()
 	end)
 end
 
-closeButton.Activated:Connect(close)
-shopButton.Activated:Connect(function()
+UiKit.onActivated(closeButton, close)
+UiKit.onActivated(shopButton, function()
 	if panel.Visible then
 		close()
 	else

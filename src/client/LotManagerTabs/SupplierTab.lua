@@ -97,26 +97,18 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 
 	local function setEnabled(button: TextButton, enabled: boolean)
 		enabledState[button] = enabled
-		button.AutoButtonColor = enabled
 		button.TextTransparency = if enabled then 0 else DISABLED_TRANSPARENCY
 	end
 	local function isEnabled(button: TextButton): boolean
 		return enabledState[button] == true
 	end
 
-	local function modeButton(name: string, text: string): (TextButton, UIStroke)
-		local button = UiKit.button(page, name, text, colors.Sand, 13)
-		-- The outline marks the active view, so it is not shown by colour alone.
-		local stroke = Instance.new("UIStroke")
-		stroke.Name = "Selected"
-		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		stroke.Thickness = 3
-		stroke.Color = colors.Cream
-		stroke.Parent = button
-		return button, stroke
+	-- The outline marks the active view (UiKit.setSelected), so it is not shown by colour alone.
+	local function modeButton(name: string, text: string): TextButton
+		return UiKit.button(page, name, text, colors.Sand, 13)
 	end
-	local modeBuy, modeBuyStroke = modeButton("ModeBuy", localized("supplierModeBuy"))
-	local modeSell, modeSellStroke = modeButton("ModeSell", localizedFormat("supplierModeSell", sellBackPercent()))
+	local modeBuy = modeButton("ModeBuy", localized("supplierModeBuy"))
+	local modeSell = modeButton("ModeSell", localizedFormat("supplierModeSell", sellBackPercent()))
 	local refreshLabel = UiKit.label(page, "RefreshLabel", "", 13)
 	refreshLabel.TextXAlignment = Enum.TextXAlignment.Right
 
@@ -348,9 +340,9 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	local function renderView()
 		local buy = mode == "Buy"
 		modeBuy.BackgroundColor3 = if buy then colors.Gold else colors.Sand
-		modeBuyStroke.Enabled = buy
+		UiKit.setSelected(modeBuy, buy)
 		modeSell.BackgroundColor3 = if buy then colors.Sand else colors.Gold
-		modeSellStroke.Enabled = not buy
+		UiKit.setSelected(modeSell, not buy)
 		orderButton.Visible = buy
 		clearButton.Visible = buy
 		recommendButton.Visible = buy
@@ -462,20 +454,20 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 			renderView()
 		end
 	end
-	modeBuy.Activated:Connect(function()
+	UiKit.onActivated(modeBuy, function()
 		setMode("Buy")
 	end)
-	modeSell.Activated:Connect(function()
+	UiKit.onActivated(modeSell, function()
 		setMode("Sell")
 	end)
 
-	clearButton.Activated:Connect(function()
+	UiKit.onActivated(clearButton, function()
 		cart = {}
 		setCartCount()
 		renderView()
 	end)
 
-	recommendButton.Activated:Connect(function()
+	UiKit.onActivated(recommendButton, function()
 		if not isEnabled(recommendButton) then
 			return
 		end
@@ -501,7 +493,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	end)
 
 	for _, row in ipairs(rows) do
-		row.minus.Activated:Connect(function()
+		UiKit.onActivated(row.minus, function()
 			if not isEnabled(row.minus) then
 				return
 			end
@@ -513,7 +505,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 				renderView()
 			end
 		end)
-		row.plus.Activated:Connect(function()
+		UiKit.onActivated(row.plus, function()
 			if not isEnabled(row.plus) then
 				return
 			end
@@ -529,7 +521,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 				renderView()
 			end
 		end)
-		row.max.Activated:Connect(function()
+		UiKit.onActivated(row.max, function()
 			if not isEnabled(row.max) then
 				return
 			end
@@ -544,7 +536,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 				renderView()
 			end
 		end)
-		row.sell.Activated:Connect(function()
+		UiKit.onActivated(row.sell, function()
 			if mode ~= "Sell" or busy.sell or not isEnabled(row.sell) then
 				return
 			end
@@ -570,7 +562,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		end)
 	end
 
-	orderButton.Activated:Connect(function()
+	UiKit.onActivated(orderButton, function()
 		if busy.order then
 			return
 		end
@@ -580,7 +572,6 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 			return
 		end
 		busy.order = true
-		orderButton.AutoButtonColor = false
 		orderButton.Text = localized("ordering")
 		local response = context.request("Supplier.PlaceOrder", { lines = lines })
 		if response.ok then
@@ -592,7 +583,6 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 			setStatus(errorText(response.errorCode))
 		end
 		orderButton.Text = localized("placeOrder")
-		orderButton.AutoButtonColor = true
 		busy.order = false
 		renderView()
 	end)

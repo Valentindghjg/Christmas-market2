@@ -29,7 +29,6 @@ local localized = UiKit.localized
 local localizedFormat = UiKit.localizedFormat
 local textLabel = UiKit.label
 local textButton = UiKit.button
-local corner = UiKit.corner
 
 local PANEL = UiKit.Colors.Panel
 local ROW = UiKit.Colors.Row
@@ -74,7 +73,7 @@ function EventShopPanel.new(context: LotManager.TabContext): Panel
 	panel.Active = true
 	panel.Visible = false
 	panel.Parent = gui
-	corner(panel, UiTheme.CornerRadius.Panel)
+	UiKit.window(panel)
 	UiKit.padding(panel, 12)
 
 	local title = textLabel(panel, "Title", "", 22)
@@ -173,7 +172,7 @@ function EventShopPanel.new(context: LotManager.TabContext): Panel
 		row.BackgroundColor3 = ROW
 		row.BorderSizePixel = 0
 		row.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
-		corner(row, 10)
+		UiKit.card(row)
 		local rowPadding = Instance.new("UIPadding")
 		rowPadding.PaddingTop = UDim.new(0, 6)
 		rowPadding.PaddingBottom = UDim.new(0, 6)
@@ -214,9 +213,8 @@ function EventShopPanel.new(context: LotManager.TabContext): Panel
 		button.Position = UDim2.fromScale(1, 0.5)
 		button.Size = UDim2.fromOffset(BUY_WIDTH, BUTTON_HEIGHT)
 		button.Active = active
-		button.AutoButtonColor = active
 		if isCash then
-			button.Activated:Connect(function()
+			UiKit.onActivated(button, function()
 				if button.Active then
 					buy(key)
 				end
@@ -296,8 +294,8 @@ function EventShopPanel.new(context: LotManager.TabContext): Panel
 		panel.Visible = false
 	end
 
-	closeButton.Activated:Connect(close)
-	railButton.Activated:Connect(function()
+	UiKit.onActivated(closeButton, close)
+	UiKit.onActivated(railButton, function()
 		if panel.Visible then
 			close()
 		else

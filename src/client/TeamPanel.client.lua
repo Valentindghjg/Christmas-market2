@@ -27,7 +27,6 @@ local GOLD = UiKit.Colors.Gold
 local SAND = UiKit.Colors.Sand
 local RED = UiKit.Colors.Red
 
-local corner = UiKit.corner
 local textLabel = UiKit.label
 local textButton = UiKit.button
 
@@ -46,7 +45,7 @@ panel.BorderSizePixel = 0
 panel.Active = true
 panel.Visible = false
 panel.Parent = gui
-corner(panel, UiTheme.CornerRadius.Panel)
+UiKit.window(panel)
 UiKit.padding(panel, 12)
 
 local title = textLabel(panel, "Title", localized("teamTitle"), 22)
@@ -199,7 +198,7 @@ local function buildRow(index: number, member, viewerIsOwner: boolean)
 	row.BackgroundColor3 = ROW
 	row.BorderSizePixel = 0
 	row.Size = UDim2.new(1, -8, 0, MEMBER_ROW_HEIGHT)
-	corner(row, 10)
+	UiKit.card(row)
 	local rowPadding = Instance.new("UIPadding")
 	rowPadding.PaddingTop = UDim.new(0, 4)
 	rowPadding.PaddingBottom = UDim.new(0, 4)
@@ -228,7 +227,7 @@ local function buildRow(index: number, member, viewerIsOwner: boolean)
 		remove.AnchorPoint = Vector2.new(1, 0.5)
 		remove.Position = UDim2.fromScale(1, 0.5)
 		remove.Size = UDim2.new(0.38, 0, 0, BUTTON_HEIGHT)
-		remove.Activated:Connect(function()
+		UiKit.onActivated(remove, function()
 			if removeArmed ~= member.userId then
 				removeArmed = member.userId
 				render(team)
@@ -292,16 +291,16 @@ close = function()
 end
 
 for size, button in pairs(sizeButtons) do
-	button.Activated:Connect(function()
+	UiKit.onActivated(button, function()
 		act("Save.SetSize", { size = size })
 	end)
 end
 
-newCode.Activated:Connect(function()
+UiKit.onActivated(newCode, function()
 	act("Save.RegenerateCode", {})
 end)
 
-leaveTeam.Activated:Connect(function()
+UiKit.onActivated(leaveTeam, function()
 	if team == nil or type(team.saveId) ~= "string" then
 		return
 	end
@@ -314,8 +313,8 @@ leaveTeam.Activated:Connect(function()
 	act("Save.LeaveTeam", { saveId = team.saveId })
 end)
 
-closeButton.Activated:Connect(close)
-teamButton.Activated:Connect(function()
+UiKit.onActivated(closeButton, close)
+UiKit.onActivated(teamButton, function()
 	if panel.Visible then
 		close()
 	else

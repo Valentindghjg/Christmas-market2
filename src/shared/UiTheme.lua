@@ -164,12 +164,56 @@ UiTheme.Colors = {
 	Red = { 196, 58, 52 },
 	Disabled = { 120, 120, 120 },
 	Placeholder = { 120, 110, 90 },
+	Outline = { 22, 48, 34 },
+	Shadow = { 0, 0, 0 },
+	Toast = { 24, 74, 50 },
+	Valid = { 114, 172, 113 },
 } :: { [string]: { number } }
 
-UiTheme.Fonts = { Bold = "GothamBold", Regular = "Gotham" }
-UiTheme.TextSize = { Title = 22, Body = 15, Small = 13, Chip = 16 }
+-- CM2-UI1: one family, weights by role (PROVISIONAL look values except those named in 22a).
+UiTheme.Fonts = {
+	Family = "rbxasset://fonts/families/Nunito.json",
+	Weights = { Title = "Heavy", Body = "Bold", Light = "SemiBold" },
+}
+UiTheme.TextSize = { Title = 22, Body = 15, Small = 13, Chip = 16, Input = 16, Arrow = 36, WorldArrow = 40 }
 UiTheme.MinTouch = 44
-UiTheme.CornerRadius = { Button = 8, Row = 10, Panel = 14 }
+UiTheme.CornerRadius = { Button = 8, Row = 10, Panel = 12 }
+
+-- CM2-UI1 kit tokens (PROVISIONAL): strokes in px, transparencies 0..1.
+UiTheme.Style = {
+	StrokeControl = 2,
+	StrokeSelected = 3,
+	StrokeCard = 1,
+	StrokeTitle = 1.5,
+	StrokeTransparency = 0.15,
+	GradientBottom = 0.92,
+	ShadowOffset = 4,
+	ShadowTransparency = 0.7,
+	DimTransparency = 0.45,
+}
+
+-- Times in seconds, scales as UIScale values.
+UiTheme.Motion = {
+	hoverScale = 1.05,
+	hoverTime = 0.15,
+	pressScale = 0.95,
+	pressTime = 0.08,
+	releaseTime = 0.15,
+	openScale = 0.95,
+	openTime = 0.18,
+	closeTime = 0.12,
+	toastTime = 0.2,
+	toastSlide = 12,
+	tabTime = 0.2,
+	indicatorHeight = 4,
+}
+
+-- Engine content on every client: no asset ID, upload or licence (CM2-UI1 deviation from 22a (b)).
+UiTheme.ClickSound = { id = "rbxasset://sounds/volume_slider.ogg", volume = 0.5 }
+
+function UiTheme.fontFace(role: string): Font
+	return Font.new(UiTheme.Fonts.Family, Enum.FontWeight[UiTheme.Fonts.Weights[role]])
+end
 UiTheme.CompactHeight = 520
 UiTheme.CompactWidth = 720
 

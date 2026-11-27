@@ -119,6 +119,7 @@ local sourcePaths = {
 	TreeArt = "src/shared/TreeArt.lua",
 	TreeHeight = "src/shared/TreeHeight.lua",
 	Tutorial = "src/shared/Tutorial.lua",
+	UiStyle = "src/shared/UiStyle.lua",
 	UiTheme = "src/shared/UiTheme.lua",
 	VehicleArt = "src/shared/VehicleArt.lua",
 }

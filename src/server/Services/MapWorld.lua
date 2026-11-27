@@ -75,7 +75,7 @@ local function surfaceText(target: BasePart, guiName: string, textKey: string, c
 	label.Name = "Text"
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
-	label.Font = Enum.Font[UiTheme.Fonts.Bold]
+	label.FontFace = UiTheme.fontFace("Title")
 	label.TextColor3 = color
 	label.TextScaled = true
 	label.Text = Localization.get("en", textKey)

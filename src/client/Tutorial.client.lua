@@ -33,7 +33,7 @@ bar.BorderSizePixel = 0
 bar.Active = false
 bar.Visible = false
 bar.Parent = gui
-UiKit.corner(bar, UiTheme.CornerRadius.Row)
+UiKit.card(bar)
 
 local hintText = UiKit.label(bar, "HintText", "", BAR.textSize)
 hintText.TextWrapped = true
@@ -45,8 +45,8 @@ local arrow = Instance.new("TextLabel")
 arrow.Name = "TutorialArrow"
 arrow.Text = localized("tutorialArrow")
 arrow.TextColor3 = colors.Gold
-arrow.Font = Enum.Font.GothamBold
-arrow.TextSize = 36
+arrow.FontFace = UiTheme.fontFace("Title")
+arrow.TextSize = UiTheme.TextSize.Arrow
 arrow.Size = UDim2.fromOffset(BAR.arrowSize, BAR.arrowSize)
 arrow.BackgroundTransparency = 1
 arrow.Active = false
@@ -112,8 +112,8 @@ worldArrowText.Name = "Arrow"
 worldArrowText.Size = UDim2.fromScale(1, 1)
 worldArrowText.BackgroundTransparency = 1
 worldArrowText.Text = "▼"
-worldArrowText.Font = Enum.Font.GothamBold
-worldArrowText.TextSize = 40
+worldArrowText.FontFace = UiTheme.fontFace("Title")
+worldArrowText.TextSize = UiTheme.TextSize.WorldArrow
 worldArrowText.TextColor3 = colors.Gold
 worldArrowText.TextStrokeTransparency = 0
 worldArrowText.Parent = worldArrow
@@ -365,7 +365,7 @@ end
 
 -- Skip --------------------------------------------------------------------------------------
 
-skipButton.Activated:Connect(function()
+UiKit.onActivated(skipButton, function()
 	if sending then
 		return
 	end

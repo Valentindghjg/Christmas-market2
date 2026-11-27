@@ -36,7 +36,6 @@ local SAND = UiKit.Colors.Sand
 local RED = UiKit.Colors.Red
 local DISABLED = UiKit.Colors.Disabled
 
-local corner = UiKit.corner
 local textLabel = UiKit.label
 local textBox = UiKit.textBox
 
@@ -50,14 +49,15 @@ end
 local gui = UiKit.screenGui("SavePickerUI", 20)
 
 -- The size and position of every dialog frame come from UiKit.bindDialog.
-local function dialogFrame(name: string): Frame
+local function dialogFrame(name: string, dim: boolean?): Frame
 	local frame = Instance.new("Frame")
 	frame.Name = name
 	frame.BackgroundColor3 = PANEL
 	frame.BorderSizePixel = 0
 	frame.Active = true
+	frame.Visible = false
 	frame.Parent = gui
-	corner(frame, UiTheme.CornerRadius.Panel)
+	UiKit.window(frame, { dim = dim })
 	UiKit.padding(frame, 12)
 	return frame
 end
@@ -133,7 +133,7 @@ local function updateSizeButtons()
 end
 updateSizeButtons()
 for size, button in pairs(sizeButtons) do
-	button.Activated:Connect(function()
+	UiKit.onActivated(button, function()
 		selectedSize = size
 		updateSizeButtons()
 	end)
@@ -168,7 +168,7 @@ backToGame.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
 backToGame.Visible = false
 
 -- Delete confirmation, over the picker.
-local confirm = dialogFrame("DeleteConfirm")
+local confirm = dialogFrame("DeleteConfirm", true)
 confirm.ZIndex = 2
 confirm.Visible = false
 
@@ -244,7 +244,6 @@ local close: () -> ()
 local function updateConfirmButton()
 	local matches = deleteTarget ~= nil and SaveProfile.confirmMatches(deleteTarget.name, confirmName.Text)
 	confirmDelete.Active = matches
-	confirmDelete.AutoButtonColor = matches
 	confirmDelete.BackgroundColor3 = if matches then RED else DISABLED
 end
 confirmName:GetPropertyChangedSignal("Text"):Connect(updateConfirmButton)
@@ -355,7 +354,7 @@ local function buildRow(index: number, entry)
 	row.BackgroundColor3 = ROW
 	row.BorderSizePixel = 0
 	row.Size = UDim2.new(1, -8, 0, ROW_HEIGHT)
-	corner(row, 10)
+	UiKit.card(row)
 	local padding = Instance.new("UIPadding")
 	padding.PaddingTop = UDim.new(0, SAVE_ROW.padding)
 	padding.PaddingBottom = UDim.new(0, SAVE_ROW.padding)
@@ -422,7 +421,7 @@ local function buildRow(index: number, entry)
 
 	local elsewhere = entry.elsewhere == true
 	local playButton = rowButton("Play", localized(if elsewhere then "saveJoinServer" else "savePlay"), GOLD, 0)
-	playButton.Activated:Connect(function()
+	UiKit.onActivated(playButton, function()
 		if elsewhere then
 			teleportTo({ saveId = entry.saveId })
 		else
@@ -434,7 +433,7 @@ local function buildRow(index: number, entry)
 		-- Members cannot rename; they leave instead of deleting (two taps).
 		local armed = leaveArmedSaveId == entry.saveId
 		local leaveButton = rowButton("Leave", localized(if armed then "teamLeaveConfirm" else "saveLeave"), SAND, 2)
-		leaveButton.Activated:Connect(function()
+		UiKit.onActivated(leaveButton, function()
 			if leaveArmedSaveId ~= entry.saveId then
 				leaveArmedSaveId = entry.saveId
 				redrawRows()
@@ -450,7 +449,7 @@ local function buildRow(index: number, entry)
 	local renameButton = rowButton("Rename", localized(if renaming then "saveRenameConfirm" else "saveRename"), SAND, 1)
 	local deleteButton = rowButton("Delete", localized(if renaming then "saveCancel" else "saveDelete"), SAND, 2)
 
-	renameButton.Activated:Connect(function()
+	UiKit.onActivated(renameButton, function()
 		if renaming and nameBox then
 			rename(entry, nameBox)
 		else
@@ -458,7 +457,7 @@ local function buildRow(index: number, entry)
 			redrawRows()
 		end
 	end)
-	deleteButton.Activated:Connect(function()
+	UiKit.onActivated(deleteButton, function()
 		if renaming then
 			renamingSaveId = nil
 			redrawRows()
@@ -549,7 +548,7 @@ close = function()
 	savesButton.Visible = true
 end
 
-createSave.Activated:Connect(function()
+UiKit.onActivated(createSave, function()
 	local response = request("Save.Create", { name = newName.Text, size = selectedSize })
 	if response == nil then
 		return
@@ -566,7 +565,7 @@ createSave.Activated:Connect(function()
 end)
 
 -- Joins by code, then plays the joined save at once.
-joinSave.Activated:Connect(function()
+UiKit.onActivated(joinSave, function()
 	local code = string.gsub(joinCode.Text, "%s", "")
 	local response = request("Save.Join", { code = code })
 	if response == nil then
@@ -587,7 +586,7 @@ joinSave.Activated:Connect(function()
 	refreshList()
 end)
 
-confirmDelete.Activated:Connect(function()
+UiKit.onActivated(confirmDelete, function()
 	local target = deleteTarget
 	if target == nil or not SaveProfile.confirmMatches(target.name, confirmName.Text) then
 		return
@@ -605,12 +604,12 @@ confirmDelete.Activated:Connect(function()
 	refreshList()
 end)
 
-confirmCancel.Activated:Connect(closeDeleteConfirm)
-backToGame.Activated:Connect(close)
-savesButton.Activated:Connect(open)
+UiKit.onActivated(confirmCancel, closeDeleteConfirm)
+UiKit.onActivated(backToGame, close)
+UiKit.onActivated(savesButton, open)
 
 -- Opens the teammate finder; nothing happens while it is not built yet.
-findTeammates.Activated:Connect(function()
+UiKit.onActivated(findTeammates, function()
 	local finderGui = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("FinderUI")
 	local openEvent = finderGui and finderGui:FindFirstChild("Open")
 	if openEvent and openEvent:IsA("BindableEvent") then

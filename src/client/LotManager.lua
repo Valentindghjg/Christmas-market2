@@ -16,6 +16,7 @@
 --   the HUD poll. A missing module shows the "opens in a later update" placeholder; a module
 --   that fails to load or create shows the error text.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local UiKit = require(script.Parent:WaitForChild("UiKit") :: ModuleScript)
 local UiTheme = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("UiTheme") :: ModuleScript)
@@ -58,7 +59,7 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 	frame.Active = true
 	frame.Visible = false
 	frame.Parent = gui
-	UiKit.corner(frame, UiTheme.CornerRadius.Panel)
+	UiKit.window(frame)
 	local inset = UiKit.padding(frame, 12)
 
 	local title = UiKit.label(frame, "Title", UiKit.localized("lotManagerTitle"), UiTheme.TextSize.Title)
@@ -84,22 +85,23 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 	body.Parent = frame
 
 	local tabButtons: { [string]: TextButton } = {}
-	local tabStrokes: { [string]: UIStroke } = {}
 	local tabIndex: { [string]: number } = {}
 	for index, tab in ipairs(UiTheme.LotManagerTabs) do
 		local tabButton = UiKit.button(tabBar, "Tab_" .. tab.id, UiKit.localized(tab.labelKey), colors.Sand)
-		-- The outline marks the selection, so it is not shown by colour alone.
-		local stroke = Instance.new("UIStroke")
-		stroke.Name = "Selected"
-		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-		stroke.Thickness = 3
-		stroke.Color = colors.Cream
-		stroke.Enabled = false
-		stroke.Parent = tabButton
 		tabButtons[tab.id] = tabButton
-		tabStrokes[tab.id] = stroke
 		tabIndex[tab.id] = index
 	end
+
+	-- The outline and the indicator bar mark the selection, so it is not shown by colour alone.
+	local indicator = Instance.new("Frame")
+	indicator.Name = "Indicator"
+	indicator.BackgroundColor3 = colors.Cream
+	indicator.BorderSizePixel = 0
+	indicator.Active = false
+	indicator.ZIndex = 2
+	indicator.Size = UDim2.fromOffset(0, UiTheme.Motion.indicatorHeight)
+	indicator.Parent = tabBar
+	local indicatorTween: Tween? = nil
 
 	local selectedId: string = UiTheme.LotManagerTabs[1].id
 	local pages: { [string]: ScrollingFrame } = {}
@@ -136,12 +138,37 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 		end
 	end
 
-	local function updateTabs()
+	-- Puts the indicator under the selected tab: instantly on layout, with a tween on selection.
+	local function placeIndicator(animate: boolean)
+		local tabButton = tabButtons[selectedId]
+		local position =
+			UDim2.fromOffset(tabButton.Position.X.Offset + 6, tabButton.Position.Y.Offset + tabButton.Size.Y.Offset - 6)
+		local size = UDim2.fromOffset(math.max(0, tabButton.Size.X.Offset - 12), UiTheme.Motion.indicatorHeight)
+		if indicatorTween then
+			indicatorTween:Cancel()
+			indicatorTween = nil
+		end
+		if animate then
+			local tween = TweenService:Create(
+				indicator,
+				TweenInfo.new(UiTheme.Motion.tabTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+				{ Position = position, Size = size }
+			)
+			indicatorTween = tween
+			tween:Play()
+		else
+			indicator.Position = position
+			indicator.Size = size
+		end
+	end
+
+	local function updateTabs(animate: boolean?)
 		for tabId, tabButton in pairs(tabButtons) do
 			local selected = tabId == selectedId
 			tabButton.BackgroundColor3 = if selected then colors.Gold else colors.Sand
-			tabStrokes[tabId].Enabled = selected
+			UiKit.setSelected(tabButton, selected)
 		end
+		placeIndicator(animate == true)
 	end
 
 	local function message(page: ScrollingFrame, name: string, key: string)
@@ -200,7 +227,7 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 			callShown(selectedId, false)
 		end
 		selectedId = tabId
-		updateTabs()
+		updateTabs(true)
 		if not pages[tabId] then
 			buildPage(tab)
 		end
@@ -233,11 +260,11 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 	end
 
 	for tabId, tabButton in pairs(tabButtons) do
-		tabButton.Activated:Connect(function()
+		UiKit.onActivated(tabButton, function()
 			selectTab(tabId)
 		end)
 	end
-	closeButton.Activated:Connect(close)
+	UiKit.onActivated(closeButton, close)
 
 	local manager: Manager = {
 		open = open,
@@ -300,6 +327,7 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 			tabBar.CanvasSize = if layout.horizontal
 				then UDim2.fromOffset(canvasWidth, 0)
 				else UDim2.fromOffset(0, canvasHeight)
+			placeIndicator(false)
 			body.Position = UDim2.fromOffset(layout.body.x, layout.body.y)
 			body.Size = UDim2.fromOffset(layout.body.w, layout.body.h)
 		end,

@@ -82,7 +82,7 @@ local function buildSign(model: Model, face: Attachment)
 	label.Position = UDim2.fromOffset(padding, padding)
 	label.Size = UDim2.new(1, -2 * padding, 1, -2 * padding)
 	label.BackgroundTransparency = 1
-	label.Font = Enum.Font[UiTheme.Fonts.Bold]
+	label.FontFace = UiTheme.fontFace("Title")
 	label.TextColor3 = Color3.fromRGB(table.unpack(UiTheme.Colors.DarkText))
 	label.TextScaled = true
 	label.TextWrapped = false

@@ -250,7 +250,7 @@ local function billboard(
 	textLabel.BackgroundColor3 = Color3.fromRGB(table.unpack(UiTheme.Colors.Panel))
 	textLabel.BackgroundTransparency = 0.15
 	textLabel.TextColor3 = Color3.fromRGB(table.unpack(UiTheme.Colors.Cream))
-	textLabel.Font = Enum.Font[UiTheme.Fonts.Bold]
+	textLabel.FontFace = UiTheme.fontFace("Title")
 	textLabel.TextScaled = false
 	textLabel.TextSize = layout.textSize
 	textLabel.TextWrapped = layout.wrap
@@ -497,7 +497,7 @@ local function signLine(parent: Instance, name: string, top: number, bottom: num
 	label.BackgroundTransparency = 1
 	label.Position = UDim2.new(0, padding, top, 0)
 	label.Size = UDim2.new(1, -2 * padding, bottom - top, 0)
-	label.Font = Enum.Font[UiTheme.Fonts.Bold]
+	label.FontFace = UiTheme.fontFace("Title")
 	label.TextColor3 = uiColor(color)
 	label.Text = ""
 	label.Parent = parent

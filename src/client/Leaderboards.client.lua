@@ -32,8 +32,7 @@ local function label(parent: Instance, name: string, x: number, width: number, y
 	text.Position = UDim2.fromOffset(x, 0)
 	text.Size = UDim2.fromOffset(width, Layout.rowHeight)
 	text.TextSize = Layout.textSize
-	-- UiTheme.Fonts: Regular = Gotham, Bold = GothamBold.
-	text.Font = if you then Enum.Font.GothamBold else Enum.Font.Gotham
+	text.FontFace = UiTheme.fontFace(if you then "Title" else "Light")
 	text.TextColor3 = if you then UiKit.Colors.Gold else UiKit.Colors.Cream
 	text.TextXAlignment = Enum.TextXAlignment.Left
 	text.TextTruncate = Enum.TextTruncate.AtEnd
