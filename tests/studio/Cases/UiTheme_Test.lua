@@ -16,6 +16,116 @@ return function(t)
 		{ name = "pc 1920x1022", w = 1920, h = 1022, compact = false },
 	}
 	local DIALOGS = { "Picker", "DeleteConfirm", "Team", "Finder", "Quests" }
+	-- CM2-UI3: phone safe-area sizes (W x H) and the box sizes {w, h} the layouts returned before
+	-- CM2-UI3; no phone box may exceed these (22a3 (a)).
+	local PHONES = { { 667, 317 }, { 780, 302 }, { 750, 332 }, { 666, 374 }, { 780, 281 } }
+	local BASELINE = {
+		["667x317"] = {
+			manager = { 651, 301 },
+			hud = { 442, 74 },
+			toast = { 387, 44 },
+			actionBar = { 233, 44 },
+			rail6 = { 124, 205 },
+			rail8 = { 124, 205 },
+			stocking = { 333, 154 },
+			tutorial = { 387, 56 },
+			tutorialDocked = { 116, 56 },
+			Advent = { 651, 301 },
+			DeleteConfirm = { 651, 301 },
+			Event = { 651, 301 },
+			Finder = { 651, 301 },
+			Picker = { 651, 301 },
+			Quests = { 651, 301 },
+			Shop = { 651, 301 },
+			Team = { 651, 301 },
+			plotPanel = { 520, 176 },
+			plotConfirm = { 360, 120 },
+		},
+		["780x302"] = {
+			manager = { 764, 286 },
+			hud = { 442, 74 },
+			toast = { 460, 44 },
+			actionBar = { 273, 44 },
+			rail6 = { 314, 188 },
+			rail8 = { 124, 190 },
+			stocking = { 390, 154 },
+			tutorial = { 500, 56 },
+			tutorialDocked = { 116, 56 },
+			Advent = { 760, 286 },
+			DeleteConfirm = { 760, 286 },
+			Event = { 760, 286 },
+			Finder = { 760, 286 },
+			Picker = { 760, 286 },
+			Quests = { 760, 286 },
+			Shop = { 760, 286 },
+			Team = { 760, 286 },
+			plotPanel = { 520, 176 },
+			plotConfirm = { 360, 120 },
+		},
+		["750x332"] = {
+			manager = { 734, 316 },
+			hud = { 442, 74 },
+			toast = { 460, 44 },
+			actionBar = { 262, 44 },
+			rail6 = { 284, 188 },
+			rail8 = { 124, 220 },
+			stocking = { 375, 154 },
+			tutorial = { 470, 56 },
+			tutorialDocked = { 116, 56 },
+			Advent = { 734, 316 },
+			DeleteConfirm = { 734, 316 },
+			Event = { 734, 316 },
+			Finder = { 734, 316 },
+			Picker = { 734, 316 },
+			Quests = { 734, 316 },
+			Shop = { 734, 316 },
+			Team = { 734, 316 },
+			plotPanel = { 520, 176 },
+			plotConfirm = { 360, 120 },
+		},
+		["666x374"] = {
+			manager = { 650, 358 },
+			hud = { 442, 74 },
+			toast = { 386, 44 },
+			actionBar = { 233, 44 },
+			rail6 = { 200, 236 },
+			rail8 = { 124, 262 },
+			stocking = { 333, 154 },
+			tutorial = { 386, 56 },
+			tutorialDocked = { 116, 56 },
+			Advent = { 650, 358 },
+			DeleteConfirm = { 650, 358 },
+			Event = { 650, 358 },
+			Finder = { 650, 358 },
+			Picker = { 650, 358 },
+			Quests = { 650, 358 },
+			Shop = { 650, 358 },
+			Team = { 650, 358 },
+			plotPanel = { 520, 176 },
+			plotConfirm = { 360, 120 },
+		},
+		["780x281"] = {
+			manager = { 764, 265 },
+			hud = { 442, 74 },
+			toast = { 460, 44 },
+			actionBar = { 273, 44 },
+			rail6 = { 124, 169 },
+			rail8 = { 124, 169 },
+			stocking = { 390, 154 },
+			tutorial = { 500, 56 },
+			tutorialDocked = { 116, 56 },
+			Advent = { 760, 265 },
+			DeleteConfirm = { 760, 265 },
+			Event = { 760, 265 },
+			Finder = { 760, 265 },
+			Picker = { 760, 265 },
+			Quests = { 760, 265 },
+			Shop = { 760, 265 },
+			Team = { 760, 265 },
+			plotPanel = { 520, 176 },
+			plotConfirm = { 360, 120 },
+		},
+	}
 
 	local function absolute(parent, relative)
 		return { x = parent.x + relative.x, y = parent.y + relative.y, w = relative.w, h = relative.h }
@@ -581,6 +691,36 @@ return function(t)
 				for second = first + 1, #confirmChildren do
 					expect.falsy(UiTheme.overlaps(layout[confirmChildren[first]], layout[confirmChildren[second]]))
 				end
+			end
+		end
+	end)
+
+	-- CM2-UI3: no phone box grows beyond the sizes recorded before CM2-UI3.
+	t.test("phone boxes stay within the CM2-UI3 baseline", function()
+		for _, size in ipairs(PHONES) do
+			local key = size[1] .. "x" .. size[2]
+			local m = UiTheme.metrics(size[1], size[2])
+			local current: { [string]: any } = {
+				manager = UiTheme.hudLayout(m, 0).manager,
+				hud = UiTheme.hudLayout(m, 0).hud,
+				toast = UiTheme.hudLayout(m, 0).toast,
+				actionBar = UiTheme.hudLayout(m, 0).actionBar,
+				rail6 = UiTheme.hudLayout(m, 6).rail,
+				rail8 = UiTheme.hudLayout(m, 8).rail,
+				stocking = UiTheme.stockingBarLayout(m).frame,
+				tutorial = UiTheme.tutorialBarLayout(m, false).frame,
+				tutorialDocked = UiTheme.tutorialBarLayout(m, true).frame,
+				plotPanel = UiTheme.plotPickerLayout(m).panel,
+				plotConfirm = UiTheme.plotPickerLayout(m).confirm,
+			}
+			for name, spec in pairs(UiTheme.Dialogs) do
+				current[name] = UiTheme.dialogLayout(m, spec).frame
+			end
+			local base: { [string]: { number } } = BASELINE[key]
+			for name, b in pairs(current) do
+				expect.truthy(base[name] ~= nil)
+				expect.truthy(b.w <= base[name][1])
+				expect.truthy(b.h <= base[name][2])
 			end
 		end
 	end)
