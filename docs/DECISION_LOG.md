@@ -420,3 +420,11 @@ Owner (chat, verbatim): "okay dann kommen die wichtigsten zuerst damit am ersten
 - Planned: (4) CM2-BLIDX backlog index ≤ 8 KB for hasseln, backlog ≤ 40 KB; (6) CM2-CHECK one check command with a one-line result. Both docs/tooling only, at the start of Gate C (after the 1st Advent launch list), so the launch sprint is not disturbed.
 - Owner action (not verifiable from the repo): turn off app plugins and connectors that this project does not use (Unity, Small Business, Adobe, Figma, Legal, Cellcog, Data, Engineering, Kotlin, Shopify, Gmail, Calendar, Drive …); they add skill descriptions and server instructions to every request of every session and agent.
 - Files: CLAUDE.md, docs/SKILLS_POLICY.md (new), .claude/settings.json, .claude/agents/{planner,implementer,reviewer,playtester,modeler,Explore}.md, .claude/skills/cm2-plan/SKILL.md, .claude/skills/cm2-task/SKILL.md, docs/CLAUDE_BACKLOG.md (CM2-BLIDX, CM2-CHECK, Deferred); template repo the same (game-plan, game-task, blender-modeling).
+
+## 2026-11-27 — CM2-UI1 style kit: deviations from 22a (reviewer)
+- Close motion: the window hides at once (keeps modal and test state); only the shadow and dim fade out in 0.12 s. Open fades only shadow and dim (no CanvasGroup: it clips strokes).
+- Click sound: engine content `rbxasset://sounds/volume_slider.ogg`, volume 0.5 (no asset ID, upload or licence; no AUDIO.md before CM2-G18); 22a2 records the source in `docs/UI_STYLE.md`.
+- `AutoButtonColor` is set only in `UiKit.button` (Amendment 1): the kit owns hover and press; 14 client assignments removed.
+- World lot sign (`WorldService.lua:524`) follows the `CornerRadius.Panel` token: corner 12 instead of 14 (visual only).
+- Known gap for 22a2: buttons disabled only by colour or transparency while `Active` stays true (SupplierTab `setEnabled`, BreakAreaMode, StockingMode, EmployeesTab, LandTab) still scale on hover and press; their click guards are unchanged.
+- No settings screen exists, so the kit has none to cover.
