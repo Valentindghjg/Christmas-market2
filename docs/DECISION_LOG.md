@@ -428,3 +428,10 @@ Owner (chat, verbatim): "okay dann kommen die wichtigsten zuerst damit am ersten
 - World lot sign (`WorldService.lua:524`) follows the `CornerRadius.Panel` token: corner 12 instead of 14 (visual only).
 - Known gap for 22a2: buttons disabled only by colour or transparency while `Active` stays true (SupplierTab `setEnabled`, BreakAreaMode, StockingMode, EmployeesTab, LandTab) still scale on hover and press; their click guards are unchanged.
 - No settings screen exists, so the kit has none to cover.
+
+## 2026-11-28 — CM2-UI2 cream palette: deviations from the plan (reviewer)
+- Reading (f) passes only as "Finder dim gone when the picker opens": `PlotPicker.open` runs `closeModals`, and the picker's DisplayOrder (21) is below the Finder's (25), so a picker over the dim cannot occur.
+- The title band fills the title label's own box (inside `HeaderInset` padding 10), not the full window width.
+- Toast and HUD chips are cream now (Panel and Toast tokens are 255,244,217).
+- `StudioUiHook` `interact` returns `{ok=false, error="Disabled"}` for any non-interactive button (`Active` false or `KitDisabled`), in every state.
+- Not covered: `LotGate.SignBoard` Name labels stay `DarkText` (the plan names only the lot sign `signLine`); the Advent and Event window audit waits for an open event season (see the queue).
