@@ -17,7 +17,7 @@
 -- Playtest/Support and steps from Playtest/Steps (CM2-RF); none of them is under Cases, so the
 -- unit-test runners never execute them. Nothing touches a game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-45"
+RunPlaytest.BUILD = "cm2-14w"
 RunPlaytest.SMOKE = { "02a", "02", "03", "04", "05", "07", "08", "09", "13", "19", "41", "22", "23" }
 
 local PREFIX = "[PLAYTEST]"
@@ -238,6 +238,7 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 				"Trees",
 				"PlotPicker",
 				"LotArt",
+				"Vehicles",
 				"Quests",
 				"Supplier",
 				"Advent",

@@ -120,6 +120,7 @@ local sourcePaths = {
 	TreeHeight = "src/shared/TreeHeight.lua",
 	Tutorial = "src/shared/Tutorial.lua",
 	UiTheme = "src/shared/UiTheme.lua",
+	VehicleArt = "src/shared/VehicleArt.lua",
 }
 for name, path in pairs(sourcePaths) do
 	child(shared, name, path)

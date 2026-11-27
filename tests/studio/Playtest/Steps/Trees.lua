@@ -235,11 +235,10 @@ return function(ctx: any)
 						math.abs((scale :: number) * heights[path] - 4.025) <= TOLERANCE,
 						string.format("%s scaled height %.3f, expected 4.025", label, (scale :: number) * heights[path])
 					)
-					local rack = car:FindFirstChild("RoofRack") :: BasePart
-					local clearance = lowest(tree) - (rack.Position.Y + rack.Size.Y / 2)
+					local clearance = lowest(tree) - WorldService.carCargoTop(car :: Model).Position.Y
 					check(
 						clearance >= -0.05 and clearance <= 0.3,
-						string.format("%s rests %.3f from the rack", label, clearance)
+						string.format("%s rests %.3f from the cargo anchor", label, clearance)
 					)
 					counts.roof += 1
 				end

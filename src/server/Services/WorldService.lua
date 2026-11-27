@@ -12,10 +12,12 @@ local Stocking = require(Shared:WaitForChild("Stocking"))
 local TreeArt = require(Shared:WaitForChild("TreeArt"))
 local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
+local VehicleArt = require(Shared:WaitForChild("VehicleArt"))
 local LotArtWorld = require(script.Parent:WaitForChild("LotArtWorld"))
 local LotFenceWorld = require(script.Parent:WaitForChild("LotFenceWorld"))
 local LotGateWorld = require(script.Parent:WaitForChild("LotGateWorld"))
 local MapWorld = require(script.Parent:WaitForChild("MapWorld"))
+local VehicleWorld = require(script.Parent:WaitForChild("VehicleWorld"))
 
 local WorldService = {}
 
@@ -33,16 +35,6 @@ local STRUCTURE_GROUP = GameConfig.Customers.Npc.CollisionGroups.Structure
 local checkoutHandler: ((Player, string) -> ())? = nil
 
 local CAR_DRIVE_SECONDS = 2
--- Top of the primitive car's roof rack relative to the car pivot (rack centre 4.2 + 0.1 - Body 1.6).
-local ROOF_RACK_TOP = 2.7
-local CAR_COLORS = {
-	Color3.fromRGB(176, 52, 48),
-	Color3.fromRGB(57, 96, 150),
-	Color3.fromRGB(226, 222, 210),
-	Color3.fromRGB(64, 112, 78),
-	Color3.fromRGB(196, 150, 70),
-	Color3.fromRGB(70, 70, 76),
-}
 
 local function part(
 	parent: Instance,
@@ -232,47 +224,6 @@ local function cloneArt(parent: Instance, category: string, assetId: string, gro
 	return model
 end
 
-local function truck(parent: Instance, position: Vector3): Model
-	local model = Instance.new("Model")
-	model.Name = "SupplierTruck"
-	model.Parent = parent
-	local body = part(
-		model,
-		"TruckBody",
-		Vector3.new(12, 3, 5),
-		position + Vector3.new(0, 2, 0),
-		Color3.fromRGB(198, 42, 42),
-		Enum.Material.Metal
-	)
-	part(
-		model,
-		"Cab",
-		Vector3.new(4, 3.5, 5),
-		position + Vector3.new(-4, 4.2, 0),
-		Color3.fromRGB(243, 239, 224),
-		Enum.Material.Metal
-	)
-	for _, offset in ipairs({
-		Vector3.new(-4, 0.7, -2.6),
-		Vector3.new(-4, 0.7, 2.6),
-		Vector3.new(4, 0.7, -2.6),
-		Vector3.new(4, 0.7, 2.6),
-	}) do
-		local wheel = part(
-			model,
-			"Wheel",
-			Vector3.new(1.5, 1.5, 0.6),
-			position + offset,
-			Color3.fromRGB(27, 27, 27),
-			Enum.Material.Rubber
-		)
-		wheel.Shape = Enum.PartType.Cylinder
-		wheel.Orientation = Vector3.new(90, 0, 0)
-	end
-	model.PrimaryPart = body
-	return model
-end
-
 -- A floating label. Server text is the English fallback; the client script
 -- WorldLabels.client.lua localizes it from the label's attributes (LabelKind etc.).
 -- CM2-UVF2: fixed text size and a per-kind box from UiTheme.WorldLabels (no TextScaled).
@@ -341,6 +292,9 @@ local ART_CTX: LotArtWorld.Ctx = {
 	group = STRUCTURE_GROUP,
 	reportMissing = reportMissing,
 }
+
+-- What VehicleWorld needs from this module (CM2-14W).
+local VEHICLE_CTX: VehicleWorld.Ctx = { part = part, reportMissing = reportMissing }
 
 -- Height of a model's bounding-box top above baseY.
 local function treeTop(model: Model, baseY: number): number
@@ -1084,7 +1038,8 @@ local function syncBundles(bay: BasePart, total: number)
 end
 
 local function truckStart(plot: Model): CFrame
-	return CFrame.new(lotPosition(plot, TRUCK_X, TRUCK_START_DEPTH, 2)) * CFrame.Angles(0, math.pi / 2, 0)
+	return CFrame.new(lotPosition(plot, TRUCK_X, TRUCK_START_DEPTH, VehicleArt.ROAD_TOP))
+		* CFrame.Angles(0, VehicleArt.truckYaw(plotFacing(plot)), 0)
 end
 
 -- Mirrors the receiving bays into the world (CM2-G14): attributes for the client, the label
@@ -1099,6 +1054,7 @@ function WorldService.syncReceiving(plotId: string, bays)
 	end
 	local receivingConfig = GameConfig.Receiving
 	local pullInBay: number? = nil
+	local pullInArriving: any = nil
 	for index = 1, receivingConfig.BayCount do
 		local view = if type(bays) == "table" and type(bays[index]) == "table" then bays[index] else nil
 		view = view
@@ -1144,6 +1100,7 @@ function WorldService.syncReceiving(plotId: string, bays)
 			syncBundles(bay, total)
 			if pullInBay == nil and arrivesIn >= 0 and arrivesIn <= receivingConfig.TruckPullInSeconds then
 				pullInBay = index
+				pullInArriving = view.arriving
 			end
 		end
 	end
@@ -1160,16 +1117,17 @@ function WorldService.syncReceiving(plotId: string, bays)
 	end
 	if pullInBay ~= nil then
 		if activeTruck == nil then
-			local newTruck = truck(plot, Vector3.zero)
-			newTruck.Name = "DeliveryTruck"
 			local start = truckStart(plot)
-			local stop = CFrame.new(lotPosition(plot, TRUCK_X, bayDepth(pullInBay), 2)) * start.Rotation
-			newTruck:PivotTo(start)
+			local stop = CFrame.new(lotPosition(plot, TRUCK_X, bayDepth(pullInBay), VehicleArt.TRUCK_LANE_TOP))
+				* start.Rotation
+			local newTruck = VehicleWorld.truck(plot, start, VEHICLE_CTX)
+			VehicleWorld.loadCargo(newTruck, pullInArriving, VEHICLE_CTX)
 			drive(newTruck, start, stop, receivingConfig.TruckPullInSeconds)
 		end
 	elseif activeTruck ~= nil then
 		local leaving = activeTruck
 		leaving:SetAttribute("Leaving", true)
+		VehicleWorld.unloadCargo(leaving)
 		drive(leaving, leaving:GetPivot(), truckStart(plot), receivingConfig.TruckLeaveSeconds, function()
 			leaving:Destroy()
 		end)
@@ -1177,55 +1135,16 @@ function WorldService.syncReceiving(plotId: string, bays)
 	return true
 end
 
--- Original primitive car: body, cabin, wheels; parts anchored and offset from the pivot.
-local function car(parent: Instance, name: string, pivot: CFrame, color: Color3): Model
-	local model = Instance.new("Model")
-	model.Name = name
-	model.Parent = parent
-	local function carPart(partName: string, size: Vector3, offset: Vector3, partColor: Color3, material)
-		local value = part(model, partName, size, Vector3.zero, partColor, material)
-		value.CFrame = pivot * CFrame.new(offset)
-		value.CanCollide = false
-		value.CastShadow = true
-		return value
-	end
-	local body = carPart("Body", Vector3.new(5, 1.8, 9), Vector3.new(0, 1.6, 0), color, Enum.Material.SmoothPlastic)
-	carPart(
-		"Cabin",
-		Vector3.new(4.4, 1.6, 4.6),
-		Vector3.new(0, 3.3, 0.6),
-		Color3.fromRGB(168, 205, 222),
-		Enum.Material.Glass
-	)
-	carPart(
-		"RoofRack",
-		Vector3.new(4, 0.2, 4.2),
-		Vector3.new(0, 4.2, 0.6),
-		Color3.fromRGB(40, 40, 44),
-		Enum.Material.Metal
-	)
-	for _, offset in ipairs({
-		Vector3.new(-2.5, 0.75, -2.8),
-		Vector3.new(2.5, 0.75, -2.8),
-		Vector3.new(-2.5, 0.75, 2.8),
-		Vector3.new(2.5, 0.75, 2.8),
-	}) do
-		local wheel =
-			carPart("Wheel", Vector3.new(0.7, 1.5, 1.5), offset, Color3.fromRGB(27, 27, 27), Enum.Material.Rubber)
-		wheel.Shape = Enum.PartType.Cylinder
-	end
-	model.PrimaryPart = body
-	return model
-end
-
 local function roadEntry(parked: CFrame): CFrame
-	return CFrame.new(parked.Position.X, parked.Position.Y, 0) * parked.Rotation
+	return CFrame.new(parked.X, VehicleArt.ROAD_TOP, 0) * parked.Rotation
 end
 
 -- The parked pose of a car on parking space `space` (1..4).
 local function parkedAt(plot: Model, space: number): CFrame
 	local center = (plot.PrimaryPart :: BasePart).Position
-	return CFrame.new(center + parkingOffset(plot, math.clamp(space, 1, 4)) + Vector3.new(0, 0.6, 0))
+	local spot = center + parkingOffset(plot, math.clamp(space, 1, 4))
+	return CFrame.new(spot.X, lotTop(plot) + VehicleArt.PARKING_RISE, spot.Z)
+		* CFrame.Angles(0, VehicleArt.carYaw(plotFacing(plot)), 0)
 end
 
 -- The "#n HERE" billboard and the LoadOrder prompt of an order car; added only when missing,
@@ -1236,12 +1155,13 @@ local function decorateCar(carModel: Model, orderNumber: number, callbacks)
 		return
 	end
 	if body:FindFirstChild("Label") == nil then
+		local lift = if carModel:GetAttribute("VehicleArtMode") == "Art" then VehicleArt.CAR_LABEL_LIFT else 0
 		billboard(
 			body,
 			"CarNumber",
 			"#" .. orderNumber,
 			"CarNumber",
-			UiTheme.WorldLabels.CarNumber.height,
+			UiTheme.WorldLabels.CarNumber.height + lift,
 			{ OrderNumber = orderNumber }
 		)
 	end
@@ -1256,7 +1176,7 @@ local function decorateCar(carModel: Model, orderNumber: number, callbacks)
 end
 
 -- The sold tree on a leaving car's roof (CM2-12W): species and size come from the car's
--- TreeSpeciesId / TreeSizeId attributes; art lies along the car's +Z, resting on the roof rack.
+-- TreeSpeciesId / TreeSizeId attributes; art lies along the car's +Z, resting on the cargo anchor.
 local function attachRoofTree(carModel: Model, artRoot: Instance?)
 	local speciesAttr, sizeAttr = carModel:GetAttribute("TreeSpeciesId"), carModel:GetAttribute("TreeSizeId")
 	local speciesId = if type(speciesAttr) == "string" then speciesAttr else nil
@@ -1268,19 +1188,13 @@ local function attachRoofTree(carModel: Model, artRoot: Instance?)
 			descendant.CanQuery = false
 		end
 	end
+	local top = VehicleWorld.cargoTop(carModel)
 	if roof:GetAttribute("TreeArtMode") ~= "Art" then
-		roof:PivotTo(carModel:GetPivot() * CFrame.new(0, 4.4, 0.6) * CFrame.Angles(math.rad(90), 0, 0))
+		roof:PivotTo(top * CFrame.new(0, VehicleArt.ROOF_PRIMITIVE_LIFT, 0) * CFrame.Angles(math.rad(90), 0, 0))
 		return
 	end
 	local _, size = roof:GetBoundingBox()
-	local rack = carModel:FindFirstChild("RoofRack")
-	local rackTop
-	if rack and rack:IsA("BasePart") then
-		rackTop = rack.CFrame * CFrame.new(0, rack.Size.Y / 2, 0)
-	else
-		rackTop = carModel:GetPivot() * CFrame.new(0, ROOF_RACK_TOP, 0.6)
-	end
-	roof:PivotTo(rackTop * CFrame.new(0, math.max(size.X, size.Z) / 2, -size.Y / 2) * CFrame.Angles(math.rad(90), 0, 0))
+	roof:PivotTo(top * CFrame.new(0, math.max(size.X, size.Z) / 2, -size.Y / 2) * CFrame.Angles(math.rad(90), 0, 0))
 end
 
 -- Mirrors customer orders into the world: a numbered car per order on its parking space
@@ -1350,8 +1264,7 @@ function WorldService.syncCustomerOrders(plotId: string, summary, callbacks)
 			decorateCar(carModel, orderNumber, callbacks)
 		elseif not carModel then
 			local parked = parkedAt(plot, order.parkingSpace)
-			local color = CAR_COLORS[(orderNumber - 1) % #CAR_COLORS + 1]
-			local newCar = car(folder, carName, roadEntry(parked), color)
+			local newCar = VehicleWorld.car(folder, carName, roadEntry(parked), orderNumber, VEHICLE_CTX)
 			newCar:SetAttribute("OrderNumber", orderNumber)
 			newCar:SetAttribute("TreeSpeciesId", order.speciesId)
 			newCar:SetAttribute("TreeSizeId", order.sizeId)
@@ -1408,6 +1321,9 @@ function WorldService.syncCustomerOrders(plotId: string, summary, callbacks)
 	end
 	return true
 end
+
+-- Where cargo rests on a vehicle (CM2-14W): the CargoAnchor, the primitive roof rack top or a fallback.
+WorldService.carCargoTop = VehicleWorld.cargoTop
 
 -- Returns the interaction part for a customer order on a plot (reach checks).
 function WorldService.findOrderTarget(plotId: string, kind: string, orderNumber: number): BasePart?
@@ -1674,8 +1590,7 @@ function WorldService.spawnVisitCar(plotId: string, seq: number, space: number):
 		return nil
 	end
 	local parked = parkedAt(plot, space)
-	local color = CAR_COLORS[(seq - 1) % #CAR_COLORS + 1]
-	local visitCar = car(ordersFolder(plot), "VisitCar_" .. seq, roadEntry(parked), color)
+	local visitCar = VehicleWorld.car(ordersFolder(plot), "VisitCar_" .. seq, roadEntry(parked), seq, VEHICLE_CTX)
 	drive(visitCar, roadEntry(parked), parked, CAR_DRIVE_SECONDS)
 	return visitCar
 end
