@@ -3,7 +3,6 @@
 -- the left button rail, the modal coordinator and the layout binding for dialogs. Every client
 -- script requires this module, so its state (rail, modals) is shared by all of them.
 local HttpService = game:GetService("HttpService")
-local LocalizationService = game:GetService("LocalizationService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -22,11 +21,9 @@ export type DialogParts = {
 	rightHeader: GuiObject?,
 }
 
--- Locale rule: German or English, anything else is English (CM2-43 changes this one place).
-local locale = string.lower(string.sub(LocalizationService.RobloxLocaleId, 1, 2))
-if locale ~= "de" and locale ~= "en" then
-	locale = "en"
-end
+-- Locale rule (CM2-43): English-only launch; the language comes from Localization.LaunchLanguage,
+-- never from the Roblox locale, so a German client still reads English (auto-translation does the rest).
+local locale = Localization.LaunchLanguage
 
 function UiKit.localized(key: string): string
 	return Localization.get(locale, key)

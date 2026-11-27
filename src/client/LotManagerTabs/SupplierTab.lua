@@ -250,10 +250,9 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 			end
 			local text = table.concat(items, ", ")
 			local rest = #lines - CART_PREVIEW_LINES
-			if rest > 0 then
-				text ..= ", " .. localizedFormat("cartMore", rest)
-			end
-			cartLines.Text = localizedFormat("cartLines", text)
+			cartLines.Text = if rest > 0
+				then localizedFormat("cartLinesMore", text, rest)
+				else localizedFormat("cartLines", text)
 		end
 		local receiving = summaryPart("receiving")
 		local supplier = summaryPart("supplier")
@@ -306,12 +305,11 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 			else {}
 		local stock = if type(supplier) == "table" and type(supplier.stock) == "table" then supplier.stock else {}
 		local demand = if type(supplier) == "table" and type(supplier.demand) == "table" then supplier.demand else {}
-		local info = localizedFormat("supplierBuyRowInfo", number(wholesale[row.key]), number(stock[row.key]))
-		if demand[row.key] == "High" then
-			info ..= " · " .. localized("demandHigh")
-		elseif demand[row.key] == "Low" then
-			info ..= " · " .. localized("demandLow")
-		end
+		local infoKey = if demand[row.key] == "High"
+			then "supplierBuyRowInfoHigh"
+			elseif demand[row.key] == "Low" then "supplierBuyRowInfoLow"
+			else "supplierBuyRowInfo"
+		local info = localizedFormat(infoKey, number(wholesale[row.key]), number(stock[row.key]))
 		row.info.Text = info
 		local count = cart[row.key] or 0
 		row.qty.Text = tostring(count)

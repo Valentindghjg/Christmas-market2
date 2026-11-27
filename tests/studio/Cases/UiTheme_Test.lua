@@ -582,4 +582,36 @@ return function(t)
 			end
 		end
 	end)
+
+	-- CM2-43: text and background colour pairs the UI uses meet WCAG contrast (AA body 4.5, large
+	-- or placeholder text 3.0), and the text sizes stay readable on a phone.
+	t.test("text colour pairs meet WCAG contrast", function()
+		local function linear(channel: number): number
+			local value = channel / 255
+			return if value <= 0.03928 then value / 12.92 else ((value + 0.055) / 1.055) ^ 2.4
+		end
+		local function luminance(rgb: { number }): number
+			return 0.2126 * linear(rgb[1]) + 0.7152 * linear(rgb[2]) + 0.0722 * linear(rgb[3])
+		end
+		local function ratio(foreground: string, background: string): number
+			local a = luminance(UiTheme.Colors[foreground])
+			local b = luminance(UiTheme.Colors[background])
+			return (math.max(a, b) + 0.05) / (math.min(a, b) + 0.05)
+		end
+		local pairs4_5 = {
+			{ "Cream", "Panel" },
+			{ "Cream", "Row" },
+			{ "Cream", "ListWell" },
+			{ "DarkText", "Sand" },
+			{ "DarkText", "Gold" },
+			{ "DarkText", "Cream" },
+			{ "Cream", "Red" },
+		}
+		for _, pair in ipairs(pairs4_5) do
+			expect.truthy(ratio(pair[1], pair[2]) >= 4.5)
+		end
+		expect.truthy(ratio("Placeholder", "Cream") >= 3.0)
+		expect.truthy(UiTheme.TextSize.Small >= 13)
+		expect.truthy(UiTheme.TextSize.Body >= UiTheme.TextSize.Small)
+	end)
 end

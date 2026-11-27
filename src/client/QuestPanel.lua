@@ -161,15 +161,10 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 	local dayLabels: { TextLabel } = {}
 	for index = 1, DAY_COUNT do
 		local day = GameConfig.DailyRewards.Days[index]
-		local rewardLine = if day.cash > 0
-			then localizedFormat("dailyRewardCash", UiTheme.formatMoney(day.cash))
-			else localizedFormat("dailyRewardReputation", day.reputation)
-		local label = textLabel(
-			strip,
-			"Day_" .. index,
-			localizedFormat("dailyDay", index) .. "\n" .. rewardLine,
-			UiTheme.TextSize.Small
-		)
+		local dayText = if day.cash > 0
+			then localizedFormat("dailyCardCash", index, UiTheme.formatMoney(day.cash))
+			else localizedFormat("dailyCardReputation", index, day.reputation)
+		local label = textLabel(strip, "Day_" .. index, dayText, UiTheme.TextSize.Small)
 		label.LayoutOrder = index
 		label.Size = UDim2.new(1 / DAY_COUNT, -4, 1, 0)
 		label.BackgroundTransparency = 0

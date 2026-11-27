@@ -396,4 +396,43 @@ return function(t)
 			expect.equal(type(Localization.Strings.de[key]), "string")
 		end
 	end)
+
+	-- CM2-43: the launch is English-only whatever the Roblox locale is; DE stays for the later switch.
+	t.test("launches in English and keeps German for the later switch", function()
+		expect.equal(Localization.LaunchLanguage, "en")
+		expect.equal(type(Localization.Strings.de.cash), "string")
+	end)
+
+	-- CM2-43: every English string is a full sentence or label; none is a loose fragment that the
+	-- UI would have to glue to another string.
+	t.test("every English string is a whole text without a dangling edge", function()
+		for key, text in pairs(Localization.Strings.en) do
+			expect.equal(type(text), "string")
+			expect.truthy(#text > 0)
+			expect.equal(text, (string.gsub(text, "^%s+", "")))
+			expect.equal(text, (string.gsub(text, "%s+$", "")))
+			expect.falsy(string.find(text, "^[,;·+]%s"))
+			expect.falsy(string.find(text, "[,;:·]$"))
+			expect.falsy(string.find(text, "%s%.%s*$"))
+			if string.find(key, "^saveError") then
+				expect.truthy(string.find(text, "[%.!?]$") ~= nil)
+			end
+		end
+	end)
+
+	-- CM2-43: strings the UI used to build from fragments are single keys now.
+	t.test("composed UI texts are single keys", function()
+		expect.equal(Localization.format("en", "supplierBuyRowInfoHigh", 21, 5), "$21 · 5 in stock · HIGH DEMAND")
+		expect.equal(Localization.format("en", "supplierBuyRowInfoLow", 21, 5), "$21 · 5 in stock · LOW DEMAND")
+		expect.equal(Localization.format("en", "cartLinesMore", "a, b", 2), "Your order: a, b, + 2 more")
+		expect.equal(Localization.format("en", "dailyCardCash", 3, "50"), "Day 3\n$50")
+		expect.equal(Localization.format("en", "dailyCardReputation", 7, 2), "Day 7\n+2 ★")
+		expect.equal(Localization.format("en", "adventDoorOpen", 4), "4\nOpen")
+		expect.equal(Localization.format("en", "adventDoorOpened", 4), "4\nOpened")
+		expect.equal(Localization.format("en", "adventDoorLocked", 4), "4\nLocked")
+		for _, key in ipairs({ "demandHigh", "demandLow", "cartMore", "dailyDay", "dailyRewardCash" }) do
+			expect.equal(Localization.Strings.en[key], nil)
+			expect.equal(Localization.Strings.de[key], nil)
+		end
+	end)
 end

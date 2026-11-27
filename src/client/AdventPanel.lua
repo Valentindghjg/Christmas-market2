@@ -186,7 +186,7 @@ function AdventPanel.new(context: LotManager.TabContext): Panel
 			else
 				stateKey, color, active = "adventDoorLocked", ROW, false
 			end
-			button.Text = tostring(door) .. "\n" .. localized(stateKey)
+			button.Text = localizedFormat(stateKey, door)
 			button.BackgroundColor3 = color
 			button.TextColor3 = if color == ROW then CREAM else DARK
 			button.Active = active
