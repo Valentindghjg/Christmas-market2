@@ -1,4 +1,4 @@
-"""Fence Rail 6 (CM2-13b): start post plus two snowy rails, one 6-stud side-edge segment.
+"""Fence Rail 6 v3 (CM2-GATE): lantern post, two snowy rails and a lit garland, one 6-stud side-edge segment.
 
 blender -b --factory-startup --python assets/art/source/Environment/FenceRail6/build.py -- --out assets/art/source/Environment/FenceRail6/model.blend
 """
@@ -15,7 +15,8 @@ def build():
     K.seed(145)
     F.post(-LENGTH / 2.0)
     F.rails(LENGTH)
-    K.collider("Fence", (LENGTH, 0.6, 3.2), (0, 0, 1.6))
+    F.garland(-LENGTH / 2.0 + 0.45, LENGTH / 2.0 - 0.45, 4.6, 0.7, -0.3, 6, 0.12, 2, 0.1, 0.14)
+    K.collider("Fence", (LENGTH, 0.9, 4.0), (0, 0, 2.0))
 
 
-K.run(build, tier="B")
+K.run(build, tier="A")

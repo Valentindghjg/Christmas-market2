@@ -2,14 +2,14 @@
 	"schemaVersion": 1,
 	"artPath": "Environment/FenceRail8",
 	"displayName": "Fence Rail 8",
-	"tier": "B",
-	"version": 2,
-	"maxTriangles": 300,
-	"maxMeshParts": 3,
+	"tier": "A",
+	"version": 3,
+	"maxTriangles": 800,
+	"maxMeshParts": 4,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": "81344383315482",
-		"sourceSha256": "f8abb5a88fb0edbe4d4d43393848e39137dd39752396ea243e2fb756bdfb2785",
-		"uploadedAt": "2026-11-24T18:22:25Z"
+		"modelAssetId": "105689470793722",
+		"sourceSha256": "74cd33728c84dc3bffc941e47b241decc589865b79e83332238a54ea645566f9",
+		"uploadedAt": "2026-11-27T17:36:01Z"
 	}
 }

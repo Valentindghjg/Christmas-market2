@@ -2,14 +2,14 @@
 	"schemaVersion": 1,
 	"artPath": "Environment/FencePost",
 	"displayName": "Fence Post",
-	"tier": "B",
-	"version": 2,
-	"maxTriangles": 100,
-	"maxMeshParts": 2,
+	"tier": "A",
+	"version": 3,
+	"maxTriangles": 400,
+	"maxMeshParts": 3,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": "80498840265993",
-		"sourceSha256": "41692498a6c4edfdf91d6a0dca3b592d3a71706fb8cd3e2cb021f249915fa799",
-		"uploadedAt": "2026-11-24T18:22:45Z"
+		"modelAssetId": "125929443941463",
+		"sourceSha256": "4c845a6de76e17c94ebfd21c18189b06923869aa7ee68fef4034da594998e4da",
+		"uploadedAt": "2026-11-27T17:35:43Z"
 	}
 }

@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/LotGate",
+	"displayName": "Lot Gate",
+	"tier": "A",
+	"version": 2,
+	"maxTriangles": 3000,
+	"maxMeshParts": 10,
+	"requiredAttachments": ["SignFace", "Light1", "Light2"],
+	"upload": {
+		"modelAssetId": "136408062826757",
+		"sourceSha256": "760b4d7f11eea6685b330c80ab7ab382a563069fe8903a7a9e250e303baa4c11",
+		"uploadedAt": "2026-11-27T17:36:36Z"
+	}
+}

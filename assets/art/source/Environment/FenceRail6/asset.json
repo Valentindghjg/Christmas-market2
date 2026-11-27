@@ -2,14 +2,14 @@
 	"schemaVersion": 1,
 	"artPath": "Environment/FenceRail6",
 	"displayName": "Fence Rail 6",
-	"tier": "B",
-	"version": 2,
-	"maxTriangles": 300,
-	"maxMeshParts": 3,
+	"tier": "A",
+	"version": 3,
+	"maxTriangles": 800,
+	"maxMeshParts": 4,
 	"requiredAttachments": [],
 	"upload": {
-		"modelAssetId": "130024785437685",
-		"sourceSha256": "1c68f051076207ad97840b4a930bdeeb7c5ea373e4a1439cb62eed5dff161c92",
-		"uploadedAt": "2026-11-24T18:22:38Z"
+		"modelAssetId": "127808486731524",
+		"sourceSha256": "122feb134b011c53694d91a05ef794200c5981c3f5ec2a2a36b0ee4b070aaa73",
+		"uploadedAt": "2026-11-27T17:36:20Z"
 	}
 }
