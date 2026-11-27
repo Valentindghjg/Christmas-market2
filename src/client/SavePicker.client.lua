@@ -82,7 +82,8 @@ findTeammates.Size = UDim2.new(0.4, -4, 0, BUTTON_HEIGHT)
 
 -- Four footer rows: size toggles, new save, join by code, back. The status line is the first
 -- entry of the save list (UiKit.listStatus). The Footer frame (200 px high, see
--- UiTheme.Dialogs.Picker) and the list are placed by UiKit.bindDialog.
+-- UiTheme.Dialogs.Picker) and the list are placed by UiKit.bindDialog. On phones Find teammates
+-- sits left of Back in row 4.
 local FOOTER_ROW = BUTTON_HEIGHT + 8
 local footer = Instance.new("Frame")
 footer.Name = "Footer"
@@ -212,6 +213,12 @@ UiKit.bindDialog(gui, {
 	rightHeader = findTeammates,
 }, UiTheme.Dialogs.Picker)
 UiKit.bindDialog(gui, { frame = confirm }, UiTheme.Dialogs.DeleteConfirm)
+-- On phones the delete confirm puts the name and both buttons in one row (22a3b).
+UiKit.bindCompact(gui, { ConfirmName = confirmName, ConfirmDelete = confirmDelete, Cancel = confirmCancel }, function(m)
+	return if m.compact
+		then UiTheme.deleteConfirmRow(UiTheme.dialogLayout(m, UiTheme.Dialogs.DeleteConfirm).innerWidth)
+		else nil
+end)
 
 -- "Saves" button in the left rail (slot 50), while the picker is closed.
 local savesButton = UiKit.addRailButton("SavesButton", "savesButton", 50)

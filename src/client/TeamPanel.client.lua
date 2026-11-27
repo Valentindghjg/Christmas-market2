@@ -120,7 +120,14 @@ closeButton.AnchorPoint = Vector2.new(1, 1)
 closeButton.Position = UDim2.fromScale(1, 1)
 closeButton.Size = UDim2.new(0.5, -4, 0, BUTTON_HEIGHT)
 
-UiKit.bindDialog(gui, { frame = panel, list = memberList, footer = footer }, UiTheme.Dialogs.Team)
+-- The seats, code and hint lines stay full width on regular screens; on phones they take the left
+-- column so the footer can sit beside them (22a3b).
+UiKit.bindDialog(gui, {
+	frame = panel,
+	list = memberList,
+	footer = footer,
+	leftItems = { seatsLine, codeLine, codeHint },
+}, UiTheme.Dialogs.Team)
 
 -- Requests ----------------------------------------------------------------------------------
 

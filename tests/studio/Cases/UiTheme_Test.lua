@@ -424,14 +424,21 @@ return function(t)
 						local header = dialog.rightHeader
 						expect.truthy(header ~= nil)
 						if header and name == "Picker" then
-							expect.truthy(header.y + header.h + 8 <= footer.y)
+							expect.equal(header.x, footer.x)
+							expect.equal(header.y, footer.y + footer.h - 44)
+							expect.truthy(
+								header.x + header.w + 8 <= footer.x + footer.w - (math.floor(0.4 * footer.w) - 4)
+							)
 						end
 					end
 				end
 				if name == "DeleteConfirm" then
 					expect.equal(list, nil)
 					expect.equal(footer, nil)
-					expect.truthy(dialog.innerHeight >= (spec.contentHeight or 0))
+					expect.truthy(
+						dialog.innerHeight
+							>= (if m.compact then spec.compactContentHeight or 0 else spec.contentHeight or 0)
+					)
 				end
 			end
 		end
@@ -796,6 +803,91 @@ return function(t)
 		end
 		for _, value in ipairs({ sizes.Title, UiTheme.SaveRow.nameTextSize, UiTheme.PlotPicker.numberTextSize }) do
 			expect.truthy(value <= 24)
+		end
+	end)
+
+	-- 22a3b: every dialog fits 70 % x 80 % of the safe area on phones.
+	t.test("phone dialogs fit 70 % x 80 % of the safe area (22a3b)", function()
+		for _, size in ipairs(PHONES) do
+			local m = UiTheme.metrics(size[1], size[2])
+			for name, spec in pairs(UiTheme.Dialogs) do
+				local d = UiTheme.dialogLayout(m, spec)
+				expect.truthy(d.frame.w <= math.floor(0.7 * size[1]))
+				expect.truthy(d.frame.h <= math.floor(0.8 * size[2]))
+				expect.truthy(UiTheme.inside(d.frame, size[1], size[2]))
+				local list, footer = d.list, d.footer
+				if list and footer then
+					expect.truthy(list.h >= spec.minList)
+					expect.truthy(UiTheme.inside(list, d.innerWidth, d.innerHeight))
+					expect.truthy(UiTheme.inside(footer, d.innerWidth, d.innerHeight))
+					expect.falsy(UiTheme.overlaps(list, footer))
+					expect.truthy(footer.w >= 200)
+					expect.equal(footer.h, spec.compactFooterHeight or spec.footerHeight)
+					if spec.compactTop then
+						expect.truthy(footer.y >= spec.compactTop + 8)
+					end
+					local header = d.rightHeader
+					if header and not spec.compactHeaderInFooter then
+						expect.truthy(header.y + 44 + 8 <= footer.y)
+					end
+					if name == "Picker" then
+						expect.equal(footer.h, 200)
+						expect.truthy(math.floor(0.25 * footer.w) - 6 >= 44)
+					elseif name == "Team" then
+						expect.truthy(0.5 * footer.w - 4 >= 44)
+					end
+				end
+				if name == "DeleteConfirm" then
+					expect.truthy(d.innerHeight >= 194)
+				end
+			end
+			if size[1] == 780 and size[2] == 281 then
+				local frame = UiTheme.dialogLayout(m, UiTheme.Dialogs.Picker).frame
+				expect.equal(frame.w, 546)
+				expect.equal(frame.h, 224)
+			end
+		end
+	end)
+
+	-- 22a3b: the compact Finder footer and the compact delete confirm row fit their areas.
+	t.test("compact Finder footer and delete row fit (22a3b)", function()
+		local function check(
+			boxes: { [string]: any },
+			w: number,
+			h: number,
+			minY: number,
+			exclusive: { [string]: string }
+		)
+			local keys = {}
+			for key in pairs(boxes) do
+				table.insert(keys, key)
+			end
+			table.sort(keys)
+			for _, key in ipairs(keys) do
+				local b = boxes[key]
+				expect.truthy(UiTheme.inside(b, w, h))
+				expect.truthy(b.h >= 44 and b.h <= 52)
+				expect.truthy(b.w >= 44)
+				expect.truthy(b.y >= minY)
+			end
+			for first = 1, #keys do
+				for second = first + 1, #keys do
+					local a, b = keys[first], keys[second]
+					if exclusive[a .. "/" .. b] == nil then
+						expect.falsy(UiTheme.overlaps(boxes[a], boxes[b]))
+					end
+				end
+			end
+		end
+		for _, size in ipairs(PHONES) do
+			local m = UiTheme.metrics(size[1], size[2])
+			local finder = UiTheme.dialogLayout(m, UiTheme.Dialogs.Finder)
+			expect.truthy(finder.footer ~= nil)
+			local footer = finder.footer :: UiTheme.Box
+			local exclusive = { ["OwnListing/StartHint"] = "x", ["StartListing/StopListing"] = "x" }
+			check(UiTheme.finderFooterCompact(footer.w), footer.w, 148, 0, exclusive)
+			local confirm = UiTheme.dialogLayout(m, UiTheme.Dialogs.DeleteConfirm)
+			check(UiTheme.deleteConfirmRow(confirm.innerWidth), confirm.innerWidth, 194, 146, {})
 		end
 	end)
 

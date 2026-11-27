@@ -73,8 +73,8 @@ local HINT_BOTTOM = CLOSE_BOTTOM + BUTTON_HEIGHT + GAP
 local START_BOTTOM = HINT_BOTTOM + HINT_HEIGHT + GAP
 local SIZES_BOTTOM = START_BOTTOM + BUTTON_HEIGHT + GAP
 
--- The Footer frame (198 px high, see UiTheme.Dialogs.Finder) and the list are placed by
--- UiKit.bindDialog.
+-- The Footer frame (198 px high, 148 px on phones: sizes, hint or own listing, Start or Stop beside
+-- Close; see UiTheme.Dialogs.Finder) and the list are placed by UiKit.bindDialog.
 local footer = Instance.new("Frame")
 footer.Name = "Footer"
 footer.BackgroundTransparency = 1
@@ -147,6 +147,24 @@ UiKit.bindDialog(
 	{ frame = panel, list = listingList, footer = footer, leftItems = { hint } },
 	UiTheme.Dialogs.Finder
 )
+-- On phones the footer is 148 px: sizes, hint or own listing, then Start or Stop beside Close (22a3b).
+local compactItems: { [string]: GuiObject } = {
+	StartListing = startListing,
+	StartHint = startHint,
+	OwnListing = ownListing,
+	StopListing = stopListing,
+	Close = closeButton,
+}
+for size, button in pairs(sizeButtons) do
+	compactItems["Size_" .. size] = button
+end
+UiKit.bindCompact(gui, compactItems, function(m)
+	if not m.compact then
+		return nil
+	end
+	local d = UiTheme.dialogLayout(m, UiTheme.Dialogs.Finder)
+	return if d.footer then UiTheme.finderFooterCompact(d.footer.w) else nil
+end)
 
 -- Requests ----------------------------------------------------------------------------------
 

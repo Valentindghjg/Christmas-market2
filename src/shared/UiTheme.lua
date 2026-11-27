@@ -38,6 +38,12 @@ export type DialogSpec = {
 	widthScale: number,
 	heightScale: number,
 	contentHeight: number?,
+	-- Phone-only overrides (22a3b, PROVISIONAL): footer height, content height, the right header in
+	-- the footer's bottom row (left 60 %), and the height of the full-width rows above both columns.
+	compactFooterHeight: number?,
+	compactContentHeight: number?,
+	compactHeaderInFooter: boolean?,
+	compactTop: number?,
 }
 
 export type TabDef = { id: string, labelKey: string, module: string }
@@ -332,6 +338,7 @@ UiTheme.Dialogs = {
 		maxHeight = 600,
 		widthScale = 0.92,
 		heightScale = 0.92,
+		compactHeaderInFooter = true,
 	},
 	DeleteConfirm = {
 		listTop = 0,
@@ -342,6 +349,7 @@ UiTheme.Dialogs = {
 		widthScale = 0.92,
 		heightScale = 0.86,
 		contentHeight = 246,
+		compactContentHeight = 194,
 	},
 	Team = {
 		listTop = 120,
@@ -351,15 +359,18 @@ UiTheme.Dialogs = {
 		maxHeight = 560,
 		widthScale = 0.92,
 		heightScale = 0.8,
+		compactTop = 30,
 	},
+	-- Shop and Event minList 100 (22a3b, PROVISIONAL): one 96 px product row fits on the 780x281 phone.
 	Shop = {
 		listTop = 92,
 		footerHeight = 52,
-		minList = 120,
+		minList = 100,
 		maxWidth = 560,
 		maxHeight = 600,
 		widthScale = 0.94,
 		heightScale = 0.86,
+		compactTop = 82,
 	},
 	Finder = {
 		listTop = 72,
@@ -369,6 +380,8 @@ UiTheme.Dialogs = {
 		maxHeight = 560,
 		widthScale = 0.92,
 		heightScale = 0.8,
+		compactFooterHeight = 148,
+		compactTop = 30,
 	},
 	-- Daily rewards and quests panel (CM2-G11).
 	Quests = {
@@ -394,7 +407,7 @@ UiTheme.Dialogs = {
 	Event = {
 		listTop = 92,
 		footerHeight = 52,
-		minList = 120,
+		minList = 100,
 		maxWidth = 560,
 		maxHeight = 600,
 		widthScale = 0.94,
@@ -726,12 +739,16 @@ function UiTheme.pricingCardLayout(m: Metrics): PricingCardLayout
 	}
 end
 
+local COMPACT_FOOTER_MIN = 200
+
 function UiTheme.dialogLayout(m: Metrics, spec: DialogSpec): DialogLayout
 	local hasFooter = not (spec.footerHeight == 0 and spec.listTop == 0)
 	local frame: Box
 	if m.compact then
-		local w = math.min(m.width - 2 * m.margin, 760)
-		frame = box(math.floor((m.width - math.max(0, w)) / 2), m.margin, w, m.height - 2 * m.margin)
+		-- Phones cap dialogs at 70 % x 80 % of the safe area (PRODUCT_SPEC "Compact on phone", 22a3b).
+		local w = math.min(m.width - 2 * m.margin, 760, math.floor(0.7 * m.width))
+		local h = math.min(m.height - 2 * m.margin, math.floor(0.8 * m.height))
+		frame = box(math.floor((m.width - math.max(0, w)) / 2), math.floor((m.height - math.max(0, h)) / 2), w, h)
 	else
 		local w = math.min(spec.maxWidth, math.floor(m.width * spec.widthScale))
 		local h = math.min(spec.maxHeight, math.floor(m.height * spec.heightScale))
@@ -745,11 +762,17 @@ function UiTheme.dialogLayout(m: Metrics, spec: DialogSpec): DialogLayout
 	local rightHeader: Box? = nil
 	local leftWidth = iw
 	if m.compact then
-		leftWidth = math.max(0, math.floor((iw - 12) * 0.55))
+		leftWidth = math.max(0, math.min(math.floor((iw - 12) * 0.55), iw - 12 - COMPACT_FOOTER_MIN))
 		if hasFooter then
+			local footerHeight = spec.compactFooterHeight or spec.footerHeight
 			list = box(0, spec.listTop, leftWidth, ih - spec.listTop)
-			footer = box(leftWidth + 12, ih - spec.footerHeight, iw - 12 - leftWidth, spec.footerHeight)
-			rightHeader = box(leftWidth + 12, 0, iw - 12 - leftWidth, BUTTON_HEIGHT)
+			footer = box(leftWidth + 12, ih - footerHeight, iw - 12 - leftWidth, footerHeight)
+			if spec.compactHeaderInFooter then
+				rightHeader =
+					box(footer.x, footer.y + footer.h - BUTTON_HEIGHT, math.floor(0.6 * footer.w) - 4, BUTTON_HEIGHT)
+			else
+				rightHeader = box(leftWidth + 12, 0, iw - 12 - leftWidth, BUTTON_HEIGHT)
+			end
 		end
 	elseif hasFooter then
 		list = box(0, spec.listTop, iw, ih - spec.listTop - spec.footerHeight - GAP)
@@ -765,6 +788,35 @@ function UiTheme.dialogLayout(m: Metrics, spec: DialogSpec): DialogLayout
 		footer = footer,
 		leftWidth = leftWidth,
 		rightHeader = rightHeader,
+	}
+end
+
+-- Finder footer on phones (22a3b), relative to the footer (height 148): three size buttons, the
+-- hint or own listing, then Start or Stop beside Close.
+function UiTheme.finderFooterCompact(w: number): { [string]: Box }
+	local unit = math.floor((w - 8) / 3)
+	local half = math.floor((w - 6) / 2)
+	local boxes: { [string]: Box } = {}
+	for i, key in ipairs({ "Size_Duo", "Size_Trio", "Size_Quad" }) do
+		boxes[key] = box((i - 1) * (unit + 4), 0, unit, 44)
+	end
+	boxes.StartHint = box(0, 50, w, 48)
+	boxes.OwnListing = box(0, 50, w, 48)
+	boxes.StartListing = box(0, 104, half, 44)
+	boxes.StopListing = box(0, 104, half, 44)
+	boxes.Close = box(half + 6, 104, w - half - 6, 44)
+	return boxes
+end
+
+-- Delete confirm on phones (22a3b), relative to the dialog's inner area: compact delete confirm puts
+-- name and buttons in one row (content 194 px).
+function UiTheme.deleteConfirmRow(iw: number): { [string]: Box }
+	local nameW = math.floor(iw * 0.5) - 4
+	local bw = math.floor((iw - nameW - 16) / 2)
+	return {
+		ConfirmName = box(0, 150, nameW, 44),
+		ConfirmDelete = box(nameW + 8, 150, bw, 44),
+		Cancel = box(nameW + 16 + bw, 150, iw - nameW - 16 - bw, 44),
 	}
 end
 

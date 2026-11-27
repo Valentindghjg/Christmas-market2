@@ -612,33 +612,38 @@ function UiKit.onLayout(gui: ScreenGui, callback: (UiTheme.Metrics) -> ()): RBXS
 	return gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(apply)
 end
 
+type Original = { anchor: Vector2, position: UDim2, size: UDim2 }
+
+local function remember(originals: { [GuiObject]: Original }, item: GuiObject)
+	originals[item] = { anchor = item.AnchorPoint, position = item.Position, size = item.Size }
+end
+
+local function place(item: GuiObject, placed: UiTheme.Box)
+	item.AnchorPoint = Vector2.new(0, 0)
+	item.Position = UDim2.fromOffset(placed.x, placed.y)
+	item.Size = UDim2.fromOffset(placed.w, placed.h)
+end
+
+local function restore(originals: { [GuiObject]: Original }, item: GuiObject)
+	local original = originals[item]
+	if original then
+		item.AnchorPoint = original.anchor
+		item.Position = original.position
+		item.Size = original.size
+	end
+end
+
 -- Positions a dialog from UiTheme.dialogLayout. Compact screens use two columns: the list and
 -- the left items on the left, the footer (and the right header) on the right. Regular screens
 -- keep the original sizes and positions of the left items and the right header.
 function UiKit.bindDialog(gui: ScreenGui, parts: DialogParts, spec: UiTheme.DialogSpec)
-	local originals: { [GuiObject]: { anchor: Vector2, position: UDim2, size: UDim2 } } = {}
-	local function remember(item: GuiObject)
-		originals[item] = { anchor = item.AnchorPoint, position = item.Position, size = item.Size }
-	end
-	local function place(item: GuiObject, placed: UiTheme.Box)
-		item.AnchorPoint = Vector2.new(0, 0)
-		item.Position = UDim2.fromOffset(placed.x, placed.y)
-		item.Size = UDim2.fromOffset(placed.w, placed.h)
-	end
-	local function restore(item: GuiObject)
-		local original = originals[item]
-		if original then
-			item.AnchorPoint = original.anchor
-			item.Position = original.position
-			item.Size = original.size
-		end
-	end
+	local originals: { [GuiObject]: Original } = {}
 	local leftItems = parts.leftItems or {}
 	for _, item in ipairs(leftItems) do
-		remember(item)
+		remember(originals, item)
 	end
 	if parts.rightHeader then
-		remember(parts.rightHeader)
+		remember(originals, parts.rightHeader)
 	end
 
 	UiKit.onLayout(gui, function(m)
@@ -651,7 +656,7 @@ function UiKit.bindDialog(gui: ScreenGui, parts: DialogParts, spec: UiTheme.Dial
 			place(parts.footer, layout.footer)
 		end
 		for _, item in ipairs(leftItems) do
-			restore(item)
+			restore(originals, item)
 			if layout.compact then
 				local original = originals[item]
 				local height = if original then original.size.Y.Offset else item.Size.Y.Offset
@@ -663,7 +668,34 @@ function UiKit.bindDialog(gui: ScreenGui, parts: DialogParts, spec: UiTheme.Dial
 			if layout.compact and layout.rightHeader then
 				place(header, layout.rightHeader)
 			else
-				restore(header)
+				restore(originals, header)
+			end
+		end
+	end)
+end
+
+-- Compact-only reflow (22a3b): boxes(m) returns a box per item key, or nil on regular screens; every
+-- layout first restores each item's original UDim2s, so regular screens keep them exactly.
+function UiKit.bindCompact(
+	gui: ScreenGui,
+	items: { [string]: GuiObject },
+	boxes: (m: UiTheme.Metrics) -> { [string]: UiTheme.Box }?
+): RBXScriptConnection
+	local originals: { [GuiObject]: Original } = {}
+	for _, item in pairs(items) do
+		remember(originals, item)
+	end
+	return UiKit.onLayout(gui, function(m)
+		for _, item in pairs(items) do
+			restore(originals, item)
+		end
+		local placed = boxes(m)
+		if placed then
+			for key, item in pairs(items) do
+				local box = placed[key]
+				if box then
+					place(item, box)
+				end
 			end
 		end
 	end)
