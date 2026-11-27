@@ -68,7 +68,7 @@ Existing baseline test must stay PASS (new frames are smaller). Body/title size 
 
 ## Playtest (Studio, via playtester; desktop)
 1. Smoke run.
-2. As `docs/plans/CM2-UI2.md` Playtest step 2, open through `StudioUiHook`: SavePicker Picker, DeleteConfirm (press `SaveRow_1/Delete`, then `Cancel`), Finder over the SavePicker, Team, Shop, Quests, Advent, Event. Each: frame position and size equal to before (desktop regular branch), H4b probe (`docs/archive/plans/CM2-UV.md`) 0 violations; Finder `Close` and `StartListing` at their regular full-width rows.
+2. As `docs/archive/plans/CM2-UI2.md` Playtest step 2, open through `StudioUiHook`: SavePicker Picker, DeleteConfirm (press `SaveRow_1/Delete`, then `Cancel`), Finder over the SavePicker, Team, Shop, Quests, Advent, Event. Each: frame position and size equal to before (desktop regular branch), H4b probe (`docs/archive/plans/CM2-UV.md`) 0 violations; Finder `Close` and `StartListing` at their regular full-width rows.
 Phone readings: 22a4 CM2-UIP (PC-14 open).
 
 ## Acceptance

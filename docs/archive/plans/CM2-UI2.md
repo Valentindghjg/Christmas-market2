@@ -4,7 +4,7 @@
 PRODUCT_SPEC target look on every screen (cream surfaces, dark text, dark-green primary buttons and title bands, gold highlights, red close/danger), a style guide, no motion on disabled buttons; layout and behaviour unchanged.
 
 ## Source of truth
-Backlog 22a2, 22a (a)–(c); PRODUCT_SPEC "UI look"; DECISION_LOG 2026-11-27 (CM2-UI1 deviations); `docs/plans/CM2-UI1.md`. No owner images → target from PRODUCT_SPEC and REFERENCE_GAME_LIVE_TEST §9.
+Backlog 22a2, 22a (a)–(c); PRODUCT_SPEC "UI look"; DECISION_LOG 2026-11-27 (CM2-UI1 deviations); `docs/archive/plans/CM2-UI1.md`. No owner images → target from PRODUCT_SPEC and REFERENCE_GAME_LIVE_TEST §9.
 
 ## Implementer tier
 Tier: M. Reason: palette and kit change over ~20 client files and the world labels; no money, save, remote or string-key change.

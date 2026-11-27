@@ -46,7 +46,7 @@ Existing "fits the plot picker on every screen" stays unchanged.
 
 ## Playtest (Studio, via playtester; desktop)
 1. Smoke run.
-2. Open the plot picker as in `docs/plans/CM2-UI2.md` Playtest step 4 (save "UI3 Pick", Play). Press `PlotPickerUI/Panel/Choose` → `PlotPickerUI/Confirm` visible, height 120 (desktop is tall), no overlap with `Panel`; H4b probe (`docs/archive/plans/CM2-UV.md`) 0 violations. Press `No`, then `Back`; delete "UI3 Pick"; play "Playtest A".
+2. Open the plot picker as in `docs/archive/plans/CM2-UI2.md` Playtest step 4 (save "UI3 Pick", Play). Press `PlotPickerUI/Panel/Choose` → `PlotPickerUI/Confirm` visible, height 120 (desktop is tall), no overlap with `Panel`; H4b probe (`docs/archive/plans/CM2-UV.md`) 0 violations. Press `No`, then `Back`; delete "UI3 Pick"; play "Playtest A".
 
 ## Acceptance
 - `stylua --check src tests`, `selene src tests`, `lune run tests/headless/run.luau` (777 PASS; 775 after commit 1), `lune run tests/tools/ui_scan.luau` (0 hits), `rojo build`.
