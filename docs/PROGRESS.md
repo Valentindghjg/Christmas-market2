@@ -72,3 +72,9 @@ Studio client readings (EventButton, EventShopPanel, Buy tap at 666x374): NOT ru
 Own decisions (accepted, minor): buy returns bought = old+1; countdown treats inf like NaN and floors fractions; panel layout offsets (Countdown y30, Hint y52); cached summary then refresh on open; a Robux row with a missing ShopConfig key is skipped; test persistence saves deep copies; private helpers boughtOf, eventPurchasesCopy.
 Deviations: pack for cash instead of the reference's 29 Robux (DECISION_LOG); schema pins 22 to 23 in DayCycle_Test, SaveMigration_Test, Tutorial_Test (plan step 4, files not listed).
 Studio: client readings queued (PC-13).
+
+2026-11-27: CM2-TUTHOOK Studio-only hook to reset a save's tutorial step (tier S, no plan; backlog 18a2 ticked)
+Checks (reviewer, `~/.rokit/bin`): stylua PASS; selene 0 errors, 0 warnings; headless 760/760 (759 + 1 new case); rojo build default and release PASS; release build has no StudioTestService module (its 20 name hits equal main without the diff, comments only) and no StudioTestInstruments.
+Diff: `CompanyStateService:resetTutorialForTest` (first step via `Tutorial.new(true)`, nil without session), StudioTestService command `resetTutorial` {userId?} -> {ok, step} or NoSession; no remote, action, string key or save field. Headless case: no session nil, Done -> "Order", attribute, snapshot and change notification follow. The command wrapper is not covered headlessly.
+Own decisions (accepted, minor): reset as a service method for headless testing; failure carries error and errorCode.
+Studio: deferred (batch); CM2-SUPP (18a4, c) runs `resetTutorial`; queued in "Studio-Test ausstehend".
