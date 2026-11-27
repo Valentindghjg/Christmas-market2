@@ -444,3 +444,15 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - The right decor fence (34, 24) stood 3 studs behind the opening and is dropped: `DecorFences = { { x = -34, z = 24 } }`.
 - Lights through `MapWorld.nightLight` (`DayCycle.GateLight`, PROVISIONAL), 12 more night lights (46 in step 61); the name board mirrors the lot sign through `WorldService.setLotSign`. No save, money or remote change.
 - Files: src/shared/LotArt.lua, GameConfig.lua, UiTheme.lua; src/server/Services/LotGateWorld.lua, WorldService.lua; tests/studio/Cases/{LotArt,GameConfig}_Test.lua, Playtest/Steps/{LotArt,DayNight}.lua; docs/MODEL_INTEGRATION.md.
+
+## 2026-11-27 — CM2-45 event framework and 1st Advent event (engineering)
+| Topic | Decision |
+|---|---|
+| Currency | Pack for in-game cash (backlog: "event currency or cash"); Robux `EventTree*` stay `ready = false`, "Coming soon" (owner 2026-11-26; CM2-V2-SPT). Deviation: the reference pack costs 29 Robux; `EventDecorPack` unchanged. |
+| Window | `startsAt <= now < endsAt` (UTC seconds); Advent1 until the next Advent Sunday (PROVISIONAL); no overlaps. |
+| Scope | Per save, counted in `eventPurchases[eventId][itemKey]`; all stays after the event. |
+| Client feed | `ReplicatedStorage` attributes `EventId` ("" = none), `EventEndsIn` (s) every 5 s; rows in `Company.GetSummary.event`. |
+- Advent1 = 2026-11-29 00:00 to 2026-12-06 00:00 UTC (start OWNER DECIDED, end PROVISIONAL); the "Candlelight Pack" costs $2000, limit 1 per save (PROVISIONAL), and adds 5 decorations x 3 (OBSERVED shape, REFERENCE §7) to the decor crate. The pack is a cash sink, not revenue.
+- Save schema 23 adds `eventPurchases = {[eventId]: {[itemKey]: 1..MaxBuyCount}}` (migration 22 -> 23 and the legacy-v1 path set `{}`); keys are checked by format only, so a later config change never bricks a save. Event decor ids join the decor crate (`AdventCalendar.isDecorInventory` accepts `EventConfig.isDecorItem`).
+- Studio: `CompanyStateService:setEventNowForTest(at?)` moves only the event clock, not the business clock (`eventNow`, `eventReset`).
+- Files: src/shared/EventConfig.lua, EventCalendar.lua, AdventCalendar.lua, BusinessState.lua, Protocol.lua, Localization.lua, UiTheme.lua; src/server/Services/CompanyEvents.lua, CompanyStateService.lua, StudioTestService.lua; src/server/main.server.lua; src/client/EventShopPanel.lua, UiController.client.lua.

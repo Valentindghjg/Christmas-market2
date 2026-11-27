@@ -63,3 +63,12 @@ Studio (playtester): `runPlaytest` smoke only={37,40,41,42,56,59,61,66}: steps=2
 Studio client visuals (lights glow at night, name board readable from the road): NOT run, deferred by PC-13; queued in "Studio-Test ausstehend".
 Own decisions (accepted, minor): step 66 mirror check via LotGateWorld.nameLabel and a local CollectionService; private helpers buildFallback, buildSign; SIGN_SIZE constant. Deviations from the backlog (recorded in DECISION_LOG): offset 1.0 not 0.45; customers do not walk through the gate.
 Studio: client visuals queued (PC-13).
+
+2026-11-27: CM2-45 Event framework and 1st Advent event (tier L, plan `docs/plans/CM2-45.md`; backlog 20 NOT ticked, client readings pending PC-13)
+Skills (plan list, applied as criteria): roblox-data, roblox-networking, roblox-security, roblox-game-design, roblox-gui, roblox-input, roblox-localization, roblox-luau-core, roblox-architecture, roblox-tooling.
+Checks (reviewer, rerun, `~/.rokit/bin`): stylua PASS; selene 0 errors, 0 warnings; headless 753/753 (736 + 17); rojo build default PASS (implementer: release PASS). Schema 23 `eventPurchases`, action `Event.Buy` (companies:handle, payload only {eventId, itemKey}), price, limit and decor only from EventConfig; no Robux product created, enabled or prompted (Robux rows "Coming soon", EventShopPanel has no purchase prompt call).
+Studio (playtester): `runPlaytest` full, BUILD cm2-45: 73 steps, 73 PASS, 0 FAIL, 789 s. Step 72 EVENT_SHOP PASS (Nov 28 closed, Nov 29 open 4 rows, $1999 refused, pack -$2000 +5x3 decor once, Robux and price refused, kept after rejoin, closed on Dec 6); 71, 70, 69 PASS. Console: only known negative-path lines, 28 SessionLocked, [ART] MissingArtAsset FrostcrownFir/Small.
+Studio client readings (EventButton, EventShopPanel, Buy tap at 666x374): NOT run, deferred by PC-13 (client viewport 1x1); queued in "Studio-Test ausstehend". Line 20 stays unticked until they pass.
+Own decisions (accepted, minor): buy returns bought = old+1; countdown treats inf like NaN and floors fractions; panel layout offsets (Countdown y30, Hint y52); cached summary then refresh on open; a Robux row with a missing ShopConfig key is skipped; test persistence saves deep copies; private helpers boughtOf, eventPurchasesCopy.
+Deviations: pack for cash instead of the reference's 29 Robux (DECISION_LOG); schema pins 22 to 23 in DayCycle_Test, SaveMigration_Test, Tutorial_Test (plan step 4, files not listed).
+Studio: client readings queued (PC-13).
