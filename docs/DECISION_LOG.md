@@ -360,3 +360,10 @@ Owner (chat, verbatim): "okay dann kommen die wichtigsten zuerst damit am ersten
 - Toast and HUD chips are cream now (Panel and Toast tokens are 255,244,217).
 - `StudioUiHook` `interact` returns `{ok=false, error="Disabled"}` for any non-interactive button (`Active` false or `KitDisabled`), in every state.
 - Not covered: `LotGate.SignBoard` Name labels stay `DarkText` (the plan names only the lot sign `signLine`); the Advent and Event window audit waits for an open event season (see the queue).
+
+## 2026-11-28 — CM2-UI3M phone Lot Manager: deviations from the earlier design (reviewer)
+- Phone tab column scrolls: 6 tabs of 48 px pitch do not fit the 162-299 px window body, so 3-4 of 6 are visible with a 4 px scroll bar; the selected tab is kept in view. Desktop and tablet tab boxes are unchanged.
+- Phone Supplier rows are 88 px (two lines, pitch 92, controls stay 44 px) instead of 44 px, so 14 px text keeps the full width. The CM2-SUP row test bound is now `rowHeight`.
+- Phone Pricing card is 160 px (pitch 168), so one whole card fits the phone page.
+- Phone Lot Manager window padding 6 px (was 8); tab column width 100 px (PROVISIONAL engineering values).
+- Not covered: Employees and Land page reflow and the 12-13 px Pricing card text; 22a4 CM2-UIP readings decide.

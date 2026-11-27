@@ -19,6 +19,12 @@ Before/after (bytes): CLAUDE.md 8,060 / 8,060; CLAUDE_BACKLOG.md 75,088 / 72,649
 Checks: stylua PASS; selene 0 errors, 0 warnings; headless 779 run, 779 passed (unchanged); rojo build PASS. Studio not needed (docs only).
 Reviewer: no link to the old plan paths left; all "Studio-Test ausstehend" plan paths exist; stylua, selene, headless 779/779, rojo re-run PASS.
 
+2026-11-28: CM2-UI3M Phone Lot Manager at 70 % x 80 % (tier M, plan `docs/plans/CM2-UI3M.md`; backlog 22a3c ticked, 22a3 stays open for 22a3d)
+Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 781 run, 781 passed (779 + 2); ui_scan 0 hits; rojo build PASS.
+Studio (playtester, Studio e36ff47a, desktop): Rojo sync PASS; smoke 13/13 PASS; Lot Manager frame 920x566 = `hudLayout` manager, all 6 tabs H4b 0 violations (incl. pairwise button overlap); Supplier ModeSell/ModeBuy 0 violations, Minus 44 px; Close PASS. Queued CM2-UI3D Advent (560x560) and Event (560x577) desktop windows PASS via adventNow/eventNow, 0 violations, clocks cleared. Console: only the known "rbxassetid://203785492" warning x6. Phone readings not run (22a4).
+Playtest-procedure note: AdventButton is visible only for CompanyReady and AdventPhase == "Open" (AdventPanel.lua:190-191), EventButton for CompanyReady and EventId ~= "" (EventShopPanel.lua:309); call adventNow/eventNow only after the save is open (the earlier hidden state is probably a call before the save opened; not reproduced).
+Review: matches the plan; diff limited to the plan's five files; own decisions accepted (locals ch1, phoneTabBar, phoneScrolls, tabBar; regular branch keeps h1 = 36). Not covered: Employees/Land page reflow and 12-13 px Pricing card text (22a4 readings decide).
+
 2026-11-28: CM2-UI3D Phone dialogs at 70 % x 80 % (tier M, plan `docs/archive/plans/CM2-UI3D.md`; backlog 22a3b ticked, 22a3 stays open for 22a3c/d)
 Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 779 run, 779 passed (777 + 2); ui_scan 0 hits; rojo build PASS.
 Studio (playtester, desktop 1564x730): Rojo sync PASS; smoke 13/13 PASS; Picker 480x600, DeleteConfirm 480x577 + Cancel, Finder over Picker 420x537, Team 420x537, Shop 560x577, Quests 520x577 each equal `dialogLayout` compact=false; H4b inline rules (outside screen, <44 px, TextFits) 0 violations; the overlap rule was not run (no runner probe). Console: only the known "rbxassetid://203785492 Asset type does not match" x6.
