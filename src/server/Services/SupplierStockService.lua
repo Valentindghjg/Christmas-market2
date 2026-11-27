@@ -52,16 +52,25 @@ function SupplierStockService.refreshIfDue(state, timestamp: number, roll: () ->
 	return true
 end
 
--- Per species: the observed shape (1 small, 2 medium) limited by stock, one bay and cash.
+-- Per species: the observed shape (1 small, 2 medium) limited by stock, storage, cash and bays:
+-- one species per free bay (CM2-SUP). An empty recommendation carries a reason code.
 function SupplierStockService.recommend(state)
 	local lines = {}
 	local quantity, cost = 0, 0
+	local freeBays = GameConfig.Receiving.BayCount - Receiving.usedCount(state)
+	local storageFree = BusinessState.storageCapacity(state) - BusinessState.storageUsed(state)
+	local usedSpecies = 0
 	for _, speciesId in ipairs(sortedSpecies()) do
+		if usedSpecies >= freeBays then
+			break
+		end
+		local used = false
 		for _, sizeId in ipairs({ "Small", "Medium" }) do
 			local wanted = GameConfig.Supplier.RecommendedPerSpecies[sizeId] or 0
 			local available = Inventory.count(state.supplier.stock, Inventory.key(speciesId, sizeId))
 			local unitCost = GameConfig.wholesaleFor(speciesId, sizeId) or 0
-			local take = math.min(wanted, available, GameConfig.Receiving.BayCapacity - quantity)
+			local take =
+				math.min(wanted, available, GameConfig.Receiving.BayCapacity - quantity, storageFree - quantity)
 			while take > 0 and cost + take * unitCost > state.cash do
 				take -= 1
 			end
@@ -69,10 +78,32 @@ function SupplierStockService.recommend(state)
 				table.insert(lines, { speciesId = speciesId, sizeId = sizeId, quantity = take })
 				quantity += take
 				cost += take * unitCost
+				used = true
 			end
 		end
+		if used then
+			usedSpecies += 1
+		end
 	end
-	return { lines = lines, quantity = quantity, cost = cost }
+	local recommendation: { [string]: any } = { lines = lines, quantity = quantity, cost = cost }
+	if quantity == 0 then
+		if freeBays <= 0 then
+			recommendation.reason = "NoFreeBay"
+		elseif storageFree <= 0 then
+			recommendation.reason = "StorageFull"
+		else
+			local anyStock = false
+			for _, speciesId in ipairs(sortedSpecies()) do
+				for _, sizeId in ipairs({ "Small", "Medium" }) do
+					if Inventory.count(state.supplier.stock, Inventory.key(speciesId, sizeId)) > 0 then
+						anyStock = true
+					end
+				end
+			end
+			recommendation.reason = if anyStock then "InsufficientFunds" else "OutOfStock"
+		end
+	end
+	return recommendation
 end
 
 -- OBSERVED refunds round half up (46 x 25% = 11.5 -> 12).
@@ -144,7 +175,42 @@ local function wholesaleTable(): { [string]: number }
 	return prices
 end
 
-function SupplierStockService.summary(state, timestamp: number)
+-- Trees the distributor would take back per SKU: bay trees plus unreserved placements (> 0 only).
+function SupplierStockService.sellableCounts(state): { [string]: number }
+	local counts = Receiving.totals(state)
+	for placementId, placement in pairs(state.layout.placements) do
+		if
+			type(placement) == "table"
+			and state.reservations[placementId] == nil
+			and GameConfig.Trees[placement.speciesId]
+			and GameConfig.isValidSize(placement.sizeId)
+		then
+			local key = Inventory.key(placement.speciesId, placement.sizeId)
+			counts[key] = (counts[key] or 0) + 1
+		end
+	end
+	for key, count in pairs(counts) do
+		if count <= 0 then
+			counts[key] = nil
+		end
+	end
+	return counts
+end
+
+local function refundTable(): { [string]: number }
+	local refunds = {}
+	for _, speciesId in ipairs(GameConfig.SpeciesOrder) do
+		for _, sizeId in ipairs(GameConfig.SizeIds) do
+			local refund = SupplierStockService.refundFor(speciesId, sizeId)
+			if refund then
+				refunds[Inventory.key(speciesId, sizeId)] = refund
+			end
+		end
+	end
+	return refunds
+end
+
+function SupplierStockService.summary(state, timestamp: number, deliverySeconds: number)
 	return {
 		refreshIn = math.max(0, state.supplier.refreshAt - timestamp),
 		stock = table.clone(state.supplier.stock),
@@ -152,6 +218,9 @@ function SupplierStockService.summary(state, timestamp: number)
 		recommended = SupplierStockService.recommend(state),
 		sellBackFraction = GameConfig.Supplier.SellBackFraction,
 		wholesale = wholesaleTable(),
+		sellable = SupplierStockService.sellableCounts(state),
+		refunds = refundTable(),
+		deliverySeconds = deliverySeconds,
 	}
 end
 

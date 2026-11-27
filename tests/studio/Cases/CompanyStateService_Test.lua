@@ -45,7 +45,45 @@ return function(t)
 		local response = service:handle("personal:42", 42, order("order_1111"))
 		expect.truthy(response.ok)
 		expect.equal(response.data.cost, 64)
+		expect.equal(response.data.orderId, "order:order_1111")
+		expect.equal(response.data.bay, 1)
 		expect.equal(response.revision, 1)
+	end)
+
+	-- CM2-SUP: a replayed cart cannot debit a second time.
+	t.test("a replayed cart debits once", function()
+		local service = Service.new(fakePersistence(), function()
+			return 100
+		end, function()
+			return 0.5
+		end)
+		local state = service:loadCompany("personal:42", 42)
+		state.cash = 1000
+		local request = {
+			version = 1,
+			requestId = "cart_replay_1",
+			action = "Supplier.PlaceOrder",
+			payload = {
+				lines = {
+					{ speciesId = "DouglasFir", sizeId = "Small", quantity = 1 },
+					{ speciesId = "DouglasFir", sizeId = "Medium", quantity = 2 },
+					{ speciesId = "FrasierFir", sizeId = "Small", quantity = 1 },
+					{ speciesId = "FrasierFir", sizeId = "Medium", quantity = 1 },
+				},
+			},
+		}
+		local first = service:handle("personal:42", 42, request)
+		expect.truthy(first.ok)
+		expect.equal(first.data.cost, 133)
+		expect.equal(first.data.quantity, 5)
+		expect.equal(#first.data.orderIds, 4)
+		local cash, revision = state.cash, first.revision
+		expect.equal(cash, 1000 - 133)
+		local replay = service:handle("personal:42", 42, request)
+		expect.falsy(replay.ok)
+		expect.equal(replay.errorCode, "DuplicateRequest")
+		expect.equal(replay.revision, revision)
+		expect.equal(state.cash, cash)
 	end)
 
 	-- A replay cannot debit a second time or increment revision.

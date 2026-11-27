@@ -157,7 +157,10 @@ local function supplierTargets(): (GuiObject?, GuiObject?)
 	end
 	local tab = guiObject(manager:FindFirstChild("Tab_Supplier", true))
 	local page = manager:FindFirstChild("Page_Supplier", true)
-	local order = guiObject(page and page:FindFirstChild("OrderTrees", true))
+	-- CM2-SUP: point at "Place order" once the cart has trees, else at the recommended order.
+	local cartCount = page and page:GetAttribute("CartCount")
+	local targetName = if type(cartCount) == "number" and cartCount > 0 then "OrderTrees" else "AddRecommended"
+	local order = guiObject(page and page:FindFirstChild(targetName, true))
 	return tab, order
 end
 

@@ -628,6 +628,14 @@ local function afterOrderAction(player: Player, action: string, response, payloa
 		end
 		return
 	end
+	-- CM2-SUP: supplier toasts carry server figures only.
+	if type(response.data) == "table" then
+		if action == Protocol.Actions.SupplierPlaceOrder then
+			tell(player, "orderPlacedToast", response.data.quantity, response.data.cost, response.data.dueIn)
+		elseif action == Protocol.Actions.SupplierSellBack then
+			tell(player, "soldBackToast", response.data.sold, response.data.refund)
+		end
+	end
 	local character = player.Character
 	if action == Protocol.Actions.OrderCarry and character and type(response.data) == "number" then
 		local speciesId, sizeId = orderLook(player, response.data)

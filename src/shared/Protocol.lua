@@ -3,6 +3,7 @@
 local GameConfig = require(script.Parent.GameConfig)
 local SaveProfile = require(script.Parent.SaveProfile)
 local ShopConfig = require(script.Parent.ShopConfig)
+local SupplierCart = require(script.Parent.SupplierCart)
 
 local Protocol = {}
 Protocol.VERSION = 1
@@ -262,6 +263,17 @@ function Protocol.validateRequest(request)
 	end
 
 	if request.action == Protocol.Actions.SupplierPlaceOrder then
+		-- CM2-SUP: a cart is exactly {lines}; SupplierCart.normalize checks every line.
+		if request.payload.lines ~= nil then
+			if not hasExactKeys(request.payload, { lines = true }) then
+				return false, "UnexpectedField"
+			end
+			local cart, cartError = SupplierCart.normalize(request.payload.lines)
+			if cart == nil then
+				return false, cartError
+			end
+			return true, nil
+		end
 		if not hasOnlyKeys(request.payload, { speciesId = true, sizeId = true, quantity = true }) then
 			return false, "UnexpectedField"
 		end

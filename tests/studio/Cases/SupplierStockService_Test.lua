@@ -208,4 +208,87 @@ return function(t)
 		expect.equal(order.cost, 21)
 		expect.equal(migrated.cash, 979)
 	end)
+
+	-- CM2-SUP: one species per free bay; storage caps the quantity; an empty one gives a reason.
+	t.test("recommendation respects free bays and storage", function()
+		local oneBay = BusinessState.new("personal:42", 42)
+		oneBay.cash = 100000
+		for index = 1, 3 do
+			oneBay.bays[index] = { speciesId = "NobleFir", counts = { Small = 1 } }
+		end
+		local single = Supplier.recommend(oneBay)
+		expect.equal(single.quantity, 3)
+		for _, entry in ipairs(single.lines) do
+			expect.equal(entry.speciesId, "DouglasFir")
+		end
+		expect.equal(single.reason, nil)
+
+		local tight = BusinessState.new("personal:42", 42)
+		tight.cash = 100000
+		tight.bays[1] = { speciesId = "NobleFir", counts = { Medium = GameConfig.Receiving.BaseStorage - 2 } }
+		expect.equal(Supplier.recommend(tight).quantity, 2)
+
+		local noBay = BusinessState.new("personal:42", 42)
+		noBay.cash = 100000
+		for index = 1, 4 do
+			noBay.bays[index] = { speciesId = "NobleFir", counts = { Small = 1 } }
+		end
+		expect.equal(Supplier.recommend(noBay).quantity, 0)
+		expect.equal(Supplier.recommend(noBay).reason, "NoFreeBay")
+
+		local full = BusinessState.new("personal:42", 42)
+		full.cash = 100000
+		full.bays[1] = { speciesId = "NobleFir", counts = { Medium = GameConfig.Receiving.BaseStorage } }
+		expect.equal(Supplier.recommend(full).reason, "StorageFull")
+
+		local empty = BusinessState.new("personal:42", 42)
+		empty.cash = 100000
+		for key in pairs(empty.supplier.stock) do
+			if not string.find(key, ":Large", 1, true) then
+				empty.supplier.stock[key] = 0
+			end
+		end
+		expect.equal(Supplier.recommend(empty).reason, "OutOfStock")
+
+		local poor = BusinessState.new("personal:42", 42)
+		poor.cash = 0
+		expect.equal(Supplier.recommend(poor).reason, "InsufficientFunds")
+	end)
+
+	local function sellSetup()
+		local state = BusinessState.new("personal:42", 42)
+		state.bays[1] = { speciesId = "FrasierFir", counts = { Medium = 3 } }
+		state.layout.placements.fir_a = { speciesId = "FrasierFir", sizeId = "Medium" }
+		state.layout.placements.fir_b = { speciesId = "FrasierFir", sizeId = "Medium" }
+		state.reservations.fir_b = { customerId = "customer:1", expiresAt = 999, salePrice = 82 }
+		return state
+	end
+
+	t.test("summary lists sellable counts, refunds and delivery seconds", function()
+		local state = sellSetup()
+		local summary = Supplier.summary(state, 100, GameConfig.DeliverySeconds)
+		expect.equal(summary.sellable["FrasierFir:Medium"], 4)
+		expect.equal(summary.sellable["FrasierFir:Small"], nil)
+		expect.equal(summary.refunds["FrasierFir:Medium"], 8)
+		expect.equal(summary.refunds["FrasierFir:Large"], 12)
+		expect.equal(summary.refunds["DouglasFir:Small"], 5)
+		expect.equal(summary.deliverySeconds, GameConfig.DeliverySeconds)
+		expect.equal(Supplier.summary(state, 100, 0).deliverySeconds, 0)
+	end)
+
+	t.test("sell back ALL never sells a reserved tree", function()
+		local state = sellSetup()
+		local cash = state.cash
+		local all = Supplier.summary(state, 100, 0).sellable["FrasierFir:Medium"]
+		local ok, result = Supplier.sellBack(state, "FrasierFir", "Medium", all)
+		expect.truthy(ok)
+		expect.equal(result.refund, 32)
+		expect.equal(state.cash, cash + 32)
+		expect.truthy(state.layout.placements.fir_b)
+		expect.equal(state.layout.placements.fir_a, nil)
+		local more, reason = Supplier.sellBack(state, "FrasierFir", "Medium", 1)
+		expect.falsy(more)
+		expect.equal(reason, "NotEnoughTrees")
+		expect.equal(state.cash, cash + 32)
+	end)
 end

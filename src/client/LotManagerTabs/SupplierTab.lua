@@ -1,11 +1,16 @@
 --!strict
--- Supplier tab of the Lot Manager (CM2-40): order and sell back trees. Deliveries land in a
--- receiving bay by themselves and are stocked at the bay (CM2-G14, StockingMode.client.lua).
--- Every request goes through the tab context (BusinessAction) and the server owns costs and results.
+-- Supplier tab of the Lot Manager (CM2-SUP, docs/plans/CM2-SUP.md): a buy view with one row per
+-- species and size, a cart ("Your order") placed as one atomic server order, a one-click
+-- recommended order, and a sell-back view per species and size. Deliveries land in receiving
+-- bays by themselves and are stocked at the bay (CM2-G14, StockingMode.client.lua).
+-- Every request goes through the tab context (BusinessAction); the server owns costs and
+-- results. MAX and the cart math here are convenience only; the server re-checks everything.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local Inventory = require(Shared:WaitForChild("Inventory"))
+local SupplierCart = require(Shared:WaitForChild("SupplierCart"))
 local UiKit = require(script.Parent.Parent:WaitForChild("UiKit") :: ModuleScript)
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
 
@@ -18,113 +23,421 @@ type TabHandle = {
 	render: (summary: any?) -> (),
 	shown: ((visible: boolean) -> ())?,
 }
+type Row = {
+	key: string,
+	speciesId: string,
+	sizeId: string,
+	frame: Frame,
+	name: TextLabel,
+	info: TextLabel,
+	qty: TextLabel,
+	minus: TextButton,
+	plus: TextButton,
+	max: TextButton,
+	sell: TextButton,
+}
 
 local SupplierTab = {}
 
--- Supplier rows follow the OBSERVED order; prices shown come from the server summary.
-local SPECIES_ORDER = GameConfig.SpeciesOrder
-local SELL_BACK_SAND = Color3.fromRGB(214, 186, 120)
+local SIZE_KEYS = { Small = "sizeSmall", Medium = "sizeMedium", Large = "sizeLarge" }
+local DISABLED_TRANSPARENCY = 0.45
+local CART_PREVIEW_LINES = 3
 
 local function speciesName(speciesId: string): string
 	local tree = GameConfig.Trees[speciesId]
 	return if tree then tree.displayName else speciesId
 end
 
+local function sizeName(sizeId: string): string
+	local key = SIZE_KEYS[sizeId]
+	return if key then UiKit.localized(key) else sizeId
+end
+
+local function number(value: unknown): number
+	return if type(value) == "number" and value == value then value else 0
+end
+
+local function sellBackPercent(): number
+	return math.floor(GameConfig.Supplier.SellBackFraction * 100)
+end
+
 -- Server error codes that have a player-facing translation.
 local ERROR_KEYS = {
 	InsufficientFunds = "insufficientFunds",
 	ConnectionError = "connectionError",
-	NoFreeBay = "noFreeBay",
 	StorageFull = "storageFull",
 	SupplierOutOfStock = "supplierOutOfStock",
 	NotEnoughTrees = "notEnoughTrees",
 	OutOfReach = "outOfReach",
 	HandsFull = "handsFull",
+	-- The cart codes (SupplierCart.normalize) and the open-order limit.
+	InvalidCart = "orderUnavailable",
+	UnexpectedField = "orderUnavailable",
+	InvalidItem = "orderUnavailable",
+	InvalidQuantity = "orderUnavailable",
+	DuplicateLine = "orderUnavailable",
+	TooManyOpenOrders = "orderUnavailable",
 }
-local function errorText(errorCode: unknown): string
-	if errorCode == "BayCapacity" then
-		return UiKit.localizedFormat(
-			"errorStatus",
-			UiKit.localizedFormat("bayCapacity", GameConfig.Receiving.BayCapacity)
-		)
-	end
-	local key = type(errorCode) == "string" and ERROR_KEYS[errorCode]
-	return UiKit.localizedFormat("errorStatus", if key then UiKit.localized(key) else tostring(errorCode))
-end
 
 function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 	local colors = UiKit.Colors
 	local localized = UiKit.localized
 	local localizedFormat = UiKit.localizedFormat
 
-	local titleLabel = UiKit.label(page, "SupplierTitle", localized("supplier"), 22)
-	titleLabel.Position = UDim2.fromOffset(0, 0)
-	titleLabel.Size = UDim2.fromOffset(324, 28)
-	local legend = UiKit.label(page, "SupplierLegend", localized("supplierPriceLegend"), 12)
-	legend.Position = UDim2.fromOffset(0, 32)
-	legend.Size = UDim2.fromOffset(324, 16)
+	local mode = "Buy"
+	local cart: { [string]: number } = {}
+	local sellQty: { [string]: number } = {}
+	local lastSummary: any = nil
+	-- One in-flight request per action: a double tap must not place two orders.
+	local busy = { order = false, sell = false }
+	local refreshDeadline: number? = nil
+	local statusText = ""
+	local metrics: UiTheme.Metrics = UiTheme.metrics(1920, 1080)
+	local enabledState: { [TextButton]: boolean } = {}
 
-	local selectedSpecies = SPECIES_ORDER[1]
-	local speciesButtons: { [string]: TextButton } = {}
-	local speciesStrokes: { [string]: UIStroke } = {}
-	for index, speciesId in ipairs(SPECIES_ORDER) do
-		local column = (index - 1) % 2
-		local row = (index - 1) // 2
-		local choice = UiKit.button(page, "Species_" .. speciesId, speciesName(speciesId), colors.Sand, 13)
-		choice.Position = UDim2.fromOffset(column * 164, 54 + row * 48)
-		choice.Size = UDim2.fromOffset(160, 44)
-		-- The outline marks the selection, so it is not shown by colour alone.
+	local function setEnabled(button: TextButton, enabled: boolean)
+		enabledState[button] = enabled
+		button.AutoButtonColor = enabled
+		button.TextTransparency = if enabled then 0 else DISABLED_TRANSPARENCY
+	end
+	local function isEnabled(button: TextButton): boolean
+		return enabledState[button] == true
+	end
+
+	local function modeButton(name: string, text: string): (TextButton, UIStroke)
+		local button = UiKit.button(page, name, text, colors.Sand, 13)
+		-- The outline marks the active view, so it is not shown by colour alone.
 		local stroke = Instance.new("UIStroke")
 		stroke.Name = "Selected"
 		stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 		stroke.Thickness = 3
 		stroke.Color = colors.Cream
-		stroke.Parent = choice
-		speciesButtons[speciesId] = choice
-		speciesStrokes[speciesId] = stroke
+		stroke.Parent = button
+		return button, stroke
 	end
-	local function updateSelection()
-		for speciesId, choice in pairs(speciesButtons) do
-			local selected = speciesId == selectedSpecies
-			choice.BackgroundColor3 = if selected then colors.Gold else colors.Sand
-			speciesStrokes[speciesId].Enabled = selected
+	local modeBuy, modeBuyStroke = modeButton("ModeBuy", localized("supplierModeBuy"))
+	local modeSell, modeSellStroke = modeButton("ModeSell", localizedFormat("supplierModeSell", sellBackPercent()))
+	local refreshLabel = UiKit.label(page, "RefreshLabel", "", 13)
+	refreshLabel.TextXAlignment = Enum.TextXAlignment.Right
+
+	local orderButton = UiKit.button(page, "OrderTrees", localized("placeOrder"), colors.Gold, 15)
+	local clearButton = UiKit.button(page, "ClearCart", localized("clearCart"), colors.Sand, 13)
+	local recommendButton = UiKit.button(page, "AddRecommended", localized("loading"), colors.Sand, 13)
+	local status = UiKit.label(page, "SupplierStatus", localized("loading"), 13)
+	local cartInfo = UiKit.label(page, "CartInfo", "", 13)
+	local cartLines = UiKit.label(page, "CartLines", "", 13)
+	local sellHint = UiKit.label(page, "SellHint", localizedFormat("sellBackHint", sellBackPercent()), 13)
+	for _, wrapped in ipairs({ cartInfo, cartLines, sellHint }) do
+		wrapped.TextWrapped = true
+		wrapped.TextTruncate = Enum.TextTruncate.None
+	end
+
+	local rows: { Row } = {}
+	for _, speciesId in ipairs(GameConfig.SpeciesOrder) do
+		for _, sizeId in ipairs(GameConfig.SizeIds) do
+			local frame = Instance.new("Frame")
+			frame.Name = "Row_" .. speciesId .. "_" .. sizeId
+			frame.BackgroundTransparency = 1
+			frame.BorderSizePixel = 0
+			frame.Parent = page
+			local qty = UiKit.label(frame, "Qty", "0", 15)
+			qty.TextXAlignment = Enum.TextXAlignment.Center
+			local row: Row = {
+				key = Inventory.key(speciesId, sizeId),
+				speciesId = speciesId,
+				sizeId = sizeId,
+				frame = frame,
+				name = UiKit.label(
+					frame,
+					"Name",
+					localizedFormat("supplierRowName", speciesName(speciesId), sizeName(sizeId)),
+					13
+				),
+				info = UiKit.label(frame, "Info", "", 12),
+				qty = qty,
+				minus = UiKit.button(frame, "Minus", "−", colors.Sand, 17),
+				plus = UiKit.button(frame, "Plus", "+", colors.Sand, 17),
+				max = UiKit.button(frame, "Max", localized("maxButton"), colors.Sand, 13),
+				sell = UiKit.button(frame, "Sell", "", colors.Gold, 12),
+			}
+			table.insert(rows, row)
 		end
 	end
-	updateSelection()
-
-	local detail = UiKit.label(page, "SupplierDetail", localized("loading"), 15)
-
-	local order = UiKit.button(page, "OrderTrees", localized("placeOrder"), colors.Gold, 17)
 
 	-- CM2-G14: deliveries land in a bay by themselves; stocking happens at the bay.
 	local stockingHint = UiKit.label(page, "StockingHint", localized("supplierStockingHint"), 13)
 	stockingHint.TextWrapped = true
 	stockingHint.TextTruncate = Enum.TextTruncate.None
-
-	-- G4/G5/G1 status lines and sell-back.
-	local supplierLine = UiKit.label(page, "SupplierLine", "", 13)
-	local receivingLine = UiKit.label(page, "ReceivingLine", "", 13)
 	local customerLine = UiKit.label(page, "CustomerLine", "", 13)
-	local sellBack = UiKit.button(page, "SellBackTree", "", SELL_BACK_SAND, 13)
-	sellBack.Visible = false
 
-	-- CM2-UVF11: boxes come from UiTheme.supplierLayout and follow the screen size.
 	local function place(item: GuiObject, placed: UiTheme.Box)
 		item.Position = UDim2.fromOffset(placed.x, placed.y)
 		item.Size = UDim2.fromOffset(placed.w, placed.h)
 	end
+
+	local function summaryPart(name: string): any
+		return if type(lastSummary) == "table" then lastSummary[name] else nil
+	end
+
+	local function limits(): SupplierCart.Limits
+		local supplier = summaryPart("supplier")
+		local receiving = summaryPart("receiving")
+		local stock = if type(supplier) == "table" and type(supplier.stock) == "table" then supplier.stock else {}
+		local freeBays, storageFree = 0, 0
+		if type(receiving) == "table" then
+			freeBays = number(receiving.bayCount) - number(receiving.baysUsed)
+			storageFree = number(receiving.storageCapacity) - number(receiving.storageUsed)
+		end
+		return {
+			cash = number(summaryPart("cash")),
+			freeBays = math.max(0, freeBays),
+			storageFree = math.max(0, storageFree),
+			stock = stock,
+		}
+	end
+
+	local function errorText(errorCode: unknown): string
+		if errorCode == "NoFreeBay" then
+			local receiving = summaryPart("receiving")
+			local full = type(receiving) == "table" and number(receiving.baysUsed) >= number(receiving.bayCount)
+			local text = if full
+				then localized("noFreeBay")
+				else localizedFormat("notEnoughBays", GameConfig.Receiving.BayCapacity)
+			return localizedFormat("errorStatus", text)
+		end
+		local key = type(errorCode) == "string" and ERROR_KEYS[errorCode]
+		return localizedFormat("errorStatus", if key then localized(key) else tostring(errorCode))
+	end
+
+	local function sellBound(key: string): number
+		local supplier = summaryPart("supplier")
+		local sellable = if type(supplier) == "table" and type(supplier.sellable) == "table"
+			then supplier.sellable
+			else {}
+		return math.min(math.max(0, math.floor(number(sellable[key]))), GameConfig.MaxOrderQuantity)
+	end
+
+	local function setCartCount()
+		page:SetAttribute("CartCount", SupplierCart.total(SupplierCart.fromCounts(cart)))
+	end
+
+	local function formatSeconds(seconds: number): (number, number)
+		local whole = math.max(0, math.floor(seconds))
+		return whole // 60, whole % 60
+	end
+
+	local function updateRefreshLabel()
+		if refreshDeadline == nil then
+			refreshLabel.Text = ""
+			return
+		end
+		local minutes, seconds = formatSeconds(math.ceil((refreshDeadline :: number) - os.clock()))
+		refreshLabel.Text = localizedFormat("supplierRefresh", minutes, seconds)
+	end
+
+	local function renderCart()
+		local lines = SupplierCart.fromCounts(cart)
+		if #lines == 0 then
+			cartLines.Text = localized("cartEmpty")
+		else
+			local items = {}
+			for index = 1, math.min(CART_PREVIEW_LINES, #lines) do
+				local line = lines[index]
+				table.insert(
+					items,
+					localizedFormat("cartLineItem", line.quantity, speciesName(line.speciesId), sizeName(line.sizeId))
+				)
+			end
+			local text = table.concat(items, ", ")
+			local rest = #lines - CART_PREVIEW_LINES
+			if rest > 0 then
+				text ..= ", " .. localizedFormat("cartMore", rest)
+			end
+			cartLines.Text = localizedFormat("cartLines", text)
+		end
+		local receiving = summaryPart("receiving")
+		local supplier = summaryPart("supplier")
+		local current = limits()
+		local free, capacity = SupplierCart.deliveryArea(cart, current.freeBays)
+		local baysUsed = if type(receiving) == "table" then number(receiving.baysUsed) else 0
+		local bayCount = if type(receiving) == "table"
+			then number(receiving.bayCount)
+			else GameConfig.Receiving.BayCount
+		local delivery = if type(supplier) == "table" and type(supplier.deliverySeconds) == "number"
+			then supplier.deliverySeconds
+			else GameConfig.DeliverySeconds
+		local minutes, seconds = formatSeconds(delivery)
+		cartInfo.Text = localizedFormat(
+			"cartInfo",
+			SupplierCart.total(lines),
+			SupplierCart.cost(lines),
+			free,
+			capacity,
+			baysUsed + SupplierCart.baysNeeded(lines),
+			bayCount,
+			minutes,
+			seconds
+		)
+	end
+
+	local function renderRecommend()
+		local supplier = summaryPart("supplier")
+		local recommended = if type(supplier) == "table" then supplier.recommended else nil
+		if type(recommended) ~= "table" then
+			recommendButton.Text = localized("loading")
+			setEnabled(recommendButton, false)
+			return
+		end
+		if number(recommended.quantity) > 0 then
+			recommendButton.Text = localizedFormat("addRecommended", number(recommended.cost))
+			setEnabled(recommendButton, true)
+		else
+			recommendButton.Text = if recommended.reason == "OutOfStock"
+				then localized("recommendNothing")
+				else errorText(recommended.reason)
+			setEnabled(recommendButton, false)
+		end
+	end
+
+	local function renderBuyRow(row: Row)
+		local supplier = summaryPart("supplier")
+		local wholesale = if type(supplier) == "table" and type(supplier.wholesale) == "table"
+			then supplier.wholesale
+			else {}
+		local stock = if type(supplier) == "table" and type(supplier.stock) == "table" then supplier.stock else {}
+		local demand = if type(supplier) == "table" and type(supplier.demand) == "table" then supplier.demand else {}
+		local info = localizedFormat("supplierBuyRowInfo", number(wholesale[row.key]), number(stock[row.key]))
+		if demand[row.key] == "High" then
+			info ..= " · " .. localized("demandHigh")
+		elseif demand[row.key] == "Low" then
+			info ..= " · " .. localized("demandLow")
+		end
+		row.info.Text = info
+		local count = cart[row.key] or 0
+		row.qty.Text = tostring(count)
+		local canAdd = lastSummary ~= nil and SupplierCart.maxAdd(cart, row.speciesId, row.sizeId, limits()) >= 1
+		setEnabled(row.minus, count > 0)
+		setEnabled(row.plus, canAdd)
+		row.max.Text = localized("maxButton")
+		setEnabled(row.max, canAdd)
+		row.sell.Visible = false
+	end
+
+	local function renderSellRow(row: Row)
+		local supplier = summaryPart("supplier")
+		local sellable = if type(supplier) == "table" and type(supplier.sellable) == "table"
+			then supplier.sellable
+			else {}
+		local refunds = if type(supplier) == "table" and type(supplier.refunds) == "table" then supplier.refunds else {}
+		local bound = sellBound(row.key)
+		local qty = math.min(sellQty[row.key] or 0, bound)
+		sellQty[row.key] = if qty > 0 then qty else nil
+		local refund = number(refunds[row.key])
+		row.info.Text = localizedFormat("supplierSellRowInfo", number(sellable[row.key]), refund)
+		row.qty.Text = tostring(qty)
+		setEnabled(row.minus, qty > 0)
+		setEnabled(row.plus, qty < bound)
+		row.max.Text = localized("sellAll")
+		setEnabled(row.max, bound > 0)
+		row.sell.Text = localizedFormat("sellRowButton", refund * qty)
+		row.sell.Visible = true
+		setEnabled(row.sell, qty > 0 and not busy.sell)
+	end
+
+	local function setStatus(text: string)
+		statusText = text
+		status.Text = text
+	end
+
+	local function renderView()
+		local buy = mode == "Buy"
+		modeBuy.BackgroundColor3 = if buy then colors.Gold else colors.Sand
+		modeBuyStroke.Enabled = buy
+		modeSell.BackgroundColor3 = if buy then colors.Sand else colors.Gold
+		modeSellStroke.Enabled = not buy
+		orderButton.Visible = buy
+		clearButton.Visible = buy
+		recommendButton.Visible = buy
+		cartInfo.Visible = buy
+		cartLines.Visible = buy
+		sellHint.Visible = not buy
+
+		local layout = UiTheme.supplierPanelLayout(metrics, page.AbsoluteSize.X)
+		local rowLayout = UiTheme.supplierRowLayout(page.AbsoluteSize.X, not buy)
+		local rowsTop = if buy then layout.rowsTopBuy else layout.rowsTopSell
+		local shownRows = 0
+		for _, row in ipairs(rows) do
+			local visible = buy or sellBound(row.key) > 0
+			row.frame.Visible = visible
+			if visible then
+				row.frame.Position = UDim2.fromOffset(0, rowsTop + shownRows * layout.rowPitch)
+				row.frame.Size = UDim2.fromOffset(layout.width, layout.rowHeight)
+				place(row.name, { x = rowLayout.text.x, y = 0, w = rowLayout.text.w, h = 22 })
+				place(row.info, { x = rowLayout.text.x, y = 22, w = rowLayout.text.w, h = 22 })
+				place(row.minus, rowLayout.minus)
+				place(row.qty, rowLayout.qty)
+				place(row.plus, rowLayout.plus)
+				place(row.max, rowLayout.max)
+				if rowLayout.sell then
+					place(row.sell, rowLayout.sell)
+				end
+				row.name.TextSize = layout.textSize
+				row.info.TextSize = layout.textSize
+				if buy then
+					renderBuyRow(row)
+				else
+					renderSellRow(row)
+				end
+				shownRows += 1
+			end
+		end
+		local footerTop = rowsTop + shownRows * layout.rowPitch
+		place(stockingHint, { x = 0, y = footerTop, w = layout.width, h = 36 })
+		place(customerLine, { x = 0, y = footerTop + 38, w = layout.width, h = 18 })
+		page.CanvasSize = UDim2.fromOffset(0, rowsTop + shownRows * layout.rowPitch + 70)
+
+		if buy then
+			renderCart()
+			renderRecommend()
+			if statusText == localized("sellNothing") then
+				setStatus("")
+			end
+		elseif lastSummary ~= nil and shownRows == 0 then
+			setStatus(localized("sellNothing"))
+		elseif statusText == localized("sellNothing") then
+			setStatus("")
+		end
+
+		local customers = summaryPart("customers")
+		if type(customers) == "table" then
+			customerLine.Text = localizedFormat(
+				"customerStatus",
+				number(customers.activeCustomers),
+				number(customers.parkingSpaces),
+				number(customers.loadedOrders),
+				number(customers.missedPickups)
+			)
+		end
+	end
+
+	-- Boxes come from UiTheme.supplierPanelLayout and follow the screen size.
 	local function applyLayout(m: UiTheme.Metrics)
-		local layout = UiTheme.supplierLayout(m, page.AbsoluteSize.X)
-		page.CanvasSize = UDim2.fromOffset(0, layout.canvasHeight)
-		place(detail, layout.detail)
-		detail.TextWrapped = layout.twoColumns
-		detail.TextTruncate = if layout.twoColumns then Enum.TextTruncate.None else Enum.TextTruncate.AtEnd
-		place(order, layout.order)
-		place(stockingHint, layout.stockingHint)
-		place(supplierLine, layout.supplierLine)
-		place(receivingLine, layout.receivingLine)
-		place(customerLine, layout.customerLine)
-		place(sellBack, layout.sellBack)
+		metrics = m
+		local layout = UiTheme.supplierPanelLayout(m, page.AbsoluteSize.X)
+		place(modeBuy, layout.modeBuy)
+		place(modeSell, layout.modeSell)
+		place(refreshLabel, layout.refresh)
+		place(orderButton, layout.placeOrder)
+		place(clearButton, layout.clear)
+		place(recommendButton, layout.recommend)
+		place(sellHint, layout.sellHint)
+		place(status, layout.status)
+		place(cartInfo, layout.cartInfo)
+		place(cartLines, layout.cartLines)
+		for _, item in ipairs({ refreshLabel, status, cartInfo, cartLines, sellHint, stockingHint, customerLine }) do
+			item.TextSize = layout.textSize
+		end
+		renderView()
 	end
 	local gui = page:FindFirstAncestorOfClass("ScreenGui")
 	if gui then
@@ -133,148 +446,195 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 			applyLayout(UiTheme.metrics(gui.AbsoluteSize.X, gui.AbsoluteSize.Y))
 		end)
 	else
-		applyLayout(UiTheme.metrics(1920, 1080))
+		applyLayout(metrics)
 	end
 
-	local storedSelectedMedium = 0
-	local lastSummary: any = nil
-	local placementCount = 0
-	-- One in-flight request per button: a double tap must not place two orders.
-	local busy = { order = false, sellBack = false }
-
-	local function mediumKey(): string
-		return selectedSpecies .. ":Medium"
+	local function changeCart(key: string, delta: number)
+		local value = (cart[key] or 0) + delta
+		cart[key] = if value > 0 then value else nil
+		setCartCount()
+		renderView()
 	end
 
-	local function serverWholesale(key: string): number?
-		local supplier = lastSummary and lastSummary.supplier
-		local prices = supplier and supplier.wholesale
-		local value = prices and prices[key]
-		return if type(value) == "number" then value else nil
-	end
-
-	local function showSelectedQuote()
-		local unitCost = serverWholesale(mediumKey())
-		detail.Text = if unitCost
-			then localizedFormat("wholesaleQuote", speciesName(selectedSpecies), localized("sizeMedium"), unitCost)
-			else localized("loading")
-	end
-
-	local function renderSummary(data: any)
-		storedSelectedMedium = data.stock and (data.stock[mediumKey()] or 0) or 0
-		placementCount = data.placementCount or 0
-		local supplier = data.supplier
-		if supplier and supplier.stock then
-			supplierLine.Text =
-				localizedFormat("supplierStock", supplier.stock[mediumKey()] or 0, supplier.refreshIn or 0)
+	local function setMode(nextMode: string)
+		if mode ~= nextMode then
+			mode = nextMode
+			setStatus("")
+			renderView()
 		end
-		if supplier and supplier.wholesale then
-			local prices = supplier.wholesale
-			for speciesId, choice in pairs(speciesButtons) do
-				choice.Text = localizedFormat(
-					"supplierSpeciesRow",
-					speciesName(speciesId),
-					prices[speciesId .. ":Small"] or 0,
-					prices[speciesId .. ":Medium"] or 0,
-					prices[speciesId .. ":Large"] or 0
-				)
+	end
+	modeBuy.Activated:Connect(function()
+		setMode("Buy")
+	end)
+	modeSell.Activated:Connect(function()
+		setMode("Sell")
+	end)
+
+	clearButton.Activated:Connect(function()
+		cart = {}
+		setCartCount()
+		renderView()
+	end)
+
+	recommendButton.Activated:Connect(function()
+		if not isEnabled(recommendButton) then
+			return
+		end
+		local supplier = summaryPart("supplier")
+		local recommended = if type(supplier) == "table" then supplier.recommended else nil
+		if type(recommended) ~= "table" or type(recommended.lines) ~= "table" then
+			return
+		end
+		local nextCart: { [string]: number } = {}
+		for _, line in ipairs(recommended.lines) do
+			if
+				type(line) == "table"
+				and GameConfig.Trees[line.speciesId]
+				and GameConfig.isValidSize(line.sizeId)
+				and number(line.quantity) > 0
+			then
+				nextCart[Inventory.key(line.speciesId, line.sizeId)] = math.floor(number(line.quantity))
 			end
 		end
-		local receiving = data.receiving
-		if receiving then
-			receivingLine.Text = localizedFormat(
-				"receivingStatus",
-				receiving.baysUsed,
-				receiving.bayCount,
-				receiving.storageUsed,
-				receiving.storageCapacity
-			)
-		end
-		local customers = data.customers
-		if customers then
-			customerLine.Text = localizedFormat(
-				"customerStatus",
-				customers.activeCustomers,
-				customers.parkingSpaces,
-				customers.loadedOrders,
-				customers.missedPickups
-			)
-		end
-		local refund =
-			math.floor((serverWholesale(mediumKey()) or 0) * ((supplier and supplier.sellBackFraction) or 0) + 0.5)
-		sellBack.Visible = storedSelectedMedium + placementCount > 0
-		sellBack.Text = localizedFormat("sellBack", refund)
-	end
+		cart = nextCart
+		setCartCount()
+		renderView()
+	end)
 
-	for speciesId, choice in pairs(speciesButtons) do
-		choice.Activated:Connect(function()
-			selectedSpecies = speciesId
-			updateSelection()
-			showSelectedQuote()
-			if lastSummary then
-				renderSummary(lastSummary)
+	for _, row in ipairs(rows) do
+		row.minus.Activated:Connect(function()
+			if not isEnabled(row.minus) then
+				return
 			end
+			if mode == "Buy" then
+				changeCart(row.key, -1)
+			else
+				local qty = sellQty[row.key] or 0
+				sellQty[row.key] = if qty > 1 then qty - 1 else nil
+				renderView()
+			end
+		end)
+		row.plus.Activated:Connect(function()
+			if not isEnabled(row.plus) then
+				return
+			end
+			if mode == "Buy" then
+				if SupplierCart.maxAdd(cart, row.speciesId, row.sizeId, limits()) >= 1 then
+					changeCart(row.key, 1)
+				end
+			else
+				local qty = sellQty[row.key] or 0
+				if qty < sellBound(row.key) then
+					sellQty[row.key] = qty + 1
+				end
+				renderView()
+			end
+		end)
+		row.max.Activated:Connect(function()
+			if not isEnabled(row.max) then
+				return
+			end
+			if mode == "Buy" then
+				local amount = SupplierCart.maxAdd(cart, row.speciesId, row.sizeId, limits())
+				if amount >= 1 then
+					changeCart(row.key, amount)
+				end
+			else
+				local bound = sellBound(row.key)
+				sellQty[row.key] = if bound > 0 then bound else nil
+				renderView()
+			end
+		end)
+		row.sell.Activated:Connect(function()
+			if mode ~= "Sell" or busy.sell or not isEnabled(row.sell) then
+				return
+			end
+			local quantity = sellQty[row.key] or 0
+			if quantity <= 0 then
+				return
+			end
+			busy.sell = true
+			renderView()
+			local response = context.request(
+				"Supplier.SellBack",
+				{ speciesId = row.speciesId, sizeId = row.sizeId, quantity = quantity }
+			)
+			busy.sell = false
+			if response.ok then
+				sellQty[row.key] = nil
+				setStatus("")
+				context.refresh()
+			else
+				setStatus(errorText(response.errorCode))
+			end
+			renderView()
 		end)
 	end
 
-	sellBack.Activated:Connect(function()
-		if busy.sellBack then
-			return
-		end
-		busy.sellBack = true
-		local speciesId = selectedSpecies
-		local response =
-			context.request("Supplier.SellBack", { speciesId = speciesId, sizeId = "Medium", quantity = 1 })
-		detail.Text = if response.ok
-			then localizedFormat("soldBack", response.data.refund)
-			else errorText(response.errorCode)
-		context.refresh()
-		busy.sellBack = false
-	end)
-
-	order.Activated:Connect(function()
+	orderButton.Activated:Connect(function()
 		if busy.order then
 			return
 		end
+		local lines = SupplierCart.fromCounts(cart)
+		if #lines == 0 then
+			setStatus(localized("cartNeedsTrees"))
+			return
+		end
 		busy.order = true
-		order.AutoButtonColor = false
-		order.Text = localized("ordering")
-		local speciesId = selectedSpecies
-		local response =
-			context.request("Supplier.PlaceOrder", { speciesId = speciesId, sizeId = "Medium", quantity = 1 })
+		orderButton.AutoButtonColor = false
+		orderButton.Text = localized("ordering")
+		local response = context.request("Supplier.PlaceOrder", { lines = lines })
 		if response.ok then
-			detail.Text = localizedFormat("orderAcceptedTruck", response.data.cost)
-			order.Text = localized("placeOrder")
+			cart = {}
+			setCartCount()
+			setStatus("")
 			context.refresh()
 		else
-			order.Text = localized("orderUnavailable")
-			detail.Text = errorText(response.errorCode)
-			task.delay(2, function()
-				order.Text = localized("placeOrder")
-			end)
+			setStatus(errorText(response.errorCode))
 		end
-		order.AutoButtonColor = true
+		orderButton.Text = localized("placeOrder")
+		orderButton.AutoButtonColor = true
 		busy.order = false
+		renderView()
+	end)
+
+	-- The refresh countdown ticks once a second while the page exists.
+	task.spawn(function()
+		while page.Parent do
+			updateRefreshLabel()
+			task.wait(1)
+		end
 	end)
 
 	local function render(summary: any?)
 		if summary == nil then
 			-- No data: a switched save starts from its own summary, never the previous one.
 			lastSummary = nil
-			storedSelectedMedium = 0
-			placementCount = 0
-			sellBack.Visible = false
-			detail.Text = localized("loading")
+			mode = "Buy"
+			cart = {}
+			sellQty = {}
+			busy.order = false
+			busy.sell = false
+			refreshDeadline = nil
+			setCartCount()
+			setStatus(localized("loading"))
+			updateRefreshLabel()
+			renderView()
 			return
 		end
-		local first = lastSummary == nil
-		lastSummary = summary
-		renderSummary(summary)
-		if first then
-			showSelectedQuote()
+		if lastSummary == nil and statusText == localized("loading") then
+			setStatus("")
 		end
+		lastSummary = summary
+		local supplier = summaryPart("supplier")
+		refreshDeadline = if type(supplier) == "table" and type(supplier.refreshIn) == "number"
+			then os.clock() + supplier.refreshIn
+			else nil
+		updateRefreshLabel()
+		renderView()
 	end
 
+	setCartCount()
 	return { render = render }
 end
 

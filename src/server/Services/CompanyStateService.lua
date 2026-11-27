@@ -856,7 +856,11 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 				stock = Receiving.totals(state),
 				placementCount = placementCount(state),
 				receiving = BusinessState.receivingSummary(state, self._clock()),
-				supplier = SupplierStockService.summary(state, self._clock()),
+				supplier = SupplierStockService.summary(
+					state,
+					self._clock(),
+					if self:perksOf(companyId).instantDelivery then 0 else GameConfig.DeliverySeconds
+				),
 				customers = CustomerOrderService.summary(state, session.npcClaims),
 				pricing = PricingService.summary(state),
 				staff = CompanyStaff.summary(session, state),
@@ -882,12 +886,14 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 	local action = request.action
 	if action == Protocol.Actions.SupplierPlaceOrder then
 		SupplierStockService.refreshIfDue(state, self._clock(), self._randomRoll)
-		succeeded, result = BusinessState.placeOrder(
+		-- CM2-SUP: a cart {lines} or the legacy single line; both go through placeCart.
+		local lines = if payload.lines ~= nil
+			then payload.lines
+			else { { speciesId = payload.speciesId, sizeId = payload.sizeId, quantity = payload.quantity } }
+		succeeded, result = BusinessState.placeCart(
 			state,
 			request.requestId,
-			payload.speciesId,
-			payload.sizeId,
-			payload.quantity,
+			lines,
 			self._clock(),
 			if self:perksOf(companyId).instantDelivery then 0 else nil
 		)

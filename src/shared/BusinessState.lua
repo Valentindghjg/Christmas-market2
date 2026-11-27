@@ -9,6 +9,7 @@ local Receiving = require(script.Parent.Receiving)
 local Reviews = require(script.Parent.Reviews)
 local SaveProfile = require(script.Parent.SaveProfile)
 local Staff = require(script.Parent.Staff)
+local SupplierCart = require(script.Parent.SupplierCart)
 local Tutorial = require(script.Parent.Tutorial)
 
 local BusinessState = {}
@@ -801,9 +802,107 @@ function BusinessState.record(state, eventType: string, amount: number)
 	end
 end
 
--- Creates a server-priced delivery order in its own receiving bay. The trees land in the bay
--- by themselves at dueAt (reconcileDeliveries); cost is always obtained from GameConfig.
+-- Places a server-priced supplier cart (CM2-SUP) as one atomic order: every check runs before
+-- the first change, then one debit and one ledger entry. The cart is packed one species per
+-- bay, at most BayCapacity trees each; each (group, size) becomes one pending record of the
+-- usual shape, all sharing requestId, createdAt and dueAt. The trees land in their bays by
+-- themselves at dueAt (reconcileDeliveries); costs always come from GameConfig.
 -- deliverySeconds (CM2-46a) replaces GameConfig.DeliverySeconds (0 with Express Sleigh).
+function BusinessState.placeCart(state, requestId: string, lines: unknown, timestamp: number, deliverySeconds: number?)
+	if not BusinessState.validate(state) then
+		return false, "InvalidState"
+	end
+	if type(requestId) ~= "string" or #requestId < 8 then
+		return false, "InvalidOrderId"
+	end
+	local cart, cartError = SupplierCart.normalize(lines)
+	if cart == nil then
+		return false, cartError
+	end
+	if not isFiniteInteger(timestamp) or timestamp < 0 then
+		return false, "InvalidTime"
+	end
+	local orderId = "order:" .. requestId
+	if state.pendingOrders[orderId] then
+		return false, "DuplicateOrder"
+	end
+	local groups = SupplierCart.pack(cart)
+	local records = 0
+	for _, group in ipairs(groups) do
+		records += #group.lines
+	end
+	if BusinessState.openOrderCount(state) + records > GameConfig.MaxOpenOrders then
+		return false, "TooManyOpenOrders"
+	end
+	-- One species per bay (OBSERVED "Bays n/4"); a bay is busy while it holds trees or an order.
+	local freeBays = {}
+	for index = 1, Receiving.BayCount do
+		if not Receiving.isBusy(state, index) then
+			table.insert(freeBays, index)
+		end
+	end
+	if #groups > #freeBays then
+		return false, "NoFreeBay"
+	end
+	local total = SupplierCart.total(cart)
+	if BusinessState.storageUsed(state) + total > BusinessState.storageCapacity(state) then
+		return false, "StorageFull"
+	end
+	for _, line in ipairs(cart) do
+		if Inventory.count(state.supplier.stock, Inventory.key(line.speciesId, line.sizeId)) < line.quantity then
+			return false, "SupplierOutOfStock"
+		end
+	end
+	local cost = SupplierCart.cost(cart)
+	if state.cash < cost then
+		return false, "InsufficientFunds"
+	end
+	for _, line in ipairs(cart) do
+		local supplierKey = Inventory.key(line.speciesId, line.sizeId)
+		state.supplier.stock[supplierKey] -= line.quantity
+	end
+	state.cash -= cost
+	state.spent += cost
+	local dueIn = deliverySeconds or GameConfig.DeliverySeconds
+	local orderIds = {}
+	local bays = {}
+	for groupIndex, group in ipairs(groups) do
+		local bay = freeBays[groupIndex]
+		table.insert(bays, bay)
+		for _, groupLine in ipairs(group.lines) do
+			local k = #orderIds + 1
+			local recordId = if k == 1 then orderId else orderId .. ":" .. k
+			table.insert(orderIds, recordId)
+			state.pendingOrders[recordId] = {
+				orderId = recordId,
+				requestId = requestId,
+				speciesId = group.speciesId,
+				sizeId = groupLine.sizeId,
+				quantity = groupLine.quantity,
+				createdAt = timestamp,
+				dueAt = timestamp + dueIn,
+				status = "Pending",
+				bay = bay,
+			}
+		end
+		state.bays[bay].speciesId = group.speciesId
+	end
+	BusinessState.record(state, "OrderPlaced", -cost)
+	Tutorial.advance(state, "Ordered")
+	QuestBoard.note(state, timestamp, "OrderTrees", total)
+	return true,
+		{
+			orderId = orderId,
+			orderIds = orderIds,
+			cost = cost,
+			bay = bays[1],
+			bays = bays,
+			quantity = total,
+			dueIn = dueIn,
+		}
+end
+
+-- A single-line order; kept for callers and tests from before the cart (CM2-SUP).
 function BusinessState.placeOrder(
 	state,
 	requestId: string,
@@ -813,67 +912,13 @@ function BusinessState.placeOrder(
 	timestamp: number,
 	deliverySeconds: number?
 )
-	if not BusinessState.validate(state) then
-		return false, "InvalidState"
-	end
-	if type(requestId) ~= "string" or #requestId < 8 then
-		return false, "InvalidOrderId"
-	end
-	if not GameConfig.Trees[species] or not GameConfig.isValidSize(size) then
-		return false, "InvalidItem"
-	end
-	if not isFiniteInteger(quantity) or quantity < 1 or quantity > GameConfig.MaxOrderQuantity then
-		return false, "InvalidQuantity"
-	end
-	if not isFiniteInteger(timestamp) or timestamp < 0 then
-		return false, "InvalidTime"
-	end
-	local orderId = "order:" .. requestId
-	if state.pendingOrders[orderId] then
-		return false, "DuplicateOrder"
-	end
-	if BusinessState.openOrderCount(state) >= GameConfig.MaxOpenOrders then
-		return false, "TooManyOpenOrders"
-	end
-	-- One order = one bay (OBSERVED "Bays n/4"); a bay is busy while it holds trees or an order.
-	local bay = Receiving.freeBay(state)
-	if bay == nil then
-		return false, "NoFreeBay"
-	end
-	if quantity > GameConfig.Receiving.BayCapacity then
-		return false, "BayCapacity"
-	end
-	if BusinessState.storageUsed(state) + quantity > BusinessState.storageCapacity(state) then
-		return false, "StorageFull"
-	end
-	local supplierKey = Inventory.key(species, size)
-	if Inventory.count(state.supplier.stock, supplierKey) < quantity then
-		return false, "SupplierOutOfStock"
-	end
-	local unitCost = GameConfig.wholesaleFor(species, size)
-	local cost = (unitCost or 0) * quantity
-	if not unitCost or state.cash < cost then
-		return false, "InsufficientFunds"
-	end
-	state.supplier.stock[supplierKey] -= quantity
-	state.cash -= cost
-	state.spent += cost
-	state.pendingOrders[orderId] = {
-		orderId = orderId,
-		requestId = requestId,
-		speciesId = species,
-		sizeId = size,
-		quantity = quantity,
-		createdAt = timestamp,
-		dueAt = timestamp + (deliverySeconds or GameConfig.DeliverySeconds),
-		status = "Pending",
-		bay = bay,
-	}
-	state.bays[bay].speciesId = species
-	BusinessState.record(state, "OrderPlaced", -cost)
-	Tutorial.advance(state, "Ordered")
-	QuestBoard.note(state, timestamp, "OrderTrees", quantity)
-	return true, { orderId = orderId, cost = cost, bay = bay }
+	return BusinessState.placeCart(
+		state,
+		requestId,
+		{ { speciesId = species, sizeId = size, quantity = quantity } },
+		timestamp,
+		deliverySeconds
+	)
 end
 
 local function isBayIndex(value: unknown): boolean

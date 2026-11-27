@@ -443,27 +443,84 @@ return function(t)
 		expect.equal(regular.reason.h, 16)
 	end)
 
-	t.test("Supplier order button stays inside the Lot Manager body (CM2-UVF11)", function()
-		for _, size in ipairs({ { 666, 374 }, { 667, 375 }, { 666, 324 }, { 780, 302 } }) do
-			local m = UiTheme.metrics(size[1], size[2])
-			local manager = UiTheme.hudLayout(m, 0).manager
-			local body = UiTheme.managerLayout(m, manager).body
-			local layout = UiTheme.supplierLayout(m, body.w)
-			for _, id in ipairs({ "order", "detail" }) do
+	-- CM2-SUP: phone sizes plus a PC; every box keeps 8 px clear of the page scroll bar.
+	local SUPPLIER_SIZES = { { 666, 374 }, { 667, 375 }, { 666, 324 }, { 780, 302 }, { 1920, 1022 } }
+	local function supplierBody(size)
+		local m = UiTheme.metrics(size[1], size[2])
+		local manager = UiTheme.hudLayout(m, 0).manager
+		return m, UiTheme.managerLayout(m, manager).body
+	end
+
+	t.test("supplier panel fits the Lot Manager body (replaces the CM2-UVF11 test)", function()
+		for _, size in ipairs(SUPPLIER_SIZES) do
+			local m, body = supplierBody(size)
+			local layout = UiTheme.supplierPanelLayout(m, body.w)
+			expect.equal(layout.width, math.floor(body.w) - 8)
+			local ids = {
+				"modeBuy",
+				"modeSell",
+				"refresh",
+				"placeOrder",
+				"clear",
+				"recommend",
+				"status",
+				"cartInfo",
+				"cartLines",
+			}
+			for _, id in ipairs({ "modeBuy", "modeSell", "refresh", "placeOrder", "clear", "recommend", "sellHint" }) do
 				local b = layout[id]
-				expect.truthy(b.x >= 0 and b.y >= 0)
-				expect.truthy(b.x + b.w <= body.w)
-				expect.truthy(b.y + b.h <= body.h)
+				noNegativeSize(b)
+				expect.truthy(UiTheme.inside(b, body.w - 8, math.huge))
 			end
-			expect.truthy(layout.order.h >= UiTheme.MinTouch)
-			expect.truthy(layout.order.w >= UiTheme.MinTouch)
-			expect.falsy(UiTheme.overlaps(layout.order, layout.detail))
-			expect.falsy(UiTheme.overlaps(layout.order, layout.sellBack))
+			for _, id in ipairs(ids) do
+				expect.truthy(UiTheme.inside(layout[id], body.w - 8, math.huge))
+			end
+			expect.truthy(layout.placeOrder.y + layout.placeOrder.h <= body.h)
+			for _, id in ipairs({ "modeBuy", "modeSell", "placeOrder", "clear", "recommend" }) do
+				expect.truthy(layout[id].w >= UiTheme.MinTouch)
+				expect.truthy(layout[id].h >= UiTheme.MinTouch)
+			end
+			for index, id in ipairs(ids) do
+				for other = index + 1, #ids do
+					expect.falsy(UiTheme.overlaps(layout[id], layout[ids[other]]))
+				end
+			end
+			expect.truthy(layout.rowsTopBuy >= layout.cartLines.y + layout.cartLines.h)
+			expect.truthy(layout.rowsTopSell >= layout.status.y + layout.status.h)
+			expect.truthy(layout.rowHeight >= UiTheme.MinTouch)
+			expect.truthy(layout.rowPitch >= layout.rowHeight)
 		end
-		local pc = UiTheme.supplierLayout(UiTheme.metrics(1920, 1022), 600)
-		expect.falsy(pc.twoColumns)
-		expect.equal(pc.order.y, 182)
-		expect.equal(pc.canvasHeight, 386)
+		local pc = UiTheme.supplierPanelLayout(UiTheme.metrics(1920, 1022), 600)
+		expect.equal(pc.cartInfo.h, 36)
+		expect.equal(pc.rowsTopBuy, 196)
+		expect.equal(pc.textSize, 13)
+	end)
+
+	t.test("supplier rows fit both views", function()
+		for _, size in ipairs(SUPPLIER_SIZES) do
+			local _, body = supplierBody(size)
+			for _, sellView in ipairs({ false, true }) do
+				local row = UiTheme.supplierRowLayout(body.w, sellView)
+				expect.truthy(row.text.w > 0)
+				local boxes = { row.text, row.minus, row.qty, row.plus, row.max }
+				if sellView then
+					expect.truthy(row.sell ~= nil)
+					table.insert(boxes, row.sell :: UiTheme.Box)
+				else
+					expect.equal(row.sell, nil)
+				end
+				for index, b in ipairs(boxes) do
+					expect.truthy(UiTheme.inside(b, body.w - 8, 44))
+					if index > 1 then
+						expect.truthy(b.w >= UiTheme.MinTouch)
+						expect.truthy(b.h >= UiTheme.MinTouch)
+					end
+					for other = index + 1, #boxes do
+						expect.falsy(UiTheme.overlaps(b, boxes[other]))
+					end
+				end
+			end
+		end
 	end)
 
 	t.test("Pricing card fits the page and keeps 44 px controls (CM2-UVF12)", function()

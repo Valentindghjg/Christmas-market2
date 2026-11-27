@@ -66,16 +66,33 @@ export type ManagerLayout = {
 	horizontal: boolean,
 }
 
-export type SupplierLayout = {
-	twoColumns: boolean,
-	detail: Box,
-	order: Box,
-	stockingHint: Box,
-	supplierLine: Box,
-	receivingLine: Box,
-	customerLine: Box,
-	sellBack: Box,
-	canvasHeight: number,
+export type SupplierPanelLayout = {
+	modeBuy: Box,
+	modeSell: Box,
+	refresh: Box,
+	placeOrder: Box,
+	clear: Box,
+	recommend: Box,
+	sellHint: Box,
+	status: Box,
+	cartInfo: Box,
+	cartLines: Box,
+	rowsTopBuy: number,
+	rowsTopSell: number,
+	rowPitch: number,
+	rowHeight: number,
+	footer: number,
+	textSize: number,
+	width: number,
+}
+
+export type SupplierRowLayout = {
+	text: Box,
+	minus: Box,
+	qty: Box,
+	plus: Box,
+	max: Box,
+	sell: Box?,
 }
 
 export type PricingCardLayout = {
@@ -557,35 +574,45 @@ function UiTheme.managerLayout(m: Metrics, manager: Box): ManagerLayout
 	}
 end
 
--- CM2-UVF11: Supplier page boxes relative to the page. Regular screens keep the single column.
--- Compact screens move the quote, the order button and the sell-back button into a right column
--- beside the species grid, so the order button stays inside the Lot Manager body without scrolling.
-function UiTheme.supplierLayout(m: Metrics, pageWidth: number): SupplierLayout
-	if not m.compact then
-		return {
-			twoColumns = false,
-			detail = box(0, 152, 324, 24),
-			order = box(0, 182, 324, 44),
-			stockingHint = box(0, 234, 324, 36),
-			supplierLine = box(0, 274, 324, 18),
-			receivingLine = box(0, 292, 324, 18),
-			customerLine = box(0, 310, 324, 18),
-			sellBack = box(0, 334, 324, 44),
-			canvasHeight = 386,
-		}
-	end
-	local x = 332
-	local w = math.max(0, math.floor(pageWidth) - x - 8)
+-- CM2-SUP: Supplier panel boxes relative to the page, one column on every screen. The width
+-- keeps 8 px clear of the page scroll bar; every button is at least 44 x 44.
+function UiTheme.supplierPanelLayout(m: Metrics, pageWidth: number): SupplierPanelLayout
+	local W = math.max(0, math.floor(pageWidth) - 8)
+	local c = m.compact
+	local h1 = if c then 32 else 36
+	local pw = math.floor((W - 88) / 2)
 	return {
-		twoColumns = true,
-		detail = box(x, 0, w, 40),
-		order = box(x, 44, w, BUTTON_HEIGHT),
-		stockingHint = box(x, 92, w, 40),
-		supplierLine = box(0, 150, 324, 18),
-		receivingLine = box(0, 168, 324, 18),
-		customerLine = box(0, 186, 324, 18),
-		sellBack = box(x, 136, w, BUTTON_HEIGHT),
-		canvasHeight = 206,
+		modeBuy = box(0, 0, 140, 44),
+		modeSell = box(144, 0, 140, 44),
+		refresh = box(292, 0, W - 292, 44),
+		placeOrder = box(0, 48, pw, 44),
+		clear = box(pw + 4, 48, 80, 44),
+		recommend = box(pw + 88, 48, W - pw - 88, 44),
+		sellHint = box(0, 48, W, 44),
+		status = box(0, 96, W, 18),
+		cartInfo = box(0, 116, W, h1),
+		cartLines = box(0, 118 + h1, W, h1),
+		rowsTopBuy = 124 + 2 * h1,
+		rowsTopSell = 118,
+		rowPitch = 48,
+		rowHeight = 44,
+		footer = 58,
+		textSize = if c then 12 else 13,
+		width = W,
+	}
+end
+
+-- CM2-SUP: one supplier row (species x size); the sell view adds a SELL button on the right.
+function UiTheme.supplierRowLayout(pageWidth: number, sellView: boolean): SupplierRowLayout
+	local W = math.max(0, math.floor(pageWidth) - 8)
+	local o = if sellView then 100 else 0
+	return {
+		text = box(0, 0, math.max(0, W - 208 - o), 44),
+		minus = box(W - 200 - o, 0, 44, 44),
+		qty = box(W - 152 - o, 0, 44, 44),
+		plus = box(W - 104 - o, 0, 44, 44),
+		max = box(W - 56 - o, 0, 56, 44),
+		sell = if sellView then box(W - 96, 0, 96, 44) else nil,
 	}
 end
 

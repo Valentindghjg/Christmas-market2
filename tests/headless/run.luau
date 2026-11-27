@@ -109,6 +109,7 @@ local sourcePaths = {
 	ShopConfig = "src/shared/ShopConfig.lua",
 	Staff = "src/shared/Staff.lua",
 	Stocking = "src/shared/Stocking.lua",
+	SupplierCart = "src/shared/SupplierCart.lua",
 	SupplierCatalog = "src/shared/SupplierCatalog.lua",
 	TreeArt = "src/shared/TreeArt.lua",
 	TreeHeight = "src/shared/TreeHeight.lua",

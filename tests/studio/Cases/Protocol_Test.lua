@@ -28,6 +28,40 @@ return function(t)
 		expect.equal(reason, "UnexpectedField")
 	end)
 
+	-- CM2-SUP: a cart is exactly {lines}; no price, cost or extra field gets through.
+	t.test("validates a cart payload", function()
+		local function cart(payload)
+			return Protocol.validateRequest({
+				version = 1,
+				requestId = "order_cart_1",
+				action = Protocol.Actions.SupplierPlaceOrder,
+				payload = payload,
+			})
+		end
+		local function lines()
+			return {
+				{ speciesId = "DouglasFir", sizeId = "Small", quantity = 1 },
+				{ speciesId = "FrasierFir", sizeId = "Medium", quantity = 2 },
+			}
+		end
+		expect.truthy(cart({ lines = lines() }))
+		local withCost, costReason = cart({ lines = lines(), cost = 1 })
+		expect.falsy(withCost)
+		expect.equal(costReason, "UnexpectedField")
+		local withSpecies, speciesReason = cart({ lines = lines(), speciesId = "DouglasFir" })
+		expect.falsy(withSpecies)
+		expect.equal(speciesReason, "UnexpectedField")
+		local priced = lines()
+		priced[1].unitCost = 0
+		local withUnitCost, unitReason = cart({ lines = priced })
+		expect.falsy(withUnitCost)
+		expect.equal(unitReason, "UnexpectedField")
+		local empty, emptyReason = cart({ lines = {} })
+		expect.falsy(empty)
+		expect.equal(emptyReason, "InvalidCart")
+		expect.truthy(cart({ speciesId = "FrasierFir", sizeId = "Medium", quantity = 2 }))
+	end)
+
 	-- The same request ID cannot open a second financial mutation.
 	t.test("deduplicates request IDs", function()
 		local state = BusinessState.new("personal:42", 42)
