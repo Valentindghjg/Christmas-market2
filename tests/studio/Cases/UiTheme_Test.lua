@@ -725,6 +725,80 @@ return function(t)
 		end
 	end)
 
+	-- CM2-UI3: the confirm frame clears the panel on every screen (22a (g)).
+	t.test("plot picker confirm clears the panel (22a (g))", function()
+		local sizes = {}
+		for _, size in ipairs(PHONES) do
+			table.insert(sizes, { size[1], size[2] })
+		end
+		for _, size in ipairs(MATRIX) do
+			table.insert(sizes, { size.w, size.h })
+		end
+		for _, size in ipairs(sizes) do
+			local m = UiTheme.metrics(size[1], size[2])
+			local layout: any = UiTheme.plotPickerLayout(m)
+			local c = layout.confirm
+			expect.falsy(UiTheme.overlaps(c, layout.panel))
+			expect.falsy(UiTheme.overlaps(c, absolute(layout.panel, layout.title)))
+			expect.falsy(UiTheme.overlaps(c, absolute(layout.panel, layout.status)))
+			expect.truthy(UiTheme.inside(c, m.width, m.height))
+			local ids = { "confirmText", "yes", "no" }
+			for _, id in ipairs(ids) do
+				expect.truthy(UiTheme.inside(layout[id], c.w, c.h))
+			end
+			expect.truthy(layout.yes.w >= 44 and layout.yes.h >= 44)
+			expect.truthy(layout.no.w >= 44 and layout.no.h >= 44)
+			for first = 1, #ids do
+				for second = first + 1, #ids do
+					expect.falsy(UiTheme.overlaps(layout[ids[first]], layout[ids[second]]))
+				end
+			end
+			if size[1] == 780 and size[2] == 281 then
+				expect.equal(c.h, 64)
+			elseif size[1] == 666 and size[2] == 374 then
+				expect.equal(c.h, 120)
+			end
+		end
+	end)
+
+	-- CM2-UI3: phone windows, buttons and text meet the compact limits (PRODUCT_SPEC, OWNER DECIDED).
+	t.test("phone windows, buttons and text meet the compact limits", function()
+		local function within(b, low, high)
+			expect.truthy(b.h >= low and b.h <= high)
+		end
+		for _, size in ipairs(PHONES) do
+			local m = UiTheme.metrics(size[1], size[2])
+			local picker: any = UiTheme.plotPickerLayout(m)
+			local maxW, maxH = math.floor(0.7 * size[1]), math.floor(0.8 * size[2])
+			for _, frame in ipairs({ picker.panel, picker.confirm }) do
+				expect.truthy(frame.w <= maxW)
+				expect.truthy(frame.h <= maxH)
+			end
+			for _, b in ipairs(UiTheme.hudLayout(m, 8).railButtons) do
+				within(b, 44, 52)
+			end
+			for _, b in pairs(UiTheme.stockingBarLayout(m).controls) do
+				within(b, 44, 52)
+			end
+			for _, id in ipairs({ "prevButton", "nextButton", "back", "choose", "yes", "no" }) do
+				within(picker[id], 44, 52)
+			end
+			within(UiTheme.tutorialBarLayout(m, false).skip, 44, 52)
+			local manager = UiTheme.managerLayout(m, UiTheme.hudLayout(m, 0).manager)
+			within(manager.close, 44, 52)
+			for _, b in ipairs(manager.tabs) do
+				within(b, 44, 52)
+			end
+		end
+		local sizes = UiTheme.TextSize
+		for _, value in ipairs({ sizes.Body, sizes.Input, sizes.Chip, UiTheme.TutorialBar.textSize }) do
+			expect.truthy(value >= 14 and value <= 16)
+		end
+		for _, value in ipairs({ sizes.Title, UiTheme.SaveRow.nameTextSize, UiTheme.PlotPicker.numberTextSize }) do
+			expect.truthy(value <= 24)
+		end
+	end)
+
 	-- CM2-43: text and background colour pairs the UI uses meet WCAG contrast (AA body 4.5, large
 	-- or placeholder text 3.0), and the text sizes stay readable on a phone.
 	t.test("text colour pairs meet WCAG contrast", function()

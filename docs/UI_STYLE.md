@@ -23,6 +23,7 @@ Tokens live in `src/shared/UiTheme.lua`, pure rules in `src/shared/UiStyle.lua`,
 - Window titles use `UiKit.headerBand(title)`; tab-page titles do not.
 - Disabled buttons go through `UiKit.setEnabled(button, enabled, fill?)`: no hover or press motion, fill Disabled.
 - One `UIStroke` per object; layout boxes come from `UiTheme` and stay untouched by styling.
+- Phone (PRODUCT_SPEC 'Compact on phone'): windows ≤ 70 % x 80 % of the safe area, HUD ≤ 20 %, buttons 44–52 px, body 14–16, titles ≤ 24; no phone box may exceed the CM2-UI3 baseline in `UiTheme_Test`.
 
 ## Click sound
 `rbxasset://sounds/volume_slider.ogg`, volume 0.5: engine content on every client, no asset ID, upload or licence (DECISION_LOG 2026-11-27).

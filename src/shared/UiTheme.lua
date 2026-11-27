@@ -824,12 +824,31 @@ end
 -- Plot picker (CM2-PP): a bottom panel (title, prev/next, plot number, status, message, Back,
 -- Choose) and a centred confirm frame above it.
 function UiTheme.plotPickerLayout(m: Metrics): PlotPickerLayout
-	local w = math.min(520, m.width - 2 * m.margin)
+	-- Phones cap both frames at 70 % of the width (PRODUCT_SPEC "Compact on phone").
+	local cap = if m.compact then math.floor(0.7 * m.width) else math.huge
+	local w = math.min(520, m.width - 2 * m.margin, cap)
 	local panel = box(math.floor((m.width - w) / 2), m.height - m.margin - 176, w, 176)
 	local half = math.floor((w - 36) / 2)
-	local cw = math.min(360, m.width - 2 * m.margin)
-	local confirm = box(math.floor((m.width - cw) / 2), math.max(m.margin, math.floor((panel.y - 120) / 2)), cw, 120)
-	local ch = math.floor((cw - 36) / 2)
+	local cw = math.min(360, m.width - 2 * m.margin, cap)
+	local cx = math.floor((m.width - cw) / 2)
+	-- Short screens get the one-row confirm (22a (g)): the 120 px frame would reach into the panel.
+	local tall = panel.y >= 120 + 2 * m.margin
+	local confirm: Box
+	local confirmText: Box
+	local yes: Box
+	local no: Box
+	if tall then
+		confirm = box(cx, math.max(m.margin, math.floor((panel.y - 120) / 2)), cw, 120)
+		local ch = math.floor((cw - 36) / 2)
+		confirmText = box(12, 10, cw - 24, 44)
+		yes = box(12, 64, ch, 44)
+		no = box(24 + ch, 64, cw - 36 - ch, 44)
+	else
+		confirm = box(cx, math.max(m.margin, math.floor((panel.y - 64) / 2)), cw, 64)
+		confirmText = box(12, 10, cw - 224, 44)
+		yes = box(cw - 200, 10, 88, 44)
+		no = box(cw - 100, 10, 88, 44)
+	end
 	return {
 		panel = panel,
 		title = box(12, 6, w - 24, 28),
@@ -841,9 +860,9 @@ function UiTheme.plotPickerLayout(m: Metrics): PlotPickerLayout
 		back = box(12, 120, half, 44),
 		choose = box(24 + half, 120, w - 36 - half, 44),
 		confirm = confirm,
-		confirmText = box(12, 10, cw - 24, 44),
-		yes = box(12, 64, ch, 44),
-		no = box(24 + ch, 64, cw - 36 - ch, 44),
+		confirmText = confirmText,
+		yes = yes,
+		no = no,
 	}
 end
 
