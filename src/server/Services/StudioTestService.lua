@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
+local AdventCalendar = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AdventCalendar"))
 local DailyRewards = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DailyRewards"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
@@ -826,6 +827,45 @@ function StudioTestService.install(context)
 		end
 		local written = saveSlots:setDailyForTest(arg.userId, daily)
 		context.dailyRewards:refresh(arg.userId)
+		return success(written)
+	end
+
+	-- Advent calendar (CM2-A1): overrides the calendar's time only ({at >= 0}) or clears the
+	-- override ({clear = true}), then refreshes every active player's attributes.
+	function commands.adventNow(arg)
+		if type(arg) ~= "table" then
+			return failure("BadArgument")
+		end
+		local at = nil
+		if arg.clear ~= true then
+			if not isWhole(arg.at, 0, 2 ^ 53) then
+				return failure("BadArgument")
+			end
+			at = arg.at
+		end
+		context.advent:setNowForTest(at)
+		context.advent:refreshAll(saveSlots:activeUserIds())
+		return success(true)
+	end
+
+	-- Clears ({userId, clear = true}) or sets ({userId, opened 0..2^24-1}) this calendar year's
+	-- opened doors in the profile, then refreshes the player's attributes.
+	function commands.adventSet(arg)
+		if type(arg) ~= "table" or type(arg.userId) ~= "number" then
+			return failure("BadArgument")
+		end
+		local advent = nil
+		if arg.clear ~= true then
+			if not isWhole(arg.opened, 0, 2 ^ 24 - 1) then
+				return failure("BadArgument")
+			end
+			advent = { year = AdventCalendar.dateOf(context.advent:_now()).year, opened = arg.opened }
+		end
+		if companyIdFor(arg.userId) == nil then
+			return failure("NoActiveSave")
+		end
+		local written = saveSlots:setAdventForTest(arg.userId, advent)
+		context.advent:refresh(arg.userId)
 		return success(written)
 	end
 

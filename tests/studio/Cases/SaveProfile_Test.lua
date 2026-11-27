@@ -180,4 +180,19 @@ return function(t)
 			expect.falsy(SaveProfile.validate(profile))
 		end
 	end)
+
+	-- CM2-A1: the profile keeps this year's opened Advent doors.
+	t.test("validates the advent calendar field", function()
+		local profile = profileWith(1)
+		profile.advent = { year = 2026, opened = 5 }
+		expect.truthy(SaveProfile.validate(profile))
+		profile.advent = nil
+		expect.truthy(SaveProfile.validate(profile))
+		for _, bad in
+			{ { year = 2026, opened = 2 ^ 24 }, { year = 1999, opened = 0 }, { year = 2026, opened = 0, x = 1 } }
+		do
+			profile.advent = bad :: any
+			expect.falsy(SaveProfile.validate(profile))
+		end
+	end)
 end

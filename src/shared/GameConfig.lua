@@ -87,6 +87,49 @@ GameConfig.DailyRewards = {
 	ClaimLimit = { limit = 5, window = 60 }, -- PROVISIONAL
 	RefreshSeconds = 30, -- PROVISIONAL attribute refresh
 }
+-- Advent calendar per player (CM2-A1, docs/plans/CM2-A1.md, shared/AdventCalendar.lua): one
+-- door per UTC day Dec 1-24, missed doors until Dec 24, each paid once into the active save.
+GameConfig.Advent = {
+	Month = 12,
+	LastDay = 24, -- OWNER DECIDED (PRODUCT_SPEC): Dec 1-24, server UTC date
+	OpenLimit = { limit = 24, window = 60 }, -- PROVISIONAL: a late joiner opens all 24
+	RefreshSeconds = 30,
+	DecorMaxCount = 999,
+	DecorItems = {
+		"AdventWreath",
+		"AdventStarLantern",
+		"AdventCandyLamp",
+		"AdventSnowman",
+		"AdventGingerbreadHut",
+		"AdventReindeerSleigh",
+	},
+	Doors = { -- PROVISIONAL; specials Dec 6, Dec 24
+		{ cash = 500 },
+		{ reputation = 100 },
+		{ cash = 750 },
+		{ boostSeconds = 900 },
+		{ decor = "AdventWreath" },
+		{ cash = 3000, reputation = 250, decor = "AdventStarLantern" },
+		{ cash = 1000 },
+		{ reputation = 200 },
+		{ cash = 1250 },
+		{ boostSeconds = 1200 },
+		{ decor = "AdventCandyLamp" },
+		{ cash = 1500 },
+		{ reputation = 300 },
+		{ cash = 1750 },
+		{ boostSeconds = 1800 },
+		{ decor = "AdventSnowman" },
+		{ cash = 2000 },
+		{ reputation = 400 },
+		{ cash = 2500 },
+		{ boostSeconds = 2400 },
+		{ decor = "AdventGingerbreadHut" },
+		{ cash = 3000 },
+		{ reputation = 500 },
+		{ cash = 10000, reputation = 1000, decor = "AdventReindeerSleigh" },
+	} :: { { cash: number?, reputation: number?, boostSeconds: number?, decor: string? } },
+}
 GameConfig.AutoPricing = {
 	TargetDisplayStock = 5,
 	MaxDiscountFraction = 0.15,

@@ -1517,6 +1517,7 @@ function CompanyStateService:snapshotForTest(companyId: string): {}?
 			progress = table.clone(state.quests.progress),
 			claimed = table.clone(state.quests.claimed),
 		},
+		decorInventory = table.clone(state.decorInventory), -- CM2-A1
 	}
 end
 

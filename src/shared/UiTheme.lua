@@ -321,6 +321,16 @@ UiTheme.Dialogs = {
 		widthScale = 0.92,
 		heightScale = 0.86,
 	},
+	-- Advent calendar panel (CM2-A1): the Quests dialog with room for title and hint.
+	Advent = {
+		listTop = 64,
+		footerHeight = 52,
+		minList = 120,
+		maxWidth = 560,
+		maxHeight = 560,
+		widthScale = 0.92,
+		heightScale = 0.86,
+	},
 } :: { [string]: DialogSpec }
 
 -- Shop category bar (CM2-UVF8): fixed bar, seven tabs share the width; text scales between minText and maxText.

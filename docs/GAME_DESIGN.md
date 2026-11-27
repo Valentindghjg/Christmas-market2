@@ -76,6 +76,7 @@ Visual direction: evergreen/dark green, warm cream, gold accents, seasonal motif
 ## 11. Christmas event and monetization
 *Superseded 2026-11-21 (PRODUCT_SPEC.md, owner decisions 2026-11-21): Robux shop active at launch with the reference's products and prices; loot boxes in version 2; one event per Advent Sunday plus an Advent calendar Dec 1–24.*
 Christmas-only events, no generic year-round seasonal calendar. Base game remains functional when event is inactive.
+Advent calendar (CM2-A1, PROVISIONAL rewards): from Dec 1 to Dec 24 (server UTC date) the "Advent" rail button opens 24 doors; each day unlocks one door and missed doors stay openable until Dec 24. Each door pays once per player into the save being played: cash, reputation, Cash Rush minutes (capped at the boost maximum) or a decor item for the decor crate; Dec 6 and Dec 24 are special doors with cash, reputation and decor. The calendar closes on Dec 25.
 Robux features (gamepasses/boosts/packs) are design-only placeholders until owner explicitly approves activation and product IDs. No live paid transactions, publication or randomized paid rewards without approval, platform policy checks and accurate probability disclosure. Do not implement dark patterns.
 
 ## 12. Release criteria

@@ -2,16 +2,19 @@
 -- Quest board and reward grants of the company service (CM2-G11, docs/plans/CM2-G11.md): a
 -- mixin that CompanyStateService installs. The board lives in the company record
 -- (shared/QuestBoard.lua, schema 21); Quest.Claim pays inside the company's critical section.
--- grantReward pays a player's daily reward (DailyRewardService) into the active save.
+-- grantReward pays a player's daily reward (DailyRewardService) or Advent door (AdventService,
+-- CM2-A1) into the active save.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local BusinessState = require(Shared:WaitForChild("BusinessState"))
+local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local QuestBoard = require(Shared:WaitForChild("QuestBoard"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
+local ShopConfig = require(Shared:WaitForChild("ShopConfig"))
 
 local CompanyQuests = {}
 
-local REWARD_KINDS = { DailyReward = true }
+local REWARD_KINDS = { DailyReward = true, AdventReward = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
 local SLOT_COUNT = 4
 
@@ -42,15 +45,31 @@ function CompanyQuests.install(CompanyStateService)
 	end
 
 	-- Pays a reward of `kind` to a member's live save. Returns (true, {revision, cash,
-	-- reputation}) with the new totals, or (false, errorCode).
+	-- reputation, boostSeconds, decorCount}) with the new totals, or (false, errorCode).
+	-- extras (CM2-A1): Cash Rush seconds clamped at BoostCapSeconds (boostSeconds = the seconds
+	-- applied) and one decor item into decorInventory (decorCount = its new count).
 	function CompanyStateService:grantReward(
 		companyId: string,
 		userId: number,
 		kind: string,
 		cash: number,
-		reputation: number
+		reputation: number,
+		extras: { boostSeconds: number?, decorId: string? }?
 	): (boolean, any)
 		if not REWARD_KINDS[kind] or not isAmount(cash) or not isAmount(reputation) then
+			return false, "InvalidReward"
+		end
+		local boostSeconds = if extras ~= nil then extras.boostSeconds else nil
+		local decorId = if extras ~= nil then extras.decorId else nil
+		if
+			boostSeconds ~= nil
+			and (not isAmount(boostSeconds) or (boostSeconds :: number) > ShopConfig.BoostCapSeconds)
+		then
+			return false, "InvalidReward"
+		end
+		if
+			decorId ~= nil and (type(decorId) ~= "string" or table.find(GameConfig.Advent.DecorItems, decorId) == nil)
+		then
 			return false, "InvalidReward"
 		end
 		if not self:isAvailable(companyId) then
@@ -63,10 +82,29 @@ function CompanyQuests.install(CompanyStateService)
 			end
 			state.cash += cash
 			state.reputation += reputation
+			local boostApplied = 0
+			if boostSeconds ~= nil then
+				local before = state.purchases.boosts.CashX2
+				local after = math.min(before + boostSeconds, ShopConfig.BoostCapSeconds)
+				state.purchases.boosts.CashX2 = after
+				boostApplied = after - before
+			end
+			local decorCount = nil
+			if decorId ~= nil then
+				decorCount = math.min((state.decorInventory[decorId] or 0) + 1, GameConfig.Advent.DecorMaxCount)
+				state.decorInventory[decorId] = decorCount
+			end
 			BusinessState.record(state, kind, cash)
 			state.revision += 1
 			session.dirty = true
-			return true, { revision = state.revision, cash = state.cash, reputation = state.reputation }
+			return true,
+				{
+					revision = state.revision,
+					cash = state.cash,
+					reputation = state.reputation,
+					boostSeconds = boostApplied,
+					decorCount = decorCount,
+				}
 		end)
 		if not entered then
 			return false, ok

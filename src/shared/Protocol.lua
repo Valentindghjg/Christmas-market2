@@ -33,6 +33,8 @@ Protocol.Actions = {
 	TutorialSkip = "Tutorial.Skip",
 	-- CM2-G11: claim the player's daily reward (main.server.lua -> DailyRewardService, never companies:handle).
 	DailyClaim = "Daily.Claim",
+	-- CM2-A1: open one Advent calendar door (main.server.lua -> AdventService, never companies:handle).
+	AdventOpen = "Advent.Open",
 }
 
 local actionSet = {
@@ -56,6 +58,7 @@ local actionSet = {
 	[Protocol.Actions.StaffMoveBreakArea] = true,
 	[Protocol.Actions.TutorialSkip] = true,
 	[Protocol.Actions.DailyClaim] = true,
+	[Protocol.Actions.AdventOpen] = true,
 }
 
 -- Save-slot actions travel through their own remote (Remotes.SaveAction).
@@ -443,6 +446,16 @@ function Protocol.validateRequest(request)
 	if request.action == Protocol.Actions.DailyClaim then
 		if next(request.payload) ~= nil then
 			return false, "UnexpectedField"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.AdventOpen then
+		if not hasOnlyKeys(request.payload, { door = true }) then
+			return false, "UnexpectedField"
+		end
+		local door = request.payload.door
+		if not isFiniteInteger(door) or door < 1 or door > GameConfig.Advent.LastDay then
+			return false, "InvalidDoor"
 		end
 		return true, nil
 	end

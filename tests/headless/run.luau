@@ -41,6 +41,7 @@ end
 local server = child(serverScriptService, "Server")
 local services = child(server, "Services")
 for name, path in pairs({
+	AdventService = "src/server/Services/AdventService.lua",
 	AnalyticsService = "src/server/Services/AnalyticsService.lua",
 	CompanyDayCycle = "src/server/Services/CompanyDayCycle.lua",
 	CompanyProgression = "src/server/Services/CompanyProgression.lua",
@@ -76,6 +77,7 @@ for name, path in pairs({
 	child(services, name, path)
 end
 local sourcePaths = {
+	AdventCalendar = "src/shared/AdventCalendar.lua",
 	ArtLibrary = "src/shared/ArtLibrary.lua",
 	ArtPalette = "src/shared/ArtPalette.lua",
 	AssetCatalog = "src/shared/AssetCatalog.lua",

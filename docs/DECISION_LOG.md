@@ -425,3 +425,15 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Gate attachments are `Light1` and `Light2` (plan: `Light_1`, `Light_2`), because the pipeline name rule forbids underscores. The modeler added WoodWarm bands on the gate posts (secondary forms for tier A), inside the 1.5 footprint and outside the opening.
 - Until CM2-GATEW the code constants (`LotArt.PIECE_HALF` 0.3) understate the fence post by 0.15 per side.
 - Files: assets/art/source/Environment/{fence_common.py,FencePost,FenceRail8,FenceRail6}, assets/art/source/Props/LotGate, assets/art/rbxm, assets/art/previews, docs/MODEL_INTEGRATION.md.
+
+## 2026-11-27 — CM2-A1 Advent calendar (engineering)
+| Topic | Decision |
+|---|---|
+| Opened doors | Profile `advent = {year, opened}`, bit d-1 = door d; another `year` counts as empty; so one payment per player across saves and servers. |
+| Window | UTC date Dec 1..24 -> `Open`, today = day; before Dec 1 -> `Before`; Dec 25..31 -> `Ended`; today = 0 outside `Open`. |
+| Claim order | As Daily.Claim: validate, rate limit, in-flight guard, active available save, profile UpdateAsync sets the bit, save still active, `grantReward`; refused -> clear the bit; revert failed -> `warn` (lost at most once, never paid twice). |
+| Decor | No decor system yet: decor goes into a new save map `decorInventory` (the "decor crate"), consumed by CM2-32/33. |
+| Boost | Cash Rush seconds (`purchases.boosts.CashX2`) clamped at `BoostCapSeconds`; excess dropped. |
+| Studio date | `AdventService:setNowForTest(at?)` overrides only the calendar's time, not the business clock. |
+- Save schema 22 adds `decorInventory = {[DecorItems id]: 1..DecorMaxCount}` (migration 21 -> 22 and the legacy-v1 path set `{}`); the profile field needs no version bump (as `daily`). Door rewards in `GameConfig.Advent.Doors` are PROVISIONAL and are not revenue (no Cash Rush multiplier).
+- Files: src/shared/AdventCalendar.lua, GameConfig.lua, BusinessState.lua, SaveProfile.lua, Protocol.lua, Localization.lua, UiTheme.lua; src/server/Services/AdventService.lua, CompanyQuests.lua, CompanyStateService.lua, SaveSlotService.lua, StudioTestService.lua; src/server/main.server.lua; src/client/AdventPanel.lua, UiController.client.lua.

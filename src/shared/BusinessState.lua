@@ -1,4 +1,5 @@
 --!strict
+local AdventCalendar = require(script.Parent.AdventCalendar)
 local DayCycle = require(script.Parent.DayCycle)
 local GameConfig = require(script.Parent.GameConfig)
 local Inventory = require(script.Parent.Inventory)
@@ -13,7 +14,7 @@ local SupplierCart = require(script.Parent.SupplierCart)
 local Tutorial = require(script.Parent.Tutorial)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 21
+BusinessState.SCHEMA_VERSION = 22
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -182,6 +183,7 @@ function BusinessState.new(companyId: string?, ownerUserId: number?, saveName: s
 		purchases = Purchases.new(),
 		tutorial = Tutorial.new(false),
 		dayCycle = DayCycle.new(),
+		decorInventory = {},
 	}
 end
 
@@ -351,6 +353,11 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		state.questClaims = nil
 		state.quests = QuestBoard.new(0)
 	end
+	if state.schemaVersion == 21 then
+		state.schemaVersion = 22
+		-- Schema 22 (CM2-A1): the decor crate filled by the Advent calendar.
+		state.decorInventory = {}
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -398,6 +405,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.purchases = Purchases.new()
 	state.tutorial = Tutorial.new(false)
 	state.dayCycle = DayCycle.new()
+	state.decorInventory = {}
 	return validated(state)
 end
 
@@ -773,6 +781,9 @@ function BusinessState.validate(state)
 		return false
 	end
 	if not DayCycle.isValid(state.dayCycle) then
+		return false
+	end
+	if not AdventCalendar.isDecorInventory(state.decorInventory) then
 		return false
 	end
 	for placementId, reservation in pairs(state.reservations) do

@@ -1,6 +1,7 @@
 --!strict
 -- Pure player-profile schema (CM2-S1): the saves a player can choose from. The profile is
 -- lock-free; SaveSlotService applies every change as one UpdateAsync transform.
+local AdventCalendar = require(script.Parent.AdventCalendar)
 local DailyRewards = require(script.Parent.DailyRewards)
 local GameConfig = require(script.Parent.GameConfig)
 
@@ -208,6 +209,10 @@ function SaveProfile.validate(profile): boolean
 	end
 	-- CM2-G11: optional daily reward streak; nil = never claimed.
 	if not DailyRewards.isValid(profile.daily) then
+		return false
+	end
+	-- CM2-A1: optional Advent calendar doors; nil = none opened yet.
+	if not AdventCalendar.isValid(profile.advent) then
 		return false
 	end
 	return true

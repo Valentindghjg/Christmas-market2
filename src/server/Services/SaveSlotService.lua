@@ -20,6 +20,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local AdventCalendar = require(Shared:WaitForChild("AdventCalendar"))
 local DailyRewards = require(Shared:WaitForChild("DailyRewards"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
@@ -614,6 +615,73 @@ function SaveSlotService:setDailyForTest(userId: number, daily: any?): boolean
 			return nil, false, storedError
 		end
 		current.daily = daily
+		return current, true
+	end)
+	return updated ~= nil
+end
+
+-- Advent calendar (CM2-A1) ----------------------------------------------------------------------
+
+-- The open profile's `advent` field: (true, advent?) with a cached profile, else (false, nil).
+function SaveSlotService:adventOf(userId: number): (boolean, any?)
+	local cached = self._profiles[userId]
+	if cached == nil then
+		return false, nil
+	end
+	return true, cached.advent
+end
+
+-- Marks the door opened in the stored profile (the atomic once-per-player guard). Returns
+-- (year, nil) or (nil, errorCode).
+function SaveSlotService:openAdventDoor(userId: number, now: number, door: number): (number?, string?)
+	local year = nil
+	local updated, updateError = self:_updateProfile(userId, function(stored)
+		year = nil
+		local current, storedError = storedProfile(stored)
+		if not current then
+			return nil, false, storedError
+		end
+		local nextAdvent, openError = AdventCalendar.open(current.advent, now, door)
+		if nextAdvent == nil then
+			return nil, false, openError
+		end
+		year = nextAdvent.year
+		current.advent = nextAdvent
+		return current, true
+	end)
+	if updated == nil then
+		return nil, updateError
+	end
+	return year, nil
+end
+
+-- Undoes exactly this door: clears its bit only while the stored year is `year` and the bit is
+-- set. True when the store answered.
+function SaveSlotService:revertAdventDoor(userId: number, year: number, door: number): boolean
+	local bit = bit32.lshift(1, door - 1)
+	local updated = self:_updateProfile(userId, function(stored)
+		local current, storedError = storedProfile(stored)
+		if not current then
+			return nil, false, storedError
+		end
+		local advent = current.advent
+		if type(advent) ~= "table" or advent.year ~= year or bit32.band(advent.opened, bit) == 0 then
+			return current, false
+		end
+		current.advent = { year = advent.year, opened = bit32.band(advent.opened, bit32.bnot(bit)) }
+		return current, true
+	end)
+	return updated ~= nil
+end
+
+-- Studio test instrument only (StudioTestService): writes the `advent` field (nil clears it).
+function SaveSlotService:setAdventForTest(userId: number, advent: any?): boolean
+	local updated = self:_updateProfile(userId, function(stored)
+		local current, storedError = storedProfile(stored)
+		if not current then
+			return nil, false, storedError
+		end
+		current.advent = advent
 		return current, true
 	end)
 	return updated ~= nil

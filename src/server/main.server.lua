@@ -18,6 +18,7 @@ local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("
 local SaveProfile = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("SaveProfile"))
 local ShopConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("ShopConfig"))
 local PersistenceService = require(script.Parent.Services:WaitForChild("PersistenceService"))
+local AdventService = require(script.Parent.Services:WaitForChild("AdventService"))
 local CompanyStateService = require(script.Parent.Services:WaitForChild("CompanyStateService"))
 local CustomerNpcService = require(script.Parent.Services:WaitForChild("CustomerNpcService"))
 local CustomerNpcWorld = require(script.Parent.Services:WaitForChild("CustomerNpcWorld"))
@@ -810,6 +811,22 @@ every(config.DailyRewards.RefreshSeconds, "daily rewards", function()
 	dailyRewards:refreshAll(saveSlots:activeUserIds())
 	return true, 0, 0
 end)
+-- Advent calendar (CM2-A1): one door per UTC day Dec 1-24, paid once per player into the active save.
+local advent = AdventService.new({
+	saveSlots = saveSlots,
+	companies = companies,
+	clock = businessClock,
+	setAttribute = function(userId: number, name: string, value: any)
+		local player = Players:GetPlayerByUserId(userId)
+		if player then
+			player:SetAttribute(name, value)
+		end
+	end,
+})
+every(config.Advent.RefreshSeconds, "advent", function()
+	advent:refreshAll(saveSlots:activeUserIds())
+	return true, 0, 0
+end)
 -- The save's day runs only while it is loaded (CM2-G12a); the measured wait is the step.
 task.spawn(function()
 	while true do
@@ -1061,6 +1078,9 @@ local function onPlayerAdded(player: Player)
 	task.spawn(function()
 		dailyRewards:onPlayerJoined(player.UserId)
 	end)
+	task.spawn(function()
+		advent:onPlayerJoined(player.UserId)
+	end)
 	local arrival = crossServerJoin(player)
 	if arrival then
 		local arrived, arriveError = saveSlots:arrive(player.UserId, arrival)
@@ -1117,6 +1137,7 @@ Players.PlayerRemoving:Connect(function(player)
 	companies:forgetUser(player.UserId)
 	monetization:forgetUser(player.UserId)
 	dailyRewards:forgetUser(player.UserId)
+	advent:forgetUser(player.UserId)
 	task.spawn(function()
 		leaderboards:flushUser(userId)
 		leaderboards:forgetPlayer(userId)
@@ -1162,6 +1183,9 @@ local function handleBusinessAction(player: Player, request)
 	end
 	if type(request) == "table" and request.action == Protocol.Actions.DailyClaim then
 		return dailyRewards:handle(player.UserId, request)
+	end
+	if type(request) == "table" and request.action == Protocol.Actions.AdventOpen then
+		return advent:handle(player.UserId, request)
 	end
 	-- Order interactions need the player next to the tree or car, whichever channel is used.
 	local action = type(request) == "table" and request.action
@@ -1235,6 +1259,7 @@ if RunService:IsStudio() then
 			saveSlots = saveSlots,
 			monetization = monetization,
 			dailyRewards = dailyRewards,
+			advent = advent,
 			ledger = ledger,
 			leaderboards = leaderboards,
 			collectLeaderboards = collectLeaderboards,
