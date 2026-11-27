@@ -56,3 +56,10 @@ Studio client readings (AdventButton, AdventPanel, door taps at 666x374): NOT ru
 Own decisions (accepted, minor): Doors type cast in GameConfig; validator accepts any subset of {door} (missing door -> InvalidDoor); Hint registered as leftItems in bindDialog; tap on any door sends the request so locked/opened doors show the server error; panel derives boost doors from rewardFor; adventNow accepts `at` up to 2^53; concurrency test re-enters handle from a wrapped grantReward.
 Deviations: none from the plan; snapshotForTest decorInventory added in CompanyStateService.lua (where the function lives).
 Studio: client readings queued (PC-13).
+
+2026-11-27: CM2-GATEW Entrance gate in the world (tier M, plan `docs/plans/CM2-GATEW.md`; backlog CM2-GATEW ticked, client visuals pending PC-13)
+Checks (reviewer, `~/.rokit/bin`): stylua PASS; selene 0 errors, 0 warnings; headless 736/736 (732 + 4); rojo build default and release PASS; line endings LF as committed, diff 210 insertions / 15 deletions, no whole-file rewrite.
+Studio (playtester): `runPlaytest` smoke only={37,40,41,42,56,59,61,66}: steps=20 pass=20 fail=0, 216 s. 37, 40, 41 PASS; 42 fence gap 47.55 (right decor fence dropped); 56 pieces 302, overlaps 0; 59 PASS; 61 46 night lights off; 66 "6 plots, hq art 6, gates 6, worst offset 0.03". No `[ART]` warning for Props/LotGate. Full run not run (end of hasseln run).
+Studio client visuals (lights glow at night, name board readable from the road): NOT run, deferred by PC-13; queued in "Studio-Test ausstehend".
+Own decisions (accepted, minor): step 66 mirror check via LotGateWorld.nameLabel and a local CollectionService; private helpers buildFallback, buildSign; SIGN_SIZE constant. Deviations from the backlog (recorded in DECISION_LOG): offset 1.0 not 0.45; customers do not walk through the gate.
+Studio: client visuals queued (PC-13).

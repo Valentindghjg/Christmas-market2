@@ -7,6 +7,7 @@ return function(t)
 	local LotArt = require(Shared.LotArt)
 	local MapLayout = require(Shared.MapLayout)
 	local Progression = require(Shared.Progression)
+	local NpcPath = require(Shared.NpcPath)
 	local Stocking = require(Shared.Stocking)
 	local expect = t.expect
 
@@ -118,8 +119,8 @@ return function(t)
 				local box = boxes[piece.box]
 				expect.truthy(box ~= nil)
 				local own = LotArt.pieceBox(piece)
-				expect.truthy(own.minX >= box.minX - 0.3 and own.maxX <= box.maxX + 0.3)
-				expect.truthy(own.minZ >= box.minZ - 0.3 and own.maxZ <= box.maxZ + 0.3)
+				expect.truthy(own.minX >= box.minX - 0.35 and own.maxX <= box.maxX + 0.35)
+				expect.truthy(own.minZ >= box.minZ - 0.35 and own.maxZ <= box.maxZ + 0.35)
 				if piece.kind == "Post" then
 					posts += 1
 					table.insert(points, { piece.x, piece.z })
@@ -187,5 +188,91 @@ return function(t)
 		for _, artPath in pairs(LotArt.PATHS) do
 			expect.truthy(ArtLibrary.isValidPath(artPath))
 		end
+	end)
+
+	-- Euclidean gap between two lot-frame boxes (0 when they touch or overlap).
+	local function gap(a, b)
+		local gx = math.max(0, a.minX - b.maxX, b.minX - a.maxX)
+		local gz = math.max(0, a.minZ - b.maxZ, b.minZ - a.maxZ)
+		return math.sqrt(gx * gx + gz * gz)
+	end
+
+	t.test("places the gate on the road edge facing the road", function()
+		local x, z = LotArt.gatePose()
+		near(x, 28)
+		near(z, 28)
+		expect.equal(z, GameConfig.Placement.LotHalfDepth + LotArt.GATE_OFFSET)
+		for _, facing in ipairs({ 1, -1 }) do
+			local yaw = LotArt.roadYaw(facing)
+			expect.equal(-math.cos(yaw) * facing, 1)
+			near(math.sin(yaw), 0)
+		end
+	end)
+
+	t.test("keeps the gate posts 2 studs clear of cars, truck and walk lines", function()
+		local placement = GameConfig.Placement
+		local path = GameConfig.Customers.Npc.Path
+		local obstacles = {
+			{ minX = -28, maxX = 16, minZ = 13, maxZ = 59 }, -- car corridor
+			{ minX = 43, maxX = 49, minZ = -26, maxZ = 66 }, -- truck lane
+			keepClear("Sign"),
+			keepClear("Spawn"),
+		}
+		for i = 1, 4 do
+			local cx = path.ParkingFirstX + path.ParkingStep * (i - 1)
+			table.insert(obstacles, {
+				minX = cx - 4,
+				maxX = cx + 4,
+				minZ = path.ParkingDepth - 6,
+				maxZ = path.ParkingDepth + 6,
+			})
+			local door, aisle = NpcPath.door(i), NpcPath.aisle(i)
+			table.insert(obstacles, {
+				minX = math.min(door.x, aisle.x),
+				maxX = math.max(door.x, aisle.x),
+				minZ = math.min(door.z, aisle.z),
+				maxZ = math.max(door.z, aisle.z),
+			})
+		end
+		for _, fence in ipairs(placement.DecorFences) do
+			for _, piece in ipairs(LotArt.decorPieces(fence.x, fence.z)) do
+				table.insert(obstacles, LotArt.pieceBox(piece))
+			end
+		end
+		local posts = LotArt.gatePostBoxes()
+		expect.equal(#posts, 2)
+		near(posts[1].minX, 18.35)
+		near(posts[2].maxX, 37.65)
+		for _, post in ipairs(posts) do
+			expect.truthy(post.minZ >= placement.LotHalfDepth)
+			for _, obstacle in ipairs(obstacles) do
+				expect.truthy(gap(post, obstacle) >= 2)
+			end
+		end
+	end)
+
+	t.test("chooses the gate art or the fallback", function()
+		local root = node("Folder")
+		local props = node("Folder")
+		root.children.Props = props
+		props.children.LotGate = node("Model")
+		local art = LotArt.choose(root, ArtLibrary.find, LotArt.PATHS.Gate)
+		expect.equal(art.path, "Props/LotGate")
+		expect.equal(art.mode, "Art")
+		local missing = LotArt.choose(node("Folder"), ArtLibrary.find, LotArt.PATHS.Gate)
+		expect.equal(missing.mode, "Primitive")
+		expect.equal(missing.code, "MissingArtAsset")
+	end)
+
+	t.test("sizes fence pieces to the v3 post", function()
+		near(LotArt.PIECE_HALF, 0.45)
+		near(LotArt.RAIL_BEHIND, 4.45)
+		near(LotArt.RAIL_AHEAD, 3.95)
+		local post = LotArt.pieceBox({ box = "Decor", kind = "Post", x = 10, z = 5, dirX = 1, dirZ = 0 })
+		near(post.maxX - post.minX, 0.9)
+		near(post.maxZ - post.minZ, 0.9)
+		local rail = LotArt.pieceBox({ box = "Decor", kind = "Rail", x = 10, z = 5, dirX = 1, dirZ = 0 })
+		near(rail.maxX - rail.minX, 8.4)
+		near(rail.maxZ - rail.minZ, 0.9)
 	end)
 end

@@ -31,16 +31,21 @@ LotArt.PATHS = {
 	Bundle = "Props/TreeBundle",
 	Rail = "Environment/FenceRail8",
 	Post = "Environment/FencePost",
+	Gate = "Props/LotGate",
 }
 
 LotArt.RAIL_LENGTH = 8 -- FenceRail8 post spacing
 -- Rail extent behind and ahead of its centre along the run, and its half-width: the start post is at
--- model +X = +L/2, the rails run to -X, 0.6 thick (MODEL_INTEGRATION 13b).
-LotArt.RAIL_BEHIND = 4.3
+-- model +X = +L/2, the rails run to -X; the v3 post is 0.9 wide (MODEL_INTEGRATION CM2-GATE).
+LotArt.RAIL_BEHIND = 4.45
 LotArt.RAIL_AHEAD = 3.95
-LotArt.PIECE_HALF = 0.3
+LotArt.PIECE_HALF = 0.45
 LotArt.FENCE_OFFSET = 0.45 -- fence line beyond the lot edge = centre of the 0.3-thick fenceBoxes
 LotArt.FENCE_BASE_DROP = 0.55 -- base = map ground top 0, behind the lot edge; never floats
+LotArt.GATE_X = 28 -- the gate's lot-frame x, east of the parking (CM2-GATEW)
+LotArt.GATE_OFFSET = 1.0 -- beyond LotHalfDepth, so the posts stay off the placeable lot
+LotArt.GATE_POST_X = 8.9 -- post centre from the gate pivot along the run
+LotArt.GATE_POST_HALF = 0.75 -- 1.5 x 1.5 posts
 LotArt.BUNDLE_ROW = 1.0
 LotArt.BUNDLE_SPACING = 1.2
 
@@ -138,8 +143,8 @@ function LotArt.decorPieces(x: number, z: number): { Piece }
 	}
 end
 
--- The lot-frame footprint of a piece: a post +-0.3 on both axes, a rail from 4.3 behind to 3.95
--- ahead of its centre along the run and +-0.3 across.
+-- The lot-frame footprint of a piece: a post +-0.45 on both axes, a rail from 4.45 behind to 3.95
+-- ahead of its centre along the run and +-0.45 across.
 function LotArt.pieceBox(piece: Piece): Box
 	local half = LotArt.PIECE_HALF
 	if piece.kind == "Post" then
@@ -154,6 +159,27 @@ function LotArt.pieceBox(piece: Piece): Box
 		minZ = math.min(backZ, aheadZ) - acrossZ,
 		maxZ = math.max(backZ, aheadZ) + acrossZ,
 	}
+end
+
+-- The gate pivot in the lot frame (x, z) at the road edge (CM2-GATEW).
+function LotArt.gatePose(): (number, number)
+	return LotArt.GATE_X, GameConfig.Placement.LotHalfDepth + LotArt.GATE_OFFSET
+end
+
+-- The gate's two posts (left then right) as lot-frame boxes.
+function LotArt.gatePostBoxes(): { Box }
+	local x, z = LotArt.gatePose()
+	local boxes: { Box } = {}
+	for _, side in { -1, 1 } do
+		local cx = x + side * LotArt.GATE_POST_X
+		table.insert(boxes, {
+			minX = cx - LotArt.GATE_POST_HALF,
+			maxX = cx + LotArt.GATE_POST_HALF,
+			minZ = z - LotArt.GATE_POST_HALF,
+			maxZ = z + LotArt.GATE_POST_HALF,
+		})
+	end
+	return boxes
 end
 
 -- Bundle k on the deck: the rise above the deck top (rows of three) and the world z offset.

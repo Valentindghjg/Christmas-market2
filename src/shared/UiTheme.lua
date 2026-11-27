@@ -232,6 +232,15 @@ UiTheme.LotSign = {
 	maxDistance = 120,
 }
 
+-- The entrance gate's name board (CM2-GATEW, PROVISIONAL): SurfaceGui density, distance, text sizes.
+UiTheme.LotGate = {
+	pixelsPerStud = 40,
+	nameMaxTextSize = 60,
+	nameMinTextSize = 18,
+	padding = 10,
+	maxDistance = 150,
+}
+
 -- Map signs and leaderboard titles (CM2-10W, PROVISIONAL): SurfaceGui density, distance, text sizes.
 UiTheme.MapSign = {
 	pixelsPerStud = 40,

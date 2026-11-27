@@ -9,6 +9,9 @@
 -- `BayArt_<i>` with their `BundleBase`, the `DecorFence` models and the lot fence art with 11 + 2 x
 -- level pieces face the road at their lot-frame positions within 0.05-0.1 studs; five bundles on a
 -- free plot's `Bay_1` show as art on the deck top and its second row, then the bay is cleared).
+-- CM2-GATEW: each plot also has the `LotGate` art at lot (28, 28), y at the map ground, front to
+-- the road, one off `NightLight` in each of `Light1` and `Light2`, and a name board that mirrors
+-- the lot sign's `NameSource` and text.
 return function(ctx: any)
 	local R = ctx.R
 	local S = ctx.S
@@ -20,6 +23,7 @@ return function(ctx: any)
 	local Shared = ctx.ReplicatedStorage:WaitForChild("Shared")
 	local LotArt = require(Shared:WaitForChild("LotArt")) :: any
 	local Stocking = require(Shared:WaitForChild("Stocking")) :: any
+	local CollectionService = game:GetService("CollectionService")
 
 	local POSITION_TOLERANCE = 0.05
 	local ATTACHMENT_TOLERANCE = 0.1
@@ -140,7 +144,8 @@ return function(ctx: any)
 
 	addStep("66", "LOT_ART", { "02a" }, function()
 		local WorldService = require(ctx.Services:WaitForChild("WorldService")) :: any
-		local hqArt, counters, bays, decor, fences, pieces = 0, 0, 0, 0, 0, 0
+		local LotGateWorld = require(ctx.Services:WaitForChild("LotGateWorld")) :: any
+		local hqArt, counters, bays, decor, fences, pieces, gates = 0, 0, 0, 0, 0, 0, 0
 		local levels: { string } = {}
 		worst = 0
 		for _, plotId in GameConfig.PersonalPlotIds do
@@ -270,12 +275,54 @@ return function(ctx: any)
 				fences += 1
 				pieces += count
 			end
+
+			-- (g) The entrance gate (CM2-GATEW): art, pose, two night lights, mirrored name.
+			local gate = model(plot, "LotGate", plotId .. " LotGate")
+			check(
+				gate:GetAttribute("LotArtMode") == "Art",
+				plotId .. " LotGate LotArtMode is " .. tostring(gate:GetAttribute("LotArtMode"))
+			)
+			local gateX, gateZ = LotArt.gatePose()
+			expectAt(plotId .. " LotGate", plot, gate:GetPivot(), gateX, gateZ, ATTACHMENT_TOLERANCE)
+			local gateDrop = math.abs(gate:GetPivot().Position.Y - (top - LotArt.FENCE_BASE_DROP))
+			worst = math.max(worst, gateDrop)
+			check(
+				gateDrop <= ATTACHMENT_TOLERANCE,
+				string.format("%s LotGate pivot y is off by %.3f", plotId, gateDrop)
+			)
+			expectFacing(plotId .. " LotGate", plot, gate:GetPivot())
+			for _, lightName in { "Light1", "Light2" } do
+				local lights = 0
+				for _, child in attachment(gate, lightName):GetChildren() do
+					if child:IsA("Light") and CollectionService:HasTag(child, GameConfig.DayCycle.NightLightTag) then
+						lights += 1
+					end
+				end
+				check(lights == 1, string.format("%s LotGate %s holds %d night lights", plotId, lightName, lights))
+			end
+			local gateName = LotGateWorld.nameLabel(plot)
+			local signBoard = plot:FindFirstChild("LotSign") and plot.LotSign:FindFirstChild("Board")
+			local signGui = signBoard and signBoard:FindFirstChild("SignFront")
+			local signFrame = signGui and signGui:FindFirstChild("Frame")
+			local signName = signFrame and signFrame:FindFirstChild("Name")
+			check(gateName ~= nil and signName ~= nil, plotId .. " gate or lot sign name label is missing")
+			check(
+				(gateName :: TextLabel):GetAttribute("NameSource") == (signName :: TextLabel):GetAttribute("NameSource")
+					and (gateName :: TextLabel).Text == (signName :: TextLabel).Text,
+				string.format(
+					"%s gate name '%s' differs from the lot sign '%s'",
+					plotId,
+					(gateName :: TextLabel).Text,
+					(signName :: TextLabel).Text
+				)
+			)
+			gates += 1
 		end
 		check(fences >= 1, "no plot has a LotFence")
 
 		local bundles = bundleCheck(WorldService)
 		return string.format(
-			"6 plots: hq art %d (levels %s), counters %d, bays %d, decor %d, fences %d (%d pieces); %s; worst offset %.2f",
+			"6 plots: hq art %d (levels %s), counters %d, bays %d, decor %d, fences %d (%d pieces), gates %d; %s; worst offset %.2f",
 			hqArt,
 			table.concat(levels, ","),
 			counters,
@@ -283,6 +330,7 @@ return function(ctx: any)
 			decor,
 			fences,
 			pieces,
+			gates,
 			bundles,
 			worst
 		)

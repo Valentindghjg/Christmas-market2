@@ -14,6 +14,7 @@ local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
 local LotArtWorld = require(script.Parent:WaitForChild("LotArtWorld"))
 local LotFenceWorld = require(script.Parent:WaitForChild("LotFenceWorld"))
+local LotGateWorld = require(script.Parent:WaitForChild("LotGateWorld"))
 local MapWorld = require(script.Parent:WaitForChild("MapWorld"))
 
 local WorldService = {}
@@ -791,6 +792,7 @@ function WorldService.build()
 			end
 		end
 		buildReceiving(plot)
+		LotGateWorld.build(plot, ART_CTX)
 		lotSign(plot)
 	end
 
@@ -1603,6 +1605,17 @@ function WorldService.setLotSign(plotId: string, view: LotSignView?): boolean
 	local likePrompt = board:FindFirstChild("LikePrompt")
 	if likePrompt and likePrompt:IsA("ProximityPrompt") then
 		likePrompt.Enabled = view ~= nil
+	end
+	-- CM2-GATEW: the gate's name board mirrors the sign's front name.
+	local plot = findPlot(plotId)
+	local gate = plot and LotGateWorld.nameLabel(plot)
+	local front = board:FindFirstChild("SignFront")
+	local source = front and front:FindFirstChild("Frame")
+	local sourceName = source and source:FindFirstChild("Name")
+	if gate and sourceName then
+		gate:SetAttribute("NameSource", sourceName:GetAttribute("NameSource"))
+		gate:SetAttribute("OwnerName", sourceName:GetAttribute("OwnerName"))
+		gate.Text = (sourceName :: TextLabel).Text
 	end
 	return true
 end

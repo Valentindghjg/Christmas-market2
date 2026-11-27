@@ -243,7 +243,7 @@ return function(t)
 			end
 		end
 		expect.truthy(sign ~= nil)
-		expect.equal(#Placement.DecorFences, 2)
+		expect.equal(#Placement.DecorFences, 1)
 		for _, fence in ipairs(Placement.DecorFences) do
 			expect.truthy(math.abs(fence.x) <= Placement.LotHalfWidth)
 			expect.truthy(math.abs(fence.z) <= Placement.LotHalfDepth)

@@ -437,3 +437,10 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 | Studio date | `AdventService:setNowForTest(at?)` overrides only the calendar's time, not the business clock. |
 - Save schema 22 adds `decorInventory = {[DecorItems id]: 1..DecorMaxCount}` (migration 21 -> 22 and the legacy-v1 path set `{}`); the profile field needs no version bump (as `daily`). Door rewards in `GameConfig.Advent.Doors` are PROVISIONAL and are not revenue (no Cash Rush multiplier).
 - Files: src/shared/AdventCalendar.lua, GameConfig.lua, BusinessState.lua, SaveProfile.lua, Protocol.lua, Localization.lua, UiTheme.lua; src/server/Services/AdventService.lua, CompanyQuests.lua, CompanyStateService.lua, SaveSlotService.lua, StudioTestService.lua; src/server/main.server.lua; src/client/AdventPanel.lua, UiController.client.lua.
+
+## 2026-11-27 — CM2-GATEW entrance gate in the world (engineering)
+- Placement: gate pivot at lot (28, 28) = `LotHalfDepth` 27 + `GATE_OFFSET` 1.0, east of the parking. Customers never cross the front edge (cars drive straight from the road to spaces at x -24..12, NPCs start at the door), so a gate over the car lanes would serve nobody; it stands for players coming from the sidewalk. Posts 1.5 x 1.5 at x 18.35..19.85 and 36.15..37.65 are fully off the placeable lot (z >= 27.25) and keep 2.25-5.35 studs from parking, walk lines, truck lane and the sign box.
+- Backlog deviations: the offset is 1.0, not `FENCE_OFFSET` 0.45 (the post would reach into the lot); customers cannot walk through the gate (steps 37 and 40 stay as regression with 0 snaps).
+- The right decor fence (34, 24) stood 3 studs behind the opening and is dropped: `DecorFences = { { x = -34, z = 24 } }`.
+- Lights through `MapWorld.nightLight` (`DayCycle.GateLight`, PROVISIONAL), 12 more night lights (46 in step 61); the name board mirrors the lot sign through `WorldService.setLotSign`. No save, money or remote change.
+- Files: src/shared/LotArt.lua, GameConfig.lua, UiTheme.lua; src/server/Services/LotGateWorld.lua, WorldService.lua; tests/studio/Cases/{LotArt,GameConfig}_Test.lua, Playtest/Steps/{LotArt,DayNight}.lua; docs/MODEL_INTEGRATION.md.

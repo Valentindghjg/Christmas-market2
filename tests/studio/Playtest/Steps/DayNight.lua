@@ -2,7 +2,8 @@
 -- Playtest steps 60-61 (full mode): day/night per save (CM2-G12a, docs/plans/CM2-G12a.md).
 -- Installed by RunPlaytest.execute after Steps/Progression. Step 60 drives the real player's
 -- day clock through dusk and a day rollover and checks the attributes, the summary and the
--- saved day after a rejoin; step 61 counts the server's night lights (all off on the server).
+-- saved day after a rejoin; step 61 counts the server's night lights (all off on the server):
+-- 22 lamps, 2 plot-sign lights and (CM2-GATEW) 2 gate lights per plot = 46.
 return function(ctx: any)
 	local R = ctx.R
 	local actOk = ctx.actOk
@@ -18,6 +19,7 @@ return function(ctx: any)
 	local TAG = ctx.GameConfig.DayCycle.NightLightTag
 	local LAMP_COUNT = 22
 	local PLOT_LIGHTS = 6 * 2
+	local GATE_LIGHTS = 6 * 2 -- CM2-GATEW
 
 	local function setDay(elapsed: number): any
 		return call("setDay", { userId = R.userId, elapsed = elapsed })
@@ -96,8 +98,8 @@ return function(ctx: any)
 			lights += 1
 		end
 		check(
-			lights == LAMP_COUNT + PLOT_LIGHTS,
-			string.format("%d night lights, expected %d", lights, LAMP_COUNT + PLOT_LIGHTS)
+			lights == LAMP_COUNT + PLOT_LIGHTS + GATE_LIGHTS,
+			string.format("%d night lights, expected %d", lights, LAMP_COUNT + PLOT_LIGHTS + GATE_LIGHTS)
 		)
 
 		local world = workspace:FindFirstChild("ChristmasMarketWorld")

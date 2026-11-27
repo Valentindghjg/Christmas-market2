@@ -542,6 +542,7 @@ GameConfig.DayCycle = {
 	NightLightTag = "NightLight",
 	LampLight = { range = 16, brightness = 1.5 }, -- PROVISIONAL
 	PlotLight = { range = 14, brightness = 1.2 }, -- PROVISIONAL
+	GateLight = { range = 12, brightness = 1.2 }, -- PROVISIONAL (CM2-GATEW)
 }
 
 -- Four leaderboards on the village square (CM2-G12b, docs/plans/CM2-G12b.md): OrderedDataStore
@@ -630,7 +631,9 @@ GameConfig.Placement = {
 		{ id = "Sign", minX = 18, maxX = 28, minZ = 21, maxZ = 25 }, -- lot sign (CM2-G15)
 	},
 	StandFitMargin = 0.1, -- PROVISIONAL (CM2-G9a A1): HQ art fits KeepClear Stand minus this per side
-	DecorFences = { { x = -34, z = 24 }, { x = 34, z = 24 } }, -- decorative fences, lot frame (CM2-13W: FenceRail8 + FencePost art, FenceWooden fallback)
+	-- decorative fences, lot frame (CM2-13W: FenceRail8 + FencePost art, FenceWooden fallback);
+	-- the right one gave way to the gate (CM2-GATEW)
+	DecorFences = { { x = -34, z = 24 } },
 	DecorFenceRadius = 5.5, -- covers the 8.6 x 0.6 art and the 10.28 x 0.34 FenceWooden fallback from its centre at any yaw
 }
 
