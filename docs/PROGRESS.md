@@ -9,6 +9,17 @@ Archived 2026-11-26 (entries CM2-12W, CM2-46c, CM2-G12b, CM2-SALE2 incl. Amendme
 Archived 2026-11-27 (entries CM2-G11, CM2-SLIM run 2, CM2-13W): [archive/PROGRESS_2026-11-26_to_2026-11-26_G11-SLIM2-13W.md](archive/PROGRESS_2026-11-26_to_2026-11-26_G11-SLIM2-13W.md).
 Archived 2026-11-27 (entries CM2-PP, CM2-FAST, CM2-FLICK): [archive/PROGRESS_2026-11-26_to_2026-11-27_PP-FAST-FLICK.md](archive/PROGRESS_2026-11-26_to_2026-11-27_PP-FAST-FLICK.md).
 
+2026-11-27: CM2-43 English-only strings and accessibility (tier S, no plan; backlog 22 stays OPEN, Studio German-locale reading pending)
+Skills: none loaded (tier S). Change: `Localization.LaunchLanguage = "en"` drives `UiKit` (no Roblox-locale read); fragment keys (demandHigh/Low, cartMore, dailyDay, dailyReward*) replaced by whole-sentence keys (supplierBuyRowInfoHigh/Low, cartLinesMore, dailyCardCash/Reputation; adventDoor* take the door number), EN and DE; four concatenation sites in SupplierTab, AdventPanel, QuestPanel; tests in `Localization_Test` (launch language, no dangling edges, composed keys, removed keys gone) and `UiTheme_Test` (WCAG contrast 4.5 body / 3.0 placeholder, TextSize.Small >= 13; DarkText on Red is 2.66 but unused, left to CM2-UI).
+Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 765 run, 765 passed; rojo build PASS. Own decisions accepted (slotted data such as species/size names left alone; server world labels already "en").
+Studio (playtester, e36ff47a, desktop): smoke 13/13 PASS; Advent door text PASS (`Door_1 = "1
+Opened"`, others `"n
+Locked"`; Open state not reachable today); daily strip PASS ("Day 1
+$400", "Day 3
++150 ★", "Day 7
+$2,500"); client locale en-us, no German locale settable. BLOCKED: German-locale screenshot, supplier HIGH/LOW demand text, "+ N more" (no GUI clicks: firesignal/getconnections nil, VirtualInputManager refused). Same run: CM2-TUTHOOK resetTutorial `{ok=true, step="Order"}` and NoSession PASS; CM2-SUPQ label BLOCKED. Console: only the six known ContentId warnings.
+Accept: headless part PASS; Studio German-locale part not met, so line 22 is not ticked; open readings queued in "Studio-Test ausstehend" and folded into 18a4 CM2-SUPP (h). Side effect: save "Playtest A" active, Door 1 opened via adventSet.
+
 2026-11-27: CM2-SUPQ Supplier sell-back row Qty label after a sale (tier S, no plan; backlog 18a3 ticked)
 Skills: none loaded (tier S, client display only). Cause: `renderSellRow` wrote the clamped value, but rows hidden by `renderView` at `sellBound` 0 (e.g. sell 1 of 1) were never re-rendered and kept the old text. Fix: pure helper `SupplierCart.applySellQty(sellQty, key, bound, label)` (clamps, clears at 0, writes the label); `renderSellRow` and the hidden-row branch of `renderView` call it. Buy rows unchanged; no money, remote or string change.
 Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 761 run, 761 passed (760 + 1 Studio-case test run in the headless set); rojo build PASS.
