@@ -51,10 +51,28 @@ local chipLabels: { [string]: TextLabel } = {
 }
 
 local status = UiKit.label(hud, "SaveStatus", "Christmas Market 2", UiTheme.TextSize.Small)
-status.TextXAlignment = Enum.TextXAlignment.Right
+status.TextXAlignment = Enum.TextXAlignment.Center
 status.TextWrapped = true
-status.TextColor3 = UiKit.Colors.Cream
-UiKit.outlineText(status)
+status.TextScaled = true
+status.TextColor3 = UiKit.Colors.DarkText
+-- CM2-UIFIX: a Panel plate under the chips, so the line reads on any background.
+status.BackgroundColor3 = UiKit.Colors.Panel
+status.BackgroundTransparency = 0.1
+UiKit.card(status)
+local STATUS_MAX_TEXT = UiTheme.TextSize.Small
+local STATUS_MIN_TEXT = 10
+local statusSize = Instance.new("UITextSizeConstraint")
+statusSize.Name = "StatusSize"
+statusSize.MaxTextSize = STATUS_MAX_TEXT
+statusSize.MinTextSize = STATUS_MIN_TEXT
+statusSize.Parent = status
+local statusInset = Instance.new("UIPadding")
+statusInset.Name = "StatusInset"
+statusInset.PaddingLeft = UDim.new(0, 8)
+statusInset.PaddingRight = UDim.new(0, 8)
+statusInset.PaddingTop = UDim.new(0, 2)
+statusInset.PaddingBottom = UDim.new(0, 2)
+statusInset.Parent = status
 
 local lotManagerButton = UiKit.addRailButton("LotManagerButton", "lotManagerButton", 10)
 
@@ -127,7 +145,7 @@ local function updateReady()
 	if ready and player:GetAttribute("ActiveSaveRole") == "Member" then
 		-- Members never receive the save name; the owner's username stands in for it.
 		local ownerName = player:GetAttribute("ActiveSaveOwnerName")
-		local plotId = tostring(player:GetAttribute("PlotId"))
+		local plotId = UiTheme.plotNumber(player:GetAttribute("PlotId"))
 		status.Text = if type(ownerName) == "string"
 			then localizedFormat("hudSharedSaveStatus", ownerName, plotId)
 			else localizedFormat("hudSharedSaveStatusUnknown", plotId)
@@ -135,7 +153,7 @@ local function updateReady()
 		status.Text = localizedFormat(
 			"hudSaveStatus",
 			tostring(player:GetAttribute("ActiveSaveName") or ""),
-			tostring(player:GetAttribute("PlotId"))
+			UiTheme.plotNumber(player:GetAttribute("PlotId"))
 		)
 	elseif errorCode ~= nil then
 		status.Text = localized(Localization.saveErrorKey(errorCode))

@@ -14,7 +14,10 @@ Tokens live in `src/shared/UiTheme.lua`, pure rules in `src/shared/UiStyle.lua`,
 - Fonts: Nunito; Title Heavy, Body Bold, Light SemiBold (`UiTheme.fontFace(role)`).
 - TextSize: Title 22, Body 15, Small 13, Chip 16, Input 16 (plus Arrow sizes for the tutorial).
 - CornerRadius: Button 8, Row 10, Panel 12. MinTouch 44 px.
-- Style: strokes (Control 2, Selected 3, Card 1, Title 1.5), GradientBottom 0.92, shadow offset 4, dim 0.45, HeaderInset 10 px.
+- Style: strokes (Control 2, Selected 3, Card 1, Title 1.5 (`outlineText` only, no current caller)), GradientBottom 0.92, shadow offset 4, dim 0.45, HeaderInset 10 px.
+- Headings: `UiTheme.Heading` (Title role, Heavy 22, no stroke on panels). `UiKit.label` applies it at Title size.
+- Rail: on desktop the buttons sit `UiTheme.RailInset` (6 px) inside the rail, so the 2 px Border stroke and the hover scale are not clipped. Phones keep 0.
+- Save status: a Panel plate under the chips (8 px gap, DarkText 10-13 px, Plot number only, e.g. "Plot 1").
 - Motion: hover 1.05 in 0.15 s, press 0.95 in 0.08 s, release 0.15 s (Back), open 0.95 to 1 in 0.18 s, close 0.12 s, toast 0.2 s.
 
 ## Rules

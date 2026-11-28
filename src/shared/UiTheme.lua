@@ -206,6 +206,11 @@ UiTheme.Style = {
 	HeaderInset = 10,
 }
 
+-- CM2-UIFIX (PROVISIONAL): every heading is Heavy 22 with no stroke (a stroke fills the letters on cream).
+UiTheme.Heading = { role = "Title", textSize = UiTheme.TextSize.Title, stroke = 0 }
+-- Desktop rail: px between the rail edge and its buttons, room for the 2 px Border stroke and the hover scale.
+UiTheme.RailInset = 6
+
 -- Times in seconds, scales as UIScale values.
 UiTheme.Motion = {
 	hoverScale = 1.05,
@@ -473,8 +478,8 @@ local BUTTON_HEIGHT = 44
 local HUD_HEIGHT = 74
 local CHIP_HEIGHT = 36
 local CHIP_GAP = 6
-local STATUS_TOP = 40
-local STATUS_HEIGHT = 34
+local STATUS_TOP = 44 -- CHIP_HEIGHT 36 + GAP 8
+local STATUS_HEIGHT = 30
 local RAIL_SIDE_PADDING = 8
 local THUMB_RESERVE = 96
 local RAIL_OVERFLOW_MIN_WIDTH = 72 -- PROVISIONAL
@@ -535,12 +540,13 @@ function UiTheme.hudLayout(m: Metrics, railButtons: number): HudLayout
 	local content = if count > 0 then count * BUTTON_HEIGHT + (count - 1) * m.railGap else 0
 	local cell = m.railWidth - RAIL_SCROLLBAR
 	local step = BUTTON_HEIGHT + m.railGap
+	local inset = if m.compact then 0 else UiTheme.RailInset
 	local railButtonBoxes: { Box } = {}
 	for index = 1, count do
-		railButtonBoxes[index] = box(0, (index - 1) * step, cell, BUTTON_HEIGHT)
+		railButtonBoxes[index] = box(inset, inset + (index - 1) * step, cell - inset, BUTTON_HEIGHT)
 	end
-	local rail = box(m.margin, m.railTop, m.railWidth, math.min(content, m.railMaxHeight))
-	local railScrolls = content > m.railMaxHeight
+	local rail = box(m.margin, m.railTop, m.railWidth, math.min(content + 2 * inset, m.railMaxHeight))
+	local railScrolls = content + 2 * inset > m.railMaxHeight
 
 	-- CM2-UVF13: on phones the buttons that do not fit above the thumbstick go right of row 1.
 	if m.compact and railScrolls then
@@ -985,6 +991,26 @@ end
 
 function UiTheme.inside(b: Box, width: number, height: number): boolean
 	return b.x >= 0 and b.y >= 0 and b.x + b.w <= width and b.y + b.h <= height
+end
+
+-- True when every edge of `inner` lies within `outer` grown by `tolerance` on each side.
+function UiTheme.contains(outer: Box, inner: Box, tolerance: number): boolean
+	return inner.x >= outer.x - tolerance
+		and inner.y >= outer.y - tolerance
+		and inner.x + inner.w <= outer.x + outer.w + tolerance
+		and inner.y + inner.h <= outer.y + outer.h + tolerance
+end
+
+-- "Plot_01" -> "1" for the status line; nil -> "?"; anything else is shown as it is.
+function UiTheme.plotNumber(plotId: unknown): string
+	if plotId == nil then
+		return "?"
+	end
+	local digits = if type(plotId) == "string" then string.match(plotId, "^Plot_(%d+)$") else nil
+	if digits then
+		return tostring(tonumber(digits))
+	end
+	return tostring(plotId)
 end
 
 return UiTheme

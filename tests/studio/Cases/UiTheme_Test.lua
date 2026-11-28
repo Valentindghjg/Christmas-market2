@@ -308,21 +308,86 @@ return function(t)
 		expect.equal(layout.rail.h, 188)
 	end)
 
+	-- CM2-UIFIX: the desktop rail keeps RailInset (6 px) round its buttons.
 	t.test("keeps the regular rail as one column", function()
 		for _, size in ipairs({ { w = 1920, h = 1022 }, { w = 1024, h = 710 } }) do
 			local m = UiTheme.metrics(size.w, size.h)
 			for count = 1, 5 do
 				local layout = UiTheme.hudLayout(m, count)
 				expect.equal(layout.rail.w, m.railWidth)
+				expect.equal(layout.rail.h, count * 44 + (count - 1) * m.railGap + 12)
 				for index = 1, count do
 					local b = layout.railButtons[index]
-					expect.equal(b.x, 0)
-					expect.equal(b.y, (index - 1) * (44 + m.railGap))
-					expect.equal(b.w, m.railWidth - 6)
+					expect.equal(b.x, 6)
+					expect.equal(b.y, 6 + (index - 1) * (44 + m.railGap))
+					expect.equal(b.w, m.railWidth - 12)
 					expect.equal(b.h, 44)
 				end
 			end
 		end
+	end)
+
+	-- CM2-UIFIX: no desktop rail button, its Border stroke or its hover scale reaches the rail edge.
+	t.test("keeps desktop rail buttons and strokes inside the rail", function()
+		for _, size in ipairs(MATRIX) do
+			local m = UiTheme.metrics(size.w, size.h)
+			if not m.compact then
+				for count = 1, 8 do
+					local layout = UiTheme.hudLayout(m, count)
+					for _, relative in ipairs(layout.railButtons) do
+						local b = absolute(layout.rail, relative)
+						expect.truthy(b.x >= m.margin + UiTheme.RailInset)
+						local grow = UiTheme.Style.StrokeControl + math.ceil(0.025 * b.w)
+						local grown = { x = b.x - grow, y = b.y - grow, w = b.w + 2 * grow, h = b.h + 2 * grow }
+						if layout.railScrolls then
+							-- Only the x extent counts: the content scrolls vertically.
+							local outer = { x = layout.rail.x, y = grown.y, w = layout.rail.w, h = grown.h }
+							expect.truthy(UiTheme.contains(outer, grown, 0))
+						else
+							expect.truthy(UiTheme.contains(layout.rail, grown, 0))
+						end
+					end
+				end
+			end
+		end
+	end)
+
+	-- CM2-UIFIX: the save status is a plate under the chips, 8 px below them.
+	t.test("puts the save status below the chips", function()
+		for _, size in ipairs(MATRIX) do
+			local m = UiTheme.metrics(size.w, size.h)
+			local layout = UiTheme.hudLayout(m, 4)
+			local status = absolute(layout.hud, layout.status)
+			expect.truthy(layout.status.y >= 36 + 8)
+			expect.truthy(UiTheme.inside(status, layout.hud.x + layout.hud.w, layout.hud.y + layout.hud.h))
+			expect.truthy(UiTheme.inside(status, size.w, size.h))
+			for _, chip in ipairs(layout.chips) do
+				expect.falsy(UiTheme.overlaps(status, absolute(layout.hud, chip.box)))
+			end
+		end
+	end)
+
+	t.test("one heading style without outline", function()
+		expect.equal(UiTheme.Heading.stroke, 0)
+		expect.equal(UiTheme.Heading.textSize, UiTheme.TextSize.Title)
+		expect.truthy(UiTheme.Fonts.Weights[UiTheme.Heading.role] ~= nil)
+	end)
+
+	t.test("plotNumber", function()
+		expect.equal(UiTheme.plotNumber("Plot_01"), "1")
+		expect.equal(UiTheme.plotNumber("Plot_12"), "12")
+		expect.equal(UiTheme.plotNumber(nil), "?")
+		expect.equal(UiTheme.plotNumber("X"), "X")
+	end)
+
+	t.test("contains", function()
+		local outer = { x = 10, y = 10, w = 100, h = 50 }
+		expect.truthy(UiTheme.contains(outer, { x = 20, y = 20, w = 10, h = 10 }, 0))
+		expect.truthy(UiTheme.contains(outer, { x = 10, y = 10, w = 100, h = 50 }, 0))
+		expect.truthy(UiTheme.contains(outer, { x = 9, y = 10, w = 100, h = 50 }, 1))
+		expect.truthy(UiTheme.contains(outer, { x = 10, y = 10, w = 101, h = 51 }, 1))
+		expect.falsy(UiTheme.contains(outer, { x = 8, y = 10, w = 100, h = 50 }, 1))
+		expect.falsy(UiTheme.contains(outer, { x = 10, y = 10, w = 100, h = 53 }, 1))
 	end)
 
 	t.test("fits the Lot Manager on every screen", function()

@@ -14,6 +14,14 @@ Archived 2026-11-28 (entries CM2-SLIM run 4, CM2-UI3M, CM2-UI3D, CM2-UI3 part 1,
 Archived 2026-11-28 (entries CM2-43, CM2-14WR, CM2-LEAK22, CM2-HOOKSA, CM2-10D, CM2-10DW, CM2-SLIM8): [archive/PROGRESS_2026-11-27_to_2026-11-28_43-14WR-LEAK22-HOOKSA-10D-10DW-SLIM8.md](archive/PROGRESS_2026-11-27_to_2026-11-28_43-14WR-LEAK22-HOOKSA-10D-10DW-SLIM8.md).
 Archived 2026-11-28 (entries CM2-10I batches B1-B3, CM2-10IW, CM2-SLIM run 5, CM2-47): [archive/PROGRESS_2026-11-28_to_2026-11-28_10I-10IW-SLIM5-47.md](archive/PROGRESS_2026-11-28_to_2026-11-28_10I-10IW-SLIM5-47.md).
 
+## 2026-11-28 CM2-UIFIX Nothing cut off, readable headings (tier M, plan incl. Amendment 1)
+- Changes: desktop rail inset 6 px (`UiTheme.RailInset`), status line as a Panel plate 44/30 under the chips showing "Plot <n>" (`UiTheme.plotNumber`), headings Nunito Heavy 22 without stroke (`UiTheme.Heading`), Studio hook action `probe` in `UiKit`; docs/UI_STYLE.md updated.
+- Checks: stylua PASS; selene 0 errors, 0 warnings, 0 parse errors; headless 801 run, 801 passed, 0 failed (796 + 5); ui_scan 0 (implementer); rojo build PASS.
+- Studio (playtester, run now, desktop 1564x730): smoke 13/13. Probe HUD: problems [], checked 11, railLeft 18, statusTop 56 >= chipsBottom 48 + 8, SaveStatus "Playtest A · Plot 1". Lot Manager all 6 tabs problems []. Land heading Nunito Heavy 22, no UIStroke/TitleOutline, TextFits. Shop, Quests, Saves, Team problems [].
+- Screenshots: BLOCKED (play capture black, known); the before/after views rest on the probe numbers. Phone and tablet readings: not run, CM2-UIP queue (PC-14).
+- Known (not a defect): the Saves window has no close button because it is the modal base layer (`SavePicker.client.lua`); the "Back to game" button appears once `CompanyReady`.
+- Own decisions (all minor): viewport from `CurrentCamera.ViewportSize`; statusTop/chipsBottom read from `ChristmasMarketUI/Hud`; problem strings "<path> <kind> <numbers>"; status label keeps `TextTruncate AtEnd` with `TextScaled`.
+
 ## 2026-11-28 CM2-47D2 Notify drains client sends (23a, tier S, no plan)
 - Commit 343cd29: `notify.OnServerEvent:Connect(function() end)` after `notify.Parent = remotes` in `src/server/main.server.lua`, plus an inline source-text case in `tests/headless/run.luau` (inlined because the runner discovers cases only in `tests/studio/Cases`).
 - Checks: stylua PASS; selene 0 errors, 0 warnings; headless 796 run, 796 passed, 0 failed (795 + 1); rojo build PASS.

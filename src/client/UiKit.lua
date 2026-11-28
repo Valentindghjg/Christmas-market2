@@ -422,7 +422,7 @@ function UiKit.animateToast(toast: TextLabel, box: UiTheme.Box, shown: boolean)
 	end
 end
 
--- Dark outline for text that sits over the world (title sizes get it from label).
+-- Dark outline for text that sits over the world (no current caller; headings have none, CM2-UIFIX).
 function UiKit.outlineText(label: TextLabel)
 	local stroke = label:FindFirstChild("TitleOutline")
 	if not (stroke and stroke:IsA("UIStroke")) then
@@ -446,9 +446,9 @@ function UiKit.label(parent: Instance, name: string, text: string, textSize: num
 	value.TextSize = textSize
 	value.TextXAlignment = Enum.TextXAlignment.Left
 	value.TextTruncate = Enum.TextTruncate.AtEnd
-	if textSize >= UiTheme.TextSize.Title then
-		value.FontFace = UiTheme.fontFace("Title")
-		UiKit.outlineText(value)
+	if textSize >= UiTheme.Heading.textSize then
+		-- CM2-UIFIX: headings have no stroke (it fills the letters on cream).
+		value.FontFace = UiTheme.fontFace(UiTheme.Heading.role)
 	else
 		value.FontFace = UiTheme.fontFace("Body")
 	end
@@ -525,7 +525,194 @@ local function isHidden(instance: Instance): boolean
 	return false
 end
 
+-- CM2-UIFIX probe: measures every visible text of the matching ScreenGuis in gui-local px and
+-- lists what is cut off, clipped, off screen or outlined. path is a ScreenGui name or "" for all.
+local PROBE_MAX_PROBLEMS = 30
+
+local function localBox(item: GuiObject, gui: ScreenGui): UiTheme.Box
+	local position = item.AbsolutePosition - gui.AbsolutePosition
+	return { x = position.X, y = position.Y, w = item.AbsoluteSize.X, h = item.AbsoluteSize.Y }
+end
+
+local function probeName(item: Instance): string
+	local names: { string } = {}
+	local current: Instance? = item
+	while current and current.Parent and not current:IsA("PlayerGui") do
+		table.insert(names, 1, current.Name)
+		current = current.Parent
+	end
+	return table.concat(names, "/")
+end
+
+local function textFits(item: TextLabel | TextButton): boolean
+	if item.TextFits then
+		return true
+	end
+	local width, height = item.AbsoluteSize.X, item.AbsoluteSize.Y
+	for _, child in ipairs(item:GetChildren()) do
+		if child:IsA("UIPadding") then
+			width -= child.PaddingLeft.Offset + child.PaddingRight.Offset
+			height -= child.PaddingTop.Offset + child.PaddingBottom.Offset
+		end
+	end
+	return item.TextBounds.X <= width + 1 and item.TextBounds.Y <= height + 1
+end
+
+local function probeNumbers(b: UiTheme.Box): string
+	return string.format("%d,%d %dx%d", math.round(b.x), math.round(b.y), math.round(b.w), math.round(b.h))
+end
+
+local function probeGui(gui: ScreenGui, problems: { string }): number
+	local checked = 0
+	local function report(text: string)
+		if #problems < PROBE_MAX_PROBLEMS then
+			table.insert(problems, text)
+		end
+	end
+	local guiBox: UiTheme.Box = { x = 0, y = 0, w = gui.AbsoluteSize.X, h = gui.AbsoluteSize.Y }
+	for _, item in ipairs(gui:GetDescendants()) do
+		if
+			(item:IsA("TextLabel") or item:IsA("TextButton"))
+			and item.Text ~= ""
+			and item.TextTransparency < 1
+			and item.AbsoluteSize.X > 0
+			and item.AbsoluteSize.Y > 0
+			and not isHidden(item)
+		then
+			checked += 1
+			local box = localBox(item, gui)
+			local name = probeName(item)
+			if not textFits(item) then
+				report(
+					string.format(
+						"%s fit text %dx%d box %s",
+						name,
+						math.round(item.TextBounds.X),
+						math.round(item.TextBounds.Y),
+						probeNumbers(box)
+					)
+				)
+			end
+			local clipper: GuiObject? = nil
+			local scrolls = false
+			local current = item.Parent
+			while current and current ~= gui do
+				if current:IsA("ScrollingFrame") then
+					scrolls = true
+				end
+				if
+					clipper == nil
+					and current:IsA("GuiObject")
+					and (current.ClipsDescendants or current:IsA("ScrollingFrame"))
+				then
+					clipper = current
+				end
+				current = current.Parent
+			end
+			if clipper then
+				local outer = localBox(clipper, gui)
+				if clipper:IsA("ScrollingFrame") then
+					-- Only the x extent counts inside a scrolling frame: its content may scroll away vertically.
+					outer = { x = outer.x, y = box.y, w = outer.w, h = box.h }
+				end
+				if not UiTheme.contains(outer, box, 1) then
+					report(string.format("%s clip %s in %s", name, probeNumbers(box), probeNumbers(outer)))
+				end
+			end
+			if not scrolls and not UiTheme.contains(guiBox, box, 1) then
+				report(string.format("%s screen %s in %s", name, probeNumbers(box), probeNumbers(guiBox)))
+			end
+			local stroke = item:FindFirstChildWhichIsA("UIStroke")
+			if stroke and stroke.ApplyStrokeMode == Enum.ApplyStrokeMode.Contextual and stroke.Thickness > 0 then
+				report(string.format("%s outline %s thickness %s", name, stroke.Name, tostring(stroke.Thickness)))
+			end
+		end
+	end
+	return checked
+end
+
+-- A visible rail button grown by its Outline stroke must stay inside the rail frame.
+local function probeRail(railGui: ScreenGui, problems: { string }): number?
+	local rail = railGui:FindFirstChild("Rail")
+	if not (rail and rail:IsA("GuiObject")) then
+		return nil
+	end
+	local railBox = localBox(rail, railGui)
+	local left: number? = nil
+	for _, railButton in ipairs(rail:GetChildren()) do
+		if railButton:IsA("GuiButton") and not isHidden(railButton) then
+			local stroke = railButton:FindFirstChild("Outline")
+			local thickness = if stroke and stroke:IsA("UIStroke") then stroke.Thickness else 0
+			local b = localBox(railButton, railGui)
+			left = math.min(left or b.x, b.x)
+			local grown = { x = b.x - thickness, y = b.y - thickness, w = b.w + 2 * thickness, h = b.h + 2 * thickness }
+			if not UiTheme.contains(railBox, grown, 0) and #problems < PROBE_MAX_PROBLEMS then
+				table.insert(
+					problems,
+					string.format(
+						"HudRailUI/Rail/%s railstroke %s in %s",
+						railButton.Name,
+						probeNumbers(grown),
+						probeNumbers(railBox)
+					)
+				)
+			end
+		end
+	end
+	return left
+end
+
+local function probe(path: string): { [string]: any }
+	local playerGui = (Players.LocalPlayer :: Player):FindFirstChild("PlayerGui")
+	if not playerGui then
+		return { ok = false, error = "NotFound" }
+	end
+	local problems: { string } = {}
+	local checked = 0
+	local railLeft: number? = nil
+	for _, gui in ipairs(playerGui:GetChildren()) do
+		if gui:IsA("ScreenGui") and gui.Enabled and (path == "" or gui.Name == path) then
+			checked += probeGui(gui, problems)
+			if gui.Name == "HudRailUI" then
+				railLeft = probeRail(gui, problems)
+			end
+		end
+	end
+	-- Readings for the HUD pair (status line below the chips); independent of the path filter.
+	local statusTop: number? = nil
+	local chipsBottom: number? = nil
+	local market = playerGui:FindFirstChild("ChristmasMarketUI")
+	local hud = market and market:FindFirstChild("Hud")
+	if market and market:IsA("ScreenGui") and hud then
+		local status = hud:FindFirstChild("SaveStatus")
+		if status and status:IsA("GuiObject") then
+			statusTop = localBox(status, market).y
+		end
+		for _, name in ipairs({ "CashLabel", "ReputationLabel", "DayLabel", "LotStatusLabel" }) do
+			local chip = hud:FindFirstChild(name)
+			if chip and chip:IsA("GuiObject") and not isHidden(chip) then
+				local b = localBox(chip, market)
+				chipsBottom = math.max(chipsBottom or (b.y + b.h), b.y + b.h)
+			end
+		end
+	end
+	local camera = workspace.CurrentCamera
+	local size = if camera then camera.ViewportSize else Vector2.zero
+	return {
+		ok = true,
+		checked = checked,
+		problems = problems,
+		railLeft = railLeft,
+		statusTop = statusTop,
+		chipsBottom = chipsBottom,
+		viewport = { math.round(size.X), math.round(size.Y) },
+	}
+end
+
 local function studioHook(action: string, path: string, state: string?): { [string]: any }
+	if action == "probe" then
+		return probe(path)
+	end
 	local target = resolve(path)
 	if not (target and target:IsA("GuiObject")) then
 		return { ok = false, error = "NotFound" }
