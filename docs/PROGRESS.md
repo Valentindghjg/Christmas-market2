@@ -78,3 +78,9 @@ Defects: D2 CONFIRMED (blocking): C1 `Remotes.Notify:FireServer(1)` x300 prints 
 - Sizes before -> after: backlog 68.7 -> 66.0 KB (still over 60 KB; the rest is open tasks), DECISION_LOG 62.7 KB unchanged (nothing movable without a planner call), PROGRESS 16.0 KB, MODEL_INTEGRATION 29.5 KB (CM2-SLIM10).
 - Open item for the planner: backlog and DECISION_LOG are over 60 KB and need a planner pass (CM2-BLIDX already covers the backlog index).
 - Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings; headless 796 run, 796 passed; rojo default build PASS. Studio: not needed (docs and one comment).
+
+## 2026-11-28 CM2-48 Release checklist (24, tier S docs only, no plan)
+- `docs/RELEASE_CHECKLIST.md` rewritten (replaces the CM2-46 stub): Part A engineering items ticked with evidence, Part B owner steps in German (unticked), Part C 27-product price table. Engineering publishes and enables nothing.
+- Review: prices, names and the 12 "ja" rows match `ShopConfig.lua:65-93` and `Localization.lua`; sampled 25 file:line references (main.server.lua, MonetizationService, GameConfig, store names, release.project.json:3) all hit; one wrong reference fixed (Max Players now cites `PRODUCT_SPEC.md:14`). No username, UserId or email in the file.
+- Left open for CM2-50a: Studio full run on the release candidate and the Go/No-Go page, the open launch items (PC-12, PC-14, PC-15).
+- Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings; headless 796 run, 796 passed; rojo default build PASS. Studio: not needed (docs only).
