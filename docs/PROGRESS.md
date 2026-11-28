@@ -58,3 +58,8 @@ Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings; headless 791 run, 7
 Studio (playtester, Studio e36ff47a, desktop): step 56 "pieces 412 (art 412, fallback 0, skip 0), overlaps 0", Map.Dressing 110; step 61 "56 night lights off on the server, 22 lamps and 10 dressing lamps with one each"; 37, 40, 57 PASS; full run "mode=full steps=74 pass=74 fail=0 seconds=808" PASS (unit 791/791), latest end-of-run full run.
 BLOCKED: visual float/sink capture (Play capture showed the save picker, Edit has no Map); numeric instead: all 110 Dressing bottoms between -0.20 and -0.03 studs. Phone/locale BLOCKED (PC-14). Console: only known rbxassetid://203785492, known MissingArtAsset Trees/FrostcrownFir/Small, test-injected lines.
 Review: matches the plan; own decisions accepted (helper isNew, local wantsFallback; step 61 counts a Dress_* model without a light as non-lamp, 2+ lights fail). Keep-out clearance not re-run by script (relies on the CM2-10D max-size check and the keep-out test).
+
+2026-11-28: CM2-SLIM8 Remove unused Localization keys (tier S, no plan; backlog entry)
+Change: removed `receivingStatus`, `wholesaleQuote`, `soldBack`, `supplierPriceLegend`, `supplierStock` from `en` and `de` (10 lines); `grep -rnw` over `src` and `tests` finds none. Correction: `teleportNoFreePlot` KEPT, it is live via `Localization.SaveErrorKeys` NoFreePlotTeleporting (SaveSlotPicker returns that code); the CM2-SLIM run 4 finding was wrong for that key. Near names `supplierStockingHint`, `soldBackToast` unaffected.
+Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 791 run, 791 passed (unchanged); rojo build PASS; implementer reports ui_scan 0.
+Studio: not run, not needed (removed strings unused, no runtime path).
