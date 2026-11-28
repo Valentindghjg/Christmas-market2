@@ -8,6 +8,7 @@ local AssetCatalog = require(Shared:WaitForChild("AssetCatalog"))
 local Economy = require(Shared:WaitForChild("Economy"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local LotArt = require(Shared:WaitForChild("LotArt"))
+local NpcPath = require(Shared:WaitForChild("NpcPath"))
 local Stocking = require(Shared:WaitForChild("Stocking"))
 local TreeArt = require(Shared:WaitForChild("TreeArt"))
 local TreeHeight = require(Shared:WaitForChild("TreeHeight"))
@@ -723,7 +724,7 @@ function WorldService.build()
 			plot,
 			"Spawn",
 			Vector3.new(4, 0.2, 4),
-			-- CM2-FLICK: top 0.90 clears Parking_1 (top 0.82), which it overlaps.
+			-- CM2-FLICK: top 0.90 keeps the spawn pad above the lot ground (top 0.55).
 			lotPosition(plot, -28, 14, 0.8),
 			Color3.fromRGB(69, 132, 82),
 			Enum.Material.Grass
@@ -821,11 +822,11 @@ function WorldService.applyLotExpansionVisual(plotId: string, level: number)
 	return true
 end
 
--- Parking sits on the road-facing edge of the lot (plots south of the road face +Z).
+-- Parking sits outside the front fence (CM2-LOTLAY; plots south of the road face +Z).
 local function parkingOffset(plot: Model, index: number): Vector3
-	local path = GameConfig.Customers.Npc.Path
+	local spot = NpcPath.parkingSpot(index)
 	local towardRoad = if (plot.PrimaryPart :: BasePart).Position.Z < 0 then 1 else -1
-	return Vector3.new(path.ParkingFirstX + (index - 1) * path.ParkingStep, 0, towardRoad * path.ParkingDepth)
+	return Vector3.new(spot.x, 0, towardRoad * spot.z)
 end
 
 function WorldService.applyParkingVisual(plotId: string, spaces: number)
@@ -842,12 +843,14 @@ function WorldService.applyParkingVisual(plotId: string, spaces: number)
 		end
 	end
 	for index = 1, math.min(math.floor(spaces), 4) do
-		local offset = parkingOffset(plot, index) + Vector3.new(0, 0.48, 0)
+		-- CM2-LOTLAY: a 0.9 thick pad whose top is the car wheel plane and whose foot reaches the map ground.
+		local centre = plot.PrimaryPart.Position + parkingOffset(plot, index)
+		local park = GameConfig.Placement.CarPark
 		local space = part(
 			visuals,
 			"Parking_" .. index,
-			Vector3.new(8, 0.08, 12),
-			plot.PrimaryPart.Position + offset,
+			Vector3.new(park.PadWidth, 0.9, park.PadLength),
+			Vector3.new(centre.X, lotTop(plot) + VehicleArt.PARKING_RISE - 0.45, centre.Z),
 			Color3.fromRGB(239, 243, 244),
 			Enum.Material.Concrete
 		)

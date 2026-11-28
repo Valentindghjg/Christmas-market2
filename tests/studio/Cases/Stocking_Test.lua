@@ -23,7 +23,7 @@ return function(t)
 	end)
 
 	t.test("rejects keep-clear areas", function()
-		for _, spot in { { 16, -10 }, { 0, 20 }, { 30, 13 }, { 35, -10 }, { -8, -4 } } do
+		for _, spot in { { -10, 22 }, { 0, 20 }, { 30, 13 }, { 35, -10 }, { -8, -4 } } do
 			expect.equal(reason(input(), spot[1], spot[2]), "KeepClear")
 		end
 	end)

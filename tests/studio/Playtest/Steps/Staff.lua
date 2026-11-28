@@ -26,8 +26,8 @@
 -- "Hire" or "Not enough cash" matching R, `staffNoCashier` iff R has no Cashier, the
 -- `breakAreaMove` button), `49 BREAK_AREA_MOVE` (S: with its Cashier resting (`setStaff Cashier 1`,
 -- `setStaffEnergy Cashier 21`), `Staff.MoveBreakArea` to the first other free candidate is ok, S's
--- `BreakArea*` attributes follow within 2 s and the Cashier rests at the new seat within 20 s; (16,
--- −14) `KeepClear`, (60, 0) `OutsideLot` and the 0.5-grid spot of an S tree `TooClose` leave
+-- `BreakArea*` attributes follow within 2 s and the Cashier rests at the new seat within 20 s; (−14,
+-- 20) `KeepClear`, (60, 0) `OutsideLot` and the 0.5-grid spot of an S tree `TooClose` leave
 -- `breakArea` unchanged; the area moves back and `setStaff Cashier 0`), `50 BREAK_AREA_MODE`
 -- (server side: R moves its break area to a free candidate and back through the normal action, the
 -- plot follows each time; the playtester first clicks `breakAreaMove` in the client: `BreakAreaBar`
@@ -556,7 +556,7 @@ return function(ctx: any)
 			)
 			check(sameArea(snap(S.userId).breakArea, area), "breakArea changed by a refused move (" .. code .. ")")
 		end
-		refused(16, -14, "KeepClear")
+		refused(-14, 20, "KeepClear")
 		refused(60, 0, "OutsideLot")
 		local probe = nil
 		for _, tree in input.trees do

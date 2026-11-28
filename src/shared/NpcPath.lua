@@ -4,6 +4,7 @@
 -- the obstacles are the known keep-clear boxes, so no navmesh is needed and routes are
 -- headless-testable. toWorld/fromWorld mirror plots north of the road (Stocking.facing).
 local GameConfig = require(script.Parent.GameConfig)
+local LotArt = require(script.Parent.LotArt)
 local Stocking = require(script.Parent.Stocking)
 
 local NpcPath = {}
@@ -27,27 +28,50 @@ local function point(x: number, z: number): Point
 	return { x = x, z = z }
 end
 
--- The customer's car door beside parking space `space`.
-function NpcPath.door(space: number): Point
-	local path = config().Path
-	return point(path.ParkingFirstX + path.ParkingStep * (space - 1) + path.DoorOffsetX, path.ParkingDepth)
+local function carPark()
+	return GameConfig.Placement.CarPark
 end
 
--- The aisle point in front of parking space `space`.
+-- The customer's car door beside parking space `space` (outside the front fence, CM2-LOTLAY).
+function NpcPath.door(space: number): Point
+	local park = carPark()
+	return point(park.X[space] + park.DoorOffsetX, park.DoorDepth)
+end
+
+-- The centre of parking space `space` (where the car stands).
+function NpcPath.parkingSpot(space: number): Point
+	local park = carPark()
+	return point(park.X[space], park.Depth)
+end
+
+-- The pad of parking space `space` as a lot-frame box (id "Pad<space>").
+function NpcPath.parkingPad(space: number): Box
+	local park = carPark()
+	local spot = NpcPath.parkingSpot(space)
+	return {
+		id = "Pad" .. space,
+		minX = spot.x - park.PadWidth / 2,
+		maxX = spot.x + park.PadWidth / 2,
+		minZ = spot.z - park.PadLength / 2,
+		maxZ = spot.z + park.PadLength / 2,
+	}
+end
+
+-- The entry point inside the gate for parking space `space`.
 function NpcPath.aisle(space: number): Point
-	return point(NpcPath.door(space).x, config().Path.AisleDepth)
+	return point(config().Path.EntryX[space], config().Path.EntryDepth)
 end
 
 -- Queue slot `index` (1 = at the counter).
 function NpcPath.queueSlot(index: number): Point
-	local path = config().Path
-	return point(path.QueueX, path.QueueFirstDepth + path.QueueSpacing * (index - 1))
+	local slot = config().Path.QueueSlots[index]
+	return point(slot.x, slot.z)
 end
 
 -- Where the cashier stands behind the counter (CM2-N2, CM2-25/26).
 function NpcPath.staffPoint(): Point
-	local path = config().Path
-	return point(path.QueueX, path.StaffDepth)
+	local counter = config().Path.Counter
+	return point((counter.minX + counter.maxX) / 2, config().Path.StaffDepth)
 end
 
 local function inflate(box, id: string, clearance: number): Box
@@ -60,19 +84,49 @@ local function inflate(box, id: string, clearance: number): Box
 	}
 end
 
+-- The raw boxes of the front fence beside the gate, per side from the lot corner post to the gate
+-- post's inner edge (CM2-LOTLAY); the router inflates them.
+function NpcPath.gateFences(): { Box }
+	local half = GameConfig.Placement.LotHalfWidth
+	local zf = GameConfig.Placement.LotHalfDepth + LotArt.FENCE_OFFSET
+	local posts = LotArt.gatePostBoxes()
+	local outer = half + LotArt.FENCE_OFFSET + LotArt.PIECE_HALF
+	return {
+		{
+			id = "FenceLeft",
+			minX = -outer,
+			maxX = posts[1].maxX,
+			minZ = zf - LotArt.PIECE_HALF,
+			maxZ = posts[1].maxZ,
+		},
+		{
+			id = "FenceRight",
+			minX = posts[2].minX,
+			maxX = outer,
+			minZ = zf - LotArt.PIECE_HALF,
+			maxZ = posts[2].maxZ,
+		},
+	}
+end
+
 -- The sales stand and the receiving bays inflated by Clearance, the counter by
--- CounterClearance (Fix round 1), in the order Stand, Counter, Bays.
+-- CounterClearance (Fix round 1), then the two gate fences by Clearance, in the order Stand,
+-- Counter, Bays, FenceLeft, FenceRight.
 function NpcPath.obstacles(): { Box }
 	local clearance = config().Clearance
 	local byId = {}
 	for _, box in ipairs(GameConfig.Placement.KeepClear) do
 		byId[box.id] = box
 	end
-	return {
+	local list = {
 		inflate(byId.Stand, "Stand", clearance),
 		inflate(config().Path.Counter, "Counter", config().CounterClearance),
 		inflate(byId.Bays, "Bays", clearance),
 	}
+	for _, fence in ipairs(NpcPath.gateFences()) do
+		table.insert(list, inflate(fence, fence.id :: string, clearance))
+	end
+	return list
 end
 
 local function strictlyInside(p: Point, box: Box): boolean
@@ -126,6 +180,15 @@ function NpcPath.inLot(p: Point, level: number): boolean
 	local placement = GameConfig.Placement
 	local backDepth = placement.LotHalfDepth + placement.BackDepthPerLevel * level
 	return math.abs(p.x) <= placement.LotHalfWidth and p.z >= -backDepth and p.z <= placement.LotHalfDepth
+end
+
+-- The area the router may walk: the lot plus the front apron outside the gate (CM2-LOTLAY).
+function NpcPath.inWalkArea(p: Point, level: number): boolean
+	local placement = GameConfig.Placement
+	local backDepth = placement.LotHalfDepth + placement.BackDepthPerLevel * level
+	return math.abs(p.x) <= placement.LotHalfWidth
+		and p.z >= -backDepth
+		and p.z <= placement.LotHalfDepth + placement.FrontApronDepth
 end
 
 function NpcPath.distance(a: Point, b: Point): number
@@ -186,7 +249,7 @@ function NpcPath.route(from: Point, to: Point, level: number): { Point }
 			point(box.maxX, box.maxZ),
 			point(box.minX, box.maxZ),
 		}) do
-			local blocked = not NpcPath.inLot(corner, level)
+			local blocked = not NpcPath.inWalkArea(corner, level)
 			if not blocked then
 				for otherIndex, other in ipairs(boxes) do
 					if otherIndex ~= boxIndex and strictlyInside(corner, other) then

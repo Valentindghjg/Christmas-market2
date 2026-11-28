@@ -3,6 +3,7 @@
 return function(t)
 	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 	local ArtLibrary = require(Shared:WaitForChild("ArtLibrary"))
+	local GameConfig = require(Shared:WaitForChild("GameConfig"))
 	local Localization = require(Shared:WaitForChild("Localization"))
 	local MapLayout = require(Shared:WaitForChild("MapLayout"))
 	local expect = t.expect
@@ -75,6 +76,23 @@ return function(t)
 				end
 			end
 		end
+	end)
+
+	-- CM2-LOTLAY: the Cars box is the parking apron outside the front fence (plots stand at |z| 75).
+	t.test("the Cars keep-out box is the parking apron", function()
+		local apron = GameConfig.Placement.CarPark.Apron
+		local plot = MapLayout.PLOTS[2]
+		local cars
+		for _, box in ipairs(MapLayout.keepOut()) do
+			if box.id == "Cars_2" then
+				cars = box
+			end
+		end
+		expect.truthy(cars ~= nil)
+		expect.equal(cars.minX, plot.x + apron.minX)
+		expect.equal(cars.maxX, plot.x + apron.maxX)
+		expect.equal(cars.minZ, -48)
+		expect.equal(cars.maxZ, -16)
 	end)
 
 	t.test("keeps the 120 reserve firs inside their plot's reserve", function()

@@ -138,6 +138,30 @@ return function(t)
 		end
 	end)
 
+	-- CM2-LOTLAY: the keep-clear boxes only moved inside the schema 23 footprint (old Parking box), so a
+	-- saved layout that was legal before stays legal; this literal is the frozen copy of the 7 old boxes.
+	t.test("keep-clear boxes stay inside schema 23", function()
+		local frozen = {
+			{ minX = -24, maxX = 8, minZ = -16, maxZ = 8 }, -- Stand
+			{ minX = 11, maxX = 21, minZ = -18, maxZ = 1 }, -- Checkout
+			{ minX = -29, maxX = 17, minZ = 13, maxZ = 27 }, -- Parking
+			{ minX = 20, maxX = 39, minZ = 10, maxZ = 16 }, -- Pickup
+			{ minX = -31, maxX = -25, minZ = 11, maxZ = 17 }, -- Spawn
+			{ minX = 30, maxX = 40, minZ = -26, maxZ = 0 }, -- Bays
+			{ minX = 18, maxX = 28, minZ = 21, maxZ = 25 }, -- Sign
+		}
+		expect.equal(#frozen, 7)
+		for _, box in ipairs(GameConfig.Placement.KeepClear) do
+			local inside = false
+			for _, old in ipairs(frozen) do
+				if box.minX >= old.minX and box.maxX <= old.maxX and box.minZ >= old.minZ and box.maxZ <= old.maxZ then
+					inside = true
+				end
+			end
+			expect.truthy(inside)
+		end
+	end)
+
 	-- CM2-N1: walking customers fill the parking, and a reservation outlasts the longest walk.
 	t.test("NPC budget matches plots and parking", function()
 		local Npc = GameConfig.Customers.Npc
@@ -171,8 +195,11 @@ return function(t)
 			end
 		end
 		expect.truthy(stand ~= nil)
-		expect.truthy(Npc.Path.AisleDepth > stand.maxZ + Npc.Clearance)
-		expect.truthy(Npc.Path.QueueFirstDepth > Npc.Path.Counter.maxZ + Npc.CounterClearance)
+		expect.truthy(Npc.Path.EntryDepth > stand.maxZ + Npc.Clearance)
+		expect.truthy(Npc.Path.QueueSlots[1].z >= Npc.Path.Counter.maxZ + Npc.CounterClearance)
+		expect.equal(#Npc.Path.QueueSlots, 4)
+		expect.equal(#Npc.Path.EntryX, 4)
+		expect.equal(#GameConfig.Placement.CarPark.X, 4)
 		expect.truthy(Npc.CornerRadius < Npc.ArriveRadius)
 		expect.truthy(Npc.Clearance - Npc.CornerRadius >= 2)
 		local function checkRgb(rgb)
@@ -243,7 +270,7 @@ return function(t)
 			end
 		end
 		expect.truthy(sign ~= nil)
-		expect.equal(#Placement.DecorFences, 1)
+		expect.equal(#Placement.DecorFences, 0) -- CM2-LOTLAY: the fence runs replaced the decorative fence
 		for _, fence in ipairs(Placement.DecorFences) do
 			expect.truthy(math.abs(fence.x) <= Placement.LotHalfWidth)
 			expect.truthy(math.abs(fence.z) <= Placement.LotHalfDepth)

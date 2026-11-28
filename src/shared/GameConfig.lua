@@ -468,7 +468,7 @@ GameConfig.Customers = {
 		ArriveRadius = 1.5,
 		ReissueSeconds = 2,
 		Clearance = 3, -- Fix round 1: covers the ~2.1-stud half-width of a scaled R15 avatar
-		CounterClearance = 1.5, -- keeps queue slot 1 (z -11) outside the counter box (maxZ -11.5)
+		CounterClearance = 1.5, -- keeps queue slot 1 (z 19.5) outside the counter box (maxZ 17.5)
 		CornerRadius = 1, -- intermediate waypoints advance within this radius (Fix round 1)
 		CarArriveSeconds = 2.5,
 		LegTimeoutSeconds = 20,
@@ -484,17 +484,13 @@ GameConfig.Customers = {
 		ThanksSeconds = 3, -- the "Thanks so much!" text is OBSERVED
 		LoadSeconds = 60, -- default length of a load-test run (Amendment 1)
 		Path = {
-			ParkingFirstX = -24,
-			ParkingStep = 12,
-			ParkingDepth = 20,
-			DoorOffsetX = 3.5,
-			AisleDepth = 12, -- Fix round 1: the inflated Stand box ends at z 11
-			QueueX = 16,
-			QueueFirstDepth = -11,
-			QueueSpacing = 3.5, -- slots z -11, -7.5, -4, -0.5 (CM2-N2, CM2-UVF3)
-			StaffDepth = -16.5,
+			StaffDepth = 14, -- the cashier behind the counter (CM2-LOTLAY: counter at the HQ front)
+			-- CM2-LOTLAY (PROVISIONAL): the queue is an L toward the gate; slot 1 = art Checkout1
+			QueueSlots = { { x = -14, z = 19.5 }, { x = -14, z = 23 }, { x = -10.5, z = 23 }, { x = -7, z = 23 } },
+			EntryX = { -1.5, 1.5, -3.5, 3.5 }, -- the entry point inside the gate, per parking space
+			EntryDepth = 20,
 			ApproachGap = 0.8,
-			Counter = { minX = 13.5, maxX = 18.5, minZ = -15, maxZ = -13 }, -- counter body 5 x 2 at (16, -14)
+			Counter = { minX = -16.5, maxX = -11.5, minZ = 15.5, maxZ = 17.5 }, -- counter body 5 x 2 at (-14, 16.5), facing the road
 		},
 		Look = { -- RGB, own palette
 			Skin = { { 255, 220, 190 }, { 234, 184, 146 }, { 198, 140, 98 }, { 141, 94, 62 }, { 96, 64, 44 } },
@@ -623,17 +619,30 @@ GameConfig.Placement = {
 	CoordinateLimit = 200, -- protocol sanity bound
 	KeepClear = { -- PROVISIONAL, lot frame {minX, maxX, minZ, maxZ}
 		{ id = "Stand", minX = -24, maxX = 8, minZ = -16, maxZ = 8 }, -- every HQ tier (G3, CM2-G9a)
-		{ id = "Checkout", minX = 11, maxX = 21, minZ = -18, maxZ = 1 }, -- counter, staff side, queue to slot 4 (CM2-N2)
-		{ id = "Parking", minX = -29, maxX = 17, minZ = 13, maxZ = 27 }, -- 4 spaces
+		{ id = "Checkout", minX = -18, maxX = -5.5, minZ = 13, maxZ = 25 }, -- counter, staff side, queue L (CM2-LOTLAY)
+		{ id = "Gate", minX = -5.5, maxX = 5.5, minZ = 13, maxZ = 27 }, -- the entrance path from the gate (CM2-LOTLAY)
 		{ id = "Pickup", minX = 20, maxX = 39, minZ = 10, maxZ = 16 }, -- G1 pickup row
 		{ id = "Spawn", minX = -31, maxX = -25, minZ = 11, maxZ = 17 },
 		{ id = "Bays", minX = 30, maxX = 40, minZ = -26, maxZ = 0 },
 		{ id = "Sign", minX = 18, maxX = 28, minZ = 21, maxZ = 25 }, -- lot sign (CM2-G15)
 	},
 	StandFitMargin = 0.1, -- PROVISIONAL (CM2-G9a A1): HQ art fits KeepClear Stand minus this per side
-	-- decorative fences, lot frame (CM2-13W: FenceRail8 + FencePost art, FenceWooden fallback);
-	-- the right one gave way to the gate (CM2-GATEW)
-	DecorFences = { { x = -34, z = 24 } },
+	-- CM2-LOTLAY (PROVISIONAL): the centred gate in the front fence (lot frame x, post centre from the pivot)
+	Gate = { X = 0, PostX = 8.9, PostHalf = 0.75 },
+	FrontApronDepth = 8, -- the NPC router may walk up to LotHalfDepth + this (z 35)
+	-- Customer parking outside the front fence (CM2-LOTLAY); CM2-PARK/TRAFFIC read only this table.
+	-- Space 1 is nearest the gate; X per space, Depth = pad centre, DoorDepth = the car door.
+	CarPark = {
+		X = { -5, 5, -15, 15 },
+		Depth = 40,
+		PadWidth = 8,
+		PadLength = 12,
+		DoorOffsetX = 3.5,
+		DoorDepth = 33,
+		Apron = { minX = -28, maxX = 20, minDepth = 27, maxDepth = 59 },
+	},
+	-- decorative fences, lot frame (CM2-13W); none since CM2-LOTLAY (the fence runs are the front runs)
+	DecorFences = {},
 	DecorFenceRadius = 5.5, -- covers the 8.6 x 0.6 art and the 10.28 x 0.34 FenceWooden fallback from its centre at any yaw
 }
 

@@ -203,11 +203,12 @@ return function(ctx: any)
 			task.wait(ctx.holdSeconds)
 		end
 
-		-- 8. Out of reach: nothing happens.
+		-- 8. Out of reach (Bay_1, > InteractDistance from the counter): nothing happens.
 		local plot = plotFolder(R.plotId)
-		local spawn = plot and plot:FindFirstChild("Spawn")
-		check(spawn ~= nil and spawn:IsA("BasePart"), "player plot has no Spawn")
-		teleport(spawn :: BasePart)
+		local receiving = plot and plot:FindFirstChild("Receiving")
+		local farBay = receiving and receiving:FindFirstChild("Bay_1")
+		check(farBay ~= nil and farBay:IsA("BasePart"), "player plot has no Receiving.Bay_1")
+		teleport(farBay :: BasePart)
 		prompt("checkout", 0)
 		check(snap(R.userId).sales == start.sales and stateOf(counter) == "CheckingOut", "checkout worked out of reach")
 

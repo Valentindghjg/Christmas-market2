@@ -100,9 +100,9 @@ return function(t)
 		local counter = GameConfig.Customers.Npc.Path.Counter
 		local counterZ = (counter.minZ + counter.maxZ) / 2
 		local post = NpcPath.staffPoint()
-		expect.equal(post.x, 16)
+		expect.equal(post.x, -14)
 		expect.equal(post.z, counterZ - 2.5)
-		expect.equal(post.z, -16.5)
+		expect.equal(post.z, 14)
 		local pickup = Staff.pickupApproach(3)
 		expect.equal(pickup.x, 32)
 		expect.equal(pickup.z, 9)
@@ -116,9 +116,9 @@ return function(t)
 		expect.equal(reason(input(), 37, 0), "OutsideLot")
 		expect.equal(reason(input(), -32, -24), "OutsideLot")
 		expect.equal(reason({ lotExpansion = 1, trees = {} }, -32, -24), nil)
-		-- The Stand box, and a decor fence (x -34, z 24, radius 5.5) clear of every box.
+		-- The Stand box, and the Checkout box (counter, staff side and queue L, CM2-LOTLAY).
 		expect.equal(reason(input(), 0, 0), "KeepClear")
-		expect.equal(reason(input(), -35, 23), "KeepClear")
+		expect.equal(reason(input(), -10, 22), "KeepClear")
 		expect.equal(reason(input({ { x = -32, z = -13.5, sizeId = "Medium" } }), -32, -20), "TooClose")
 		expect.equal(reason(input({ { x = -32, z = -13.5, sizeId = "Small" } }), -32, -20), nil)
 		expect.equal(reason(input(), 0 / 0, 0), "InvalidBreakArea")

@@ -297,21 +297,23 @@ function Progression.summary(state)
 	}
 end
 
--- The lot fence at expansion level `level` in the lot frame: the back rail just behind the lot
--- edge and, once the lot grew, both side rails from the starter lot's back edge to it.
+-- The lot fence at expansion level `level` in the lot frame (CM2-LOTLAY): the back rail just behind
+-- the lot edge, the left run over the full depth, the road side in two runs either side of the gate
+-- gap and, once the lot grew, the right run behind the starter lot. The right side stays open.
 function Progression.fenceBoxes(level: number): { Box }
 	local growth = math.clamp(math.floor(numberOr(level, 0)), 0, Config.LotExpansion.maxLevel)
 	local back = Placement.LotHalfDepth + Placement.BackDepthPerLevel * growth
 	local half = Placement.LotHalfWidth
+	local front = Placement.LotHalfDepth
+	local postFace = Placement.Gate.PostX + Placement.Gate.PostHalf -- the front runs end at the gate posts' outer faces
 	local boxes: { Box } = {
 		{ id = "Back", minX = -(half + 0.6), maxX = half + 0.6, minZ = -(back + 0.6), maxZ = -(back + 0.3) },
+		{ id = "Left", minX = -(half + 0.6), maxX = -(half + 0.3), minZ = -(back + 0.6), maxZ = front + 0.6 },
+		{ id = "FrontLeft", minX = -(half + 0.6), maxX = -postFace, minZ = front + 0.3, maxZ = front + 0.6 },
+		{ id = "FrontRight", minX = postFace, maxX = half + 0.6, minZ = front + 0.3, maxZ = front + 0.6 },
 	}
 	if growth >= 1 then
 		local starter = -Placement.LotHalfDepth
-		table.insert(
-			boxes,
-			{ id = "Left", minX = -(half + 0.6), maxX = -(half + 0.3), minZ = -(back + 0.6), maxZ = starter }
-		)
 		table.insert(
 			boxes,
 			{ id = "Right", minX = half + 0.3, maxX = half + 0.6, minZ = -(back + 0.6), maxZ = starter }

@@ -74,9 +74,9 @@ return function(t)
 	end)
 
 	t.test("puts the counter's queue and cashier points on the config path", function()
-		local path = GameConfig.Customers.Npc.Path
-		near(LotArt.COUNTER.x, 16)
-		near(LotArt.COUNTER.z, -14)
+		local queue, staff = NpcPath.queueSlot(1), NpcPath.staffPoint()
+		near(LotArt.COUNTER.x, -14)
+		near(LotArt.COUNTER.z, 16.5)
 		for _, facing in ipairs({ 1, -1 }) do
 			local yaw = LotArt.roadYaw(facing)
 			local function lotPoint(modelX, modelZ)
@@ -85,11 +85,11 @@ return function(t)
 				return wx + LotArt.COUNTER.x, wz * facing + LotArt.COUNTER.z
 			end
 			local qx, qz = lotPoint(0, -3)
-			near(qx, path.QueueX)
-			near(qz, path.QueueFirstDepth)
+			near(qx, queue.x)
+			near(qz, queue.z)
 			local sx, sz = lotPoint(0, 2.5)
-			near(sx, path.QueueX)
-			near(sz, path.StaffDepth)
+			near(sx, staff.x)
+			near(sz, staff.z)
 		end
 	end)
 
@@ -108,7 +108,7 @@ return function(t)
 		expect.equal(GameConfig.Placement.BackDepthPerLevel, LotArt.RAIL_LENGTH)
 		for level = 0, GameConfig.Progression.LotExpansion.maxLevel do
 			local pieces = LotArt.fenceSegments(level)
-			expect.equal(#pieces, 11 + 2 * level)
+			expect.equal(#pieces, 27 + 2 * level)
 			local boxes = {}
 			for _, box in ipairs(Progression.fenceBoxes(level)) do
 				boxes[box.id] = box
@@ -128,7 +128,7 @@ return function(t)
 					table.insert(points, { piece.x - 4 * piece.dirX, piece.z - 4 * piece.dirZ })
 				end
 			end
-			expect.equal(posts, 1)
+			expect.equal(posts, 2)
 			for i = 1, #points do
 				for j = i + 1, #points do
 					local dx, dz = points[i][1] - points[j][1], points[i][2] - points[j][2]
@@ -136,8 +136,47 @@ return function(t)
 				end
 			end
 		end
-		expect.equal(#LotArt.fenceSegments(0 / 0), 11)
-		expect.equal(#LotArt.fenceSegments("x"), 11)
+		expect.equal(#LotArt.fenceSegments(0 / 0), 27)
+		expect.equal(#LotArt.fenceSegments("x"), 27)
+	end)
+
+	t.test("leaves a centred gate gap and keeps the right side open", function()
+		local lane = { minX = 43, maxX = 49, minZ = -150, maxZ = 66 }
+		local opening = { minX = -8.15, maxX = 8.15, minZ = 26, maxZ = 30 }
+		for level = 0, GameConfig.Progression.LotExpansion.maxLevel do
+			local boxes = {}
+			for _, box in ipairs(Progression.fenceBoxes(level)) do
+				boxes[box.id] = box
+			end
+			near(boxes.FrontLeft.maxX, -9.65)
+			near(boxes.FrontRight.minX, 9.65)
+			near(boxes.FrontLeft.maxX, -boxes.FrontRight.minX)
+			expect.equal(boxes.Left ~= nil, true)
+			expect.equal(boxes.Right ~= nil, level >= 1)
+			-- Amendment 1: the front runs and boxes touch the gate posts but never overlap them.
+			local function overlapArea(a, b)
+				local width = math.min(a.maxX, b.maxX) - math.max(a.minX, b.minX)
+				local depth = math.min(a.maxZ, b.maxZ) - math.max(a.minZ, b.minZ)
+				return math.max(0, width) * math.max(0, depth)
+			end
+			for _, post in ipairs(LotArt.gatePostBoxes()) do
+				expect.truthy(overlapArea(boxes.FrontLeft, post) <= 1e-9)
+				expect.truthy(overlapArea(boxes.FrontRight, post) <= 1e-9)
+				for _, piece in ipairs(LotArt.fenceSegments(level)) do
+					if piece.box == "FrontLeft" or piece.box == "FrontRight" then
+						expect.truthy(overlapArea(LotArt.pieceBox(piece), post) <= 1e-9)
+					end
+				end
+			end
+			for _, piece in ipairs(LotArt.fenceSegments(level)) do
+				local box = LotArt.pieceBox(piece)
+				expect.falsy(overlaps(box, opening))
+				expect.falsy(overlaps(box, lane))
+				expect.falsy(overlaps(box, keepClear("Bays")))
+				-- nothing stands on the right edge across the lot's depth (the delivery side)
+				expect.falsy(box.maxX > 40.2 and box.maxZ > -27 + 1e-6 and box.minZ < 27)
+			end
+		end
 	end)
 
 	t.test("keeps decorative fences within their radius and out of the keep-clear boxes", function()
@@ -151,7 +190,7 @@ return function(t)
 						expect.truthy(math.sqrt(dx * dx + dz * dz) <= radius)
 					end
 				end
-				for _, id in ipairs({ "Sign", "Parking", "Spawn" }) do
+				for _, id in ipairs({ "Sign", "Checkout", "Gate", "Spawn" }) do
 					expect.falsy(overlaps(box, keepClear(id)))
 				end
 			end
@@ -199,7 +238,7 @@ return function(t)
 
 	t.test("places the gate on the road edge facing the road", function()
 		local x, z = LotArt.gatePose()
-		near(x, 28)
+		near(x, 0)
 		near(z, 28)
 		expect.equal(z, GameConfig.Placement.LotHalfDepth + LotArt.GATE_OFFSET)
 		for _, facing in ipairs({ 1, -1 }) do
@@ -209,40 +248,22 @@ return function(t)
 		end
 	end)
 
-	t.test("keeps the gate posts 2 studs clear of cars, truck and walk lines", function()
+	t.test("keeps the gate posts 2 studs clear of pads, truck and walk areas", function()
 		local placement = GameConfig.Placement
-		local path = GameConfig.Customers.Npc.Path
 		local obstacles = {
-			{ minX = -28, maxX = 16, minZ = 13, maxZ = 59 }, -- car corridor
 			{ minX = 43, maxX = 49, minZ = -26, maxZ = 66 }, -- truck lane
 			keepClear("Sign"),
 			keepClear("Spawn"),
+			keepClear("Checkout"),
+			keepClear("Gate"),
 		}
 		for i = 1, 4 do
-			local cx = path.ParkingFirstX + path.ParkingStep * (i - 1)
-			table.insert(obstacles, {
-				minX = cx - 4,
-				maxX = cx + 4,
-				minZ = path.ParkingDepth - 6,
-				maxZ = path.ParkingDepth + 6,
-			})
-			local door, aisle = NpcPath.door(i), NpcPath.aisle(i)
-			table.insert(obstacles, {
-				minX = math.min(door.x, aisle.x),
-				maxX = math.max(door.x, aisle.x),
-				minZ = math.min(door.z, aisle.z),
-				maxZ = math.max(door.z, aisle.z),
-			})
-		end
-		for _, fence in ipairs(placement.DecorFences) do
-			for _, piece in ipairs(LotArt.decorPieces(fence.x, fence.z)) do
-				table.insert(obstacles, LotArt.pieceBox(piece))
-			end
+			table.insert(obstacles, NpcPath.parkingPad(i))
 		end
 		local posts = LotArt.gatePostBoxes()
 		expect.equal(#posts, 2)
-		near(posts[1].minX, 18.35)
-		near(posts[2].maxX, 37.65)
+		near(posts[1].minX, -9.65)
+		near(posts[2].maxX, 9.65)
 		for _, post in ipairs(posts) do
 			expect.truthy(post.minZ >= placement.LotHalfDepth)
 			for _, obstacle in ipairs(obstacles) do

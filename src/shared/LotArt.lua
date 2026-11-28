@@ -42,10 +42,10 @@ LotArt.RAIL_AHEAD = 3.95
 LotArt.PIECE_HALF = 0.45
 LotArt.FENCE_OFFSET = 0.45 -- fence line beyond the lot edge = centre of the 0.3-thick fenceBoxes
 LotArt.FENCE_BASE_DROP = 0.55 -- base = map ground top 0, behind the lot edge; never floats
-LotArt.GATE_X = 28 -- the gate's lot-frame x, east of the parking (CM2-GATEW)
+LotArt.GATE_X = GameConfig.Placement.Gate.X -- the gate's lot-frame x, centred in the front fence (CM2-LOTLAY)
 LotArt.GATE_OFFSET = 1.0 -- beyond LotHalfDepth, so the posts stay off the placeable lot
-LotArt.GATE_POST_X = 8.9 -- post centre from the gate pivot along the run
-LotArt.GATE_POST_HALF = 0.75 -- 1.5 x 1.5 posts
+LotArt.GATE_POST_X = GameConfig.Placement.Gate.PostX -- post centre from the gate pivot along the run
+LotArt.GATE_POST_HALF = GameConfig.Placement.Gate.PostHalf -- 1.5 x 1.5 posts
 LotArt.BUNDLE_ROW = 1.0
 LotArt.BUNDLE_SPACING = 1.2
 
@@ -97,8 +97,31 @@ function LotArt.choose(root: any, find: (any, string) -> (any, string?), path: s
 	return { path = path, mode = "Primitive", template = nil, code = code or "MissingArtAsset" }
 end
 
--- The lot fence pieces at expansion level `level`: the back run (10 rails and a corner post) and,
--- from level 1, both side runs (BackDepthPerLevel / RAIL_LENGTH rails per level). 11 + 2 x level.
+-- Fills the axis-aligned run (x0, z0) -> (x1, z1) with FenceRail8 rails, each 8.4 studs from its start post
+-- to its far end (RAIL_BEHIND + RAIL_AHEAD), evenly spaced so the last rail ends exactly at (x1, z1).
+local function run(pieces: { Piece }, box: string, x0: number, z0: number, x1: number, z1: number)
+	local length = math.abs(x1 - x0) + math.abs(z1 - z0)
+	local dirX, dirZ = (x1 - x0) / length, (z1 - z0) / length
+	local span = LotArt.RAIL_BEHIND + LotArt.RAIL_AHEAD
+	local count = math.max(1, math.ceil((length - span) / LotArt.RAIL_LENGTH) + 1)
+	local step = if count > 1 then (length - span) / (count - 1) else 0
+	for k = 0, count - 1 do
+		local behindX, behindZ = x0 + dirX * step * k, z0 + dirZ * step * k
+		table.insert(pieces, {
+			box = box,
+			kind = "Rail",
+			x = behindX + dirX * LotArt.RAIL_BEHIND,
+			z = behindZ + dirZ * LotArt.RAIL_BEHIND,
+			dirX = dirX,
+			dirZ = dirZ,
+		})
+	end
+end
+
+-- The lot fence pieces at expansion level `level` (CM2-LOTLAY): the back run (10 rails and a corner
+-- post), the left run over the full depth, the road side as FrontLeft and FrontRight around the
+-- centred gate gap (4 rails each, a corner post at the right end) and, from level 1, the right run
+-- behind the starter lot (BackDepthPerLevel / RAIL_LENGTH rails per level). 27 + 2 x level.
 function LotArt.fenceSegments(level: any): { Piece }
 	local growth = 0
 	if isNumber(level) then
@@ -108,6 +131,8 @@ function LotArt.fenceSegments(level: any): { Piece }
 	local half = placement.LotHalfWidth
 	local back = placement.LotHalfDepth + placement.BackDepthPerLevel * growth
 	local zb = -(back + LotArt.FENCE_OFFSET)
+	local zf = placement.LotHalfDepth + LotArt.FENCE_OFFSET
+	local hx = half + 0.45
 	local length = LotArt.RAIL_LENGTH
 	local pieces: { Piece } = {}
 	for k = 0, (2 * half) // length - 1 do
@@ -117,19 +142,22 @@ function LotArt.fenceSegments(level: any): { Piece }
 		)
 	end
 	table.insert(pieces, { box = "Back", kind = "Post", x = half, z = zb, dirX = 1, dirZ = 0 })
+	run(pieces, "Left", -hx, zf, -hx, zb)
+	local postFace = LotArt.GATE_POST_X + LotArt.GATE_POST_HALF -- the front runs stop at the gate posts' outer faces
+	run(pieces, "FrontLeft", -postFace, zf, -hx, zf)
+	run(pieces, "FrontRight", postFace, zf, hx, zf)
+	table.insert(pieces, { box = "FrontRight", kind = "Post", x = hx, z = zf, dirX = 1, dirZ = 0 })
 	if growth >= 1 then
 		local count = growth * placement.BackDepthPerLevel // length
-		for _, side in { { box = "Left", x = -(half + 0.45) }, { box = "Right", x = half + 0.45 } } do
-			for k = 0, count - 1 do
-				table.insert(pieces, {
-					box = side.box,
-					kind = "Rail",
-					x = side.x,
-					z = -(placement.LotHalfDepth + 0.45) - length * (k + 0.5),
-					dirX = 0,
-					dirZ = -1,
-				})
-			end
+		for k = 0, count - 1 do
+			table.insert(pieces, {
+				box = "Right",
+				kind = "Rail",
+				x = half + 0.45,
+				z = -(placement.LotHalfDepth + 0.45) - length * (k + 0.5),
+				dirX = 0,
+				dirZ = -1,
+			})
 		end
 	end
 	return pieces

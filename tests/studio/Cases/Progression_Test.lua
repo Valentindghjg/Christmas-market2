@@ -7,6 +7,7 @@ return function(t)
 	local BusinessState = require(Shared:WaitForChild("BusinessState"))
 	local GameConfig = require(Shared:WaitForChild("GameConfig"))
 	local MapLayout = require(Shared:WaitForChild("MapLayout"))
+	local NpcPath = require(Shared:WaitForChild("NpcPath"))
 	local Progression = require(Shared:WaitForChild("Progression"))
 	local Services = game:GetService("ServerScriptService"):WaitForChild("Server"):WaitForChild("Services")
 	local ProgressionService = require(Services:WaitForChild("ProgressionService"))
@@ -240,7 +241,6 @@ return function(t)
 
 	t.test("HQ footprints fit the Stand box and clear the lot at every level (G19)", function()
 		local stand = keepClear("Stand")
-		local path = GameConfig.Customers.Npc.Path
 		local others: { Box } = {}
 		for _, box in Placement.KeepClear do
 			if box.id ~= "Stand" then
@@ -248,7 +248,7 @@ return function(t)
 			end
 		end
 		for index = 1, Config.Parking.maxSpaces do
-			table.insert(others, around(path.ParkingFirstX + 12 * (index - 1), path.ParkingDepth, 4, 6))
+			table.insert(others, NpcPath.parkingPad(index))
 		end
 		local half = GameConfig.Staff.BreakArea.HalfSize
 		for _, candidate in GameConfig.Staff.BreakArea.Candidates do

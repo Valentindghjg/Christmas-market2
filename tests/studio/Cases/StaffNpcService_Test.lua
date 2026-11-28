@@ -253,7 +253,7 @@ return function(t)
 		samePoint(spawned.args[4], seat.x, seat.z)
 		expect.equal(stateOf(h, CASHIER), "WalkingToPost")
 		runUntil(h, CASHIER, "OnDuty", 30)
-		samePoint(h.world.positions[CASHIER], 16, -16.5)
+		samePoint(h.world.positions[CASHIER], -14, 14)
 		expect.equal(h.world.anchored[CASHIER], true)
 		local faced = lastCall(h, "face", CASHIER) :: any
 		local slot = NpcPath.queueSlot(1)
@@ -301,7 +301,7 @@ return function(t)
 		expect.equal(rested.energy, 100)
 		local back = runUntil(h, CASHIER, "OnDuty", 30) :: any
 		expect.truthy(back.energy >= 99)
-		samePoint(h.world.positions[CASHIER], 16, -16.5)
+		samePoint(h.world.positions[CASHIER], -14, 14)
 	end)
 
 	t.test("a tired Lot Worker finishes its job, rests and resumes", function()
@@ -328,7 +328,8 @@ return function(t)
 			end
 		end
 		expect.equal(loadedAtBreak, loaded + 1)
-		expect.equal(table.concat(seen, ","), "WalkingToBreak,Resting,WalkingToPost,Idle")
+		-- CM2-LOTLAY: the way to the car bends around the gate fence, so the first tick still carries.
+		expect.equal(table.concat(seen, ","), "CarryingToCar,WalkingToBreak,Resting,WalkingToPost,Idle")
 		expect.equal(state.loadedOrders, loaded + 1)
 	end)
 
@@ -344,7 +345,9 @@ return function(t)
 		local approach = Staff.pickupApproach(2)
 		local claimedAt = lastCall(h, "holdTree", WORKER) :: any
 		expect.equal(claimedAt.args[2], "Medium")
-		samePoint(h.world.positions[WORKER], NpcPath.door(2).x, NpcPath.door(2).z)
+		-- The fake world puts the avatar on the first waypoint (a corner of the gate fence since CM2-LOTLAY).
+		local firstStop = NpcPath.route(approach, NpcPath.door(2), 0)[1]
+		samePoint(h.world.positions[WORKER], firstStop.x, firstStop.z)
 		expect.equal(state.customerOrders[tostring(first.orderNumber)].carriedBy, GameConfig.Staff.CarrierUserId)
 		expect.equal(state.customerOrders[tostring(second.orderNumber)].carriedBy, nil)
 		expect.equal(state.revision, revision + 1)
@@ -711,7 +714,8 @@ return function(t)
 		runUntil(h, CASHIER, "OnDuty", 30)
 		local working = cashierRow()
 		expect.equal(working.status, "Working")
-		expect.equal(working.energy, math.floor((entryOf(h, CASHIER) :: any).energy))
+		-- The row floors the energy at the last step, the snapshot rounds to 0.1: at most 1 apart.
+		expect.truthy(math.abs(working.energy - math.floor((entryOf(h, CASHIER) :: any).energy)) <= 1)
 		expect.truthy(h.staff:setEnergyForTest(A, "Cashier", 20))
 		runUntil(h, CASHIER, "Resting", 30)
 		local resting = cashierRow()

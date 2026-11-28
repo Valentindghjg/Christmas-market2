@@ -22,6 +22,7 @@ return function(ctx: any)
 
 	local Shared = ctx.ReplicatedStorage:WaitForChild("Shared")
 	local LotArt = require(Shared:WaitForChild("LotArt")) :: any
+	local NpcPath = require(Shared:WaitForChild("NpcPath")) :: any
 	local Stocking = require(Shared:WaitForChild("Stocking")) :: any
 	local CollectionService = game:GetService("CollectionService")
 
@@ -181,7 +182,15 @@ return function(ctx: any)
 			local counter = model(plot, "CheckoutCounter", plotId .. " CheckoutCounter")
 			check(counter:GetAttribute("LotArtMode") == "Art", plotId .. " CheckoutCounter is not art")
 			expectFacing(plotId .. " CheckoutCounter", plot, counter:GetPivot())
-			expectAt(plotId .. " CheckoutCounter", plot, counter:GetPivot(), 16, -14, POSITION_TOLERANCE)
+			expectAt(
+				plotId .. " CheckoutCounter",
+				plot,
+				counter:GetPivot(),
+				LotArt.COUNTER.x,
+				LotArt.COUNTER.z,
+				POSITION_TOLERANCE
+			)
+			local queueOne, cashierPost = NpcPath.queueSlot(1), NpcPath.staffPoint()
 			local base = counter:FindFirstChild("CounterBase")
 			check(base ~= nil and base:IsA("BasePart"), plotId .. " CounterBase missing")
 			check((base :: BasePart).Transparency == 1, plotId .. " CounterBase is visible")
@@ -190,16 +199,16 @@ return function(ctx: any)
 				plotId .. " Checkout1",
 				plot,
 				attachment(counter, "Checkout1").WorldCFrame,
-				16,
-				-11,
+				queueOne.x,
+				queueOne.z,
 				ATTACHMENT_TOLERANCE
 			)
 			expectAt(
 				plotId .. " CashierStand",
 				plot,
 				attachment(counter, "CashierStand").WorldCFrame,
-				16,
-				-16.5,
+				cashierPost.x,
+				cashierPost.z,
 				ATTACHMENT_TOLERANCE
 			)
 			counters += 1
@@ -268,9 +277,10 @@ return function(ctx: any)
 				end
 				local fenceLevel = fence:GetAttribute("LotExpansionLevel")
 				check(type(fenceLevel) == "number", plotId .. " LotFence has no LotExpansionLevel")
+				local expected = #LotArt.fenceSegments(fenceLevel)
 				check(
-					count == 11 + 2 * fenceLevel,
-					string.format("%s LotFence has %d pieces, expected %d", plotId, count, 11 + 2 * fenceLevel)
+					count == expected,
+					string.format("%s LotFence has %d pieces, expected %d", plotId, count, expected)
 				)
 				fences += 1
 				pieces += count

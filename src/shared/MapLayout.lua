@@ -274,7 +274,8 @@ function MapLayout.keepOut(): { Box }
 			})
 		end
 		box("Lot", -40, 49, -150, -48)
-		box("Cars", -28, 16, -48, -16)
+		local apron = GameConfig.Placement.CarPark.Apron -- CM2-LOTLAY: the parking outside the front fence
+		box("Cars", apron.minX, apron.maxX, apron.minDepth - 75, apron.maxDepth - 75)
 		box("Truck", 43, 49, -48, -16)
 	end
 	return boxes

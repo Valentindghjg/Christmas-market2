@@ -111,8 +111,9 @@ return function(t)
 	t.test("a row fill places all trees or none", function()
 		local state = stateWithBays({ { "DouglasFir", { Medium = 5 } } })
 		-- CM2-25/26: the default break area (candidate 1) covers this row; it stands elsewhere here.
+		-- CM2-LOTLAY: the row from x 10 runs into the Bays box (x 30..40).
 		state.breakArea = { x = 25.5, z = -22, rotation = 0 }
-		local blocked, reason = placeAt(state, "placement:blocked", 1, "DouglasFir", -10.6, -20, 5)
+		local blocked, reason = placeAt(state, "placement:blocked", 1, "DouglasFir", 10, -20, 5)
 		expect.falsy(blocked)
 		expect.equal(reason, "KeepClear")
 		expect.equal(placementCount(state), 0)

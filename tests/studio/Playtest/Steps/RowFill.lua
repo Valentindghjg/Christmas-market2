@@ -81,8 +81,8 @@ return function(ctx: any)
 
 		-- 3. The three reasons; nothing changes after a refusal.
 		refused(stockPayload(bayIndex, 39.5, 0, 1), "OutsideLot")
-		refused(stockPayload(bayIndex, 16, -10, 1), "KeepClear")
-		refused(stockPayload(bayIndex, -10.6, -20, 5), "KeepClear")
+		refused(stockPayload(bayIndex, -10, 22, 1), "KeepClear")
+		refused(stockPayload(bayIndex, 10, -20, 5), "KeepClear")
 
 		-- 4. A row of 5 lands as a whole; its replay places nothing.
 		local requestId = "playtest_row_" .. HttpService:GenerateGUID(false)

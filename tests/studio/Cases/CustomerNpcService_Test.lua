@@ -631,21 +631,22 @@ return function(t)
 	end)
 
 	-- Fix round 1 (F5): corners do not get cut, and a stopped avatar still moves on.
+	-- CM2-LOTLAY: the corner is the gate fence's inner edge on the way from the last queue slot to the car.
 	t.test("corners advance within CornerRadius or once stopped", function()
 		local h = harness(nil, false, 1.2)
 		expect.equal(h.npc:spawnLoad(PLOT_1, 1), 1)
 		local visitId = h.npc:snapshot().visits[1].visitId
 		local visit = (h.npc :: any)._visits[visitId]
 		for _ = 1, 50 do
-			if visit.loadLeg == 2 then
+			if visit.loadLeg == 3 then
 				break
 			end
 			run(h, 0.2)
 		end
-		expect.equal(visit.loadLeg, 2)
+		expect.equal(visit.loadLeg, 3)
 		expect.equal(#visit.waypoints, 2)
-		expect.equal(visit.waypoints[1].x, 11)
-		expect.equal(visit.waypoints[1].z, 11)
+		expect.truthy(math.abs(visit.waypoints[1].x + 5.15) < 1e-6)
+		expect.truthy(math.abs(visit.waypoints[1].z - 24) < 1e-6)
 		expect.equal(visit.waypointIndex, 1)
 		run(h, 0.2)
 		expect.equal(visit.waypointIndex, 1)

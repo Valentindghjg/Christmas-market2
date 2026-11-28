@@ -16,6 +16,7 @@ return function(ctx: any)
 	local plotFolder = ctx.plotFolder
 
 	local Shared = ctx.ReplicatedStorage:WaitForChild("Shared")
+	local NpcPath = require(Shared:WaitForChild("NpcPath")) :: any
 	local Stocking = require(Shared:WaitForChild("Stocking")) :: any
 	local VehicleArt = require(Shared:WaitForChild("VehicleArt")) :: any
 
@@ -210,7 +211,6 @@ return function(ctx: any)
 				)
 			end
 			task.wait(2.5)
-			local path = GameConfig.Customers.Npc.Path
 			for _, plot in plots do
 				local folder = plot:FindFirstChild("CustomerOrders") :: Instance
 				for space, orderNumber in ORDER_NUMBERS do
@@ -243,14 +243,8 @@ return function(ctx: any)
 							rgb[3]
 						)
 					)
-					expectPose(
-						label,
-						plot,
-						model:GetPivot(),
-						path.ParkingFirstX + (space - 1) * path.ParkingStep,
-						path.ParkingDepth,
-						CAR_Y
-					)
+					local spot = NpcPath.parkingSpot(space)
+					expectPose(label, plot, model:GetPivot(), spot.x, spot.z, CAR_Y)
 					expectLook(label, model:GetPivot(), -facingOf(plot))
 					local root = model.PrimaryPart
 					check(root ~= nil and root.Name == "ArtRoot", label .. " PrimaryPart is not ArtRoot")
