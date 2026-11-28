@@ -625,6 +625,13 @@ local function probeNumbers(b: UiTheme.Box): string
 	return string.format("%d,%d %dx%d", math.round(b.x), math.round(b.y), math.round(b.w), math.round(b.h))
 end
 
+-- A grown box fits a scrolling frame when it lies inside the canvas and clear of the bar while it shows.
+local function fitsScroll(clipper: ScrollingFrame, outer: UiTheme.Box, grown: UiTheme.Box): boolean
+	local bar = if clipper.AbsoluteCanvasSize.Y > clipper.AbsoluteWindowSize.Y then clipper.ScrollBarThickness else 0
+	local canvasHeight = math.max(clipper.AbsoluteCanvasSize.Y, clipper.AbsoluteWindowSize.Y)
+	return UiTheme.fitsScroll(outer, grown, bar, clipper.CanvasPosition.Y, canvasHeight)
+end
+
 local function probeGui(gui: ScreenGui, problems: { string }): (number, number)
 	local checked = 0
 	local strokeChecked = 0
@@ -740,15 +747,7 @@ local function probeGui(gui: ScreenGui, problems: { string }): (number, number)
 		local outer = localBox(clipper, gui)
 		local fits: boolean
 		if clipper:IsA("ScrollingFrame") then
-			local bar = if clipper.AbsoluteCanvasSize.Y > clipper.AbsoluteWindowSize.Y
-				then clipper.ScrollBarThickness
-				else 0
-			local canvasY = grown.y - outer.y + clipper.CanvasPosition.Y
-			local canvasHeight = math.max(clipper.AbsoluteCanvasSize.Y, clipper.AbsoluteWindowSize.Y)
-			fits = grown.x >= outer.x
-				and grown.x + grown.w <= outer.x + clipper.AbsoluteWindowSize.X - bar
-				and canvasY >= 0
-				and canvasY + grown.h <= canvasHeight
+			fits = fitsScroll(clipper, outer, grown)
 		else
 			fits = UiTheme.contains(outer, grown, 0)
 		end
@@ -774,7 +773,10 @@ local function probeRail(railGui: ScreenGui, problems: { string }): number?
 			local b = localBox(railButton, railGui)
 			left = math.min(left or b.x, b.x)
 			local grown = { x = b.x - thickness, y = b.y - thickness, w = b.w + 2 * thickness, h = b.h + 2 * thickness }
-			if not UiTheme.contains(railBox, grown, 0) and #problems < PROBE_MAX_PROBLEMS then
+			local inside = if rail:IsA("ScrollingFrame")
+				then fitsScroll(rail, railBox, grown)
+				else UiTheme.contains(railBox, grown, 0)
+			if not inside and #problems < PROBE_MAX_PROBLEMS then
 				table.insert(
 					problems,
 					string.format(
@@ -1093,6 +1095,10 @@ local function applyRail()
 	frame.Position = UDim2.fromOffset(layout.rail.x, layout.rail.y)
 	frame.Size = UDim2.fromOffset(layout.rail.w, layout.rail.h)
 	frame.ScrollingEnabled = layout.railScrolls
+	frame.CanvasSize = UDim2.fromOffset(0, layout.railCanvas)
+	if not layout.railScrolls then
+		frame.CanvasPosition = Vector2.zero
+	end
 	frame.Visible = not railHidden
 	for index, railButton in ipairs(visible) do
 		local b = layout.railButtons[index]
@@ -1111,9 +1117,9 @@ local function ensureRail(): ScrollingFrame
 	frame.Name = "Rail"
 	frame.BackgroundTransparency = 1
 	frame.BorderSizePixel = 0
-	frame.ScrollBarThickness = 4
+	frame.ScrollBarThickness = UiTheme.RailScrollBar
 	frame.CanvasSize = UDim2.new()
-	frame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	frame.AutomaticCanvasSize = Enum.AutomaticSize.None
 	frame.ScrollingDirection = Enum.ScrollingDirection.Y
 	frame.Parent = gui
 	railFrame = frame

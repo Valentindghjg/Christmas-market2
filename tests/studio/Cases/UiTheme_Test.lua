@@ -337,7 +337,7 @@ return function(t)
 		for _, size in ipairs(MATRIX) do
 			local m = UiTheme.metrics(size.w, size.h)
 			if not m.compact then
-				for count = 1, 8 do
+				for count = 1, 9 do
 					local layout = UiTheme.hudLayout(m, count)
 					for _, relative in ipairs(layout.railButtons) do
 						local b = absolute(layout.rail, relative)
@@ -345,9 +345,11 @@ return function(t)
 						local grow = UiTheme.Style.StrokeControl + math.ceil(0.025 * b.w)
 						local grown = { x = b.x - grow, y = b.y - grow, w = b.w + 2 * grow, h = b.h + 2 * grow }
 						if layout.railScrolls then
-							-- Only the x extent counts: the content scrolls vertically.
-							local outer = { x = layout.rail.x, y = grown.y, w = layout.rail.w, h = grown.h }
-							expect.truthy(UiTheme.contains(outer, grown, 0))
+							-- x stays clear of the scroll bar; the canvas holds the grown button vertically.
+							expect.truthy(grown.x >= layout.rail.x)
+							expect.truthy(grown.x + grown.w <= layout.rail.x + layout.rail.w - UiTheme.RailScrollBar)
+							local canvasY = grown.y - layout.rail.y
+							expect.truthy(canvasY >= 0 and canvasY + grown.h <= layout.railCanvas)
 						else
 							expect.truthy(UiTheme.contains(layout.rail, grown, 0))
 						end
@@ -355,6 +357,69 @@ return function(t)
 				end
 			end
 		end
+	end)
+
+	-- CM2-V2-HIDE: nine desktop buttons scroll at 1564x554 with 130 px buttons and an explicit canvas.
+	t.test("lays out nine rail buttons on desktop", function()
+		local layout = UiTheme.hudLayout(UiTheme.metrics(1564, 554), 9)
+		expect.equal(layout.rail.x, 12)
+		expect.equal(layout.rail.y, 166)
+		expect.equal(layout.rail.w, 148)
+		expect.equal(layout.rail.h, 376)
+		expect.truthy(layout.railScrolls)
+		for _, b in ipairs(layout.railButtons) do
+			expect.equal(b.x, 6)
+			expect.equal(b.w, 130)
+		end
+		expect.equal(layout.railCanvas, 456)
+		local last = layout.railButtons[9]
+		expect.equal(last.y + 44 + 6, 456)
+		for _, size in ipairs({ { w = 1920, h = 1022 }, { w = 1024, h = 710 } }) do
+			local roomy = UiTheme.hudLayout(UiTheme.metrics(size.w, size.h), 9)
+			expect.falsy(roomy.railScrolls)
+			expect.equal(roomy.railButtons[1].w, 136)
+			expect.equal(roomy.railCanvas, roomy.rail.h)
+			expect.equal(roomy.railCanvas, 456)
+		end
+		local one = UiTheme.hudLayout(UiTheme.metrics(1564, 554), 1)
+		expect.falsy(one.railScrolls)
+		expect.equal(one.railCanvas, one.rail.h)
+		expect.equal(one.railCanvas, 56)
+	end)
+
+	-- CM2-V2-HIDE: nine phone buttons stay reachable whether the rail scrolls or not.
+	t.test("keeps nine phone rail buttons reachable", function()
+		for _, size in ipairs(PHONES) do
+			local m = UiTheme.metrics(size[1], size[2])
+			local layout = UiTheme.hudLayout(m, 9)
+			for _, b in ipairs(layout.railButtons) do
+				expect.equal(b.h, 44)
+				expect.truthy(b.x >= 0)
+				if layout.railScrolls then
+					expect.truthy(b.x + b.w <= layout.rail.w - UiTheme.RailScrollBar)
+					expect.truthy(b.y + b.h <= layout.railCanvas)
+				else
+					expect.truthy(UiTheme.contains({ x = 0, y = 0, w = layout.rail.w, h = layout.rail.h }, b, 0))
+				end
+			end
+			if layout.railScrolls then
+				expect.equal(layout.railCanvas, 9 * 44 + 8 * m.railGap)
+			end
+		end
+	end)
+
+	-- CM2-V2-HIDE A1: the scroll bar is subtracted once from the frame's box.
+	t.test("fits scrolled rail strokes clear of the bar", function()
+		local outer = { x = 12, y = 166, w = 148, h = 376 }
+		local function fits(x, y, w, bar)
+			return UiTheme.fitsScroll(outer, { x = x, y = y, w = w, h = 54 }, bar, 30, 406)
+		end
+		expect.truthy(fits(13, 137, 140, 4))
+		expect.truthy(fits(13, 487, 140, 4))
+		expect.falsy(fits(13, 137, 144, 4))
+		expect.falsy(fits(13, 135, 140, 4))
+		expect.falsy(fits(13, 490, 140, 4))
+		expect.truthy(fits(13, 137, 147, 0))
 	end)
 
 	-- CM2-UIFIX: the save status is a plate under the chips, 8 px below them.

@@ -55,6 +55,7 @@ export type HudLayout = {
 	rail: Box,
 	railButtons: { Box },
 	railScrolls: boolean,
+	railCanvas: number,
 	toast: Box,
 	actionBar: Box,
 	manager: Box,
@@ -214,6 +215,7 @@ UiTheme.Style = {
 UiTheme.Heading = { role = "Title", textSize = UiTheme.TextSize.Title, stroke = 0 }
 -- Desktop rail: px between the rail edge and its buttons, room for the 2 px Border stroke and the hover scale.
 UiTheme.RailInset = 6
+UiTheme.RailScrollBar = 4
 -- CM2-V2-HIDE: the ScreenGuis the "Hide HUD" button disables. Never HudRailUI, TutorialUI,
 -- SavePickerUI, PlotPickerUI, StockingUI or BreakAreaUI.
 UiTheme.HudHideGuis = {
@@ -580,12 +582,14 @@ function UiTheme.hudLayout(m: Metrics, railButtons: number): HudLayout
 	local cell = m.railWidth - RAIL_SCROLLBAR
 	local step = BUTTON_HEIGHT + m.railGap
 	local inset = if m.compact then 0 else UiTheme.RailInset
+	local railScrolls = content + 2 * inset > m.railMaxHeight
+	-- A scrolling desktop rail shows its bar: keep the grown stroke clear of it with a right inset.
+	local buttonWidth = cell - inset - (if railScrolls and not m.compact then inset else 0)
 	local railButtonBoxes: { Box } = {}
 	for index = 1, count do
-		railButtonBoxes[index] = box(inset, inset + (index - 1) * step, cell - inset, BUTTON_HEIGHT)
+		railButtonBoxes[index] = box(inset, inset + (index - 1) * step, buttonWidth, BUTTON_HEIGHT)
 	end
 	local rail = box(m.margin, m.railTop, m.railWidth, math.min(content + 2 * inset, m.railMaxHeight))
-	local railScrolls = content + 2 * inset > m.railMaxHeight
 
 	-- CM2-UVF13: on phones the buttons that do not fit above the thumbstick go right of row 1.
 	if m.compact and railScrolls then
@@ -638,6 +642,7 @@ function UiTheme.hudLayout(m: Metrics, railButtons: number): HudLayout
 		rail = rail,
 		railButtons = railButtonBoxes,
 		railScrolls = railScrolls,
+		railCanvas = if railScrolls then content + 2 * inset else rail.h,
 		toast = toast,
 		actionBar = actionBar,
 		manager = manager,
@@ -1054,6 +1059,16 @@ function UiTheme.contains(outer: Box, inner: Box, tolerance: number): boolean
 		and inner.y >= outer.y - tolerance
 		and inner.x + inner.w <= outer.x + outer.w + tolerance
 		and inner.y + inner.h <= outer.y + outer.h + tolerance
+end
+
+-- CM2-V2-HIDE A1: `grown` inside a scrolling frame's box `outer`: clear of the bar on the right while it shows,
+-- and inside the canvas (height `canvasHeight`, scrolled by `scrollY`) vertically.
+function UiTheme.fitsScroll(outer: Box, grown: Box, bar: number, scrollY: number, canvasHeight: number): boolean
+	local canvasY = grown.y - outer.y + scrollY
+	return grown.x >= outer.x
+		and grown.x + grown.w <= outer.x + outer.w - bar
+		and canvasY >= 0
+		and canvasY + grown.h <= canvasHeight
 end
 
 -- `b` grown by ClipInset on every side (a clipping bar placed outward so its content box stays put).
