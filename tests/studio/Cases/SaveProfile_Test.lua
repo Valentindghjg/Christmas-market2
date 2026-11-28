@@ -195,4 +195,19 @@ return function(t)
 			expect.falsy(SaveProfile.validate(profile))
 		end
 	end)
+
+	t.test("validates the musicVolume field", function()
+		local profile = profileWith(1)
+		for _, good in { 0, 0.5, 1 } do
+			profile.musicVolume = good :: any
+			expect.truthy(SaveProfile.validate(profile))
+		end
+		profile.musicVolume = nil
+		expect.truthy(SaveProfile.validate(profile))
+		for _, bad in { -0.01, 1.01, 0 / 0, math.huge, "x", {} } :: { any } do
+			profile.musicVolume = bad
+			expect.falsy(SaveProfile.validate(profile))
+		end
+		expect.equal(SaveProfile.VERSION, 1)
+	end)
 end

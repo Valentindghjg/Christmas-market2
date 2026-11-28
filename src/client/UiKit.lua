@@ -1117,7 +1117,7 @@ local function ensureRail(): ScrollingFrame
 end
 
 -- Rail slots: 10 LotManagerButton, 20 Shop, 30 Quests, 40 Advent, 50 SavesButton, 60 TeamButton,
--- 70 FinderButton. Buttons start hidden; the owner of a button shows it.
+-- 70 FinderButton, 80 MusicButton. Buttons start hidden; the owner of a button shows it.
 -- Phones: buttons that do not fit above the thumbstick go right of row 1 (CM2-UVF13).
 function UiKit.addRailButton(name: string, textKey: string, order: number): TextButton
 	local frame = ensureRail()

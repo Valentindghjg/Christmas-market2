@@ -35,6 +35,8 @@ Protocol.Actions = {
 	DailyClaim = "Daily.Claim",
 	-- CM2-A1: open one Advent calendar door (main.server.lua -> AdventService, never companies:handle).
 	AdventOpen = "Advent.Open",
+	-- CM2-MUSIC: set the player's music volume (main.server.lua -> PlayerSettingsService, never companies:handle).
+	SettingsSetMusicVolume = "Settings.SetMusicVolume",
 	-- CM2-45: buy an event shop item (companies:handle)
 	EventBuy = "Event.Buy",
 }
@@ -61,6 +63,7 @@ local actionSet = {
 	[Protocol.Actions.TutorialSkip] = true,
 	[Protocol.Actions.DailyClaim] = true,
 	[Protocol.Actions.AdventOpen] = true,
+	[Protocol.Actions.SettingsSetMusicVolume] = true,
 	[Protocol.Actions.EventBuy] = true,
 }
 
@@ -459,6 +462,16 @@ function Protocol.validateRequest(request)
 		local door = request.payload.door
 		if not isFiniteInteger(door) or door < 1 or door > GameConfig.Advent.LastDay then
 			return false, "InvalidDoor"
+		end
+		return true, nil
+	end
+	if request.action == Protocol.Actions.SettingsSetMusicVolume then
+		-- CM2-MUSIC: exactly { volume }; the server clamps and rounds (MusicSettings.normalize).
+		if not hasOnlyKeys(request.payload, { volume = true }) then
+			return false, "UnexpectedField"
+		end
+		if not isFiniteNumber(request.payload.volume) then
+			return false, "InvalidVolume"
 		end
 		return true, nil
 	end

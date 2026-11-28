@@ -432,6 +432,16 @@ UiTheme.Dialogs = {
 		widthScale = 0.94,
 		heightScale = 0.86,
 	},
+	-- Music volume panel (CM2-MUSIC): title, the value line and one row of buttons.
+	Music = {
+		listTop = 40,
+		footerHeight = 52,
+		minList = 80,
+		maxWidth = 380,
+		maxHeight = 230,
+		widthScale = 0.92,
+		heightScale = 0.6,
+	},
 } :: { [string]: DialogSpec }
 
 -- Shop category bar (CM2-UVF8): fixed bar, seven tabs share the width; text scales between minText and maxText.

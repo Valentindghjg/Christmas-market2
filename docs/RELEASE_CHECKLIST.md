@@ -25,7 +25,7 @@ Stand: 2026-11-28, Commit `96b831d` (Release-Kandidat, CM2-50a prüft denselben 
 - [x] 3. **HttpService braucht keine Freigabe**: der Code nutzt nur `GenerateGUID`, `JSONEncode`, `JSONDecode` (`main.server.lua:120`, `:323`, `Leaderboards.client.lua:91`), keine HTTP-Anfragen. „Allow HTTP Requests“ **aus** lassen. Beleg 2026-11-28: Einstellung nicht angefasst, nicht geändert (Zustand nicht geprüft).
 - [ ] 4. Teleport: der Server teleportiert in dieselbe `game.PlaceId` (`main.server.lua:148`); es gibt keinen zweiten Place. Zugriff auf die Erlebnis-Place-ID: keine weitere Einstellung nötig. Private Server und Reservierte Server: nicht genutzt.
 - [ ] 5. Streaming: im Release-Projekt `StreamingEnabled = true` (`release.project.json`); nichts einzustellen, nur nicht in Studio abschalten.
-- [ ] 6. Keine eigenen Asset-IDs: der Code lädt keine `rbxassetid://`-Assets (Suche in `src/`); alle Modelle liegen als `.rbxm` im Build (`ArtAssets`). Es gibt keine Asset-Berechtigungsliste zu pflegen.
+- [ ] 6. Keine eigenen Asset-IDs: die einzigen `rbxassetid://`-Audio-IDs im Code sind `GameConfig.Music.TrackIds` (CM2-MUSIC, Präfix in `MusicSettings.soundId`: Audio aus Roblox' lizenzierter Musikbibliothek (APMOfficial, DistrokidOfficial), Herkunft in `docs/AUDIO.md`); alle Modelle liegen als `.rbxm` im Build (`ArtAssets`). Daneben stehen in `GameConfig.Customers.Npc.Animations` nur die Roblox-eigenen R15-Standardanimationen Walk/Idle (507777826, 507766388, seit CM2-N1). Es gibt keine Asset-Berechtigungsliste zu pflegen.
 
 ### B2. DataStore- und MemoryStore-Namen (nichts anzulegen, nur nicht umbenennen; live ohne Suffix)
 | Zweck | Name | Beleg |

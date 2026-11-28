@@ -4,6 +4,7 @@
 local AdventCalendar = require(script.Parent.AdventCalendar)
 local DailyRewards = require(script.Parent.DailyRewards)
 local GameConfig = require(script.Parent.GameConfig)
+local MusicSettings = require(script.Parent.MusicSettings)
 
 local SaveProfile = {}
 SaveProfile.VERSION = 1
@@ -213,6 +214,10 @@ function SaveProfile.validate(profile): boolean
 	end
 	-- CM2-A1: optional Advent calendar doors; nil = none opened yet.
 	if not AdventCalendar.isValid(profile.advent) then
+		return false
+	end
+	-- CM2-MUSIC: nil = default
+	if not MusicSettings.isValid(profile.musicVolume) then
 		return false
 	end
 	return true

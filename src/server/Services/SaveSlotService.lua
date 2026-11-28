@@ -23,6 +23,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local AdventCalendar = require(Shared:WaitForChild("AdventCalendar"))
 local DailyRewards = require(Shared:WaitForChild("DailyRewards"))
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
+local MusicSettings = require(Shared:WaitForChild("MusicSettings"))
 local Protocol = require(Shared:WaitForChild("Protocol"))
 local SaveProfile = require(Shared:WaitForChild("SaveProfile"))
 local SaveSlotShared = require(script.Parent:WaitForChild("SaveSlotShared"))
@@ -685,6 +686,40 @@ function SaveSlotService:setAdventForTest(userId: number, advent: any?): boolean
 		return current, true
 	end)
 	return updated ~= nil
+end
+
+-- Player settings (CM2-MUSIC) ------------------------------------------------------------------
+
+-- The open profile's music volume: (true, volume) with a cached profile, else (false, DEFAULT).
+function SaveSlotService:musicVolumeOf(userId: number): (boolean, number)
+	local cached = self._profiles[userId]
+	if cached == nil then
+		return false, MusicSettings.DEFAULT
+	end
+	return true, MusicSettings.volumeOf(cached)
+end
+
+-- Stores an already normalized volume in the open profile (lock-free, like claimDaily); no
+-- write when the stored value is unchanged. Returns (storedVolume, nil) or (nil, errorCode).
+function SaveSlotService:setMusicVolume(userId: number, volume: number): (number?, string?)
+	if self._profiles[userId] == nil then
+		return nil, "ProfileUnavailable"
+	end
+	local updated, updateError = self:_updateProfile(userId, function(stored)
+		local current, storedError = storedProfile(stored)
+		if not current then
+			return nil, false, storedError
+		end
+		if current.musicVolume == volume then
+			return current, false
+		end
+		current.musicVolume = volume
+		return current, true
+	end)
+	if updated == nil then
+		return nil, updateError
+	end
+	return MusicSettings.volumeOf(updated), nil
 end
 
 -- The parts add their methods to the class (CM2-RF); a name defined twice is a bug.

@@ -28,6 +28,7 @@ local InviteCodeService = require(script.Parent.Services:WaitForChild("InviteCod
 local LeaderboardService = require(script.Parent.Services:WaitForChild("LeaderboardService"))
 local MonetizationService = require(script.Parent.Services:WaitForChild("MonetizationService"))
 local NpcAvatar = require(script.Parent.Services:WaitForChild("NpcAvatar"))
+local PlayerSettingsService = require(script.Parent.Services:WaitForChild("PlayerSettingsService"))
 local PlotService = require(script.Parent.Services:WaitForChild("PlotService"))
 local PurchaseLedgerService = require(script.Parent.Services:WaitForChild("PurchaseLedgerService"))
 local SaveLocatorService = require(script.Parent.Services:WaitForChild("SaveLocatorService"))
@@ -815,16 +816,23 @@ every(config.DailyRewards.RefreshSeconds, "daily rewards", function()
 	return true, 0, 0
 end)
 -- Advent calendar (CM2-A1): one door per UTC day Dec 1-24, paid once per player into the active save.
+local function setPlayerAttribute(userId: number, name: string, value: any)
+	local player = Players:GetPlayerByUserId(userId)
+	if player then
+		player:SetAttribute(name, value)
+	end
+end
 local advent = AdventService.new({
 	saveSlots = saveSlots,
 	companies = companies,
 	clock = businessClock,
-	setAttribute = function(userId: number, name: string, value: any)
-		local player = Players:GetPlayerByUserId(userId)
-		if player then
-			player:SetAttribute(name, value)
-		end
-	end,
+	setAttribute = setPlayerAttribute,
+})
+-- Player settings (CM2-MUSIC): the saved music volume as the MusicVolume attribute.
+local playerSettings = PlayerSettingsService.new({
+	saveSlots = saveSlots,
+	clock = os.clock,
+	setAttribute = setPlayerAttribute,
 })
 every(config.Advent.RefreshSeconds, "advent", function()
 	advent:refreshAll(saveSlots:activeUserIds())
@@ -1090,6 +1098,7 @@ local function onPlayerAdded(player: Player)
 		return
 	end
 	player:SetAttribute("ProfileReady", true)
+	playerSettings:onPlayerJoined(player.UserId)
 	task.spawn(function()
 		dailyRewards:onPlayerJoined(player.UserId)
 	end)
@@ -1153,6 +1162,7 @@ Players.PlayerRemoving:Connect(function(player)
 	monetization:forgetUser(player.UserId)
 	dailyRewards:forgetUser(player.UserId)
 	advent:forgetUser(player.UserId)
+	playerSettings:forgetUser(player.UserId)
 	task.spawn(function()
 		leaderboards:flushUser(userId)
 		leaderboards:forgetPlayer(userId)
@@ -1201,6 +1211,9 @@ local function handleBusinessAction(player: Player, request)
 	end
 	if type(request) == "table" and request.action == Protocol.Actions.AdventOpen then
 		return advent:handle(player.UserId, request)
+	end
+	if type(request) == "table" and request.action == Protocol.Actions.SettingsSetMusicVolume then
+		return playerSettings:handle(player.UserId, request)
 	end
 	-- Order interactions need the player next to the tree or car, whichever channel is used.
 	local action = type(request) == "table" and request.action

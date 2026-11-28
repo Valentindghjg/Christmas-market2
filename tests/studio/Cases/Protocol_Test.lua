@@ -542,4 +542,28 @@ return function(t)
 		local _, missing = buy({ eventId = "Advent1" })
 		expect.equal(missing, "InvalidItem")
 	end)
+
+	t.test("validates Settings.SetMusicVolume", function()
+		local function set(payload: any)
+			return Protocol.validateRequest({
+				version = 1,
+				requestId = "music_1234",
+				action = Protocol.Actions.SettingsSetMusicVolume,
+				payload = payload,
+			})
+		end
+		expect.equal(Protocol.Actions.SettingsSetMusicVolume, "Settings.SetMusicVolume")
+		expect.truthy(set({ volume = 0.4 }))
+		for _, bad in { "0.4", 0 / 0, math.huge, -math.huge } :: { any } do
+			local ok, reason = set({ volume = bad })
+			expect.falsy(ok)
+			expect.equal(reason, "InvalidVolume")
+		end
+		local missingOk, missing = set({})
+		expect.falsy(missingOk)
+		expect.equal(missing, "InvalidVolume")
+		local extraOk, extra = set({ volume = 0.4, x = 1 })
+		expect.falsy(extraOk)
+		expect.equal(extra, "UnexpectedField")
+	end)
 end

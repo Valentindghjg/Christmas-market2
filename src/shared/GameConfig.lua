@@ -130,6 +130,23 @@ GameConfig.Advent = {
 		{ cash = 10000, reputation = 1000, decor = "AdventReindeerSleigh" },
 	} :: { { cash: number?, reputation: number?, boostSeconds: number?, decor: string? } },
 }
+-- Background music (CM2-MUSIC, docs/plans/CM2-MUSIC.md, docs/AUDIO.md, shared/MusicSettings.lua):
+-- Christmas tracks from Roblox's licensed music library in a loop and a saved per-player music
+-- volume. TrackIds OWNER DECIDED; every other value PROVISIONAL.
+GameConfig.Music = {
+	-- OWNER DECIDED 2026-11-28; provenance docs/AUDIO.md
+	TrackIds = { 9047801895, 140169923347660, 119871365837884, 1838667168 } :: { number },
+	DefaultVolume = 0.5,
+	TrackVolume = 0.5, -- per Sound; heard = TrackVolume x setting
+	VolumeStep = 0.1,
+	FadeInSeconds = 3,
+	FadeOutSeconds = 3,
+	GapSeconds = 2,
+	GroupTweenSeconds = 0.25,
+	SettingWaitSeconds = 10,
+	SendDebounceSeconds = 0.75,
+	SetLimit = { limit = 6, window = 30 },
+}
 GameConfig.AutoPricing = {
 	TargetDisplayStock = 5,
 	MaxDiscountFraction = 0.15,

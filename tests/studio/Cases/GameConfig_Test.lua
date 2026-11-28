@@ -314,4 +314,30 @@ return function(t)
 			end
 		end
 	end)
+
+	t.test("music config", function()
+		local music = GameConfig.Music
+		local count = #music.TrackIds
+		expect.truthy(count >= 2 and count <= 4)
+		local seen = {}
+		for _, id in ipairs(music.TrackIds) do
+			expect.truthy(type(id) == "number" and id > 0 and id < 2 ^ 53 and id == math.floor(id))
+			expect.falsy(seen[id])
+			seen[id] = true
+		end
+		local approved = { 9047801895, 140169923347660, 119871365837884, 1838667168 }
+		expect.equal(count, #approved)
+		for index, id in ipairs(approved) do
+			expect.equal(music.TrackIds[index], id)
+		end
+		expect.truthy(music.DefaultVolume >= 0 and music.DefaultVolume <= 1)
+		expect.truthy(music.TrackVolume > 0 and music.TrackVolume <= 1)
+		expect.truthy(music.VolumeStep > 0 and music.VolumeStep <= 1)
+		for _, key in { "FadeInSeconds", "FadeOutSeconds", "GapSeconds", "GroupTweenSeconds" } do
+			expect.truthy(music[key] >= 0)
+		end
+		expect.truthy(music.SettingWaitSeconds > 0)
+		expect.truthy(music.SendDebounceSeconds > 0)
+		expect.truthy(music.SetLimit.limit >= 1 and music.SetLimit.window > 0)
+	end)
 end
