@@ -98,6 +98,7 @@ local sourcePaths = {
 	LabelDeclutter = "src/shared/LabelDeclutter.lua",
 	LandView = "src/shared/LandView.lua",
 	LeaderboardView = "src/shared/LeaderboardView.lua",
+	LightingBlend = "src/shared/LightingBlend.lua",
 	Localization = "src/shared/Localization.lua",
 	LotArt = "src/shared/LotArt.lua",
 	MapLayout = "src/shared/MapLayout.lua",
@@ -274,6 +275,71 @@ do
 	else
 		failures += 1
 		warn("[FAIL] main.server > Notify drains client sends | " .. tostring(err))
+	end
+end
+-- CM2-VIBE1: both project files must carry the Lighting node of GameConfig.Lighting (Static + Day).
+local serde = require("@lune/serde")
+local function sameValue(actual: any, want: any): boolean
+	if type(want) == "table" then
+		if type(actual) ~= "table" or #actual ~= #want then
+			return false
+		end
+		for channel = 1, #want do
+			if math.abs(actual[channel] * 255 - want[channel]) >= 0.5 then
+				return false
+			end
+		end
+		return true
+	elseif type(want) == "number" then
+		return type(actual) == "number" and math.abs(actual - want) < 1e-4
+	end
+	return actual == want
+end
+local function checkProperties(properties: any, expected: { [string]: any }, label: string)
+	assert(type(properties) == "table", label .. " has no $properties")
+	for key, want in pairs(expected) do
+		assert(sameValue(properties[key], want), string.format("%s.%s differs from GameConfig.Lighting", label, key))
+	end
+end
+for _, fileName in ipairs({ "default.project.json", "release.project.json" }) do
+	total += 1
+	local ok, err = pcall(function()
+		local config = (loadModule(shared.GameConfig) :: any).Lighting
+		local node = serde.decode("json", fs.readFile(fileName)).tree.Lighting
+		assert(node ~= nil and node["$className"] == "Lighting", "tree.Lighting is not a Lighting node")
+		local expected = table.clone(config.Static)
+		for key, value in pairs(config.Day.Lighting) do
+			expected[key] = value
+		end
+		checkProperties(node["$properties"], expected, "Lighting")
+		local count = 0
+		for _ in pairs(node["$properties"]) do
+			count += 1
+		end
+		local expectedCount = 0
+		for _ in pairs(expected) do
+			expectedCount += 1
+		end
+		assert(count == expectedCount, "Lighting has extra $properties")
+		for name, className in pairs(config.Classes) do
+			local effect = node[name]
+			assert(effect ~= nil and effect["$className"] == className, name .. " is missing or has the wrong class")
+			checkProperties(effect["$properties"], config.Day[name], name)
+			local effectCount, dayCount = 0, 0
+			for _ in pairs(effect["$properties"]) do
+				effectCount += 1
+			end
+			for _ in pairs(config.Day[name]) do
+				dayCount += 1
+			end
+			assert(effectCount == dayCount, name .. " has extra $properties")
+		end
+	end)
+	if ok then
+		print("[PASS] " .. fileName .. " > Lighting matches GameConfig.Lighting")
+	else
+		failures += 1
+		warn("[FAIL] " .. fileName .. " > Lighting matches GameConfig.Lighting | " .. tostring(err))
 	end
 end
 print(string.format("[SUMMARY] %d run, %d passed, %d failed", total, total - failures, failures))

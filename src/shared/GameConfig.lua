@@ -572,11 +572,78 @@ GameConfig.DayCycle = {
 	SyncSeconds = 30,
 	ClientUpdateSeconds = 0.5,
 	DefaultClockTime = 14, -- PROVISIONAL: a player without an active save
-	NightOutdoorAmbient = { 70, 80, 110 }, -- PROVISIONAL
 	NightLightTag = "NightLight",
 	LampLight = { range = 16, brightness = 1.5 }, -- PROVISIONAL
 	PlotLight = { range = 14, brightness = 1.2 }, -- PROVISIONAL
 	GateLight = { range = 12, brightness = 1.2 }, -- PROVISIONAL (CM2-GATEW)
+}
+
+-- Light and colour pass (CM2-VIBE1, docs/plans/CM2-VIBE1.md), all PROVISIONAL engineering look values.
+-- Static + Day.Lighting + Day.CM2* mirror the `Lighting` node of default.project.json and
+-- release.project.json (a headless check keeps them equal); the client blends Day -> Night through
+-- shared/LightingBlend.lua by DayCycle.nightBlend. Colours are { r, g, b } 0-255.
+GameConfig.Lighting = {
+	EffectsMinQualityLevel = 4, -- quality 1-3: Bloom and SunRays off (as Snow)
+	Classes = {
+		CM2Atmosphere = "Atmosphere",
+		CM2ColorCorrection = "ColorCorrectionEffect",
+		CM2Bloom = "BloomEffect",
+		CM2SunRays = "SunRaysEffect",
+	},
+	Static = {
+		Technology = "Future",
+		GlobalShadows = true,
+		ShadowSoftness = 0.25,
+		Brightness = 2.2,
+		EnvironmentDiffuseScale = 0.6,
+		EnvironmentSpecularScale = 0.4,
+	},
+	Day = {
+		Lighting = {
+			Ambient = { 90, 95, 110 },
+			OutdoorAmbient = { 150, 145, 140 },
+			ExposureCompensation = -0.15,
+		},
+		CM2Atmosphere = {
+			Density = 0.25,
+			Offset = 0.2,
+			Color = { 222, 228, 238 },
+			Decay = { 170, 190, 215 },
+			Glare = 0.4,
+			Haze = 1.2,
+		},
+		CM2ColorCorrection = {
+			Brightness = 0.02,
+			Contrast = 0.12,
+			Saturation = 0.22,
+			TintColor = { 255, 244, 230 },
+		},
+		CM2Bloom = { Intensity = 0.3, Size = 24, Threshold = 1.3 },
+		CM2SunRays = { Intensity = 0.08, Spread = 0.6 },
+	},
+	Night = {
+		Lighting = {
+			Ambient = { 60, 70, 100 },
+			OutdoorAmbient = { 70, 80, 110 },
+			ExposureCompensation = 0.35,
+		},
+		CM2Atmosphere = {
+			Density = 0.3,
+			Offset = 0.15,
+			Color = { 60, 70, 100 },
+			Decay = { 40, 50, 80 },
+			Glare = 0,
+			Haze = 0.8,
+		},
+		CM2ColorCorrection = {
+			Brightness = 0.04,
+			Contrast = 0.08,
+			Saturation = 0.05,
+			TintColor = { 215, 225, 255 },
+		},
+		CM2Bloom = { Intensity = 0.7, Size = 28, Threshold = 0.9 },
+		CM2SunRays = { Intensity = 0, Spread = 0.6 },
+	},
 }
 
 -- Four leaderboards on the village square (CM2-G12b, docs/archive/plans/CM2-G12b.md): OrderedDataStore
