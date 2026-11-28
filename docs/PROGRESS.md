@@ -81,3 +81,10 @@ Archived 2026-11-28 (entries CM2-47D2, CM2-SLIM10, CM2-SLIM run 6, CM2-48, CM2-5
 - Own decisions reviewed (all minor): param `clockNow`, `OrderStatus` requires `script.Parent.GameConfig`, non-finite numbers count 0, `renderOrders` at the end of `renderView`, `track` called in `render` after `lastSummary`.
 - Studio: deferred (batch), runs inside CM2-RC4 (probe 0, Preparing -> In Transit -> Delivered, save switch clears rows); queued in "Studio-Test ausstehend". Not run.
 
+
+## 2026-11-28 CM2-V2-HIDE rail fix (tier S, plan `docs/plans/CM2-V2-HIDE.md` incl. Amendment 1; found by the CM2-RC4 Studio run)
+- Changes: scrolling desktop rail (`UiTheme.RailScrollBar` 4, `HudLayout.railCanvas`, 130 px buttons while it scrolls, explicit `CanvasSize`, `CanvasPosition` reset), pure `UiTheme.fitsScroll` (bar subtracted once from the frame box) used by `probeGui` and `probeRail` through the UiKit wrapper. Plan A1.3 text corrected to the readings used (y 135 and 490).
+- Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings, 0 parse errors; headless 848 run, 848 passed, 0 failed (845 + 3 tests); ui_scan 0 (implementer); rojo default build PASS.
+- Studio (playtester, 924x612, rail 12,166 148x376, canvas 406, scrolls): state reset (bays 4 -> 0 via sell-back), smoke 13/13; HUD probe shown problems 0 (railLeft 18); click HideHudButton at the bottom -> hidden 9/9, problems 0; click Show -> 8 buttons back, problems 0; hover probe 0 (hover state not independently confirmed); key U both ways problems 0; Supplier probe 0. Clicks by instance path.
+- Console: error from the tester's own AssistantCommand script (Saves:5 ACTION_PAUSE) and the known ContentId warning; no game error.
+- HIDE removed from "Studio-Test ausstehend" (passed). CM2-RC4 stays open: its full run follows on the new HEAD.
