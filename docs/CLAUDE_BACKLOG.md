@@ -1,6 +1,6 @@
 # Claude Code — 50-task development backlog
-Updated: 2026-11-28 (planner: launch item 0d "vibe pass" CM2-VIBE1..5, VIBE4A, RC5 merged with the parallel CM2-LOOK1..4 list of the same evening (LOOK IDs retired); PC-17 for VIBE4A; before: CM2-RC4 done, RC `a8c8ef3`, 0c done, 37d filed. Done text: `docs/archive/BACKLOG_DONE_2026-11-28.md`, older `docs/archive/BACKLOG_*.md`.)
-Für dich am PC: **vibe pass 0d runs first (owner 2026-11-28 evening); publish its RC from CM2-RC5, or `a8c8ef3` as the fallback**; PC-17 (Figma connector) unblocks VIBE4A and VIBE4. Fallback build: `a8c8ef3` (CM2-RC4; `f181bb9`, `ce265b6`, `debc1cb` superseded, never publish them) per `docs/RELEASE_CHECKLIST.md` Part B (B5.3b ticked; optional group ID, publish private, test, switch public); release summary: the step-37 flake (PROGRESS "CM2-RC4", 37d); after publish: B5.5 devices and CM2-LOC13.
+Updated: 2026-11-28 (planner: launch item 0d "vibe pass" CM2-VIBE1..5, VIBE4A, RC5 merged with the parallel CM2-LOOK1..4 list of the same evening (LOOK IDs retired); PC-17 for VIBE4A; VIBE4A Figma plus Firefly (owner via Basechat), PC-17 adds the Adobe connector. Done text: `docs/archive/BACKLOG_DONE_2026-11-28.md`, older `docs/archive/BACKLOG_*.md`.)
+Für dich am PC: **vibe pass 0d runs first (owner 2026-11-28 evening); publish its RC from CM2-RC5, or `a8c8ef3` as the fallback**; PC-17 (Figma login unblocks VIBE4A and VIBE4; the Adobe login is optional, without it the icons are Figma vectors). Fallback build: `a8c8ef3` (CM2-RC4; `f181bb9`, `ce265b6`, `debc1cb` superseded, never publish them) per `docs/RELEASE_CHECKLIST.md` Part B (B5.3b ticked; optional group ID, publish private, test, switch public); release summary: the step-37 flake (PROGRESS "CM2-RC4", 37d); after publish: B5.5 devices and CM2-LOC13.
 Status: **Go/No-Go decided (PC-16, owner 2026-11-28: "morgen"): launch 2026-11-29; the owner publishes, not yet published. The RC is `a8c8ef3` (CM2-RC4, launch item 0c done); RCs `f181bb9` (CM2-RC3), `ce265b6` (CM2-RC2) and `debc1cb` are superseded, do not publish them.** Binding order = "Launch order", its top = the "1st Advent launch list (owner 2026-11-27)".
 - Done: Gate A lines 1–15 except 14; Gate B 16, 17 (17a, 17b), 18, 18f, 18g, 18a2, 18a3, 18a5, 18a6, 18a7, 22a1, 22a2, 22a3b, 22a3c, 23 CM2-47, 23a CM2-47D2, 24 CM2-48, 25 CM2-50a; CM2-SALE2, CM2-SLIM8, CM2-SLIM10; MODEL CM2-10 (10a–10c), 10W, 10D, 10DW, 10I, 10IW, 12, 12W, 13, 13W, 14, 14W, GATE, GATEW.
 - Done except phone or locale readings (not ticked): 18a CM2-SUP, 18a1 CM2-SUPC, 19 CM2-A1, 20 CM2-45, 22 CM2-43 (18a4 CM2-SUPP ticks them, needs PC-14); 22a3 CM2-UI3 (when 22a3d passes); 22a CM2-UI (when 22a4 passes).
@@ -15,16 +15,17 @@ Status: **Go/No-Go decided (PC-16, owner 2026-11-28: "morgen"): launch 2026-11-2
 ## Für den Owner am PC
 Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisions). The `planner` writes them during `hasseln` in the format of `.claude/skills/hasseln/SKILL.md`; the next run checks each `Prüfen` first, then starts its `Danach` task.
 
-### PC-17 Figma-Connector freischalten (CM2-VIBE4A)
+### PC-17 Figma- und Adobe-Connector freischalten (CM2-VIBE4A)
 - Status: offen
 - Art: zugriff
-- Problem: CM2-VIBE4A entwirft die UI-Grafik in Figma über das Figma MCP; der Figma-Connector ist in der App noch nicht angemeldet.
+- Problem: CM2-VIBE4A baut Rahmen, Kopfbänder, Buttons und Layout in Figma (Figma MCP) und malt die Icons mit Adobe Firefly (Connector "adobe-for-creativity"); beide Connectors sind in der App noch nicht angemeldet.
 - Deine Schritte:
   1. In der Claude-App den Figma-Connector öffnen und mit deinem Figma-Konto anmelden.
   2. In Figma eine leere Datei "Christmas Tree Village UI" anlegen und den Link in den Chat schicken.
   3. Prüfen, ob dein Figma-Plan genug MCP-Aufrufe erlaubt (kostenlose Pläne sind stark begrenzt).
-- Prüfen: ein Figma-MCP-Tool antwortet und die Datei aus Schritt 2 ist lesbar.
-- Blockiert: CM2-VIBE4A, CM2-VIBE4
+  4. Optional: den Adobe-Connector "adobe-for-creativity" öffnen und mit deinem Adobe-Konto anmelden (Firefly); ohne ihn zeichnet VIBE4A die Icons als Vektoren in Figma.
+- Prüfen: ein Figma-MCP-Tool antwortet und die Datei aus Schritt 2 ist lesbar (das gibt VIBE4A frei); ein Adobe-Firefly-Tool antwortet (optional; fehlt nur Adobe, blockiert das nichts, VIBE4A zeichnet die Icons als Vektoren in Figma).
+- Blockiert: CM2-VIBE4A, CM2-VIBE4 (nur durch den Figma-Teil; der Adobe-Teil blockiert nicht)
 - Danach: CM2-VIBE4A
 - WIP-Branch: none
 - Seit: 2026-11-28, Planung (Owner-Gespräch)
@@ -221,9 +222,9 @@ Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or ab
     - (c) Footprint and height within ±10 % of today's model, same pivot, so `MapLayout`, stocking and carrying stay valid; triangles per model within the plan's budget; map totals stay inside the VIBE3W budget.
     - (d) Re-exported and re-uploaded, `art.luau verify` 0 pending, 0 failed; renders before and after in PROGRESS.
     - (e) Studio at once: smoke plus the tree steps PASS. Not done at the cut line: first update.
-- [ ] **CM2-VIBE4A Illustrated UI art in Figma** (was part of CM2-LOOK4) · MODEL (2D art in Figma, not Blender; no game code) · Depends: PC-17 (Figma connector). Goal: our own festive UI art (owner: the reference UI looks "100-mal geiler"). Accept:
-    - (a) Designed by us in a Figma file through the Figma MCP; the owner reviews and approves the mockups there. Set: one icon per rail button (Lot Manager, Shop, Quests, Saves, Team, Finder, Advent, Event, Music, Hide HUD), the Lot Manager tabs and the currencies (cash, reputation); a carved-wood 9-slice window frame; a garland-and-bow header band; drawn button states (green, gold, red; normal, hover, pressed). No reference-game art, no Figma community kit without a recorded licence.
-    - (b) PNG exports with transparency in `assets/ui/` plus the Figma file link as provenance (`assets/ui/README.md`).
+- [ ] **CM2-VIBE4A Illustrated UI art in Figma + Firefly** (was part of CM2-LOOK4) · MODEL (2D art, not Blender; no game code) · Depends: PC-17 (Figma connector; the Adobe connector is optional). Goal: our own festive UI art (owner: the reference UI looks "100-mal geiler"). Accept:
+    - (a) Tools (owner 2026-11-28, DECISION_LOG amendment "Figma plus Firefly"): Figma MCP for frames, header bands, buttons and layout; Adobe Firefly only for the painted, sculpted icons in the style of the owner's thumbnail, placed in the Figma file so the style stays consistent; no other AI image service; without Adobe the icons are Figma vectors. Designed by us in that Figma file; the owner reviews and approves the mockups there. Set: one icon per rail button (Lot Manager, Shop, Quests, Saves, Team, Finder, Advent, Event, Music, Hide HUD), the Lot Manager tabs and the currencies (cash, reputation); a carved-wood 9-slice window frame; a garland-and-bow header band; drawn button states (green, gold, red; normal, hover, pressed). No reference-game art, no Figma community kit without a recorded licence.
+    - (b) PNG exports with transparency in `assets/ui/` plus provenance in `assets/ui/README.md`: the Figma file link, and per Firefly icon "Adobe Firefly", prompt and date.
     - (c) Uploaded to the owner's account through the Roblox Studio MCP `upload_image` or Open Cloud (`tools/art/lib/OpenCloud.luau`); asset creation only, no purchase. IDs and moderation state per image in the README; a pending or rejected image is noted and does not block VIBE4.
 - [ ] **CM2-VIBE4 Chunky illustrated HUD and windows** · M (plan; client UI on `UiTheme`/`UiKit`) · Depends: VIBE4A, VIBE1. Accept:
     - (a) Image IDs live in one new shared module that builds `rbxassetid://` strings from numbers (the `MusicSettings.soundId` precedent); `ui_scan` stays at 0.
