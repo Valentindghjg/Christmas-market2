@@ -297,7 +297,9 @@ return function(ctx: any)
 				counts.npc += 1
 			end
 
-			-- (e) a species without art falls back to the primitive
+			-- (e) a species without art falls back to the primitive. FrostcrownFir/Small has no art on
+			-- purpose (only Trees/FrostcrownFir/Large exists), so WorldService.reportMissing logs the
+			-- expected warning "[ART] MissingArtAsset Trees/FrostcrownFir/Small" once during this step.
 			WorldService.attachNpcTree(dummy, "Small", "FrostcrownFir")
 			local fallback = dummy:FindFirstChild("NpcCarriedTree") :: Model?
 			check(fallback ~= nil, "no fallback tree")

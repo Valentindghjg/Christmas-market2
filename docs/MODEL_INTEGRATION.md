@@ -53,7 +53,7 @@ Larger models are Blender MeshParts; small items stay Parts. The `.blend` in `as
 - Checks: `tests/tools/art_pipeline.luau`, `art.luau verify <place>` (CI), playtest step `ART_ASSETS`.
 
 ## Tree art (CM2-12)
-- Paths: `Trees/{DouglasFir,FrasierFir,NobleFir,BlueSpruce}/{Small,Medium,Large}` plus `Trees/FrostcrownFir/Large` and `Trees/HollyberrySpruce/Large`; sources `assets/art/source/Trees/<Species>/<Size>/` built by the shared `assets/art/source/Trees/tree_common.py`, previews `assets/art/previews/Trees/<Species>/<Size>.png`.
+- Paths: `Trees/{DouglasFir,FrasierFir,NobleFir,BlueSpruce}/{Small,Medium,Large}` plus `Trees/FrostcrownFir/Large` and `Trees/HollyberrySpruce/Large`; sources `assets/art/source/Trees/<Species>/<Size>/` built by the shared `assets/art/source/Trees/tree_common.py`, previews `assets/art/previews/Trees/<Species>/<Size>.png`. Expected playtest warning (ASSETWARN rule, not a missing asset): the Trees playtest step (e) asks for `Trees/FrostcrownFir/Small` on purpose to check the primitive fallback, so `[ART] MissingArtAsset Trees/FrostcrownFir/Small` appears once during that step and not in a smoke run. No game path requests it.
 - Heights (total incl. leader/topper) and max radius: Small 6.0 / 1.9, Medium 8.0 / 2.5, Large 10.0 / 3.1, special trees 10.4 / 3.3 studs (below `Placement.FootprintRadius`); origin = trunk foot, `ATT_TreeBase` at (0, 0, 0), collider `COL_Tree` 1.1R x 1.1R x H.
 Archived detail (budgets, measured sizes, clearances): `docs/archive/MODEL_INTEGRATION_2026-11-28.md`, same heading.
 - Wired by CM2-12W (see below).
