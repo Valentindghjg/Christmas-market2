@@ -4,7 +4,7 @@
 -- nor the shadow's), all at once: (a) the supplier truck pulls in with 9 `TreeBundle`s on its bed
 -- (`syncReceiving` with 12 arriving), (b) it leaves empty, (c) four numbered customer cars park
 -- (9301..9304) with the art of `carStyle(n)` and its `CAR_COLORS` paint, and (d) four loaded cars
--- leave with the roof tree resting on the cargo anchor. Poses are read off the models; the
+-- leave with the roof tree resting on the cargo anchor (lowest of all parts), welded, moves with the car. Poses are read off the models; the
 -- receiving view and the plot are reset at the end.
 return function(ctx: any)
 	local R = ctx.R
@@ -77,7 +77,7 @@ return function(ctx: any)
 	local function lowest(model: Model): number
 		local bottom = math.huge
 		for _, descendant in model:GetDescendants() do
-			if descendant:IsA("MeshPart") then
+			if descendant:IsA("BasePart") then
 				bottom = math.min(bottom, partBottom(descendant))
 			end
 		end
@@ -268,7 +268,16 @@ return function(ctx: any)
 			end
 
 			-- (d) The cars leave loaded.
+			local parkedPivots: { [Model]: CFrame } = {}
+			local roofOffsets: { [Model]: CFrame } = {}
+			local labels: { [Model]: string } = {}
 			for _, plot in plots do
+				local before = plot:FindFirstChild("CustomerOrders") :: Instance
+				for _, parked in before:GetChildren() do
+					if parked:IsA("Model") then
+						parkedPivots[parked] = parked:GetPivot()
+					end
+				end
 				check(
 					WorldService.syncCustomerOrders(plot.Name, { orders = {}, loadedNumbers = ORDER_NUMBERS }, nil),
 					"syncCustomerOrders refused (d) " .. plot.Name
@@ -286,9 +295,47 @@ return function(ctx: any)
 							clearance >= -0.05 and clearance <= 0.3,
 							string.format("%s roof tree rests %.3f from the cargo anchor", label, clearance)
 						)
+						if roof ~= nil and roof:IsA("Model") then
+							local parts = 0
+							for _, part in roof:GetDescendants() do
+								if part:IsA("BasePart") then
+									parts += 1
+									local welded = false
+									for _, weld in part:GetChildren() do
+										if
+											weld:IsA("WeldConstraint")
+											and weld.Enabled
+											and weld.Part0 == child.PrimaryPart
+											and weld.Part1 == part
+										then
+											welded = true
+										end
+									end
+									check(
+										welded,
+										string.format("%s roof part %s has no weld to the car", label, part.Name)
+									)
+								end
+							end
+							check(parts > 0, label .. " roof tree has no parts")
+							roofOffsets[child] = child:GetPivot():ToObjectSpace(roof:GetPivot())
+							labels[child] = label
+						end
 					end
 				end
 				check(leaving == #ORDER_NUMBERS, string.format("%s has %d leaving cars", plot.Name, leaving))
+			end
+			-- The cars are still driving (CAR_DRIVE_SECONDS is 2): the roof must move with them.
+			task.wait(0.5)
+			for car, rel in roofOffsets do
+				local roof = car:FindFirstChild("RoofTree")
+				if car.Parent ~= nil and roof ~= nil and roof:IsA("Model") then
+					local now = car:GetPivot():ToObjectSpace(roof:GetPivot())
+					local slide = (now.Position - rel.Position).Magnitude
+					check(slide <= 0.01, string.format("%s roof tree slid %.3f on the car", labels[car], slide))
+					local moved = (car:GetPivot().Position - parkedPivots[car].Position).Magnitude
+					check(moved > 0.1, string.format("%s did not drive off", labels[car]))
+				end
 			end
 			check(
 				poll(function()

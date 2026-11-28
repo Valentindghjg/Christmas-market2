@@ -1176,7 +1176,48 @@ local function decorateCar(carModel: Model, orderNumber: number, callbacks)
 end
 
 -- The sold tree on a leaving car's roof (CM2-12W): species and size come from the car's
--- TreeSpeciesId / TreeSizeId attributes; art lies along the car's +Z, resting on the cargo anchor.
+-- TreeSpeciesId / TreeSizeId attributes; art lies along the car's +Z, settled so its lowest part is
+-- ROOF_CLEARANCE above the anchor and welded to the car's PrimaryPart (CM2-14WR).
+local function settleOnRoof(roof: Model, topY: number)
+	local lowest = math.huge
+	for _, descendant in roof:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			local cf, size = descendant.CFrame, descendant.Size
+			lowest = math.min(
+				lowest,
+				VehicleArt.boxBottom(
+					cf.Position.Y,
+					size.X,
+					size.Y,
+					size.Z,
+					cf.RightVector.Y,
+					cf.UpVector.Y,
+					cf.LookVector.Y
+				)
+			)
+		end
+	end
+	if lowest < math.huge then
+		roof:PivotTo(CFrame.new(0, VehicleArt.roofLift(lowest, topY), 0) * roof:GetPivot())
+	end
+end
+
+local function weldToCar(roof: Model, carModel: Model)
+	local root = carModel.PrimaryPart
+	if root == nil then
+		return
+	end
+	for _, descendant in roof:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			local weld = Instance.new("WeldConstraint")
+			weld.Name = "RoofWeld"
+			weld.Part0 = root
+			weld.Part1 = descendant
+			weld.Parent = descendant
+		end
+	end
+end
+
 local function attachRoofTree(carModel: Model, artRoot: Instance?)
 	local speciesAttr, sizeAttr = carModel:GetAttribute("TreeSpeciesId"), carModel:GetAttribute("TreeSizeId")
 	local speciesId = if type(speciesAttr) == "string" then speciesAttr else nil
@@ -1191,10 +1232,12 @@ local function attachRoofTree(carModel: Model, artRoot: Instance?)
 	local top = VehicleWorld.cargoTop(carModel)
 	if roof:GetAttribute("TreeArtMode") ~= "Art" then
 		roof:PivotTo(top * CFrame.new(0, VehicleArt.ROOF_PRIMITIVE_LIFT, 0) * CFrame.Angles(math.rad(90), 0, 0))
-		return
+	else
+		local _, size = roof:GetBoundingBox()
+		roof:PivotTo(top * CFrame.new(0, math.max(size.X, size.Z) / 2, -size.Y / 2) * CFrame.Angles(math.rad(90), 0, 0))
 	end
-	local _, size = roof:GetBoundingBox()
-	roof:PivotTo(top * CFrame.new(0, math.max(size.X, size.Z) / 2, -size.Y / 2) * CFrame.Angles(math.rad(90), 0, 0))
+	settleOnRoof(roof, top.Y)
+	weldToCar(roof, carModel)
 end
 
 -- Mirrors customer orders into the world: a numbered car per order on its parking space

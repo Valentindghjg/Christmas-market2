@@ -1,7 +1,7 @@
 --!strict
 -- Vehicle art in the world (CM2-14W, docs/plans/CM2-14W.md): which art path the truck and each customer
--- car use, their yaws, the cargo count and where each tree bundle lies on the truck bed. Pure data and
--- maths; VehicleWorld clones the models. All values are PROVISIONAL and visual.
+-- car use, their yaws, the cargo count and where each tree bundle lies on the truck bed, and how the
+-- roof tree settles on the cargo anchor (CM2-14WR). Pure data and maths; VehicleWorld clones the models. All values are PROVISIONAL and visual.
 local LotArt = require(script.Parent.LotArt)
 
 local VehicleArt = {}
@@ -23,6 +23,7 @@ VehicleArt.TRUCK_LANE_TOP = 0.05 -- top of TruckLane_Plot_*
 VehicleArt.PARKING_RISE = 0.27 -- lot top 0.55 to the parking slab top 0.82
 VehicleArt.CAR_LABEL_LIFT = 1.6
 VehicleArt.ROOF_PRIMITIVE_LIFT = 1.7
+VehicleArt.ROOF_CLEARANCE = 0.05 -- the roof tree's lowest point above the cargo anchor
 -- Cargo offsets from the pivot as {x, y, z} (plain numbers: the headless runner has no Vector3).
 VehicleArt.TRUCK_CARGO_FALLBACK = { 0, 3.5, 2 }
 VehicleArt.CAR_CARGO_FALLBACK = { 0, 4.3, 0.6 }
@@ -73,6 +74,39 @@ function VehicleArt.bundleOffset(k: number): (number, number)
 		return 0, (k - 2.5) * 1.2
 	end
 	return 1.0, (k - 7) * 1.2
+end
+
+-- The lowest world Y of an oriented box: its centre minus the half extent along world Y. Anything
+-- non-finite gives math.huge, so the part never counts as the lowest.
+function VehicleArt.boxBottom(
+	centerY: any,
+	sizeX: any,
+	sizeY: any,
+	sizeZ: any,
+	rightY: any,
+	upY: any,
+	lookY: any
+): number
+	if
+		isFinite(centerY)
+		and isFinite(sizeX)
+		and isFinite(sizeY)
+		and isFinite(sizeZ)
+		and isFinite(rightY)
+		and isFinite(upY)
+		and isFinite(lookY)
+	then
+		return centerY - (math.abs(rightY) * sizeX + math.abs(upY) * sizeY + math.abs(lookY) * sizeZ) / 2
+	end
+	return math.huge
+end
+
+-- How far to raise the roof tree so its lowest point is ROOF_CLEARANCE above the cargo anchor.
+function VehicleArt.roofLift(lowestY: any, cargoTopY: any): number
+	if isFinite(lowestY) and isFinite(cargoTopY) then
+		return cargoTopY + VehicleArt.ROOF_CLEARANCE - lowestY
+	end
+	return 0
 end
 
 return VehicleArt

@@ -94,6 +94,32 @@ return function(t)
 		expect.equal(VehicleArt.cargoCount(math.huge), 0)
 	end)
 
+	t.test("box bottom of an oriented part", function()
+		local function near(a, b)
+			expect.truthy(math.abs(a - b) <= 1e-6)
+		end
+		near(VehicleArt.boxBottom(5, 2, 3, 4, 0, 1, 0), 3.5)
+		near(VehicleArt.boxBottom(5, 2, 3, 4, 0, 0, 1), 3)
+		near(VehicleArt.boxBottom(5, 2, 3, 4, 0, 0.7071, 0.7071), 5 - (3 + 4) * 0.7071 / 2)
+		expect.equal(VehicleArt.boxBottom(0 / 0, 2, 3, 4, 0, 1, 0), math.huge)
+		expect.equal(VehicleArt.boxBottom(5, "x", 3, 4, 0, 1, 0), math.huge)
+		expect.equal(VehicleArt.boxBottom(5, 2, 3, 4, 0, math.huge, 0), math.huge)
+	end)
+
+	t.test("roof lift settles the tree on each car look", function()
+		local carTop = 0.82
+		for _, anchor in ipairs({ 4.0, 4.0, 4.6 }) do
+			local top = carTop + anchor
+			for _, lowest in ipairs({ top - 1.03, top - 0.79, top, top + 0.4 }) do
+				local clearance = lowest + VehicleArt.roofLift(lowest, top) - top
+				expect.truthy(math.abs(clearance - 0.05) <= 1e-9)
+				expect.truthy(clearance >= -0.05 and clearance <= 0.3)
+			end
+		end
+		expect.equal(VehicleArt.roofLift(0 / 0, 4), 0)
+		expect.equal(VehicleArt.roofLift(1, math.huge), 0)
+	end)
+
 	t.test("nine bundles fit the truck bed", function()
 		local anchorY, anchorZ = 2.6, 2.1
 		local half = 0.515 -- the TreeBundle's half depth; its height is 1.03
