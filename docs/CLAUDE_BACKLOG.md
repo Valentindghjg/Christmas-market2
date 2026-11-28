@@ -81,7 +81,7 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
 - PC-10 (2026-11-26); PC-9 (gestrichen), PC-11, PC-8, PC-4, PC-2, PC-7, PC-6, PC-3, PC-5 erledigt 2026-11-22 bis 2026-11-25. Texte: `docs/archive/BACKLOG_DONE_2026-11-25_to_2026-11-26.md` und ältere Archive.
 
 ## Studio-Test ausstehend
-Queue of tasks whose Studio playtest is deferred to the next batch run (skill `cm2-task`, step 3). The reviewer adds entries and removes each one after its batch steps pass. Every open reading below is an Accept item of 18a4 CM2-SUPP, 22a2 CM2-UI2 or 22a4 CM2-UIP; the desktop readings of all entries passed 2026-11-27 (PROGRESS "CM2-SUPC", "CM2-43", "CM2-UI1").
+Queue of tasks whose Studio playtest is deferred to the next batch run (skill `cm2-task`, step 3). The reviewer adds entries and removes each one after its batch steps pass. Every open reading below is an Accept item of 18a4 CM2-SUPP, 22a4 CM2-UIP; the desktop readings of all entries passed 2026-11-27 (PROGRESS "CM2-SUPC", "CM2-43", "CM2-UI1").
 
 - **CM2-SUP** (plan `docs/plans/CM2-SUP.md`; 18a): open: phone 666x374 readings → SUPP (b).
 - **CM2-TUTHOOK** (18a2, ticked): open: the tutorial target moves `AddRecommended` → `OrderTrees` after `resetTutorial` (in the CM2-UI1 run `AddRecommended` left the cart at "0 trees" on the used save "Playtest A") → SUPP (c), on a fresh save.
@@ -91,7 +91,6 @@ Queue of tasks whose Studio playtest is deferred to the next batch run (skill `c
 - **CM2-14W** (plan `docs/plans/CM2-14W.md`, ticked): open: 6-plot facing and the `#n` label at phone size → SUPP (f). The roof tree FAIL is resolved by CM2-14WR (2026-11-28).
 - **CM2-43** (no plan; 22): open: a German Roblox locale reads English, the "+ N more" cart line → SUPP (h).
 - **CM2-UI1** (plan `docs/archive/plans/CM2-UI1.md`; 22a1, ticked): open: phone and tablet → UIP. (PlotPicker over Finder dim passed 2026-11-28 via CM2-UI2 step 4.)
-- **CM2-UI2** (plan `docs/archive/plans/CM2-UI2.md`; 22a2, ticked): Advent and Event window audits passed 2026-11-28; open: only the full run 74 steps at the end of the hasseln run.
 - **CM2-UI3D** (plan `docs/archive/plans/CM2-UI3D.md`; 22a3b, ticked): Advent and Event desktop windows passed 2026-11-28 (CM2-UI3M run); open: phone readings and the overlap rule (no H4b probe in the runner) → UIP.
 
 ## How to work
@@ -202,7 +201,7 @@ N7. **Owner actions outside a task**: the friends test (line 15, `docs/FRIENDS_T
     - (b) Smoke step 73 (d) measures the real world: the minimum bottom Y over all `BasePart`s of the spawned `RoofTree` (world bounding box, not a config or pivot value) against the car's `carCargoTop.Y`, and asserts a weld exists; on `main` before the fix the step must FAIL on this case (the implementer runs it once and records the FAIL line).
     - (c) Headless: the shared `VehicleArt` roof offset maths returns the value that puts the bottom in range for each car look.
     - (d) Standard checks pass; Studio: `runPlaytest {mode="smoke", only={"73"}}` PASS, then a client reading of the roof tree on Plot_01 and one plot on the other road side.
-18a6. [ ] **CM2-LEAK22 Smoke step 22 LEAK_CHECK: walking customer still alive** (planner 2026-11-27, CM2-SUPC (e) FAIL) · L (cause unknown; `planner-high`) · Depends: none. Goal: in a run with only {"71","72","73"} plus smoke, after customers had been forced earlier in the same Play session, step 22 failed "1 walking customer(s) still alive"; it passed in the earlier 14/14 run. Find whether this is test isolation (a step or an earlier hook call leaves a customer walking, or step 22 does not wait or reset) or a real leak in the customer director, and fix the cause, not the symptom. Accept:
+18a6. [x] **CM2-LEAK22 Smoke step 22 LEAK_CHECK: walking customer still alive** (done 2026-11-28, plan `docs/plans/CM2-LEAK22.md`, PROGRESS "CM2-LEAK22": cause test isolation, 71/72 left customers unpaused; runner pauseGuard; headless 787/787; smoke only={71,72,73} 16/16 twice; full 74/74) (planner 2026-11-27, CM2-SUPC (e) FAIL) · L (cause unknown; `planner-high`) · Depends: none. Goal: in a run with only {"71","72","73"} plus smoke, after customers had been forced earlier in the same Play session, step 22 failed "1 walking customer(s) still alive"; it passed in the earlier 14/14 run. Find whether this is test isolation (a step or an earlier hook call leaves a customer walking, or step 22 does not wait or reset) or a real leak in the customer director, and fix the cause, not the symptom. Accept:
     - (a) PROGRESS.md names the cause with evidence (which customer, who spawned it, why it was still walking).
     - (b) Real leak: a headless test reproduces it and passes after the fix. Isolation: the steps that force customers clean up (or step 22 resets them by the same path the director uses) and a headless or smoke-runner test covers it; step 22 still fails on a real leak.
     - (c) Studio: two smoke runs in a row in one Play session with `only={"71","72","73"}` both PASS step 22 (the first after forcing customers through the hook as in CM2-SUPC); `runPlaytest {mode="full"}` PASS.
