@@ -74,6 +74,7 @@ for name, path in pairs({
 	SaveSlotShared = "src/server/Services/SaveSlotShared.lua",
 	SaveSlotTeam = "src/server/Services/SaveSlotTeam.lua",
 	StaffNpcService = "src/server/Services/StaffNpcService.lua",
+	StudioTestService = "src/server/Services/StudioTestService.lua",
 }) do
 	child(services, name, path)
 end
@@ -151,8 +152,40 @@ function game:GetService(name: string): Node
 	if name == "DataStoreService" then
 		return { Name = "DataStoreService" } :: Node
 	end
+	if name == "Players" then
+		return {
+			Name = "Players",
+			GetPlayerByUserId = function(): nil
+				return nil
+			end,
+		} :: Node
+	end
+	if name == "HttpService" then
+		local guids = 0
+		return {
+			Name = "HttpService",
+			GenerateGUID = function(): string
+				guids += 1
+				return "guid-" .. guids
+			end,
+		} :: Node
+	end
+	if name == "RunService" then
+		return { Name = "RunService" } :: Node
+	end
 	error("headless runner does not expose " .. name)
 end
+
+-- Instance.new("BindableFunction") only for StudioTestService.install: Invoke calls OnInvoke.
+local instanceStub = {
+	new = function(): any
+		local object: any = {}
+		function object:Invoke(...)
+			return self.OnInvoke(...)
+		end
+		return object
+	end,
+}
 
 local loaded: { [Node]: unknown } = {}
 local function loadModule(module: Node): unknown
@@ -162,7 +195,13 @@ local function loadModule(module: Node): unknown
 	assert(module.Path ~= nil, string.format("%s is not a module", module.Name))
 	local chunk, loadError = loadstring(fs.readFile(module.Path), "@" .. module.Path)
 	assert(chunk ~= nil, loadError)
-	setfenv(chunk, setmetatable({ game = game, require = loadModule, script = module }, { __index = getfenv() }))
+	setfenv(
+		chunk,
+		setmetatable(
+			{ game = game, require = loadModule, script = module, Instance = instanceStub },
+			{ __index = getfenv() }
+		)
+	)
 	local value = chunk()
 	loaded[module] = value
 	return value
