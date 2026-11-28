@@ -4,6 +4,7 @@
 -- event clock set by `eventNow` (the business clock is untouched) and the save's purchases
 -- cleared by `eventReset`; price, limit and decor come from EventConfig on the server.
 -- Step details:
+-- Customers stay paused after the step: 02 pauses them for the run, 23 CLEANUP unpauses them (CM2-LEAK22).
 -- CM2-45: `72 EVENT_SHOP` (needs 03): (1) customers paused, purchases cleared, Nov 28 12:00 UTC:
 -- `EventId` "", `EventEndsIn` 0, summary `event` nil, Event.Buy `EventClosed` with cash
 -- unchanged. (2) Nov 29 12:00: `EventId` "Advent1", `EventEndsIn` 561600; the summary has 4
@@ -179,7 +180,6 @@ return function(ctx: any)
 	addStep("72", "EVENT_SHOP", { "03" }, function()
 		local ok, result = pcall(body)
 		pcall(call, "eventNow", { clear = true })
-		pcall(call, "pauseCustomers", false)
 		if not ok then
 			error(result, 0)
 		end

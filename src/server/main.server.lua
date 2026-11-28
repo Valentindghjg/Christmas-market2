@@ -1296,6 +1296,9 @@ if RunService:IsStudio() then
 			setCustomersPaused = function(paused: boolean)
 				customersPaused = paused
 			end,
+			customersPaused = function(): boolean
+				return customersPaused
+			end,
 		})
 	else
 		warn("[ChristmasMarket2] StudioTestService missing; StudioTestHook not installed")

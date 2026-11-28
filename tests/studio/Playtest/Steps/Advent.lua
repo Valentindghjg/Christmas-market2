@@ -4,6 +4,7 @@
 -- the calendar's time set by `adventNow` (the business clock is untouched) and the opened doors
 -- set by `adventSet`; every reward comes from GameConfig.Advent on the server.
 -- Step details:
+-- Customers stay paused after the step: 02 pauses them for the run, 23 CLEANUP unpauses them (CM2-LEAK22).
 -- CM2-A1: `71 ADVENT_CALENDAR` (needs 03): (1) customers paused, the mask cleared, Dec 3 12:00
 -- UTC: `AdventPhase` Open, `AdventToday` 3, `AdventOpened` 0, `AdventClaimable` 3. (2) door 4 is
 -- `DoorLocked` with cash unchanged; doors 1-3 pay exactly +$1250 and +100 reputation;
@@ -168,7 +169,6 @@ return function(ctx: any)
 		local ok, result = pcall(body)
 		pcall(call, "adventNow", { clear = true })
 		pcall(call, "adventSet", { userId = R.userId, clear = true })
-		pcall(call, "pauseCustomers", false)
 		if not ok then
 			error(result, 0)
 		end

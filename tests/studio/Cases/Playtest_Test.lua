@@ -136,4 +136,58 @@ return function(t)
 		expect.equal((RunPlaytest.parseOptions({ mode = "full", holdSeconds = 61 })), nil)
 		expect.equal((RunPlaytest.parseOptions({ mode = "other" })), nil)
 	end)
+
+	t.test("pauseGuard skips soak, CLEANUP and steps before 02", function()
+		local reads = 0
+		local function readPaused()
+			reads += 1
+			return false
+		end
+		expect.equal(RunPlaytest.pauseGuard("soak", "SOAK_FAST", true, readPaused), nil)
+		expect.equal(RunPlaytest.pauseGuard("full", "CLEANUP", true, readPaused), nil)
+		expect.equal(RunPlaytest.pauseGuard("smoke", "ACTIVE_SAVE", false, readPaused), nil)
+		expect.equal(reads, 0)
+	end)
+
+	t.test("pauseGuard fails a step that leaves customers unpaused", function()
+		local reads = 0
+		local value: any = false
+		local function readPaused()
+			reads += 1
+			return value
+		end
+		expect.equal(
+			RunPlaytest.pauseGuard("smoke", "EVENT_SHOP", true, readPaused),
+			"customers left unpaused after the step (02 pauses them until 23 CLEANUP)"
+		)
+		expect.equal(reads, 1)
+		value = true
+		expect.equal(RunPlaytest.pauseGuard("smoke", "EVENT_SHOP", true, readPaused), nil)
+		expect.equal(reads, 2)
+		value = nil
+		expect.equal(RunPlaytest.pauseGuard("smoke", "EVENT_SHOP", true, readPaused), "customersPaused query failed")
+		expect.equal(reads, 3)
+	end)
+
+	t.test("describeVisits names each live customer", function()
+		expect.equal(RunPlaytest.describeVisits({}), "none")
+		local function visit(n: number)
+			return {
+				visitId = "visit:" .. n,
+				plotId = "Plot_02",
+				state = "WalkingIn",
+				customerNumber = 3,
+				history = { "Arriving", "WalkingIn" },
+			}
+		end
+		expect.equal(RunPlaytest.describeVisits({ visit(41) }), "visit:41 Plot_02 WalkingIn #3 (Arriving>WalkingIn)")
+		local many = {}
+		for index = 1, 7 do
+			many[index] = visit(index)
+		end
+		local text = RunPlaytest.describeVisits(many)
+		expect.truthy(string.find(text, " +2 more", 1, true))
+		expect.truthy(string.find(text, "visit:5", 1, true))
+		expect.falsy(string.find(text, "visit:6", 1, true))
+	end)
 end

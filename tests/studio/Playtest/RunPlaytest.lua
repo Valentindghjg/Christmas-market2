@@ -11,13 +11,14 @@
 -- checkout 41 (its withNpcCleanup also expires the open order B, so 22 stays clean); leak
 -- check 22; cleanup 23. Left out: 06, 11, 12 (checks only). `only` adds those steps and,
 -- transitively, their needs; a need outside the run counts as met.
+-- Between 02 and 23 customers stay paused; after every other step the runner checks it (CM2-LEAK22).
 -- holdSeconds (0..60, default 0) pauses step 41 at the checkout queue for screen captures.
 -- It drives the real player and a shadow company through StudioTestHook and prints
 -- PASS/FAIL/SKIP per step prefixed with [PLAYTEST]. The runner installs helpers from
 -- Playtest/Support and steps from Playtest/Steps (CM2-RF); none of them is under Cases, so the
 -- unit-test runners never execute them. Nothing touches a game service at load time.
 local RunPlaytest = {}
-RunPlaytest.BUILD = "cm2-14wr"
+RunPlaytest.BUILD = "cm2-leak22"
 RunPlaytest.SMOKE = { "02a", "02", "03", "04", "05", "07", "08", "09", "13", "19", "41", "22", "23" }
 
 local PREFIX = "[PLAYTEST]"
@@ -175,6 +176,49 @@ function RunPlaytest.needMet(selected: { [string]: boolean }, outcome: { [string
 	return selected[need] ~= true or outcome[need] == "PASS"
 end
 
+-- Customers stay paused from 02 to 23 CLEANUP (CM2-LEAK22). Returns an error text or nil.
+function RunPlaytest.pauseGuard(
+	mode: string,
+	stepName: string,
+	pausedSinceJoin: boolean,
+	readPaused: () -> any
+): string?
+	if mode == "soak" or stepName == "CLEANUP" or not pausedSinceJoin then
+		return nil
+	end
+	local paused = readPaused()
+	if paused == true then
+		return nil
+	elseif paused == false then
+		return "customers left unpaused after the step (02 pauses them until 23 CLEANUP)"
+	end
+	return "customersPaused query failed"
+end
+
+-- Names the first 5 live customers of an ordered npcSnapshot().visits array.
+function RunPlaytest.describeVisits(visits: { any }): string
+	if #visits == 0 then
+		return "none"
+	end
+	local parts = {}
+	for index = 1, math.min(#visits, 5) do
+		local v = visits[index]
+		parts[index] = string.format(
+			"%s %s %s #%s (%s)",
+			tostring(v.visitId),
+			tostring(v.plotId),
+			tostring(v.state),
+			tostring(v.customerNumber),
+			table.concat(v.history or {}, ">")
+		)
+	end
+	local text = table.concat(parts, "; ")
+	if #visits > 5 then
+		text ..= string.format(" +%d more", #visits - 5)
+	end
+	return text
+end
+
 -- Requires one installer from Playtest/Support or Playtest/Steps (CM2-RF).
 local function installer(group: string, name: string): (any) -> ()
 	local folder = (script.Parent :: Instance):FindFirstChild(group)
@@ -211,6 +255,7 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 	ctx.results = results
 	ctx.outcome = outcome
 	ctx.addStep = addStep
+	ctx.describeVisits = RunPlaytest.describeVisits
 	-- Phase marker: steps call ctx.phase(text); a hung run shows where in ServerStorage.PlaytestPhase.
 	local currentId = ""
 	ctx.phase = function(text: string)
@@ -336,10 +381,31 @@ local function execute(hook: any, mode: string, minutes: number, holdSeconds: nu
 				task.wait(0.5)
 			end
 			if done then
-				if ok then
+				local pauseError = RunPlaytest.pauseGuard(mode, step.name, outcome["02"] == "PASS", function()
+					local called, response = pcall(function()
+						return hook:Invoke("customersPaused", nil)
+					end)
+					if called and type(response) == "table" and response.ok == true then
+						return response.data
+					end
+					return nil
+				end)
+				if pauseError ~= nil then
+					pcall(function()
+						return hook:Invoke("pauseCustomers", true)
+					end)
+				end
+				if ok and pauseError == nil then
 					record(step.id, step.name, "PASS", if type(detail) == "string" then detail else "")
+				elseif ok then
+					record(step.id, step.name, "FAIL", pauseError :: string)
 				else
-					record(step.id, step.name, "FAIL", tostring(detail))
+					record(
+						step.id,
+						step.name,
+						"FAIL",
+						tostring(detail) .. (if pauseError then " | " .. pauseError else "")
+					)
 				end
 			else
 				emit("TRACE " .. step.id .. " " .. debug.traceback(thread))

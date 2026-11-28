@@ -337,8 +337,8 @@ return function(ctx: any)
 		)
 		check(not carriedTreeOnAnyCharacter(), "a CarriedTree is left on a character")
 		-- CM2-N1: no walking customer and none of its objects is left.
-		local npcCount = npcSnapshot().count
-		check(npcCount == 0, npcCount .. " walking customer(s) still alive")
+		local npc = npcSnapshot()
+		check(npc.count == 0, npc.count .. " walking customer(s) still alive: " .. ctx.describeVisits(npc.visits))
 		local npcLeft = npcObjectsLeft({ R.plotId, S.plotId })
 		check(npcLeft == nil, tostring(npcLeft))
 		local stray = strayHumanoids()

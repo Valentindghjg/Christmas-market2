@@ -670,6 +670,19 @@ return function(t)
 		expect.equal(snapshot.visits[2].customerNumber, 1)
 	end)
 
+	t.test("a paused arrival pass never spawns, even with an override", function()
+		local h = harness()
+		addCompany(h, A, PLOT_1, 2)
+		h.npc:setArrivalOverrideForTest(A, 8)
+		for _ = 1, 3 do
+			expect.equal(h.npc:arrivalPass(true), 0)
+		end
+		expect.equal(h.npc:snapshot().count, 0)
+		h.npc:resetForTest(nil)
+		expect.equal(h.npc:arrivalPass(false), 1)
+		expect.equal(h.npc:snapshot().visits[1].customerNumber, 1)
+	end)
+
 	t.test("resetForTest removes a company's visits at once", function()
 		local h = harness()
 		local stateA = addCompany(h, A, PLOT_1, 2)

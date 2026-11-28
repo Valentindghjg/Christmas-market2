@@ -108,6 +108,11 @@ function StudioTestService.install(context)
 		return success(arg)
 	end
 
+	-- The current pause state of the live arrival loop (CM2-LEAK22).
+	function commands.customersPaused()
+		return success(context.customersPaused() == true)
+	end
+
 	function commands.clock()
 		return success(context.businessClock())
 	end
