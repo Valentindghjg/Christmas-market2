@@ -72,3 +72,9 @@ Defects: D2 CONFIRMED (blocking): C1 `Remotes.Notify:FireServer(1)` x300 prints 
 - Moved: colliders, attachments, measured sizes and triangle tables, budgets, imports, measured clearances, sums, defect lines. Kept: world frame, keep-out boxes, landmarks, zones, `Dress_`/`Infra_` placement lists, fence/gate, 10W/12W/13W/14W wiring, Map art W x L lines.
 - Citations resolve: `MapLayout.lua` "Map layout (CM2-10)", `LotArt.lua` CM2-GATE, `cm2_kit.py` "Asset pipeline" (all headings kept); no test or tool reads the doc text.
 - Checks: stylua PASS; selene 0 warnings, 0 errors; headless 796 run, 796 passed (unchanged); rojo build PASS. Studio: not run (docs only).
+
+## 2026-11-28 CM2-SLIM run 6 repo hygiene (tier S, standing plan `docs/plans/CM2-SLIM.md`; commits f6e2bfc, dff3698)
+- Moved `docs/plans/CM2-47.md` to `docs/archive/plans/` (f6e2bfc, rename only); links updated in CLAUDE_BACKLOG, DECISION_LOG, PROGRESS and one comment in `tests/studio/Playtest/Steps/Exploit.lua`. Backlog lines 23, 23a and SLIM10 cut to one-liners, full text appended to `docs/archive/BACKLOG_DONE_2026-11-28.md` (dff3698).
+- Sizes before -> after: backlog 68.7 -> 66.0 KB (still over 60 KB; the rest is open tasks), DECISION_LOG 62.7 KB unchanged (nothing movable without a planner call), PROGRESS 16.0 KB, MODEL_INTEGRATION 29.5 KB (CM2-SLIM10).
+- Open item for the planner: backlog and DECISION_LOG are over 60 KB and need a planner pass (CM2-BLIDX already covers the backlog index).
+- Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings; headless 796 run, 796 passed; rojo default build PASS. Studio: not needed (docs and one comment).
