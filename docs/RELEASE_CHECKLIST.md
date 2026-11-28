@@ -14,7 +14,7 @@ Stand: 2026-11-28, Commit `96b831d` (Release-Kandidat, CM2-50a prüft denselben 
 - [x] Studio-Speicher getrennt vom Live-Speicher. Leaderboards `_Studio`-Suffix (`GameConfig.lua:553-554`, `main.server.lua:315`), Spielort-Karte `_Studio` (`main.server.lua:157-159`).
 - [x] Nur englische Texte, schlüsselbasiert (`docs/PRODUCT_SPEC.md:12`).
 - [x] Keine Fremd-UI-Pakete im Spiel (`docs/PRODUCT_SPEC.md:61`).
-- [x] Studio-Gesamtlauf auf dem Release-Kandidaten `ce265b6` (CM2-RC2; `debc1cb` ist überholt). `runPlaytest {mode="full"}`: 80/80 PASS in 919 s, Soak 8/8 PASS, Unit-Runner 814/814, headless 815/815 (`docs/PROGRESS.md`, Eintrag CM2-RC2; Go/No-Go-Seite: Eintrag CM2-50a).
+- [x] Studio-Gesamtlauf auf dem Release-Kandidaten `f181bb9` (CM2-RC3; `ce265b6` und `debc1cb` sind überholt, nicht veröffentlicht). `runPlaytest {mode="full"}`: 80/80 PASS in 939 s, Soak 8/8 PASS (690 s), Unit-Runner 833/833, headless 834/834 (`docs/PROGRESS.md`, Eintrag CM2-RC3; Go/No-Go-Seite: Eintrag CM2-50a).
 - [x] Offene Spielpunkte der Startliste (PC-12 Telefon-Tutorial, PC-14, PC-15; Backlog Kopf, „Open PC entries“): als „OUT of 1st Advent launch“ in der Go/No-Go-Seite aufgeführt (`docs/PROGRESS.md`, Eintrag CM2-50a, Stand `debc1cb`).
 
 ## B. Owner-Schritte (alle offen)
@@ -59,7 +59,7 @@ Studio schreibt die Ranglisten und die Karte mit Suffix `_Studio`; die vier ande
 - [ ] 6. Server-Anzeige und Gruppen-Link: Owner-Entscheidung.
 
 ### B6. Von privat zu öffentlich
-- [ ] 1. Die Veröffentlichungsdatei kommt **nur** aus dem Release-Build des Release-Kandidaten `ce265b6` (`debc1cb` ist überholt), gebaut in einem eigenen Worktree (nicht `git checkout` im Arbeitsordner, den die Agenten benutzen): `git worktree add ../cm2-release ce265b6`, `cd ../cm2-release`, `rojo build release.project.json --output release.rbxlx`, dann `lune run tools/art/art.luau verify release.rbxlx` (muss `0 pending, 0 failed` zeigen). Nie aus `default.project.json` veröffentlichen. Den Worktree nach dem Veröffentlichen mit `git worktree remove ../cm2-release` entfernen.
+- [ ] 1. Die Veröffentlichungsdatei kommt **nur** aus dem Release-Build des Release-Kandidaten `f181bb9` (`ce265b6` und `debc1cb` sind überholt), gebaut in einem eigenen Worktree (nicht `git checkout` im Arbeitsordner, den die Agenten benutzen): `git worktree add ../cm2-release f181bb9` (existiert `../cm2-release` schon: `git -C ../cm2-release checkout --detach f181bb9`), `cd ../cm2-release`, `rojo build release.project.json --output release.rbxlx`, dann `lune run tools/art/art.luau verify release.rbxlx` (muss `0 pending, 0 failed` zeigen). Nie aus `default.project.json` veröffentlichen. Den Worktree nach dem Veröffentlichen mit `git worktree remove ../cm2-release` entfernen.
 - [ ] 2. Die Datei in Studio öffnen → File → **Publish to Roblox** in den vorgesehenen Place; Erlebnis bleibt **Privat**.
 - [ ] 3. Als Owner im privaten Build spielen: Speichern, Neu-Beitreten, ein Testkauf, zweiter Spieler (Freundestest `docs/FRIENDS_TEST.md`, optional).
 - [ ] 4. Go/No-Go lesen (CM2-50a), dann Startdatum wählen (2026-11-29 mit reduziertem Umfang oder 2026-12-06).
