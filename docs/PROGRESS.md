@@ -37,3 +37,46 @@ Archived 2026-11-28 (entries CM2-10I batches B1-B3, CM2-10IW, CM2-SLIM run 5, CM
 - Review: prices, names and the 12 "ja" rows match `ShopConfig.lua:65-93` and `Localization.lua`; sampled 25 file:line references (main.server.lua, MonetizationService, GameConfig, store names, release.project.json:3) all hit; one wrong reference fixed (Max Players now cites `PRODUCT_SPEC.md:14`). No username, UserId or email in the file.
 - Left open for CM2-50a: Studio full run on the release candidate and the Go/No-Go page, the open launch items (PC-12, PC-14, PC-15).
 - Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings; headless 796 run, 796 passed; rojo default build PASS. Studio: not needed (docs only).
+
+## 2026-11-28 CM2-50a Go/No-Go (25, tier S, no plan) — Release-Kandidat `debc1cb`
+**Seite für den Owner (Deutsch).** Alle Checks und der Studio-Gesamtlauf liefen auf `debc1cb`.
+
+**Belege**
+- stylua --check PASS; selene 0 Fehler, 0 Warnungen; headless 796 run, 796 passed, 0 failed; rojo build default und release PASS; `art.luau verify release.rbxlx`: 61 integrated, 0 pending, 0 failed.
+- Studio (playtester, `debc1cb`, Rojo-Baum bestätigt): Unit-Runner 795/795 (headless hat einen Inline-Test mehr); `[PLAYTEST] SUMMARY mode=full steps=78 pass=78 fail=0 skip=0 seconds=870 result=PASS`.
+- Soak nicht neu gelaufen: 8/8 PASS bei `b561241`, min. 58.1 FPS; seither nur die Notify-Änderung `343cd29`.
+- Warnungen im Lauf: MissingArtAsset `Trees/FrostcrownFir/Small` (CM2-SLIM9 angelegt); ContentId 203785492 (alt, harmlos).
+
+**Was funktioniert (Startliste, Beleg im Backlog)**
+- Kernschleife Gate A (Zeilen 1-13d, 14a, 15): Kunden laufen, manuelles Kassieren, Personal, Speichern mit Duo/Trio/Quad und Einladungscode, Robux-Shop, Touch-UI. Studio 78/78.
+- Progression (16 CM2-G9), Tag/Nacht, Tageszähler und Ranglisten (17 CM2-G12), Quests und Tagesbelohnungen (18): fertig, im Gesamtlauf grün.
+- Lieferanten-Warenkorb (18a CM2-SUP, `3c2fdaf`, Schritt 70): Server und Desktop grün.
+- Adventskalender (19 CM2-A1, Schema 22, Schritt 71) und 1.-Advent-Event (20 CM2-45, Schema 23, Schritt 72): Server und Desktop grün.
+- Englische Texte (22 CM2-43, `be0adc9`, `510a5c7`): Code und Desktop grün.
+- UI-Neugestaltung: CM2-UI1, UI2, UI3 Teil 1, UI3D, UI3M (`d708ccd`) fertig; Desktop-H4b 0 Fehler.
+- Karte und Infrastruktur: CM2-10D/10DW (110 Teile), CM2-10I/10IW (`04b30d7`; 489 Modelle, 59 Nachtlichter), Release-Build mit 61 Kunstmodellen.
+- QA und Sicherheit: CM2-47 (Remote-Tabelle, Idempotenz der Käufe, `ProcessReceipt`), D2 `Notify` behoben (`343cd29`); CM2-48 Release-Checkliste.
+
+**Bekannte Probleme**
+- Der Play-Screenshot ist schwarz: keine visuellen Prüfungen (Optik, Lesbarkeit) in diesem Lauf; nur Zahlen und Probes.
+- CM2-SLIM9: Warnung MissingArtAsset `FrostcrownFir/Small` (nur Warnung).
+- CM2-47D1 (Spielpass-Besitz vor dem Gewähren bestätigen): optionale Härtung, kein Exploit, nach dem Start.
+- Telefon-/Tablet-Werte (Tutorial-Zeit, Layouts, deutsche Sprache) sind nicht gemessen.
+
+**OUT of 1st Advent launch (nicht erledigt)**
+- CM2-49T (PC-12): Tutorial-Zeit auf dem Telefon; Zeile 14 offen, damit Gate A nicht geschlossen.
+- CM2-SUPP (PC-14): Telefon- und Deutsch-Messwerte; Zeilen 18a, 18a1, 19, 20, 22 bleiben offen (Desktop grün).
+- CM2-UI3H (PC-15): Telefon-HUD <= 20 %; 22a3 offen. CM2-UIP (PC-14): 22a4 offen, daher 22a CM2-UI offen.
+- Weiter nicht in der Startliste: CM2-G18 Audio, CM2-13D, CM2-44, CM2-ARTREF (Gate C); CM2-SPLIT-a/b/c, CM2-UI-TPL (nach dem Start); Freundestest (Zeile 15 optional).
+
+**Owner-Schritte vor dem Veröffentlichen** (`docs/RELEASE_CHECKLIST.md` Teil B, alle offen)
+- B1 Place: Max Players 12, "Studio Access to API Services" an. B2 DataStore-Namen nicht umbenennen.
+- B3 Die 12 Produkte "ja" im Creator Hub gegen Teil C prüfen; die 15 "später" nicht anlegen. B4 Gruppen-ID (optional).
+- B5 Fragebogen/Altersfreigabe, Beschreibung, Symbol und Thumbnails, Geräte aktivieren, Auto-Übersetzung.
+- B6 Release-Datei aus `release.project.json`, in Studio "Publish to Roblox" (privat), selbst testen, dann Privacy auf Öffentlich.
+- Teil A: zwei Punkte hier erledigt (Gesamtlauf, Startliste-Stand); der Rest ist mit Beleg abgehakt.
+
+**Entscheidung des Owners**
+- **2026-11-29, reduzierter Umfang:** Stand `debc1cb` ist technisch grün (796/796, Studio 78/78). Fehlt: Telefon-Tutorialzeit (Gate A Zeile 14), Telefon-/Deutsch-Messungen, Telefon-HUD-Entscheidung. Alle Owner-Schritte B1-B6 müssten heute noch erledigt werden. Backlog-Regel: nur wenn diese Seite vor dem 29. fertig ist.
+- **2026-12-06:** Zeit für PC-12, PC-14, PC-15 und die Folgeaufgaben (49T, SUPP, UI3H, UIP, ggf. Fixaufgaben bei FAIL), danach Gate C (Audio, 13D, 44, ARTREF) und die nach dem 28. gestrichenen Punkte.
+- Review (CM2-50a): in/out lists match the backlog launch list (1-3, cut line, Deferred); SHAs exist; no save key, user ID or name in the entry (grep). Checks (reviewer): stylua PASS; selene 0/0; headless 796/796; rojo default build PASS. Studio evidence is the playtester run on `debc1cb` above.

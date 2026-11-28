@@ -14,8 +14,8 @@ Stand: 2026-11-28, Commit `96b831d` (Release-Kandidat, CM2-50a prüft denselben 
 - [x] Studio-Speicher getrennt vom Live-Speicher. Leaderboards `_Studio`-Suffix (`GameConfig.lua:553-554`, `main.server.lua:315`), Spielort-Karte `_Studio` (`main.server.lua:157-159`).
 - [x] Nur englische Texte, schlüsselbasiert (`docs/PRODUCT_SPEC.md:12`).
 - [x] Keine Fremd-UI-Pakete im Spiel (`docs/PRODUCT_SPEC.md:61`).
-- [ ] Studio-Gesamtlauf auf dem Release-Kandidaten und Go/No-Go-Seite: gehört zu 25 CM2-50a (`docs/CLAUDE_BACKLOG.md`, Zeile 25), nicht zu CM2-48.
-- [ ] Offene Spielpunkte der Startliste (PC-12 Telefon-Tutorial, PC-14, PC-15; Backlog Kopf, „Open PC entries“): CM2-50a führt sie als „in“ oder „out of 1st Advent launch“ auf.
+- [x] Studio-Gesamtlauf auf dem Release-Kandidaten und Go/No-Go-Seite (25 CM2-50a). `runPlaytest {mode="full"}` auf `debc1cb`: 78/78 PASS in 870 s, Unit-Runner 795/795 (`docs/PROGRESS.md`, Eintrag CM2-50a).
+- [x] Offene Spielpunkte der Startliste (PC-12 Telefon-Tutorial, PC-14, PC-15; Backlog Kopf, „Open PC entries“): als „OUT of 1st Advent launch“ in der Go/No-Go-Seite aufgeführt (`docs/PROGRESS.md`, Eintrag CM2-50a, Stand `debc1cb`).
 
 ## B. Owner-Schritte (alle offen)
 
