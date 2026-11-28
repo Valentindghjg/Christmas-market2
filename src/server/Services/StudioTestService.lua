@@ -197,7 +197,14 @@ function StudioTestService.install(context)
 		-- The same call the ProximityPrompt Triggered handlers make.
 		if arg.kind == "checkout" then
 			-- CM2-N2: the counter prompt of the player's plot.
+			-- CM2-47: an optional plotId targets another plot's counter (cross-plot exploit probe).
 			local plotId = player:GetAttribute("PlotId")
+			if arg.plotId ~= nil then
+				if type(arg.plotId) ~= "string" then
+					return failure("BadArgument")
+				end
+				plotId = arg.plotId
+			end
 			if type(plotId) ~= "string" then
 				return failure("NoPlot")
 			end
@@ -737,6 +744,28 @@ function StudioTestService.install(context)
 			action = arg.action,
 			payload = arg.payload,
 		})
+	end
+
+	-- CM2-47: a raw request, unchanged and possibly nil, into the real remote handler of a real
+	-- player (exploit probes).
+	function commands.rawAction(arg)
+		if
+			type(arg) ~= "table"
+			or type(arg.userId) ~= "number"
+			or (arg.remote ~= "Business" and arg.remote ~= "Save" and arg.remote ~= "Shop")
+		then
+			return failure("BadArgument")
+		end
+		local player = realPlayer(arg.userId)
+		if not player then
+			return failure("NoPlayer")
+		end
+		if arg.remote == "Business" then
+			return context.handleBusinessAction(player, arg.request)
+		elseif arg.remote == "Save" then
+			return context.handleSaveAction(player, arg.request)
+		end
+		return monetization:handle(player.UserId, arg.request)
 	end
 
 	function commands.shopPrompts()

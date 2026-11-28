@@ -1,5 +1,7 @@
 --!strict
--- Playtest soak steps 01a, 01, 02, 03, 03a, 04 and 05 (soak mode).
+-- Playtest soak steps 01a, 01, 02, 03, 03a, 03b, 04 and 05 (soak mode).
+-- CM2-47: `03b HQ2_MIRROR` puts HQ level 2 on a free north and a free south plot and compares
+-- their art shape, lot-frame position and road facing, then restores both levels.
 -- Installed by RunPlaytest.execute (CM2-RF).
 -- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
 -- `{ mode = "soak", minutes = 10 }` runs the literal real-time soak (7 steps: `01a ACTIVE_SAVE`
@@ -369,6 +371,135 @@ return function(ctx: any)
 		check(result.snaps == 0, "load NPCs snapped | " .. detail)
 		check(result.left == 0, "load NPCs left over | " .. detail)
 		return detail
+	end)
+
+	-- CM2-47: HQ level 2 on one mirrored (north, Plot_04..06) and one road-side (south,
+	-- Plot_01..03) plot that belong to neither R nor S has the same art shape, sits at the lot
+	-- frame centre and faces the road (replaces the blocked road capture). Both levels are
+	-- restored afterwards.
+	addStep("03b", "HQ2_MIRROR", { "01" }, function()
+		local WorldService = require(ctx.Services:WaitForChild("WorldService")) :: any
+		local Shared = ctx.ReplicatedStorage:WaitForChild("Shared")
+		local LotArt = require(Shared:WaitForChild("LotArt")) :: any
+		local Stocking = require(Shared:WaitForChild("Stocking")) :: any
+
+		local function firstFree(ids: { string }): string?
+			for _, plotId in ids do
+				if plotId ~= R.plotId and plotId ~= S.plotId then
+					return plotId
+				end
+			end
+			return nil
+		end
+
+		local northId = firstFree({ "Plot_04", "Plot_05", "Plot_06" })
+		local southId = firstFree({ "Plot_01", "Plot_02", "Plot_03" })
+		check(northId ~= nil, "no free plot among Plot_04..06")
+		check(southId ~= nil, "no free plot among Plot_01..03")
+		local ids = { northId :: string, southId :: string }
+		local plots: { Model } = {}
+		local levels: { number } = {}
+		for index, plotId in ids do
+			local plot = plotFolder(plotId)
+			check(plot ~= nil and plot:IsA("Model") and plot.PrimaryPart ~= nil, plotId .. " is missing")
+			plots[index] = plot :: Model
+			local level = (plot :: Instance):GetAttribute("HqLevel")
+			levels[index] = if type(level) == "number" then level else 1
+		end
+
+		local partCount, worst = 0, 0
+		local function measure()
+			for _, plotId in ids do
+				check(WorldService.applyHQVisual(plotId, 2) == true, "applyHQVisual refused " .. plotId)
+			end
+			local pivots: { CFrame } = {}
+			local parts: { { BasePart } } = {}
+			for index, plotId in ids do
+				local plot = plots[index]
+				local c = (plot.PrimaryPart :: BasePart).Position
+				local facing = Stocking.facing(c.Z)
+				local hq = plot:FindFirstChild("StarterSalesTent")
+				check(hq ~= nil and hq:IsA("Model"), plotId .. " StarterSalesTent is missing")
+				local tent = hq :: Model
+				check(
+					tent:GetAttribute("HqLevel") == 2,
+					plotId .. " HqLevel is " .. tostring(tent:GetAttribute("HqLevel"))
+				)
+				check(
+					tent:GetAttribute("HqArtMode") == "Art",
+					plotId .. " HqArtMode is " .. tostring(tent:GetAttribute("HqArtMode"))
+				)
+				local pivot = tent:GetPivot()
+				local cx, cz = LotArt.hqCentre(2)
+				local lx, lz = pivot.Position.X - c.X, (pivot.Position.Z - c.Z) * facing
+				check(
+					math.abs(lx - cx) <= 0.1 and math.abs(lz - cz) <= 0.1,
+					string.format("%s HQ2 at lot (%.2f, %.2f), expected (%.2f, %.2f)", plotId, lx, lz, cx, cz)
+				)
+				check(
+					pivot.LookVector.Z * facing >= 0.999,
+					string.format("%s HQ2 does not face the road (look z %.3f)", plotId, pivot.LookVector.Z)
+				)
+				local counter = plot:FindFirstChild("CheckoutCounter")
+				check(counter ~= nil and counter:IsA("Model"), plotId .. " CheckoutCounter is missing")
+				check(
+					(counter :: Model):GetPivot().LookVector.Z * facing >= 0.999,
+					plotId .. " CheckoutCounter does not face the road"
+				)
+				pivots[index] = pivot
+				local list: { BasePart } = {}
+				for _, descendant in tent:GetDescendants() do
+					if descendant:IsA("BasePart") then
+						table.insert(list, descendant)
+					end
+				end
+				parts[index] = list
+			end
+			check(
+				#parts[1] == #parts[2],
+				string.format("HQ2 part counts differ: north %d, south %d", #parts[1], #parts[2])
+			)
+			partCount = #parts[1]
+			for position = 1, partCount do
+				local north, south = parts[1][position], parts[2][position]
+				check(
+					north.Name == south.Name,
+					string.format(
+						"HQ2 part %d is %s on the north plot, %s on the south plot",
+						position,
+						north.Name,
+						south.Name
+					)
+				)
+				local a = pivots[1]:ToObjectSpace(north.CFrame)
+				local b = pivots[2]:ToObjectSpace(south.CFrame)
+				local offset = (a.Position - b.Position).Magnitude
+				worst = math.max(worst, offset)
+				check(
+					offset <= 0.05 and a.LookVector:Dot(b.LookVector) >= 0.999 and a.UpVector:Dot(b.UpVector) >= 0.999,
+					string.format(
+						"HQ2 part %d (%s) differs between the plots (%.3f studs)",
+						position,
+						north.Name,
+						offset
+					)
+				)
+			end
+		end
+
+		local measured, measureError = pcall(measure)
+		local restoreError: string? = nil
+		for index, plotId in ids do
+			local restored, applied = pcall(WorldService.applyHQVisual, plotId, levels[index])
+			if (not restored or applied ~= true) and restoreError == nil then
+				restoreError = "restoring HQ level of " .. plotId .. " failed"
+			end
+		end
+		if not measured then
+			error(measureError, 0)
+		end
+		check(restoreError == nil, restoreError or "")
+		return string.format("north %s south %s parts %d worst %.3f", ids[1], ids[2], partCount, worst)
 	end)
 
 	addStep("04", "LEAK_CHECK", { "01" }, function()

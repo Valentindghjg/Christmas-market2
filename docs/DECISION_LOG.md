@@ -405,3 +405,9 @@ Owner (chat, verbatim): "okay dann kommen die wichtigsten zuerst damit am ersten
 - Sign text swapped against the contract: the art's top arrow points model -X (west on the north sign), so "Village Square on N" of the contract becomes "Bridge" on top of the north board and "Village Square" on top of the south board; the speed signs read "20" (`mapSignSpeed`, same in en and de).
 - Wires are straight Beams (no sag) parented to the `from` pole, so a pole that streams out takes its beam with it; no Parts for wires.
 - Night lights reuse `MapWorld.nightLight` with `DayCycle.LampLight` through `addLampLight` (now via `findAttachment`) for `LIT_PATHS` (LampPost, BusStop, VillageShop); no new light config.
+
+## 2026-11-28 — CM2-47 end-to-end, multiplayer and security QA (planner)
+- Plan: `docs/plans/CM2-47.md`. The exploit pass is the full-mode steps 74–77 (`Steps/Exploit.lua`), which send raw requests into the real handlers through the new hook command `rawAction`, plus the client probe C1 through the real network path. No product, validation, save, money or purchase code changes; defects become their own tickets (remote, money and purchase fixes tier L).
+- "Captured from the road" stays BLOCKED (the Play capture is black); soak `03b HQ2_MIRROR` measures the mirrored HQ instead. The 55 FPS gate is soak `03a`; "nothing left" is soak `04 LEAK_CHECK`.
+- Asserts are `ok == false` plus invariants; error codes go in the detail and are not pinned. A defect is an unexpected `ok`, `InternalError`, a script error or a broken invariant.
+- `prompt` takes an optional `plotId` (a string, else `BadArgument`) for `kind = "checkout"`, so step 75 can trigger another plot's counter. Full mode has 78 steps (BUILD `cm2-47`), soak 8.

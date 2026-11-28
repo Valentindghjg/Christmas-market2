@@ -70,4 +70,16 @@ return function(t)
 		)
 		expect.equal(response.errorCode, "UnexpectedField")
 	end)
+
+	-- CM2-47: rawAction forwards a raw request to a real player's handler; these two refusals
+	-- happen before any handler runs.
+	t.test("rawAction refuses an unknown remote", function()
+		local hook = install()
+		expect.equal(hook:Invoke("rawAction", { userId = SHADOW, remote = "Nope" }).errorCode, "BadArgument")
+	end)
+
+	t.test("rawAction refuses a user without a player", function()
+		local hook = install()
+		expect.equal(hook:Invoke("rawAction", { userId = SHADOW, remote = "Business" }).errorCode, "NoPlayer")
+	end)
 end
