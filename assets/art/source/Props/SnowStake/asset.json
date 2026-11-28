@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/SnowStake",
+	"displayName": "Snow Stake",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 60,
+	"maxMeshParts": 2,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "117684213730789",
+		"sourceSha256": "5f62886c80ece24185a84d7a7369ebfa2d803405c5dfb359fd79ab1bda1aff6d",
+		"uploadedAt": "2026-11-28T09:23:39Z"
+	}
+}

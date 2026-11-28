@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/MailboxCluster",
+	"displayName": "Mailbox Cluster",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 300,
+	"maxMeshParts": 3,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "124624527845254",
+		"sourceSha256": "999ceb8091743b0b5c2636dd4fe3486b25455501f67ec8b91ad11741af9d2d1c",
+		"uploadedAt": "2026-11-28T09:24:32Z"
+	}
+}

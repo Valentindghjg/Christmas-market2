@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/TrashBin",
+	"displayName": "Trash Bin",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 220,
+	"maxMeshParts": 3,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "128926277939603",
+		"sourceSha256": "4bf5c116f03ac27690c67bf749866c1a8c897e44c7e9b33ca2fa4cab1ae30728",
+		"uploadedAt": "2026-11-28T09:24:00Z"
+	}
+}

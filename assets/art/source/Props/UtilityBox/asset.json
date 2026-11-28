@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/UtilityBox",
+	"displayName": "Utility Box",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 160,
+	"maxMeshParts": 3,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "111035178154453",
+		"sourceSha256": "fb47c8883e208d3fe6ea5e59c5f86f795bc4d3c4ecda8ca97d554f6e4fe54007",
+		"uploadedAt": "2026-11-28T09:24:18Z"
+	}
+}

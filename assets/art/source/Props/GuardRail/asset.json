@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/GuardRail",
+	"displayName": "Guard Rail",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 240,
+	"maxMeshParts": 3,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "94196448503042",
+		"sourceSha256": "489f92ed159850306c9b9427a98b0b90235d0dd1b8b569b97b5d1f0d325e2368",
+		"uploadedAt": "2026-11-28T09:24:44Z"
+	}
+}

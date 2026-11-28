@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/FireHydrant",
+	"displayName": "Fire Hydrant",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 200,
+	"maxMeshParts": 3,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "84249182086074",
+		"sourceSha256": "870274cb5f1df2089aaf0f74a72d7c75532be90c898f9a33492867b3e83b7033",
+		"uploadedAt": "2026-11-28T09:23:49Z"
+	}
+}
