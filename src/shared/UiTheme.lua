@@ -210,6 +210,19 @@ UiTheme.Style = {
 UiTheme.Heading = { role = "Title", textSize = UiTheme.TextSize.Title, stroke = 0 }
 -- Desktop rail: px between the rail edge and its buttons, room for the 2 px Border stroke and the hover scale.
 UiTheme.RailInset = 6
+-- CM2-V2-HIDE: the ScreenGuis the "Hide HUD" button disables. Never HudRailUI, TutorialUI,
+-- SavePickerUI, PlotPickerUI, StockingUI or BreakAreaUI.
+UiTheme.HudHideGuis = {
+	"ChristmasMarketUI",
+	"ShopUI",
+	"QuestUI",
+	"AdventUI",
+	"EventUI",
+	"TeamUI",
+	"FinderUI",
+	"MusicUI",
+	"ChristmasMarketNotifications",
+} :: { string }
 
 -- Times in seconds, scales as UIScale values.
 UiTheme.Motion = {

@@ -1063,6 +1063,12 @@ local railFrame: ScrollingFrame? = nil
 local railMetrics: UiTheme.Metrics? = nil
 local railButtons: { TextButton } = {}
 local railHidden = false
+local hudHidden = false
+local HIDE_HUD_BUTTON = "HideHudButton"
+-- Non-rendering parent for the rail buttons that wait while the HUD is hidden (their own
+-- Visible stays as the owner set it).
+local railStash = Instance.new("Folder")
+railStash.Name = "RailStash"
 
 local function applyRail()
 	local frame, m = railFrame, railMetrics
@@ -1071,7 +1077,9 @@ local function applyRail()
 	end
 	local visible: { TextButton } = {}
 	for _, railButton in ipairs(railButtons) do
-		if railButton.Visible then
+		local shown = railButton.Visible and (not hudHidden or railButton.Name == HIDE_HUD_BUTTON)
+		railButton.Parent = if hudHidden and railButton.Name ~= HIDE_HUD_BUTTON then railStash else frame
+		if shown then
 			table.insert(visible, railButton)
 		end
 	end
@@ -1117,7 +1125,7 @@ local function ensureRail(): ScrollingFrame
 end
 
 -- Rail slots: 10 LotManagerButton, 20 Shop, 30 Quests, 40 Advent, 50 SavesButton, 60 TeamButton,
--- 70 FinderButton, 80 MusicButton. Buttons start hidden; the owner of a button shows it.
+-- 70 FinderButton, 80 MusicButton, 90 HideHudButton. Buttons start hidden; the owner of a button shows it.
 -- Phones: buttons that do not fit above the thumbstick go right of row 1 (CM2-UVF13).
 function UiKit.addRailButton(name: string, textKey: string, order: number): TextButton
 	local frame = ensureRail()
@@ -1134,6 +1142,46 @@ end
 function UiKit.setRailHidden(hidden: boolean)
 	railHidden = hidden
 	applyRail()
+end
+
+-- CM2-V2-HIDE: hides every HUD window (UiTheme.HudHideGuis) and all rail buttons but
+-- HideHudButton; session-only, never saved. A listed gui added while hidden is hidden too.
+local hudGuiNames: { [string]: boolean } = {}
+for _, guiName in ipairs(UiTheme.HudHideGuis) do
+	hudGuiNames[guiName] = true
+end
+
+local hudWatching = false
+
+local function applyHudGuis()
+	local playerGui = (Players.LocalPlayer :: Player):FindFirstChild("PlayerGui")
+	if not playerGui then
+		return
+	end
+	for _, child in ipairs(playerGui:GetChildren()) do
+		if hudGuiNames[child.Name] and child:IsA("ScreenGui") then
+			child.Enabled = not hudHidden
+		end
+	end
+end
+
+function UiKit.setHudHidden(hidden: boolean)
+	hudHidden = hidden
+	if not hudWatching then
+		hudWatching = true
+		local playerGui = (Players.LocalPlayer :: Player):WaitForChild("PlayerGui")
+		playerGui.ChildAdded:Connect(function(child)
+			if hudHidden and hudGuiNames[child.Name] and child:IsA("ScreenGui") then
+				child.Enabled = false
+			end
+		end)
+	end
+	applyHudGuis()
+	applyRail()
+end
+
+function UiKit.isHudHidden(): boolean
+	return hudHidden
 end
 
 return UiKit

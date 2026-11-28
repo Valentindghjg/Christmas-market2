@@ -378,6 +378,19 @@ return function(t)
 		expect.truthy(UiTheme.Fonts.Weights[UiTheme.Heading.role] ~= nil)
 	end)
 
+	-- CM2-V2-HIDE: the windows the Hide HUD button disables.
+	t.test("HudHideGuis lists unique names and never the kept screens", function()
+		local seen: { [string]: boolean } = {}
+		for _, name in ipairs(UiTheme.HudHideGuis) do
+			expect.falsy(seen[name])
+			seen[name] = true
+		end
+		expect.equal(#UiTheme.HudHideGuis, 9)
+		for _, kept in { "HudRailUI", "TutorialUI", "SavePickerUI", "PlotPickerUI", "StockingUI", "BreakAreaUI" } do
+			expect.falsy(seen[kept])
+		end
+	end)
+
 	t.test("plotNumber", function()
 		expect.equal(UiTheme.plotNumber("Plot_01"), "1")
 		expect.equal(UiTheme.plotNumber("Plot_12"), "12")

@@ -75,6 +75,13 @@ statusInset.PaddingBottom = UDim.new(0, 2)
 statusInset.Parent = status
 
 local lotManagerButton = UiKit.addRailButton("LotManagerButton", "lotManagerButton", 10)
+local hideHudButton = UiKit.addRailButton("HideHudButton", "hudHideButton", 90)
+
+-- Sets the HUD state and the button text (hudHideButton or hudShowButton).
+local function setHudHidden(hidden: boolean)
+	UiKit.setHudHidden(hidden)
+	hideHudButton.Text = localized(if hidden then "hudShowButton" else "hudHideButton")
+end
 
 local lastSummary: any = nil
 local managerOpen = false
@@ -168,8 +175,13 @@ local function updateReady()
 		else localized("hudLotClosed")
 	-- The Lot Manager only works on a running save.
 	lotManagerButton.Visible = ready
+	hideHudButton.Visible = ready
 	if not ready then
 		manager.close()
+		-- Without the button the HUD could not come back.
+		if UiKit.isHudHidden() then
+			setHudHidden(false)
+		end
 	end
 end
 for _, attribute in
@@ -227,11 +239,26 @@ player:GetAttributeChangedSignal("ActiveSaveId"):Connect(function()
 end)
 
 UiKit.onActivated(lotManagerButton, manager.toggle)
+
+-- CM2-V2-HIDE: the HUD toggle is session-only (a local flag in UiKit, never saved).
+local function toggleHud()
+	if player:GetAttribute("CompanyReady") ~= true then
+		return
+	end
+	setHudHidden(not UiKit.isHudHidden())
+end
+UiKit.onActivated(hideHudButton, toggleHud)
 UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessedEvent: boolean)
 	if gameProcessedEvent then
 		return
 	end
-	if input.KeyCode == Enum.KeyCode.M and player:GetAttribute("CompanyReady") == true then
+	if input.KeyCode == Enum.KeyCode.U then
+		toggleHud()
+	elseif
+		input.KeyCode == Enum.KeyCode.M
+		and player:GetAttribute("CompanyReady") == true
+		and not UiKit.isHudHidden()
+	then
 		manager.toggle()
 	end
 end)
