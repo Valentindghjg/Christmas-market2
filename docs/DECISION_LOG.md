@@ -378,3 +378,16 @@ Owner (chat, verbatim): "okay dann kommen die wichtigsten zuerst damit am ersten
 - WoodStack: end grain is one flat hexagon face per log (4 triangles instead of a 20-triangle disc); round 1 built 580. The flat snow cap read as a board (rounds 1-2), so the top snow is a closed half-icosphere mound (1.55, 1.12, 0.55) at z 3.0 (H 3.57); small snow caps on both stake tops.
 - FirBarrel: hoops unbevelled (round 1 built 412 / 360); each tier's snow is a 7-sided collar 0.3 high, 8 % wider than the tier, starting where the tier is 0.7 of its radius (tier tips at 0.12 of the radius).
 - Render rounds: SnowPileA 2, SnowPileB 1, Snowman 1, Sled 2, WoodStack 3, FirBarrel 2.
+
+## 2026-11-28 — CM2-10I village infrastructure art (engineering)
+- Plan: `docs/plans/CM2-10I.md`, batch B1 (rows 1-6). `art.luau doctor` exit 0; all 6 uploaded and normalized (`.rbxm` in `assets/art/rbxm/Props/`, `asset.json` version 2); `verify release.rbxlx` 54 integrated, 0 pending, 0 failed.
+- Paths, tier, seeds: `Props/SnowStake` (1201), `Props/FireHydrant` (1202), `Props/TrashBin` (1203), `Props/UtilityBox` (1204), `Props/MailboxCluster` (1205), `Props/GuardRail` (1206), all tier B; no new palette key. B2 (rows 7-11, seeds 1207-1211) and B3 (VillageShop, FireStation tier A, seeds 1212-1213) follow.
+- Plan deviations (planner): pole spacing 29-115, not ~40 (lots and lanes leave no footing; poles 05, 07, 09 at the gate-front lamp line); bus stops at x -43.6 (x 0 is plot 2/5's car lane); "RoadSign" = two paths (`RoadSignSpeed`, `RoadSignDirection`); stake tip GoldAccent (nearest key to orange).
+- SnowStake: 6-sided MetalDark shaft r 0.12 to z 4, GoldAccent tip r 0.15 (z 4-4.8) and a 0.2 point to z 5; 50 triangles.
+- FireHydrant: the dome is a pointed 8-sided cone (r 0.46, apex hidden under the nut) with a SnowWhite cone over its top; the side outlets are one MetalDark rod through the body (caps at x +-0.56), the -Y pumper a 6-sided MetalDark stub to y -0.7; no snow on the flange (budget).
+- TrashBin: round 1 had four RoofGreen ribs that read as fins and a slot box wider than the 8-gon face; round 2 dropped the ribs for a second MetalDark band (z 0.62) and made the slot 0.42 wide, nearly flush; snow cap aligned to the lid facets.
+- UtilityBox: cabinet 2.4 x 1.4 x 2.9 on a 0.25 RoofGreenShade plinth (H 3.47 with rain cap and snow); doors are flat RoofGreenShade panels 0.03 proud of the front (read as inset by colour), with handles; exactly 160 / 160.
+- MailboxCluster: half-round tops are 8-sided cylinders along Y (flat sides at the box width), lower half inside the box; snow is a smaller 8-gon raised 0.15 so it covers the top facets; shelf 2.8 x 0.9 instead of a bare crossbar, one MetalDark brace (x +0.3) and the raised flag on the right box (H 3.95); round 2 smaller doors and a higher flag; exactly 300 / 300.
+- GuardRail: posts WoodWarm (squared timber), logs BarkBrown 6-sided with a flat top face, a WoodWarm end-grain hexagon face (4 triangles) on each end; logs end at x +-3.995 so chained rails abut; snow strips on the logs and 4-sided snow caps on the posts.
+- Render rounds: SnowStake 1, FireHydrant 1, TrashBin 3, UtilityBox 1, MailboxCluster 2, GuardRail 1.
+- MODEL_INTEGRATION "Village infrastructure (CM2-10I)": the measured values are one bullet per batch (B1 now; B2, B3 add theirs) so the section stays within 16 lines.

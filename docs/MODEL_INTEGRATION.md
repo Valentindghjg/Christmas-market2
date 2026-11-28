@@ -169,6 +169,20 @@ Larger models are Blender MeshParts; small items stay Parts. The `.blend` in `as
 - Reserved for CM2-10I: gaps x -58..-43 / 52..67 at z ±(21..38), x 162..190 at z ±(46..76), stream-plot zones.
 - In the world (CM2-10DW): `MapLayout.DRESSING` holds the contract, pieces in `Map.Dressing`; Part fallbacks SnowPileA/B (`Pile`) and FirBarrel (`Barrel` + `Needles`); Snowman, Sled, WoodStack skipped without art. Map totals 412 models, 179260 triangles, 1335 MeshParts; NightLights 56.
 
+## Village infrastructure (CM2-10I)
+- Paths (plan `docs/plans/CM2-10I.md`; tier B, VillageShop and FireStation tier A): `Props/SnowStake`, `Props/FireHydrant`, `Props/TrashBin`, `Props/UtilityBox`, `Props/MailboxCluster`, `Props/GuardRail`, `Props/UtilityPole`, `Props/RoadSignSpeed`, `Props/RoadSignDirection`, `Props/BusStop`, `Buildings/GarageShed`, `Buildings/VillageShop`, `Buildings/FireStation`; sources `assets/art/source/<artPath>/`, previews `assets/art/previews/<artPath>.png`, `.rbxm` in `assets/art/rbxm/` (asset IDs in each `asset.json`). Origin = footprint centre on the ground, front -Y in Blender (-Z after export); lights are attachments only (CM2-10IW adds them).
+- **Placement contract.** Pair (code, x, z, yaw) makes `Infra_<nn>_N` (x, z, yaw) and `Infra_<nn>_S` (x, -z, (yaw+180) % 360); singles `Infra_<nn>`; y 0, scale 1, yaw as "Map layout". Codes: ST 1, HY 2, TB 3, UB 4, MB 5, GR 6, UP 7, RS 8, RD 9, BS 10, GS 11, VS 12, FS 13.
+- 1. Poles (01-10): UP -395,22.5,0 · UP -342,22.5,0 · UP -292,22.5,0 · UP -177,27,0 · UP -82,27,0 · UP -53,27,0 · UP 24,27,0 · UP 53.5,27,0 · UP 134,27,0 · UP 168,27,0
+- 2. Gap west (11-14): BS -43.6,22.8,0 · TB -44.5,27.5,0 · MB -48.5,28,0 · UB -56,34,0
+- 3. Gap east (15-17): GS 60,33,270 · MB 65.5,24.5,0 · TB 67,36,0
+- 4. Road (18-21): HY -161,23.5,0 · HY 188.3,22,0 · RS -256,21.5,90 · RD -186,31,0
+- 5. Rails (22-29): GR -260,17.9,0 · GR -252,17.9,0 · GR -198,26,90 · GR -198,34,90 · GR -198,42,90 · GR -238,26,90 · GR -238,34,90 · GR -238,42,90
+- 6. Stakes (30-36): ST at z 17.9, yaw 0, x -266, -285, -305, -330, -355, -380, -405
+- 7. Singles (37-41): VS 176,62,0 · FS 176,-62,180 · MB 170,49.5,0 · TB 182,49.5,0 · HY 163,-49,180
+- Wires (10IW): per side, poles 01->10 in order, WireA to WireA and WireB to WireB. Signs (10IW): RD top board = "Village Square" on N, "Bridge" on S, bottom the other; RS shows the limit. Lights: BusStop x2 + VillageShop = 3 (NightLights 56 -> 59 <= 66).
+- Sums (planner-checked with `MapLayout` vs the 412 pieces, W/L maxima): **77 models** (UP 20, GR 16, ST 14, MB 5, TB 5, HY 5, BS 2, RS 2, RD 2, UB 2, GS 2, VS 1, FS 1), **24320 triangles**, **237 MeshParts**. Clearances: keep-out min 3.30; existing pieces 1.035; infra pieces 1.5 (rails of one chain abut); road, sidewalks, approach road, square, channel >= 1.0; inside |x| 414, |z| 264. Map after 10IW: 489 / 203580 / 1572.
+- Measured B1 (W x L x H; triangles / max, MeshParts; colliders in Blender coordinates, unrotated; no attachments): SnowStake 0.26 x 0.3 x 5.0, 50 / 60, 2, `COL_Stake` 0.3 x 0.3 x 5 at (0,0,2.5) · FireHydrant 1.12 x 1.25 x 2.6, 172 / 200, 3, `COL_Body` 1 x 1 x 2.2 at (0,0,1.1) · TrashBin 1.44 x 1.44 x 2.8, 180 / 220, 3, `COL_Bin` 1.4 x 1.4 x 2.6 at (0,0,1.3) · UtilityBox 2.6 x 1.6 x 3.47, 160 / 160, 3, `COL_Box` 2.4 x 1.4 x 3.2 at (0,0,1.6) · MailboxCluster 2.86 x 1.13 x 3.95, 300 / 300, 3, `COL_Box` 3 x 1.2 x 1.2 at (0,0,3.1) + `COL_Post` 0.4 x 0.4 x 2.6 at (0,0,1.3) · GuardRail 8.0 x 0.51 x 2.56 (logs end flush at x +-4), 216 / 240, 3, `COL_Rail` 8 x 0.6 x 2.4 at (0,0,1.2).
+
 ## Lot and HQ art in the world (CM2-13W)
 - Modules: `src/shared/LotArt.lua` (pure paths `Buildings/<tier.id>`, yaws, fence layout, bundle maths) and `src/server/Services/LotArtWorld.lua` (clones HQ, counter, bay, bundle and decor-fence art); `WorldService` and `LotFenceWorld` call them and keep today's primitive for every missing path (one `[ART]` warning per path).
 - Road yaw: 180 degrees on plots 1-3 (facing +1), 0 degrees on plots 4-6; the art's front (-Z) then points at the road. HQ art sits on its footprint centre (-8, -4) at the lot top, shrunk uniformly only if it exceeds the footprint (`FitScale`).
