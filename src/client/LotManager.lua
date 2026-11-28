@@ -171,10 +171,11 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 		local bottom = top + tabButton.Size.Y.Offset
 		local view = tabBar.AbsoluteWindowSize.Y
 		local y = tabBar.CanvasPosition.Y
+		local reserve = UiTheme.ClipInset
 		if top < y then
 			tabBar.CanvasPosition = Vector2.new(0, top)
-		elseif view > 0 and bottom > y + view then
-			tabBar.CanvasPosition = Vector2.new(0, bottom - view)
+		elseif view > 0 and bottom + 2 * reserve > y + view then
+			tabBar.CanvasPosition = Vector2.new(0, bottom + 2 * reserve - view)
 		end
 	end
 
@@ -201,6 +202,7 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 		page.BackgroundTransparency = 1
 		page.BorderSizePixel = 0
 		page.ScrollBarThickness = 6
+		UiKit.clipInset(page)
 		page.ScrollingDirection = Enum.ScrollingDirection.Y
 		page.CanvasSize = UDim2.new()
 		page.Size = UDim2.fromScale(1, 1)
@@ -329,6 +331,7 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 			tabBar.Size = UDim2.fromOffset(layout.tabBar.w, layout.tabBar.h)
 			tabBar.ScrollingDirection = Enum.ScrollingDirection.Y
 			tabBar.ScrollBarThickness = if layout.tabScrolls then 4 else 0
+			UiKit.clipOutward(tabBar)
 			local canvasHeight = 0
 			for index, tab in ipairs(UiTheme.LotManagerTabs) do
 				local tabBox = layout.tabs[index]
@@ -339,7 +342,7 @@ function LotManager.new(gui: ScreenGui, context: TabContext, onOpenChanged: (ope
 					canvasHeight = math.max(canvasHeight, tabBox.y + tabBox.h)
 				end
 			end
-			tabBar.CanvasSize = UDim2.fromOffset(0, canvasHeight)
+			UiKit.setCanvasHeight(tabBar, canvasHeight)
 			placeIndicator(false)
 			revealSelected()
 			body.Position = UDim2.fromOffset(layout.body.x, layout.body.y)

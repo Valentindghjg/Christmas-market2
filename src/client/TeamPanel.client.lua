@@ -85,6 +85,7 @@ memberList.CanvasSize = UDim2.new()
 memberList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 memberList.ScrollingDirection = Enum.ScrollingDirection.Y
 memberList.ScrollBarThickness = 6
+UiKit.clipInset(memberList)
 memberList.Parent = panel
 local listLayout = Instance.new("UIListLayout")
 listLayout.Padding = UDim.new(0, 6)

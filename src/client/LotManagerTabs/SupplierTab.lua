@@ -351,8 +351,8 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		cartLines.Visible = buy
 		sellHint.Visible = not buy
 
-		local layout = UiTheme.supplierPanelLayout(metrics, page.AbsoluteSize.X)
-		local rowLayout = UiTheme.supplierRowLayout(page.AbsoluteSize.X, not buy, metrics.compact)
+		local layout = UiTheme.supplierPanelLayout(metrics, UiKit.contentWidth(page))
+		local rowLayout = UiTheme.supplierRowLayout(UiKit.contentWidth(page), not buy, metrics.compact)
 		local rowsTop = if buy then layout.rowsTopBuy else layout.rowsTopSell
 		local shownRows = 0
 		for _, row in ipairs(rows) do
@@ -386,8 +386,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		local footerTop = rowsTop + shownRows * layout.rowPitch
 		place(stockingHint, { x = 0, y = footerTop, w = layout.width, h = layout.footerHint })
 		place(customerLine, { x = 0, y = footerTop + layout.footerHint + 2, w = layout.width, h = layout.footerLine })
-		page.CanvasSize =
-			UDim2.fromOffset(0, rowsTop + shownRows * layout.rowPitch + layout.footerHint + layout.footerLine + 16)
+		UiKit.setCanvasHeight(page, rowsTop + shownRows * layout.rowPitch + layout.footerHint + layout.footerLine + 16)
 
 		if buy then
 			renderCart()
@@ -416,7 +415,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	-- Boxes come from UiTheme.supplierPanelLayout and follow the screen size.
 	local function applyLayout(m: UiTheme.Metrics)
 		metrics = m
-		local layout = UiTheme.supplierPanelLayout(m, page.AbsoluteSize.X)
+		local layout = UiTheme.supplierPanelLayout(m, UiKit.contentWidth(page))
 		place(modeBuy, layout.modeBuy)
 		place(modeSell, layout.modeSell)
 		place(refreshLabel, layout.refresh)

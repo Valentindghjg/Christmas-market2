@@ -72,6 +72,7 @@ categoryBar.BorderSizePixel = 0
 categoryBar.ClipsDescendants = true
 categoryBar.Position = UDim2.fromOffset(0, 38)
 categoryBar.Size = UDim2.new(1, 0, 0, BUTTON_HEIGHT)
+UiKit.clipOutward(categoryBar)
 categoryBar.Parent = panel
 local barLayout = Instance.new("UIListLayout")
 barLayout.FillDirection = Enum.FillDirection.Horizontal
@@ -93,6 +94,7 @@ productList.CanvasSize = UDim2.new()
 productList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 productList.ScrollingDirection = Enum.ScrollingDirection.Y
 productList.ScrollBarThickness = 6
+UiKit.clipInset(productList)
 productList.Parent = panel
 local listLayout = Instance.new("UIListLayout")
 listLayout.Padding = UDim.new(0, 6)

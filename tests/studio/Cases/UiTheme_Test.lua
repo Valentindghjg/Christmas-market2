@@ -989,6 +989,103 @@ return function(t)
 		expect.equal(plain.text.w, 400)
 	end)
 
+	-- CM2-UICLIP: the ClipInset constants and helpers.
+	t.test("clip inset covers every stroke and hover growth", function()
+		local style = UiTheme.Style
+		local widest = math.max(style.StrokeControl, style.StrokeSelected, style.StrokeCard)
+		expect.truthy(UiTheme.ClipInset >= widest + UiTheme.Motion.hoverGrowMax + 2)
+		expect.equal(UiTheme.ClipInset, 8)
+	end)
+
+	t.test("clipPadding and clipBox", function()
+		local sides = UiTheme.clipPadding(6)
+		expect.equal(sides.left, 8)
+		expect.equal(sides.right, 14)
+		expect.equal(sides.top, 8)
+		expect.equal(sides.bottom, 8)
+		local box = UiTheme.clipBox({ x = 0, y = 52, w = 168, h = 564 })
+		expect.equal(box.x, -8)
+		expect.equal(box.y, 44)
+		expect.equal(box.w, 184)
+		expect.equal(box.h, 580)
+	end)
+
+	t.test("Lot Manager layouts fit the clip-padded page", function()
+		local sizes = {}
+		for _, size in ipairs(MATRIX) do
+			table.insert(sizes, { size.w, size.h })
+		end
+		for _, size in ipairs(PHONES) do
+			table.insert(sizes, size)
+		end
+		for _, size in ipairs(sizes) do
+			local m = UiTheme.metrics(size[1], size[2])
+			local manager = UiTheme.hudLayout(m, 0).manager
+			local body = UiTheme.managerLayout(m, manager).body
+			local w = body.w - 2 * UiTheme.ClipInset - 6
+			local panel = UiTheme.supplierPanelLayout(m, w)
+			expect.equal(panel.width, math.floor(w) - 8)
+			local ids = { "modeBuy", "modeSell", "placeOrder", "clear", "recommend" }
+			for _, id in ipairs(ids) do
+				expect.truthy(panel[id].w >= UiTheme.MinTouch)
+				expect.truthy(panel[id].h >= UiTheme.MinTouch)
+			end
+			for _, id in ipairs({ "modeBuy", "modeSell", "refresh", "placeOrder", "clear", "recommend" }) do
+				expect.truthy(UiTheme.inside(panel[id], panel.width, math.huge))
+			end
+			for index, id in ipairs(ids) do
+				for other = index + 1, #ids do
+					expect.falsy(UiTheme.overlaps(panel[id], panel[ids[other]]))
+				end
+			end
+			for _, sellView in ipairs({ false, true }) do
+				local row = UiTheme.supplierRowLayout(w, sellView, m.compact)
+				expect.truthy(row.text.w > 0)
+				local boxes = { row.text, row.minus, row.qty, row.plus, row.max }
+				if row.sell then
+					table.insert(boxes, row.sell)
+				end
+				for index, b in ipairs(boxes) do
+					expect.truthy(UiTheme.inside(b, panel.width, panel.rowHeight))
+					if index > 1 then
+						expect.truthy(b.w >= UiTheme.MinTouch)
+						expect.truthy(b.h >= UiTheme.MinTouch)
+					end
+					for other = index + 1, #boxes do
+						expect.falsy(UiTheme.overlaps(b, boxes[other]))
+					end
+				end
+				if m.compact then
+					expect.truthy(row.text.w >= 240)
+				end
+			end
+			if m.compact then
+				expect.truthy(324 <= w)
+			end
+		end
+	end)
+
+	t.test("tab bar clip box stays in the manager", function()
+		for _, size in ipairs(MATRIX) do
+			local m = UiTheme.metrics(size.w, size.h)
+			local manager = UiTheme.hudLayout(m, 4).manager
+			local inner = UiTheme.managerLayout(m, manager)
+			local clip = UiTheme.clipBox(inner.tabBar)
+			if m.compact then
+				for _, tab in ipairs(inner.tabs) do
+					expect.truthy(tab.w <= inner.tabBar.w - 4)
+				end
+			else
+				local cw = manager.w - 2 * inner.padding
+				local ch = manager.h - 2 * inner.padding
+				local room =
+					{ x = -inner.padding, y = -inner.padding, w = cw + 2 * inner.padding, h = ch + 2 * inner.padding }
+				expect.truthy(UiTheme.contains(room, clip, 0))
+				expect.truthy(clip.x + clip.w <= inner.body.x)
+			end
+		end
+	end)
+
 	-- 22a3b: every dialog fits 70 % x 80 % of the safe area on phones.
 	t.test("phone dialogs fit 70 % x 80 % of the safe area (22a3b)", function()
 		for _, size in ipairs(PHONES) do

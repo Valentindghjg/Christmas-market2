@@ -125,6 +125,7 @@ function QuestPanel.new(context: LotManager.TabContext): Panel
 	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	list.ScrollingDirection = Enum.ScrollingDirection.Y
 	list.ScrollBarThickness = 6
+	UiKit.clipInset(list)
 	list.Parent = panel
 	local listLayout = Instance.new("UIListLayout")
 	listLayout.FillDirection = Enum.FillDirection.Vertical

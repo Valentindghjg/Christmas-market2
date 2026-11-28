@@ -102,6 +102,7 @@ list.CanvasSize = UDim2.new()
 list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 list.ScrollingDirection = Enum.ScrollingDirection.Y
 list.ScrollBarThickness = 6
+UiKit.clipInset(list)
 list.Parent = picker
 local layout = Instance.new("UIListLayout")
 layout.Padding = UDim.new(0, SAVE_ROW.listGap)

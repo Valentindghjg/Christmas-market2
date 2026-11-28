@@ -233,7 +233,7 @@ function EmployeesTab.create(page: ScrollingFrame, context: TabContext): TabHand
 		y += LINE_HEIGHT + 4
 		place(moveButton, 0, y, 200, BUTTON_HEIGHT)
 		y += BUTTON_HEIGHT + 8
-		page.CanvasSize = UDim2.fromOffset(0, y)
+		UiKit.setCanvasHeight(page, y)
 	end
 
 	local function renderAll()

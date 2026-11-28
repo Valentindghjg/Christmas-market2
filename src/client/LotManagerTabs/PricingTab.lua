@@ -183,7 +183,7 @@ function PricingTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 	-- CM2-UVF12: card boxes come from UiTheme.pricingCardLayout and follow the screen size.
 	local function applyLayout(m: UiTheme.Metrics)
 		local layout = UiTheme.pricingCardLayout(m)
-		page.CanvasSize = UDim2.fromOffset(0, CARD_TOP + #SPECIES_ORDER * layout.pitch)
+		UiKit.setCanvasHeight(page, CARD_TOP + #SPECIES_ORDER * layout.pitch)
 		for index, speciesId in ipairs(SPECIES_ORDER) do
 			local card = cards[speciesId]
 			place(card.frame, 0, CARD_TOP + (index - 1) * layout.pitch, COLUMN_WIDTH, layout.cardHeight)

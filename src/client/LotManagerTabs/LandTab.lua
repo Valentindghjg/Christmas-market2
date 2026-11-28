@@ -228,7 +228,7 @@ function LandTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 				card.frame.Visible = false
 			end
 			workshop.frame.Visible = false
-			page.CanvasSize = UDim2.fromOffset(0, CARD_TOP)
+			UiKit.setCanvasHeight(page, CARD_TOP)
 			return
 		end
 		local y = CARD_TOP
@@ -265,7 +265,7 @@ function LandTab.create(page: ScrollingFrame, context: TabContext): TabHandle
 		else
 			workshop.frame.Visible = false
 		end
-		page.CanvasSize = UDim2.fromOffset(0, y)
+		UiKit.setCanvasHeight(page, y)
 	end
 
 	local function showError(code: unknown)

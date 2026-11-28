@@ -77,6 +77,60 @@ function UiKit.padding(parent: Instance, px: number): UIPadding
 	return value
 end
 
+-- CM2-UICLIP: ClipInset UIPadding on a clipping container (the right side also holds the scroll bar).
+function UiKit.clipInset(container: GuiObject): UIPadding
+	local existing = container:FindFirstChild("ClipInset")
+	local value: UIPadding
+	if existing and existing:IsA("UIPadding") then
+		value = existing
+	else
+		value = Instance.new("UIPadding")
+		value.Name = "ClipInset"
+		value.Parent = container
+	end
+	local thickness = if container:IsA("ScrollingFrame") then container.ScrollBarThickness else 0
+	local sides = UiTheme.clipPadding(thickness)
+	value.PaddingLeft = UDim.new(0, sides.left)
+	value.PaddingRight = UDim.new(0, sides.right)
+	value.PaddingTop = UDim.new(0, sides.top)
+	value.PaddingBottom = UDim.new(0, sides.bottom)
+	return value
+end
+
+-- Grows the container by ClipInset on every side, then pads it back: the content box stays put.
+-- Call right after every Position/Size assignment, never twice without one.
+function UiKit.clipOutward(container: GuiObject): UIPadding
+	local inset = UiTheme.ClipInset
+	local position, size = container.Position, container.Size
+	container.Position =
+		UDim2.new(position.X.Scale, position.X.Offset - inset, position.Y.Scale, position.Y.Offset - inset)
+	container.Size = UDim2.new(size.X.Scale, size.X.Offset + 2 * inset, size.Y.Scale, size.Y.Offset + 2 * inset)
+	return UiKit.clipInset(container)
+end
+
+local function clipSides(frame: GuiObject): (number, number, number, number)
+	local padding = frame:FindFirstChild("ClipInset")
+	if padding and padding:IsA("UIPadding") then
+		return padding.PaddingLeft.Offset,
+			padding.PaddingRight.Offset,
+			padding.PaddingTop.Offset,
+			padding.PaddingBottom.Offset
+	end
+	return 0, 0, 0, 0
+end
+
+-- CanvasSize for a list whose content is contentHeight px tall, plus the ClipInset top and bottom.
+function UiKit.setCanvasHeight(frame: ScrollingFrame, contentHeight: number)
+	local _, _, top, bottom = clipSides(frame)
+	frame.CanvasSize = UDim2.fromOffset(0, contentHeight + top + bottom)
+end
+
+-- Width of the content box: AbsoluteSize.X without the ClipInset left and right padding.
+function UiKit.contentWidth(frame: GuiObject): number
+	local left, right = clipSides(frame)
+	return frame.AbsoluteSize.X - left - right
+end
+
 -- Style kit (CM2-UI1) -------------------------------------------------------------------------
 
 -- One running tween per instance and key: a new tween replaces the old one.
@@ -169,7 +223,16 @@ local function applyInteraction(button: GuiButton, state: string)
 		return
 	end
 	local spec = UiStyle.interaction(state, hovering[button])
-	play(press, "Scale", tweenInfo(spec.time, spec.style, spec.direction), { Scale = spec.scale })
+	-- CM2-UICLIP: the unscaled size caps the growing scales so the total growth stays within hoverGrowMax px.
+	local current = press.Scale
+	local divisor = if current <= 0 then 1 else current
+	local width, height = button.AbsoluteSize.X / divisor, button.AbsoluteSize.Y / divisor
+	play(
+		press,
+		"Scale",
+		tweenInfo(spec.time, spec.style, spec.direction),
+		{ Scale = UiStyle.cappedScale(spec.scale, width, height) }
+	)
 end
 
 local function isInteractive(button: GuiButton): boolean
@@ -562,8 +625,9 @@ local function probeNumbers(b: UiTheme.Box): string
 	return string.format("%d,%d %dx%d", math.round(b.x), math.round(b.y), math.round(b.w), math.round(b.h))
 end
 
-local function probeGui(gui: ScreenGui, problems: { string }): number
+local function probeGui(gui: ScreenGui, problems: { string }): (number, number)
 	local checked = 0
+	local strokeChecked = 0
 	local function report(text: string)
 		if #problems < PROBE_MAX_PROBLEMS then
 			table.insert(problems, text)
@@ -628,7 +692,71 @@ local function probeGui(gui: ScreenGui, problems: { string }): number
 			end
 		end
 	end
-	return checked
+	-- CM2-UICLIP kind "stroke": a control grown by its Border stroke and hover growth must lie inside
+	-- the nearest clipping ancestor (a scrolling frame keeps its scroll bar free on the right).
+	for _, item in ipairs(gui:GetDescendants()) do
+		if not (item:IsA("GuiObject") and item.AbsoluteSize.X > 0 and item.AbsoluteSize.Y > 0) or isHidden(item) then
+			continue
+		end
+		local thickness = 0
+		for _, child in ipairs(item:GetChildren()) do
+			if
+				child:IsA("UIStroke")
+				and child.Enabled
+				and child.ApplyStrokeMode == Enum.ApplyStrokeMode.Border
+				and child.Thickness > 0
+				and child.Transparency < 1
+			then
+				thickness = math.max(thickness, child.Thickness)
+			end
+		end
+		local press = item:FindFirstChild("Press")
+		local scale = if press and press:IsA("UIScale") then press else nil
+		if thickness <= 0 and not scale then
+			continue
+		end
+		local clipper: GuiObject? = nil
+		local current = item.Parent
+		while current and current ~= gui do
+			if current:IsA("GuiObject") and (current.ClipsDescendants or current:IsA("ScrollingFrame")) then
+				clipper = current
+				break
+			end
+			current = current.Parent
+		end
+		if not clipper then
+			continue
+		end
+		strokeChecked += 1
+		local divisor = if scale and scale.Scale > 0 then scale.Scale else 1
+		local width, height = item.AbsoluteSize.X / divisor, item.AbsoluteSize.Y / divisor
+		local grow = thickness
+		if item:IsA("GuiButton") and isInteractive(item) then
+			grow += UiStyle.hoverGrowth(width, height)
+		end
+		local origin = item.AbsolutePosition - gui.AbsolutePosition
+		local grown: UiTheme.Box =
+			{ x = origin.X - grow, y = origin.Y - grow, w = width + 2 * grow, h = height + 2 * grow }
+		local outer = localBox(clipper, gui)
+		local fits: boolean
+		if clipper:IsA("ScrollingFrame") then
+			local bar = if clipper.AbsoluteCanvasSize.Y > clipper.AbsoluteWindowSize.Y
+				then clipper.ScrollBarThickness
+				else 0
+			local canvasY = grown.y - outer.y + clipper.CanvasPosition.Y
+			local canvasHeight = math.max(clipper.AbsoluteCanvasSize.Y, clipper.AbsoluteWindowSize.Y)
+			fits = grown.x >= outer.x
+				and grown.x + grown.w <= outer.x + clipper.AbsoluteWindowSize.X - bar
+				and canvasY >= 0
+				and canvasY + grown.h <= canvasHeight
+		else
+			fits = UiTheme.contains(outer, grown, 0)
+		end
+		if not fits then
+			report(string.format("%s stroke %s in %s", probeName(item), probeNumbers(grown), probeNumbers(outer)))
+		end
+	end
+	return checked, strokeChecked
 end
 
 -- A visible rail button grown by its Outline stroke must stay inside the rail frame.
@@ -669,10 +797,13 @@ local function probe(path: string): { [string]: any }
 	end
 	local problems: { string } = {}
 	local checked = 0
+	local strokeChecked = 0
 	local railLeft: number? = nil
 	for _, gui in ipairs(playerGui:GetChildren()) do
 		if gui:IsA("ScreenGui") and gui.Enabled and (path == "" or gui.Name == path) then
-			checked += probeGui(gui, problems)
+			local guiChecked, guiStrokes = probeGui(gui, problems)
+			checked += guiChecked
+			strokeChecked += guiStrokes
 			if gui.Name == "HudRailUI" then
 				railLeft = probeRail(gui, problems)
 			end
@@ -701,6 +832,7 @@ local function probe(path: string): { [string]: any }
 	return {
 		ok = true,
 		checked = checked,
+		strokeChecked = strokeChecked,
 		problems = problems,
 		railLeft = railLeft,
 		statusTop = statusTop,

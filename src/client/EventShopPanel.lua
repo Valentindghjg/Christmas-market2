@@ -99,6 +99,7 @@ function EventShopPanel.new(context: LotManager.TabContext): Panel
 	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	list.ScrollingDirection = Enum.ScrollingDirection.Y
 	list.ScrollBarThickness = 6
+	UiKit.clipInset(list)
 	list.Parent = panel
 	local layout = Instance.new("UIListLayout")
 	layout.Padding = UDim.new(0, 6)

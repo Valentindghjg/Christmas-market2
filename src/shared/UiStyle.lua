@@ -97,6 +97,20 @@ local LightTextFills: { [string]: boolean } = table.freeze({
 })
 UiStyle.LightTextFills = LightTextFills
 
+-- CM2-UICLIP: a growing scale (> 1) is capped so the total growth stays within Motion.hoverGrowMax px.
+function UiStyle.cappedScale(scale: number, width: number, height: number): number
+	if scale <= 1 then
+		return scale
+	end
+	return math.min(scale, 1 + UiTheme.Motion.hoverGrowMax / math.max(width, height, 1))
+end
+
+-- Total px a hovering control grows (the larger side times the capped hover scale minus 1).
+function UiStyle.hoverGrowth(width: number, height: number): number
+	local longest = math.max(width, height, 1)
+	return (UiStyle.cappedScale(UiTheme.Motion.hoverScale, width, height) - 1) * longest
+end
+
 -- fill names a UiTheme.Colors entry; returns the name of the text colour.
 function UiStyle.textOn(fill: string): string
 	return if LightTextFills[fill] == true then "Cream" else "DarkText"

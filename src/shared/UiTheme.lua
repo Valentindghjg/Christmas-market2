@@ -225,7 +225,19 @@ UiTheme.Motion = {
 	toastSlide = 12,
 	tabTime = 0.2,
 	indicatorHeight = 4,
+	-- CM2-UICLIP (PROVISIONAL): cap in px on the total hover growth of a control (any anchor).
+	hoverGrowMax = 3,
 }
+
+-- CM2-UICLIP (PROVISIONAL): px kept free inside every clipping list, page and bar: selected stroke,
+-- capped hover growth and 2 px margin (Back overshoot).
+UiTheme.ClipInset = UiTheme.Style.StrokeSelected + UiTheme.Motion.hoverGrowMax + 2
+
+-- Padding of a clipping container: I on every side, the right side also holds the scroll bar.
+function UiTheme.clipPadding(scrollBar: number): { left: number, right: number, top: number, bottom: number }
+	local inset = UiTheme.ClipInset
+	return { left = inset, right = inset + scrollBar, top = inset, bottom = inset }
+end
 
 -- Engine content on every client: no asset ID, upload or licence (CM2-UI1 deviation from 22a (b)).
 UiTheme.ClickSound = { id = "rbxasset://sounds/volume_slider.ogg", volume = 0.5 }
@@ -999,6 +1011,12 @@ function UiTheme.contains(outer: Box, inner: Box, tolerance: number): boolean
 		and inner.y >= outer.y - tolerance
 		and inner.x + inner.w <= outer.x + outer.w + tolerance
 		and inner.y + inner.h <= outer.y + outer.h + tolerance
+end
+
+-- `b` grown by ClipInset on every side (a clipping bar placed outward so its content box stays put).
+function UiTheme.clipBox(b: Box): Box
+	local inset = UiTheme.ClipInset
+	return { x = b.x - inset, y = b.y - inset, w = b.w + 2 * inset, h = b.h + 2 * inset }
 end
 
 -- "Plot_01" -> "1" for the status line; nil -> "?"; anything else is shown as it is.

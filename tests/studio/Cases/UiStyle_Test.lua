@@ -136,6 +136,16 @@ return function(t)
 		expect.equal(UiTheme.ClickSound.volume, 0.5)
 	end)
 
+	-- CM2-UICLIP: hover growth never exceeds Motion.hoverGrowMax px, whatever the size.
+	t.test("caps hover growth", function()
+		local sizes = { { 44, 44 }, { 56, 44 }, { 140, 44 }, { 300, 44 }, { 2000, 48 } }
+		for _, size in ipairs(sizes) do
+			expect.truthy(UiStyle.hoverGrowth(size[1], size[2]) <= UiTheme.Motion.hoverGrowMax + 1e-9)
+			expect.equal(UiStyle.cappedScale(0.95, size[1], size[2]), 0.95)
+		end
+		expect.equal(UiStyle.cappedScale(1.05, 44, 44), 1.05)
+	end)
+
 	t.test("font roles", function()
 		expect.equal(UiTheme.Fonts.Family, "rbxasset://fonts/families/Nunito.json")
 		expect.equal(UiTheme.Fonts.Weights.Title, "Heavy")

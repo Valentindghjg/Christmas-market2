@@ -118,6 +118,7 @@ function AdventPanel.new(context: LotManager.TabContext): Panel
 	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	list.ScrollingDirection = Enum.ScrollingDirection.Y
 	list.ScrollBarThickness = 6
+	UiKit.clipInset(list)
 	list.Parent = panel
 	local grid = Instance.new("UIGridLayout")
 	grid.CellSize = UDim2.new(1 / 6, -6, 0, 56)
