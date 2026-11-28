@@ -66,3 +66,10 @@ Archived 2026-11-28 (entries CM2-47D2, CM2-SLIM10, CM2-SLIM run 6, CM2-48, CM2-5
 - Known (not a defect): the Saves window has no close button because it is the modal base layer (`SavePicker.client.lua`); the "Back to game" button appears once `CompanyReady`.
 - Own decisions (all minor): viewport from `CurrentCamera.ViewportSize`; statusTop/chipsBottom read from `ChristmasMarketUI/Hud`; problem strings "<path> <kind> <numbers>"; status label keeps `TextTruncate AtEnd` with `TextScaled`.
 
+
+## 2026-11-28 CM2-V2-SNOW, CM2-V2-HIDE, CM2-SLIM9 (launch item 0c, tier S, no plans, one implementer run)
+- SNOW: `GameConfig.Snow` + `snowRate`, new `src/client/Snow.client.lua` (camera-attached emitter, quality gate 1-3 off), GameConfig_Test +1. HIDE: `UiTheme.HudHideGuis` (9), `UiKit.setHudHidden/isHudHidden`, rail button slot 90 and key U, en/de strings, UiTheme_Test +1; hidden rail buttons are reparented into a non-rendering Folder (connections and own Visible survive). SLIM9: test comment and MODEL_INTEGRATION note, no src change.
+- Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings, 0 parse errors; headless 836 run, 836 passed, 0 failed; ui_scan 0 hits; rojo default build PASS.
+- Own decisions reviewed (all minor): emitter reattached on camera change, Rotation 0-360, Acceleration 0, BrickColor.White().Color, HIDE only while CompanyReady (auto-shows when it turns false), ChildAdded watcher, 9-entry list test.
+- Note: Tutorial `lotManagerButton()` finds nothing while the HUD is hidden (button stashed), harmless; HUD probe must be run after showing again.
+- Studio: deferred (batch), runs inside CM2-RC4 (texture load, snow, key U, rail shows only "Show HUD", probe 0, SLIM9 warning only in the Trees step); queued in "Studio-Test ausstehend". Not run.
