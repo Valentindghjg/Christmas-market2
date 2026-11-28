@@ -51,3 +51,10 @@ Checks (reviewer, local Windows): stylua PASS; selene (`src tests` and `src test
 Studio (playtester, e36ff47a): 6 props under `ReplicatedStorage.ArtAssets.Props`, ArtSource blender, ArtTier B, MeshParts <= 3, no duplicates; smoke + step 21 14/14 PASS ("48 blender models, 266 meshes, 0 failed, 0 duplicates"), no `[ART]` lines. The plan's `ArtRoot` attribute does not exist on any Props model (Bench, LampPost too; convention is ArtPath/ArtAssetId/ArtVersion): plan wording error, not a model defect. Console: known 203785492 warning.
 Note: `K.ball` detail 0 behaves as detail 1 (`max(1, detail)` in the kit), harmless, for the planner.
 Accept: all met; CM2-10D ticked; CM2-10DW next.
+
+2026-11-28: CM2-10DW Map dressing in the world (tier M, plan `docs/plans/CM2-10DW.md`; backlog ticked)
+Change: 6 ART rows, `DRESSING` (55 entries, N/S mirrored = 110 pieces) in `Map.Dressing`, Part fallbacks SnowPileA/B and FirBarrel, step 61 expects 56 lights (22 lamps + 10 dressing lamps). Totals 412 models, 179260 triangles, 1335 MeshParts.
+Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings; headless 791 run, 791 passed (790 + 1); rojo default and release builds PASS; `art.luau verify release.rbxlx` 48 integrated, 0 pending, 0 failed.
+Studio (playtester, Studio e36ff47a, desktop): step 56 "pieces 412 (art 412, fallback 0, skip 0), overlaps 0", Map.Dressing 110; step 61 "56 night lights off on the server, 22 lamps and 10 dressing lamps with one each"; 37, 40, 57 PASS; full run "mode=full steps=74 pass=74 fail=0 seconds=808" PASS (unit 791/791), latest end-of-run full run.
+BLOCKED: visual float/sink capture (Play capture showed the save picker, Edit has no Map); numeric instead: all 110 Dressing bottoms between -0.20 and -0.03 studs. Phone/locale BLOCKED (PC-14). Console: only known rbxassetid://203785492, known MissingArtAsset Trees/FrostcrownFir/Small, test-injected lines.
+Review: matches the plan; own decisions accepted (helper isNew, local wantsFallback; step 61 counts a Dress_* model without a light as non-lamp, 2+ lights fail). Keep-out clearance not re-run by script (relies on the CM2-10D max-size check and the keep-out test).

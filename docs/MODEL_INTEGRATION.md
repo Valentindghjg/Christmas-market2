@@ -145,7 +145,7 @@ Larger models are Blender MeshParts; small items stay Parts. The `.blend` in `as
 
 ## Map in the world (CM2-10W)
 - Modules: `src/shared/MapLayout.lua` (pure data and maths: pieces, seed 1010, zones, surfaces, walls, hide levels, `plan`), `src/server/Services/MapWorld.lua` (builds `ChristmasMarketWorld.Map`, `applyReserve`), wired by `WorldService.build`; `ArtLibrary.root(ReplicatedStorage)` picks the non-empty `ArtAssets` folder.
-- `Map` folders: `Surfaces`, `Walls`, `Landmarks`, `Square`, `Street`, `Forest`, `Rocks`, `Mountains`, `Reserve` (`Plot_01..06` with `Row_1..4`). Each placed model carries `MapPiece = id`.
+- `Map` folders: `Surfaces`, `Walls`, `Landmarks`, `Square`, `Street`, `Forest`, `Rocks`, `Mountains`, `Dressing`, `Reserve` (`Plot_01..06` with `Row_1..4`). Each placed model carries `MapPiece = id`.
 - Missing art: Part fallbacks for CoveredBridge, VillageTree, LeaderboardBoard, SignBoard, LampPost (`Lamp`, CM2-G12a), ForestFir, ForestClusterA, ForestClusterB (attribute `MapFallback`); VillageHouse, Bench, RockCluster, MountainPeak, MountainRidge are skipped. One `[ART]` warning per missing path.
 - Night lights (CM2-G12a): every lamp and each plot's checkout and lot sign carry a `NightLight` PointLight tagged `NightLight`, off on the server.
 - Reserve firs vanish by row as the lot grows: hide levels {1, 2, 3, 4}, hidden rows at levels 0–6: 0, 1, 2, 3, 4, 4, 4; levels 5–6 grow onto open snow (`maxLevel` 6).
@@ -167,7 +167,7 @@ Larger models are Blender MeshParts; small items stay Parts. The `.blend` in `as
 - 6. More (50-55): A -170,42,0 · B -310,25,0 · F -365,30,0 · BE -385,22,0 · A -197,200,90 · A -238.5,180,90
 - Sums (planner-checked with `MapLayout` against the 302 pieces, W/L maxima): **110 models** (A 32, B 14, SM 8, SL 6, WS 6, FB 16, L 10, BE 8, F 10), **29560 triangles**, **284 MeshParts**; **10 new lamps** (NightLights 46 -> 56 <= 58). Clearances: keep-out min 3.50, existing pieces 1.09, dressing pieces 1.14; nothing on road, sidewalks, approach road, square, channel, truck lanes, gate fronts (lot x 16..43) or beyond |x| 414, |z| 264.
 - Reserved for CM2-10I: gaps x -58..-43 / 52..67 at z ±(21..38), x 162..190 at z ±(46..76), stream-plot zones.
-- CM2-10DW: `MapLayout.ART` gets the 6 with measured W/L; Part fallback for SnowPileA/B, FirBarrel.
+- In the world (CM2-10DW): `MapLayout.DRESSING` holds the contract, pieces in `Map.Dressing`; Part fallbacks SnowPileA/B (`Pile`) and FirBarrel (`Barrel` + `Needles`); Snowman, Sled, WoodStack skipped without art. Map totals 412 models, 179260 triangles, 1335 MeshParts; NightLights 56.
 
 ## Lot and HQ art in the world (CM2-13W)
 - Modules: `src/shared/LotArt.lua` (pure paths `Buildings/<tier.id>`, yaws, fence layout, bundle maths) and `src/server/Services/LotArtWorld.lua` (clones HQ, counter, bay, bundle and decor-fence art); `WorldService` and `LotFenceWorld` call them and keep today's primitive for every missing path (one `[ART]` warning per path).
