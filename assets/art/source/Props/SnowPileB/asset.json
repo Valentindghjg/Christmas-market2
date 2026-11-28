@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/SnowPileB",
+	"displayName": "Snow Pile B",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 240,
+	"maxMeshParts": 2,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "110137619403260",
+		"sourceSha256": "24daf82e720b190f4263067fbacd354a1a327738a1a6288f24eeb80bcc82d0a6",
+		"uploadedAt": "2026-11-28T00:51:45Z"
+	}
+}

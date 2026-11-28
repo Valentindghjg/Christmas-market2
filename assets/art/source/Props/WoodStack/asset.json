@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/WoodStack",
+	"displayName": "Wood Stack",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 520,
+	"maxMeshParts": 3,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "112157324797375",
+		"sourceSha256": "5f0bd63d393e0bf291b928d3d1c0732b8670c9f144ea3194003a1d63dcc56e6d",
+		"uploadedAt": "2026-11-28T00:52:13Z"
+	}
+}

@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/Snowman",
+	"displayName": "Snowman",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 560,
+	"maxMeshParts": 3,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "76227708879479",
+		"sourceSha256": "0696fd03a4d17645760ca67522c1fb15e01395001a15d13b92cafe65d95fe22d",
+		"uploadedAt": "2026-11-28T00:52:51Z"
+	}
+}

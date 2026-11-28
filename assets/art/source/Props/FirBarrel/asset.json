@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/FirBarrel",
+	"displayName": "Fir Barrel",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 360,
+	"maxMeshParts": 3,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "79055882528156",
+		"sourceSha256": "2537caa69d793c431cfe46890ed77fa8613e158cafde318417dd5b0e03511afb",
+		"uploadedAt": "2026-11-28T00:51:59Z"
+	}
+}

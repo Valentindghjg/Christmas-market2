@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/Sled",
+	"displayName": "Sled",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 300,
+	"maxMeshParts": 3,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "96570255021367",
+		"sourceSha256": "cac073cecaaa79e2d0a17a0ce26f10ec8eaf2f62ba600ff9e4485d0c52e0be6e",
+		"uploadedAt": "2026-11-28T00:52:31Z"
+	}
+}
