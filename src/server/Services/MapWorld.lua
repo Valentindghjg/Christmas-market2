@@ -20,7 +20,7 @@ export type MapKit = {
 	reportMissing: (string, string) -> (),
 }
 
-local GROUPS = { "Landmarks", "Square", "Street", "Forest", "Rocks", "Mountains" }
+local GROUPS = { "Landmarks", "Square", "Street", "Forest", "Rocks", "Mountains", "Dressing" }
 local NO_SHADOW_GROUPS = { Forest = true, Rocks = true, Mountains = true, Reserve = true }
 local ROWS = 4
 
@@ -283,6 +283,61 @@ local FALLBACKS: { [string]: (MapKit, Instance, MapLayout.Piece, CFrame) -> Mode
 		)
 		cap.CanCollide = false
 		model.PrimaryPart = post
+		return model
+	end,
+	-- Map dressing (CM2-10DW): collider-sized stand-ins until the art is imported.
+	SnowPileA = function(kit, parent, piece, pivot)
+		local model = newModel(parent, piece)
+		model.PrimaryPart = offsetPart(
+			kit,
+			model,
+			"Pile",
+			Vector3.new(5, 1, 3),
+			pivot,
+			Vector3.new(0, 0.5, 0),
+			"SnowWhite",
+			Enum.Material.Snow
+		)
+		return model
+	end,
+	SnowPileB = function(kit, parent, piece, pivot)
+		local model = newModel(parent, piece)
+		model.PrimaryPart = offsetPart(
+			kit,
+			model,
+			"Pile",
+			Vector3.new(4, 2.2, 4),
+			pivot,
+			Vector3.new(0, 1.1, 0),
+			"SnowWhite",
+			Enum.Material.Snow
+		)
+		return model
+	end,
+	FirBarrel = function(kit, parent, piece, pivot)
+		local model = newModel(parent, piece)
+		local barrel = offsetPart(
+			kit,
+			model,
+			"Barrel",
+			Vector3.new(2.4, 1.8, 2.4),
+			pivot,
+			Vector3.new(0, 0.9, 0),
+			"WoodWarm",
+			Enum.Material.Wood
+		)
+		local needles = offsetPart(
+			kit,
+			model,
+			"Needles",
+			Vector3.new(1.8, 4, 1.8),
+			pivot,
+			Vector3.new(0, 3.8, 0),
+			"NeedleGreen",
+			Enum.Material.Grass
+		)
+		needles.CanCollide = false
+		model.PrimaryPart = barrel
 		return model
 	end,
 }

@@ -72,6 +72,12 @@ local CLUSTER_B = "Environment/ForestClusterB"
 local ROCK = "Environment/RockCluster"
 local PEAK = "Environment/MountainPeak"
 local RIDGE = "Environment/MountainRidge"
+local SNOW_A = "Props/SnowPileA"
+local SNOW_B = "Props/SnowPileB"
+local SNOWMAN = "Props/Snowman"
+local SLED = "Props/Sled"
+local WOODSTACK = "Props/WoodStack"
+local FIR_BARREL = "Props/FirBarrel"
 
 -- W x L (docs "Map art"), triangle and MeshPart budget per model (docs "Map layout (CM2-10)").
 MapLayout.ART = {
@@ -88,6 +94,12 @@ MapLayout.ART = {
 	[ROCK] = { w = 7.4, l = 4.5, triangles = 300, meshParts = 3, fallback = nil },
 	[PEAK] = { w = 220, l = 180, triangles = 1000, meshParts = 4, fallback = nil },
 	[RIDGE] = { w = 300, l = 150, triangles = 1000, meshParts = 4, fallback = nil },
+	[SNOW_A] = { w = 5.76, l = 3.83, triangles = 160, meshParts = 2, fallback = "SnowPileA" },
+	[SNOW_B] = { w = 4.58, l = 4.64, triangles = 240, meshParts = 2, fallback = "SnowPileB" },
+	[SNOWMAN] = { w = 3.5, l = 2.3, triangles = 560, meshParts = 3, fallback = nil },
+	[SLED] = { w = 1.77, l = 3.99, triangles = 300, meshParts = 3, fallback = nil },
+	[WOODSTACK] = { w = 5.6, l = 2.31, triangles = 520, meshParts = 3, fallback = nil },
+	[FIR_BARREL] = { w = 2.4, l = 2.4, triangles = 360, meshParts = 3, fallback = "FirBarrel" },
 } :: { [string]: ArtEntry }
 
 MapLayout.COUNTS = {
@@ -96,14 +108,20 @@ MapLayout.COUNTS = {
 	[BOARD] = 4,
 	[HOUSE] = 4,
 	[SIGN] = 7,
-	[LAMP] = 22,
-	[BENCH] = 4,
-	[FIR] = 152,
+	[LAMP] = 32,
+	[BENCH] = 12,
+	[FIR] = 162,
 	[CLUSTER_A] = 40,
 	[CLUSTER_B] = 30,
 	[ROCK] = 24,
 	[PEAK] = 6,
 	[RIDGE] = 7,
+	[SNOW_A] = 32,
+	[SNOW_B] = 14,
+	[SNOWMAN] = 8,
+	[SLED] = 6,
+	[WOODSTACK] = 6,
+	[FIR_BARREL] = 16,
 } :: { [string]: number }
 
 -- Plots 1-3 sit at z -75 facing +1 (toward the road), plots 4-6 at z 75 facing -1.
@@ -325,6 +343,96 @@ local function fixedPieces(): { Piece }
 	return list
 end
 
+MapLayout.DRESSING_CODES = {
+	A = SNOW_A,
+	B = SNOW_B,
+	SM = SNOWMAN,
+	SL = SLED,
+	WS = WOODSTACK,
+	FB = FIR_BARREL,
+	L = LAMP,
+	BE = BENCH,
+	F = FIR,
+} :: { [string]: string }
+
+-- CM2-10D placement contract (docs "Map dressing (CM2-10D)"): north half, mirrored to the south by dressingPieces.
+MapLayout.DRESSING = {
+	-- 1. Street (01-19)
+	{ code = "L", x = -195, z = 22, yaw = 0 },
+	{ code = "A", x = -187, z = 24, yaw = 0 },
+	{ code = "FB", x = -180, z = 23.5, yaw = 0 },
+	{ code = "SM", x = -158, z = 34, yaw = 0 },
+	{ code = "BE", x = -152, z = 24, yaw = 0 },
+	{ code = "B", x = -145, z = 26, yaw = 0 },
+	{ code = "WS", x = -186, z = 40, yaw = 0 },
+	{ code = "SL", x = -182, z = 36, yaw = 90 },
+	{ code = "F", x = -150, z = 40, yaw = 0 },
+	{ code = "B", x = -34, z = 27, yaw = 0 },
+	{ code = "FB", x = -40, z = 34, yaw = 0 },
+	{ code = "B", x = 76, z = 27, yaw = 0 },
+	{ code = "WS", x = 73, z = 40, yaw = 0 },
+	{ code = "FB", x = 70, z = 30, yaw = 0 },
+	{ code = "BE", x = 176, z = 24.5, yaw = 0 },
+	{ code = "SM", x = 170, z = 36, yaw = 0 },
+	{ code = "A", x = 183, z = 40, yaw = 0 },
+	{ code = "FB", x = 165, z = 30, yaw = 0 },
+	{ code = "FB", x = 186, z = 26, yaw = 0 },
+	-- 2. Approach road, bridge west end (20-33)
+	{ code = "L", x = -252, z = 20, yaw = 0 },
+	{ code = "L", x = -300, z = 20, yaw = 0 },
+	{ code = "L", x = -350, z = 20, yaw = 0 },
+	{ code = "L", x = -400, z = 20, yaw = 0 },
+	{ code = "A", x = -272, z = 21, yaw = 0 },
+	{ code = "A", x = -325, z = 21, yaw = 0 },
+	{ code = "A", x = -375, z = 21, yaw = 0 },
+	{ code = "B", x = -262, z = 25, yaw = 0 },
+	{ code = "SM", x = -258, z = 34, yaw = 0 },
+	{ code = "SL", x = -254, z = 31, yaw = 0 },
+	{ code = "BE", x = -280, z = 25, yaw = 0 },
+	{ code = "FB", x = -249, z = 22, yaw = 0 },
+	{ code = "F", x = -262, z = 42, yaw = 0 },
+	{ code = "F", x = -290, z = 45, yaw = 0 },
+	-- 3. Stream banks (34-38)
+	{ code = "A", x = -197, z = 60, yaw = 90 },
+	{ code = "A", x = -197, z = 100, yaw = 90 },
+	{ code = "A", x = -197, z = 140, yaw = 90 },
+	{ code = "A", x = -238.5, z = 60, yaw = 90 },
+	{ code = "A", x = -238.5, z = 120, yaw = 90 },
+	-- 4. Square (39-47)
+	{ code = "WS", x = 226, z = 62, yaw = 270 },
+	{ code = "SM", x = 237, z = 58, yaw = 0 },
+	{ code = "SL", x = 243, z = 57, yaw = 90 },
+	{ code = "B", x = 195, z = 49, yaw = 0 },
+	{ code = "A", x = 274, z = 49, yaw = 0 },
+	{ code = "FB", x = 283, z = 20, yaw = 0 },
+	{ code = "FB", x = 283, z = 40, yaw = 0 },
+	{ code = "F", x = 235, z = 70, yaw = 0 },
+	{ code = "B", x = 280, z = 62, yaw = 0 },
+	-- 5. Plot gaps (48-49)
+	{ code = "A", x = -50.5, z = 42, yaw = 0 },
+	{ code = "A", x = 59.5, z = 42, yaw = 0 },
+	-- 6. More (50-55)
+	{ code = "A", x = -170, z = 42, yaw = 0 },
+	{ code = "B", x = -310, z = 25, yaw = 0 },
+	{ code = "F", x = -365, z = 30, yaw = 0 },
+	{ code = "BE", x = -385, z = 22, yaw = 0 },
+	{ code = "A", x = -197, z = 200, yaw = 90 },
+	{ code = "A", x = -238.5, z = 180, yaw = 90 },
+} :: { { code: string, x: number, z: number, yaw: number } }
+
+local function dressingPieces(): { Piece }
+	local list: { Piece } = {}
+	for nn, e in ipairs(MapLayout.DRESSING) do
+		local path = MapLayout.DRESSING_CODES[e.code]
+		table.insert(list, fixed(string.format("Dress_%02d_N", nn), path, "Dressing", e.x, 0, e.z, e.yaw))
+		table.insert(
+			list,
+			fixed(string.format("Dress_%02d_S", nn), path, "Dressing", e.x, 0, -e.z, (e.yaw + 180) % 360)
+		)
+	end
+	return list
+end
+
 local function overlaps(a: Box, b: Box, grow: number): boolean
 	return a.minX - grow < b.maxX and b.minX - grow < a.maxX and a.minZ - grow < b.maxZ and b.minZ - grow < a.maxZ
 end
@@ -432,6 +540,9 @@ function MapLayout.generate(): { Piece }
 	end
 
 	for _, piece in generated do
+		table.insert(list, piece)
+	end
+	for _, piece in dressingPieces() do
 		table.insert(list, piece)
 	end
 	return list

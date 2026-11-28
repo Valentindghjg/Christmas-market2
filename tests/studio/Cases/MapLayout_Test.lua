@@ -7,7 +7,8 @@ return function(t)
 	local expect = t.expect
 
 	-- The contract's 298 models left out the 4 benches; its triangle and MeshPart totals include them.
-	local MAX_TRIANGLES, MAX_MESHPARTS, MAX_MODELS = 149700, 1051, 302
+	-- CM2-10DW adds the 110 dressing pieces (302 -> 412 models, 149700 -> 179700, 1051 -> 1351 budget).
+	local MAX_TRIANGLES, MAX_MESHPARTS, MAX_MODELS = 179700, 1351, 442
 
 	local function inside(box, zone)
 		return box.minX >= zone.minX - 1e-9
@@ -110,7 +111,9 @@ return function(t)
 		expect.truthy(triangles <= MAX_TRIANGLES)
 		expect.truthy(meshParts <= MAX_MESHPARTS)
 		expect.truthy(models <= MAX_MODELS)
-		expect.equal(meshParts, 1051)
+		expect.equal(meshParts, 1335)
+		expect.equal(models, 412)
+		expect.equal(triangles, 179260)
 	end)
 
 	t.test("hides reserve rows only where the lot reaches them, levels 0-6", function()
@@ -221,9 +224,9 @@ return function(t)
 			end
 			return count
 		end
-		expect.equal(size(fallback), 8)
-		expect.equal(size(skip), 5)
-		expect.equal(#missing, 13)
+		expect.equal(size(fallback), 11)
+		expect.equal(size(skip), 8)
+		expect.equal(#missing, 19)
 		local seen = {}
 		for _, entry in ipairs(missing) do
 			expect.equal(entry.code, "MissingArtAsset")
@@ -232,7 +235,7 @@ return function(t)
 		end
 
 		local partial, partialMissing = MapLayout.plan(fakeRoot({ "Environment/ForestFir" }), ArtLibrary.find)
-		expect.equal(#partialMissing, 12)
+		expect.equal(#partialMissing, 18)
 		for _, placement in ipairs(partial) do
 			if placement.piece.artPath == "Environment/ForestFir" then
 				expect.equal(placement.mode, "Art")
@@ -240,6 +243,77 @@ return function(t)
 				expect.truthy(placement.mode ~= "Art")
 			end
 		end
+	end)
+
+	t.test("places the 110 dressing pieces from the contract (CM2-10DW)", function()
+		local byId = {}
+		local lamps = 0
+		for _, piece in ipairs(MapLayout.pieces()) do
+			if piece.group == "Dressing" then
+				expect.falsy(byId[piece.id])
+				byId[piece.id] = piece
+				if piece.artPath == "Props/LampPost" then
+					lamps += 1
+				end
+			end
+		end
+		expect.equal(#MapLayout.DRESSING, 55)
+		local total = 0
+		for _ in pairs(byId) do
+			total += 1
+		end
+		expect.equal(total, 110)
+		expect.equal(lamps, 10)
+		for nn = 1, 55 do
+			local north = byId[string.format("Dress_%02d_N", nn)]
+			local south = byId[string.format("Dress_%02d_S", nn)]
+			expect.truthy(north ~= nil and south ~= nil)
+			expect.equal(south.artPath, north.artPath)
+			expect.equal(south.x, north.x)
+			expect.equal(south.z, -north.z)
+			expect.equal(south.yaw, (north.yaw + 180) % 360)
+		end
+
+		local new = {
+			"Props/SnowPileA",
+			"Props/SnowPileB",
+			"Props/Snowman",
+			"Props/Sled",
+			"Props/WoodStack",
+			"Props/FirBarrel",
+		}
+		local isNew = {}
+		for _, path in ipairs(new) do
+			isNew[path] = true
+		end
+		local paths = {}
+		for _, path in ipairs(allPaths()) do
+			if not isNew[path] then
+				table.insert(paths, path)
+			end
+		end
+		local placements = MapLayout.plan(fakeRoot(paths), ArtLibrary.find)
+		local fallback, skip = 0, 0
+		for _, placement in ipairs(placements) do
+			if placement.piece.group == "Dressing" then
+				local path = placement.piece.artPath
+				if isNew[path] then
+					local wantsFallback = path == "Props/SnowPileA"
+						or path == "Props/SnowPileB"
+						or path == "Props/FirBarrel"
+					expect.equal(placement.mode, wantsFallback and "Fallback" or "Skip")
+					if wantsFallback then
+						fallback += 1
+					else
+						skip += 1
+					end
+				else
+					expect.equal(placement.mode, "Art")
+				end
+			end
+		end
+		expect.equal(fallback, 62)
+		expect.equal(skip, 20)
 	end)
 
 	-- CM2-FLICK: coplanar flat surfaces z-fight.
