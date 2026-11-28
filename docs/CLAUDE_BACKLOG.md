@@ -1,35 +1,18 @@
 # Claude Code — 50-task development backlog
-Updated: 2026-11-28 (planner: end-of-run refresh after the hasseln of 2026-11-28 daytime, assuming the owner resolves PC-12, PC-14, PC-15, PC-16 and PC-1 before the next run. This run: CM2-10I (69d76d0, 505af25, c605b42, fd8bfe7, 75fa099, 1774749, 03b34ad), CM2-10IW (04b30d7, ba21567; full run 74/74), CM2-SLIM run 5 (be07834, 9e6686e, e219f3e, 02f4b89), 23 CM2-47 (b561241, 5b2c686; full 78/78, soak 8/8), tickets b8cd4b8 (23a, 37a), 23a CM2-47D2 (343cd29, 6b78fcd), CM2-SLIM10 (de47b03), CM2-SLIM run 6 (f6e2bfc, dff3698, 96b831d), 24 CM2-48 (debc1cb), 25 CM2-50a (738d072, 93a9d2a; release candidate `debc1cb`, full 78/78). Skipped (PC open): CM2-49T, CM2-SUPP, CM2-UI3H, CM2-UIP. Not started on purpose: CM2-SLIM9 (src after the RC) and the Gate C deferred list. Done text: `docs/archive/BACKLOG_DONE_2026-11-28.md` and older `docs/archive/BACKLOG_*.md`.)
-Status: **waiting for the owner's Go/No-Go (PC-16).** Binding order = "Launch order", its top = the "1st Advent launch list (owner 2026-11-27)".
+Updated: 2026-11-28 (planner: PC-16 resolved, owner picks launch 2026-11-29 with reduced scope, DECISION_LOG 2026-11-28 "Go/No-Go". Before that: end-of-run refresh after the hasseln of 2026-11-28 daytime, assuming the owner resolves PC-12, PC-14, PC-15, PC-16 and PC-1 before the next run. This run: CM2-10I (69d76d0, 505af25, c605b42, fd8bfe7, 75fa099, 1774749, 03b34ad), CM2-10IW (04b30d7, ba21567; full run 74/74), CM2-SLIM run 5 (be07834, 9e6686e, e219f3e, 02f4b89), 23 CM2-47 (b561241, 5b2c686; full 78/78, soak 8/8), tickets b8cd4b8 (23a, 37a), 23a CM2-47D2 (343cd29, 6b78fcd), CM2-SLIM10 (de47b03), CM2-SLIM run 6 (f6e2bfc, dff3698, 96b831d), 24 CM2-48 (debc1cb), 25 CM2-50a (738d072, 93a9d2a; release candidate `debc1cb`, full 78/78). Skipped (PC open): CM2-49T, CM2-SUPP, CM2-UI3H, CM2-UIP. Not started on purpose: CM2-SLIM9 (src after the RC) and the Gate C deferred list. Done text: `docs/archive/BACKLOG_DONE_2026-11-28.md` and older `docs/archive/BACKLOG_*.md`.)
+Status: **Go/No-Go decided (PC-16, owner 2026-11-28: "morgen"): launch 2026-11-29 with the reduced scope of RC `debc1cb`; the owner publishes, not yet published.** Binding order = "Launch order", its top = the "1st Advent launch list (owner 2026-11-27)".
 - Done: Gate A lines 1–15 except 14; Gate B 16, 17 (17a, 17b), 18, 18f, 18g, 18a2, 18a3, 18a5, 18a6, 18a7, 22a1, 22a2, 22a3b, 22a3c, 23 CM2-47, 23a CM2-47D2, 24 CM2-48, 25 CM2-50a; CM2-SALE2, CM2-SLIM8, CM2-SLIM10; MODEL CM2-10 (10a–10c), 10W, 10D, 10DW, 10I, 10IW, 12, 12W, 13, 13W, 14, 14W, GATE, GATEW.
 - Done except phone or locale readings (not ticked): 18a CM2-SUP, 18a1 CM2-SUPC, 19 CM2-A1, 20 CM2-45, 22 CM2-43 (18a4 CM2-SUPP ticks them, needs PC-14); 22a3 CM2-UI3 (ticked when 22a3d passes); 22a CM2-UI (ticked when 22a4 passes).
 - Open in Gate A: only line 14 (phone time: PC-12 → CM2-49T).
-- Open PC entries: PC-16 (Go/No-Go pick), PC-12, PC-14, PC-15 (launch items), PC-1 (Gate C).
-- **Go/No-Go:** summary = entry "CM2-50a" in `docs/PROGRESS.md` (release candidate `debc1cb`; headless 796/796, Studio full 78/78). The owner picks (PC-16):
-  - **2026-11-29, reduced scope:** the owner publishes the release build of `debc1cb` per `docs/RELEASE_CHECKLIST.md` Part B before the next run; the run then lands the PC follow-ups as updates (the owner publishes each update; engineering publishes nothing), then CM2-SLIM9, then the Gate C list.
-  - **2026-12-06:** no publication now; the next run does the PC follow-ups first, then CM2-SLIM9, then the Gate C list (N6).
-- **Next run (either pick):** CM2-49T → 18a4 CM2-SUPP → 22a3d CM2-UI3H → 22a4 CM2-UIP (+ any fix task a FAIL files) → CM2-SLIM9 → Gate C list (CM2-BLIDX first). CM2-UI3H and CM2-SLIM9 change `src` after the RC, so they also wait for PC-16; 49T and SUPP do not. A task whose PC entry is still open is skipped for that run.
-- Owner decisions in force: launch on the 1st Advent (2026-11-29) with the list, Go/No-Go picks 11-29 (reduced scope) or 12-06 (2026-11-27); no Swarve pack in the game, it stays an optional template add-on 22b (2026-11-26); FPS measurements and captures gate no tick (2026-11-25).
+- Open PC entries: PC-12, PC-14, PC-15 (launch items), PC-1 (Gate C).
+- **Go/No-Go (decided 2026-11-28):** summary = entry "CM2-50a" in `docs/PROGRESS.md` (RC `debc1cb`; headless 796/796, Studio full 78/78). The owner publishes the release build of `debc1cb` per `docs/RELEASE_CHECKLIST.md` Part B (engineering publishes nothing). Out of the launch, shipped later as updates the owner publishes: CM2-49T (PC-12), CM2-SUPP and CM2-UIP (PC-14), CM2-UI3H (PC-15).
+- **Release build:** while the owner builds from `debc1cb`, agents do not change the working tree (no checkout, reset or stash). The owner builds from a separate worktree or clone, e.g. `git worktree add ../cm2-release debc1cb` (RELEASE_CHECKLIST B6 step 1), not by `git checkout debc1cb` in this checkout.
+- **Next run:** PC follow-ups as their PC entries resolve: CM2-49T → 18a4 CM2-SUPP → 22a3d CM2-UI3H → 22a4 CM2-UIP (+ any fix task a FAIL files) → CM2-SLIM9 → Gate C list (CM2-BLIDX first). All land on `main` as post-launch updates. A task whose PC entry is still open is skipped for that run.
+- Owner decisions in force: launch on the 1st Advent (2026-11-29) with the list, Go/No-Go: launch 2026-11-29 with reduced scope (2026-11-28); no Swarve pack in the game, it stays an optional template add-on 22b (2026-11-26); FPS measurements and captures gate no tick (2026-11-25).
 - Hygiene: last CM2-SLIM run 6 (f6e2bfc, 2026-11-28); 0 `feat`/`fix` commits since, so CM2-SLIM is due after 8 more (or a size limit). Backlog and DECISION_LOG are over 60 KB (limit 80 KB); CM2-BLIDX (first Gate C task) shrinks the backlog. GitHub issues stay open until the owner closes them.
 
 ## Für den Owner am PC
 Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisions). Written by the `planner` during `hasseln` in the fixed format from `.claude/skills/hasseln/SKILL.md`; the next run checks each entry's `Prüfen` field first and starts with its `Danach` task.
-
-### PC-16 Entscheidung: Start am 29.11. mit reduziertem Umfang oder am 06.12. (Go/No-Go)
-- Status: offen
-- Art: entscheidung
-- Problem: Die Go/No-Go-Zusammenfassung liegt vor (`docs/PROGRESS.md`, Eintrag „CM2-50a“, Release-Kandidat `debc1cb`, alle Checks grün, Studio 78/78). Nicht drin: Telefon-Tutorialzeit (Zeile 14), Telefon-/Deutsch-Messwerte, Telefon-HUD. Den Starttermin wählt nur der Owner; bis dahin bleiben Änderungen an `src` nach dem RC (CM2-UI3H, CM2-SLIM9) liegen.
-- Deine Schritte:
-  1. Die Zusammenfassung „CM2-50a“ in `docs/PROGRESS.md` lesen.
-  2. Einen Termin wählen:
-     - (a) 2026-11-29, reduzierter Umfang: vor dem nächsten Lauf `docs/RELEASE_CHECKLIST.md` Teil B (B1–B6) abarbeiten. Die Datei aus dem Release-Kandidaten bauen: `git checkout debc1cb`, `rojo build release.project.json --output release.rbxlx`, `lune run tools/art/art.luau verify release.rbxlx` (0 pending, 0 failed), dann `git checkout main`. Die Telefon-Nacharbeiten kommen danach als Updates, die du jeweils selbst veröffentlichst.
-     - (b) 2026-12-06: nichts veröffentlichen; der nächste Lauf macht zuerst die Nacharbeiten.
-  3. Im Chat schreiben: „PC-16: 11-29“ oder „PC-16: 12-06“ (bei 11-29 dazu, ob schon veröffentlicht).
-- Prüfen: DECISION_LOG.md enthält einen Eintrag mit der Go/No-Go-Wahl des Owners, oder der Owner hat im Chat „PC-16: 11-29“ bzw. „PC-16: 12-06“ geschrieben.
-- Blockiert: 22a3d CM2-UI3H (und damit 22a4 CM2-UIP), CM2-SLIM9, die Gate-C-Liste (CM2-BLIDX bis CM2-ARTREF)
-- Danach: CM2-49T (trägt die Wahl mit ein), dann die übrige Reihenfolge der Kopfzeile „Next run“
-- WIP-Branch: none
-- Seit: 2026-11-28, hasseln
 
 ### PC-12 Tutorial auf dem Telefon selbst spielen und die Zeit stoppen (CM2-49, Zeile 14)
 - Status: offen
@@ -43,7 +26,7 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
   5. Im Chat schreiben: „PC-12: <Minuten:Sekunden>“ (z. B. „PC-12: 2:40“), dazu, falls etwas hakte, einen Satz. Den Test-Spielstand danach löschen.
 - Prüfen: der Owner hat im Chat „PC-12: <Zeit>“ geschrieben, oder PROGRESS.md enthält die Owner-Zeit für Zeile 14.
 - Blockiert: 14 CM2-49 (über CM2-49T)
-- Danach: CM2-49T (erste Aufgabe des nächsten Laufs; docs only, braucht kein Studio; läuft auch, wenn PC-16 noch offen ist)
+- Danach: CM2-49T (erste Aufgabe des nächsten Laufs; docs only, braucht kein Studio)
 - WIP-Branch: none
 - Seit: 2026-11-26, hasseln
 
@@ -59,7 +42,7 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
   5. Später im selben Lauf, wenn der Chat „CM2-UIP Tablet“ meldet: Test → Device auf ein Tablet (z. B. „iPad“) umstellen. Bist du dann nicht am PC, wird nur der Tablet-Teil BLOCKED und kommt in einen neuen PC-Eintrag.
 - Prüfen: der Playtester liest in Play die Client-`workspace.CurrentCamera.ViewportSize` ≈ 666x374 (oder die Größe des gewählten Telefons) und `LocalizationService.RobloxLocaleId` beginnt mit „de“, und schreibt beides in PROGRESS.md.
 - Blockiert: 18a4 CM2-SUPP (und darüber die Haken von 18a, 18a1, 19, 20, 22), 22a4 CM2-UIP (und darüber die Haken von 22a3 und 22a)
-- Danach: 18a4 CM2-SUPP (direkt nach CM2-49T; nur Messwerte, läuft auch bei offenem PC-16); 22a4 CM2-UIP direkt nach 22a3d CM2-UI3H
+- Danach: 18a4 CM2-SUPP (direkt nach CM2-49T; nur Messwerte); 22a4 CM2-UIP direkt nach 22a3d CM2-UI3H
 - WIP-Branch: none
 - Seit: 2026-11-27, hasseln
 
@@ -76,7 +59,7 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
   3. Im Chat schreiben: „PC-15: <1|2|3>“ (bei 3 mit der neuen Grenze).
 - Prüfen: DECISION_LOG.md enthält einen Eintrag mit der Wahl des Owners zu PC-15, oder der Owner hat im Chat „PC-15: <1|2|3>“ geschrieben.
 - Blockiert: 22a3d CM2-UI3H (und darüber die Haken von 22a3, 22a4 CM2-UIP und 22a)
-- Danach: 22a3d CM2-UI3H (direkt nach 18a4 CM2-SUPP; ändert `src`, braucht daher auch PC-16), dann 22a4 CM2-UIP
+- Danach: 22a3d CM2-UI3H (direkt nach 18a4 CM2-SUPP; ändert `src`, kommt als Update nach dem Start), dann 22a4 CM2-UIP
 - WIP-Branch: none
 - Seit: 2026-11-28, hasseln
 
@@ -90,12 +73,13 @@ Blockers only the owner can resolve (Studio, Rojo plugin, access, tools, decisio
   3. Nicht committen; der Ordner bleibt lokal (öffentliches Repo).
 - Prüfen: `docs/references/roblox-game/` enthält mindestens 5 Bilddateien.
 - Blockiert: CM2-ARTREF
-- Danach: CM2-ARTREF (nicht launch-kritisch: Gate C, 6. Aufgabe nach CM2-BLIDX, CM2-CHECK, CM2-G18, CM2-13D, CM2-44; die Gate-C-Liste wartet auch auf PC-16). Alle 41 Modelle sind schon importiert (N5); eine Abweichung, die ARTREF findet, wird eine MODEL-Nacharbeit mit erneutem Upload (Planner 2026-11-24).
+- Danach: CM2-ARTREF (nicht launch-kritisch: Gate C, 6. Aufgabe nach CM2-BLIDX, CM2-CHECK, CM2-G18, CM2-13D, CM2-44). Alle 41 Modelle sind schon importiert (N5); eine Abweichung, die ARTREF findet, wird eine MODEL-Nacharbeit mit erneutem Upload (Planner 2026-11-24).
 - WIP-Branch: none
 - Seit: 2026-11-22, hasseln (Owner-Gespräch)
 
 #### Erledigt
 
+- PC-16 Go/No-Go, erledigt 2026-11-28: Owner im Chat „morgen“ = Start 2026-11-29 mit reduziertem Umfang, RC `debc1cb` (DECISION_LOG 2026-11-28). Der Owner veröffentlicht den Release-Build per `docs/RELEASE_CHECKLIST.md` Teil B aus einem eigenen Worktree (`git worktree add ../cm2-release debc1cb`); CM2-49T, CM2-SUPP, CM2-UIP und CM2-UI3H kommen danach als Updates.
 - PC-13 Studio-Fenster sichtbar halten (Client-Viewport 1x1, CM2-SUP), erledigt 2026-11-27: Client-`ViewportSize` 1564x730 (Studio e36ff47a); `LotManagerButton` 142x44 nach Save.Play (CM2-SUPC (a)). Danach lief CM2-SUPC.
 - PC-10 (2026-11-26); PC-9 (gestrichen), PC-11, PC-8, PC-4, PC-2, PC-7, PC-6, PC-3, PC-5 erledigt 2026-11-22 bis 2026-11-25. Texte: `docs/archive/BACKLOG_DONE_2026-11-25_to_2026-11-26.md` und ältere Archive.
 
@@ -150,7 +134,7 @@ CM2-SLIM1..5, SLIM4b and both tasks below are done (archive; SLIM6 and SLIM7 in 
 - [x] **CM2-SLIM6 TECHNICAL_ARCHITECTURE and TEST_PLAN to 30 KB**, done 2026-11-27 (CM2-SLIM run 3; 30,671 B and 19,743 B; moved text in `docs/archive/TECHNICAL_ARCHITECTURE_2026-11-26.md`), see archive
 - [x] **CM2-SLIM7 Archive the plans of ticked tasks**, done 2026-11-27 (CM2-SLIM run 3; 28 plans moved to `docs/archive/plans/`), see archive
 - [x] **CM2-SLIM8 Remove five unused `Localization` keys**, done 2026-11-28 (7b945a7; `teleportNoFreePlot` kept, it is live), see archive
-- [ ] **CM2-SLIM9 MissingArtAsset Trees/FrostcrownFir/Small** (filed by CM2-SLIM run 5, 2026-11-28; dead-or-missing art in `src/shared` or `src/server`, so tier by template rules) · S · Depends: PC-16 (touches `src` after the RC `debc1cb`; runs after the owner's Go/No-Go pick, right after 22a4 CM2-UIP and its fix tasks). Goal: find why the console warns `MissingArtAsset Trees/FrostcrownFir/Small` in Studio (source `assets/art/source/Trees/FrostcrownFir` exists; check whether the Small size is built, integrated in `ArtAssets` and listed in `AssetCatalog`, or whether the lookup asks for a size that special trees never have). Accept: the warning is gone or documented as expected (ASSETWARN rule), by a headless test of the lookup or a Studio console reading; no save or money change.
+- [ ] **CM2-SLIM9 MissingArtAsset Trees/FrostcrownFir/Small** (filed by CM2-SLIM run 5, 2026-11-28; dead-or-missing art in `src/shared` or `src/server`, so tier by template rules) · S · Depends: none (post-launch update touching `src` after the RC `debc1cb`; runs right after 22a4 CM2-UIP and its fix tasks). Goal: find why the console warns `MissingArtAsset Trees/FrostcrownFir/Small` in Studio (source `assets/art/source/Trees/FrostcrownFir` exists; check whether the Small size is built, integrated in `ArtAssets` and listed in `AssetCatalog`, or whether the lookup asks for a size that special trees never have). Accept: the warning is gone or documented as expected (ASSETWARN rule), by a headless test of the lookup or a Studio console reading; no save or money change.
 - [x] **CM2-SLIM10 Shrink MODEL_INTEGRATION.md to 30 KB**, done 2026-11-28 (de47b03; 29.5 KB), see archive
 
 ## Launch replanning (2026-11-21)
@@ -168,7 +152,7 @@ The owner interview changed scope and priorities (PRODUCT_SPEC, top section). Th
 | Gate | Target date | Content |
 |---|---|---|
 | **A — Friends test ready** | 2026-11-26 | Order 1–15: full core loop with walking customers and manual checkout, staff, saves with Duo/Trio/Quad and invite code, Robux shop wired, tutorial, touch UI. |
-| **B — Go/No-Go build** | 2026-11-28 (summary done on `debc1cb`; owner pick PC-16) | The "1st Advent launch list" (owner 2026-11-27): progression ladder, day/night, leaderboards, quests and daily rewards (done), supplier cart, Advent calendar, 1st Advent event, vehicle art, final UI redesign (22a), English strings (22), map dressing and village infrastructure, QA, release checklist, Go/No-Go summary. |
+| **B — Go/No-Go build** | 2026-11-28 (summary done on `debc1cb`; owner picked launch 2026-11-29, PC-16) | The "1st Advent launch list" (owner 2026-11-27): progression ladder, day/night, leaderboards, quests and daily rewards (done), supplier cart, Advent calendar, 1st Advent event, vehicle art, final UI redesign (22a), English strings (22), map dressing and village infrastructure, QA, release checklist, Go/No-Go summary. |
 | **C — 2nd Advent at the latest** | 2026-12-06 | First the deferred launch items 21 CM2-G18 (audio), CM2-13D, CM2-44, CM2-ARTREF; then order 26–31: analytics and appeal, decor and layout, 2nd Advent event, balance pass, final regression; plus any launch-list item cut on 2026-11-28. |
 | **After launch** | — | 25a–25c CM2-SPLIT-a/b/c, 22b CM2-UI-TPL, order 32–37. |
 
@@ -177,12 +161,12 @@ The owner interview changed scope and priorities (PRODUCT_SPEC, top section). Th
 Tier: S/M/L/MODEL estimate. "Covers" lists the old tickets a line replaces or absorbs; their GitHub issues are closed when this line is done.
 
 **1st Advent launch list (owner 2026-11-27)** — binding (a PC entry's "Danach" pointing here means this list). Owner: "okay dann kommen die wichtigsten zuerst damit am ersten advent launch ist dazu gehört auch die ui" (PRODUCT_SPEC top, DECISION_LOG 2026-11-27). hasseln step 1 checks each PC `Prüfen` field; a task whose PC entry is open is skipped for that run. If Rojo drops again, the planner reopens PC-11 and Studio criteria go to "Studio-Test ausstehend" (code work goes on). Done so far: CM2-14W, CM2-SUPC (desktop), CM2-TUTHOOK, CM2-SUPQ, CM2-UI1, CM2-UI2, CM2-UI3 part 1, CM2-UI3D, CM2-UI3M, CM2-14WR, CM2-LEAK22, CM2-HOOKSA, CM2-10D, CM2-10DW, CM2-10I, CM2-10IW, CM2-47, CM2-47D2, CM2-SLIM10, CM2-48, CM2-50a; CM2-43 code part.
-0. **Owner Go/No-Go (PC-16), before the next run.** 2026-11-29: the owner publishes the release build of `debc1cb` per `docs/RELEASE_CHECKLIST.md` Part B; every item below then lands as an update the owner publishes. 2026-12-06: nothing is published; items 1–2 run first. The order below is the same for both picks.
-1. **PC follow-ups first** (owner resolves PC-12, PC-14, PC-15, PC-16 before the run): **CM2-49T** (S, docs only; Danach of PC-12; also records the PC-16 pick) → 18a4 **CM2-SUPP** (S, Studio readings; Danach of PC-14; ticks 18a, 18a1, 19, 20, 22) → 22a3d **CM2-UI3H** (M; Danach of PC-15; needs PC-16; ticks 22a3) → 22a4 **CM2-UIP** (S, Studio readings; needs PC-14; ticks 22a) → any M fix task filed for a FAIL in these tasks (placed right after the failing line). The friends test (line 15) stays optional.
-2. **CM2-SLIM9** (needs PC-16; first `src` change after the RC that is not a PC follow-up).
+0. **Owner Go/No-Go (PC-16): done 2026-11-28, launch 2026-11-29 with reduced scope** (DECISION_LOG 2026-11-28). The owner publishes the release build of `debc1cb` per `docs/RELEASE_CHECKLIST.md` Part B from a separate worktree or clone (`git worktree add ../cm2-release debc1cb`); agents do not change the working tree while the owner builds. Every item below lands on `main` as a post-launch update the owner publishes.
+1. **PC follow-ups first** (as PC-12, PC-14, PC-15 resolve): **CM2-49T** (S, docs only; Danach of PC-12) → 18a4 **CM2-SUPP** (S, Studio readings; Danach of PC-14; ticks 18a, 18a1, 19, 20, 22) → 22a3d **CM2-UI3H** (M; Danach of PC-15; ticks 22a3) → 22a4 **CM2-UIP** (S, Studio readings; needs PC-14; ticks 22a) → any M fix task filed for a FAIL in these tasks (placed right after the failing line). The friends test (line 15) stays optional.
+2. **CM2-SLIM9** (first `src` change after the RC that is not a PC follow-up; a post-launch update).
 3. Then the **Gate C list** (N6), starting with CM2-BLIDX.
 - Done in the 2026-11-28 runs: version 1 art CM2-10I → CM2-10IW; CM2-SLIM run 5 → 23 CM2-47 → 23a CM2-47D2 → CM2-SLIM10 → CM2-SLIM run 6 → 24 CM2-48 → 25 CM2-50a (summary on `debc1cb`).
-- **Cut line (applied):** CM2-50a listed CM2-49T, CM2-SUPP, CM2-UI3H and CM2-UIP as "out of 1st Advent launch"; with the 11-29 pick they come as updates, with 12-06 before launch.
+- **Cut line (applied):** CM2-50a listed CM2-49T, CM2-SUPP, CM2-UI3H and CM2-UIP as "out of 1st Advent launch"; with the 11-29 pick (owner 2026-11-28) they come as post-launch updates.
 - **Deferred** (owner 2026-11-27): Gate C, after item 2, in this order: **CM2-BLIDX** → **CM2-CHECK** (workflow, owner decision 2026-11-27, usage) → 21 **CM2-G18** (audio, L) → **CM2-13D** (desk) → **CM2-44** (CC0 art removal) → **CM2-ARTREF** (needs PC-1). After launch: 25a–25c **CM2-SPLIT-a/b/c**, 22b **CM2-UI-TPL**.
 - **Repo hygiene:** `.claude/settings.local.json` exists, is not git-ignored and must never be committed; stage files by name, never `git add -A` or `git add .`.
 
@@ -190,9 +174,9 @@ CM2-BLIDX. **Backlog index for hasseln** (owner decision 2026-11-27, usage: the 
 
 CM2-CHECK. **One check command with a one-line result** (owner decision 2026-11-27, usage) · S (tooling only; no game code) · Depends: none. Goal: agents run one command instead of four with four outputs. Accept: (a) `lune run tools/check.luau` runs `stylua --check src tests`, `selene src tests`, `lune run tests/headless/run.luau` and `rojo build default.project.json --output build.rbxlx`; it prints only the output of failing checks plus one line `CHECK PASS|FAIL stylua=<ok|fail> selene=<ok|fail> tests=<passed>/<run> rojo=<ok|fail>` and exits non-zero on any failure; option `--fix` runs `stylua src tests` first; (b) implementer and reviewer rules and `docs/plans/TEMPLATE.md` "Acceptance" name this command instead of the four; (c) CI keeps its own steps; (d) the same script and rule changes go to the template repo (its own paths), committed and pushed there; (e) headless test or a dry run proves the FAIL path (a deliberately mis-formatted temp file outside `src` is not used; the test feeds a fake process result to the summary function).
 
-CM2-49T. **Record the owner's phone time for line 14** (Danach of PC-12) · S (docs only, no plan, no Studio run) · Depends: PC-12 (not PC-16). Goal: the reviewer writes a PROGRESS.md entry "line 14 phone time (owner hand-test)" with the owner's time, device and remarks from the chat, and a status line under line 14. Accept: (a) if the owner wrote "PC-16: <date>" and DECISION_LOG has no entry for it, the reviewer adds one ("Go/No-Go: owner picks <date>", the chat wording, publication state) in the same commit; (b) time ≤ 3:00 → line 14 ticked and Gate A closed in the status header; time > 3:00 → line 14 stays open and the `planner` adds an M fix task right after line 14 (shorten the slowest step the owner names; delivery ETA and customer arrival values from `GameConfig` in the plan), placed at item 1 of the "1st Advent launch list", right after CM2-SUPP.
+CM2-49T. **Record the owner's phone time for line 14** (Danach of PC-12) · S (docs only, no plan, no Studio run) · Depends: PC-12. Goal: the reviewer writes a PROGRESS.md entry "line 14 phone time (owner hand-test)" with the owner's time, device and remarks from the chat, and a status line under line 14. Accept: (a) the PC-16 pick is already in DECISION_LOG (2026-11-28); if the owner reports in chat that the game is published, the reviewer adds that date to that entry in the same commit; (b) time ≤ 3:00 → line 14 ticked and Gate A closed in the status header; time > 3:00 → line 14 stays open and the `planner` adds an M fix task right after line 14 (shorten the slowest step the owner names; delivery ETA and customer arrival values from `GameConfig` in the plan), placed at item 1 of the "1st Advent launch list", right after CM2-SUPP.
 N6. **Launch order with art wiring.** After each launch-order task one art task whose Depends are met runs (MODEL rule 4); the "1st Advent launch list" above sets the Gate B order (done steps and the old chain: archive).
-   - Gate C (after PC-16 and CM2-SLIM9): deferred launch items first: **CM2-BLIDX** → **CM2-CHECK** → 21 **CM2-G18** → **CM2-13D** → **CM2-44** → **CM2-ARTREF**; then 26 **CM2-35** → 27 **CM2-32/33** → 27a **CM2-G9c** → 27b **CM2-G9d** → 28 **CM2-45b** → 29 **CM2-28** → 30 **CM2-45c** → 31 **CM2-50**; then "After launch": 25a **CM2-SPLIT-a** → 25b → 25c → 22b **CM2-UI-TPL** (template repo only) → 32–37.
+   - Gate C (after CM2-SLIM9; target start 2026-12-06): deferred launch items first: **CM2-BLIDX** → **CM2-CHECK** → 21 **CM2-G18** → **CM2-13D** → **CM2-44** → **CM2-ARTREF**; then 26 **CM2-35** → 27 **CM2-32/33** → 27a **CM2-G9c** → 27b **CM2-G9d** → 28 **CM2-45b** → 29 **CM2-28** → 30 **CM2-45c** → 31 **CM2-50**; then "After launch": 25a **CM2-SPLIT-a** → 25b → 25c → 22b **CM2-UI-TPL** (template repo only) → 32–37.
    - CM2-SLIM before CM2-47 and CM2-48 (due rule) and whenever its due rule fires.
 N7. **Owner actions outside a task**: the friends test (line 15, `docs/FRIENDS_TEST.md`), unblocked since N3b passed; the Roblox group ID for line 18 (optional, the bonus stays hidden while it is 0); liked/disliked UI screenshots for line 22a (optional; CM2-UI needs no image uploads since 2026-11-26).
 
@@ -241,7 +225,7 @@ N7. **Owner actions outside a task**: the friends test (line 15, `docs/FRIENDS_T
 22a3. [ ] **CM2-UI3 Compact phone layouts** (planner 2026-11-27) · M (layout maths) · Depends: 22a2 (done). Goal: 22a (f) and (g). Accept: (a) first commit: the baseline of today's phone boxes in `UiTheme_Test`, before any layout change; (b) the (f) limits for every phone size in that test (window ≤ 70 % × 80 % of the safe area, HUD boxes ≤ 20 % of the screen, buttons 44–52 px, body 14–16 px, titles ≤ 24 px, none above baseline); (c) (g) fixed: on 780x281 the plot-picker confirm frame overlaps neither title nor status (headless box test); (d) desktop H4b probe 0 violations and full run PASS. *Status 2026-11-28: part 1 done (a), (c), (d) (plan `docs/plans/CM2-UI3.md`, headless 777/777, desktop smoke 13/13, H4b 0); (b) split into UI3D/UI3M/UI3H by the planner; 22a3b and 22a3c done 2026-11-28. Not ticked; ticked when 22a3d passes.*
 22a3b. [x] **CM2-UI3D** Phone dialogs at 70 % x 80 %, done 2026-11-28 (headless 779/779, ui_scan 0; plan `docs/archive/plans/CM2-UI3D.md`), see archive
 22a3c. [x] **CM2-UI3M** Phone Lot Manager at 70 % x 80 %, done 2026-11-28 (d708ccd, 1a55a45; headless 781/781, desktop H4b 0 on all 6 tabs; phone readings in 22a4), see archive
-22a3d. [ ] **CM2-UI3H Phone HUD at most 20 % of the screen** (planner 2026-11-28, from 22a3 (b)) · M (client layout; behaviour change only if PC-15 picks option 1) · Depends: PC-15 (owner decision), PC-16 (Go/No-Go pick; this changes `src` after the RC), 22a3c (done). Goal: meet the HUD limit the way the owner chose in PC-15. Accept:
+22a3d. [ ] **CM2-UI3H Phone HUD at most 20 % of the screen** (planner 2026-11-28, from 22a3 (b)) · M (client layout; behaviour change only if PC-15 picks option 1) · Depends: PC-15 (owner decision), 22a3c (done). Post-launch update (changes `src` after the RC `debc1cb`). Goal: meet the HUD limit the way the owner chose in PC-15. Accept:
     - (a) Headless `UiTheme_Test`: for every `PHONES` size, the HUD boxes counted as PC-15 decides (rail, money bar, stocking bar, hint bar) together ≤ the PC-15 limit of the screen area, each ≤ its CM2-UI3 baseline; rail buttons 44–52 px.
     - (b) Option 1 only: the new key in `Localization.lua` (English) or a Frame-built glyph; tutorial hints still point at a visible target (headless test); desktop rail unchanged.
     - (c) Studio desktop: H4b probe 0 violations; `runPlaytest {mode="smoke"}` PASS (full run if option 1 changes the tutorial). Phone readings go to 22a4 CM2-UIP.
@@ -311,7 +295,7 @@ Owner requests 2026-11-26 (chat), order in N6. Common rules: the MODEL tasks fol
 45. [ ] **CM2-V2-QSKIP Skip a quest for 5 Robux** · M (Robux) · Depends: CM2-G11. Each open quest can be skipped for 5 Robux (reference §5, OBSERVED); a skip completes it as claimable (or replaces it; the planner follows the reference). Accept: one skip per purchase, replay-safe, never for a claimed quest; headless tests; Studio test purchase.
 
 ### Owner inputs that unblock tasks
-Open: PC-16 (Go/No-Go pick), PC-1, PC-12, PC-14, PC-15, the Roblox group ID (line 18, optional), friends-test players (line 15) and liked/disliked UI screenshots or a mockup in `docs/art/ui-reference/` (22a, optional). Resolved: PC-2, PC-3/PC-7, PC-4 (by tool), PC-5, PC-6, PC-8, PC-9 (dropped), PC-10, PC-11, PC-13 (2026-11-27), the model reference images. PC-16, PC-12, PC-14, PC-15 and PC-1 are expected to be resolved before the next run (end-of-run refresh 2026-11-28, daytime run); the video/trailer mode idea waits for owner OK (see "Unapproved owner ideas").
+Open: PC-1, PC-12, PC-14, PC-15, the Roblox group ID (line 18, optional), friends-test players (line 15) and liked/disliked UI screenshots or a mockup in `docs/art/ui-reference/` (22a, optional). Resolved: PC-2, PC-3/PC-7, PC-4 (by tool), PC-5, PC-6, PC-8, PC-9 (dropped), PC-10, PC-11, PC-13 (2026-11-27), PC-16 (2026-11-28, launch 2026-11-29), the model reference images. PC-12, PC-14, PC-15 and PC-1 are expected to be resolved before the next run (end-of-run refresh 2026-11-28, daytime run); the video/trailer mode idea waits for owner OK (see "Unapproved owner ideas").
 
 ## Milestone gates
 - P0: tools, unit tests, safe persistence and network foundation.

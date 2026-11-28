@@ -58,7 +58,7 @@ Studio schreibt die Ranglisten und die Karte mit Suffix `_Studio`; die vier ande
 - [ ] 6. Server-Anzeige und Gruppen-Link: Owner-Entscheidung.
 
 ### B6. Von privat zu öffentlich
-- [ ] 1. Die Veröffentlichungsdatei kommt **nur** aus dem Release-Build: `rojo build release.project.json --output release.rbxlx`, dann `lune run tools/art/art.luau verify release.rbxlx` (muss `0 pending, 0 failed` zeigen). Nie aus `default.project.json` veröffentlichen.
+- [ ] 1. Die Veröffentlichungsdatei kommt **nur** aus dem Release-Build des Release-Kandidaten `debc1cb`, gebaut in einem eigenen Worktree (nicht `git checkout` im Arbeitsordner, den die Agenten benutzen): `git worktree add ../cm2-release debc1cb`, `cd ../cm2-release`, `rojo build release.project.json --output release.rbxlx`, dann `lune run tools/art/art.luau verify release.rbxlx` (muss `0 pending, 0 failed` zeigen). Nie aus `default.project.json` veröffentlichen. Den Worktree nach dem Veröffentlichen mit `git worktree remove ../cm2-release` entfernen.
 - [ ] 2. Die Datei in Studio öffnen → File → **Publish to Roblox** in den vorgesehenen Place; Erlebnis bleibt **Privat**.
 - [ ] 3. Als Owner im privaten Build spielen: Speichern, Neu-Beitreten, ein Testkauf, zweiter Spieler (Freundestest `docs/FRIENDS_TEST.md`, optional).
 - [ ] 4. Go/No-Go lesen (CM2-50a), dann Startdatum wählen (2026-11-29 mit reduziertem Umfang oder 2026-12-06).

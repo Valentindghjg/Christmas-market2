@@ -411,3 +411,10 @@ Owner (chat, verbatim): "okay dann kommen die wichtigsten zuerst damit am ersten
 - "Captured from the road" stays BLOCKED (the Play capture is black); soak `03b HQ2_MIRROR` measures the mirrored HQ instead. The 55 FPS gate is soak `03a`; "nothing left" is soak `04 LEAK_CHECK`.
 - Asserts are `ok == false` plus invariants; error codes go in the detail and are not pinned. A defect is an unexpected `ok`, `InternalError`, a script error or a broken invariant.
 - `prompt` takes an optional `plotId` (a string, else `BadArgument`) for `kind = "checkout"`, so step 75 can trigger another plot's counter. Full mode has 78 steps (BUILD `cm2-47`), soak 8.
+
+## 2026-11-28 — owner: Go/No-Go: launch 2026-11-29, reduced scope
+Owner (chat, 2026-11-28, answering PC-16, verbatim): "morgen". Meaning: launch on 2026-11-29 (1st Advent) with the reduced scope of the CM2-50a Go/No-Go summary (`docs/PROGRESS.md`, entry "CM2-50a"). The owner did not say whether the game is already published; it is treated as not yet published.
+- Release candidate: `debc1cb`. The owner publishes the release build of `debc1cb` (`release.project.json`, art verify `0 pending, 0 failed`) per `docs/RELEASE_CHECKLIST.md` Part B. Engineering publishes nothing.
+- Out of the launch (ship later as updates the owner publishes): CM2-49T (line 14 phone time, PC-12), 18a4 CM2-SUPP and 22a4 CM2-UIP (phone and German readings, PC-14), 22a3d CM2-UI3H (phone HUD, PC-15).
+- After the pick: the PC follow-ups and CM2-SLIM9 land on `main` as post-launch updates; the "waits for PC-16" conditions are lifted. Gate C keeps its own start (2026-12-06 target).
+- While the owner builds the release, agents leave the working tree alone; the owner builds from a separate worktree or clone (`git worktree add ../cm2-release debc1cb`), not by `git checkout debc1cb` in the shared checkout (`RELEASE_CHECKLIST.md` B6 step 1).
