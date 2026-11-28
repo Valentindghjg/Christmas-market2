@@ -52,7 +52,7 @@ Per remote and prompt (Accept item; result + step):
 | BusinessAction (all actions) | 74: 62 refused, no state change | 77: GetSummary 10/13 limited, Lot.Like 3/8, Daily.Claim 3/8, Advent.Open 14/27; C1: GetSummary 22/30 | 75: foreign `companyId` `NotAMember`/`SaveNotFound`; Stock.Store `UnknownPlacement` | 76b: SetMediumPrice 1 ok, 1 `DuplicateRequest` |
 | SaveAction | 74 (Create name/size, Join code), C1 | 77: Save.List 5/23 | 75: Rename/Delete/Play/Plots/LeaveTeam/RemoveMember `SaveNotFound` x5, `NotAMember` x1, `UnexpectedField` x1; `ActiveSaveId` and names unchanged | n/a |
 | ShopAction | 74: Prompt `"Nope"`, price 0 refused, `shopPrompts` unchanged; C1 | 77: Shop.Catalog 4/13 | 75: shadow checkout with `plotId` sold nothing | 76a: receipt granted once (+1200 cash, +29 Robux) |
-| Notify (server to client) | C1: FireServer x300, 63 dropped, queue-exhausted warning | n/a | n/a | n/a. DEFECT D2 |
+| Notify (server to client) | C1: FireServer x300, 63 dropped, queue-exhausted warning | n/a | n/a | n/a. DEFECT D2: FIXED 343cd29 |
 | Prompt Checkout | 75 shadow `plotId` | n/a | 41, 75 (see vacuous note) | n/a |
 | Prompt carry / load | 9, 13 | n/a | n/a | n/a |
 | Prompt StockBay | 36 | n/a | 75 (Stock.Store `UnknownPlacement`) | n/a |
@@ -60,3 +60,9 @@ Per remote and prompt (Accept item; result + step):
 | ProcessReceipt | n/a | n/a | n/a | 51, 76a: granted once, third call `PurchaseGranted` no change |
 | PromptGamePassPurchaseFinished | n/a (engine event) | n/a (engine event) | n/a (engine event) | n/a (engine event). D1 desk check below |
 Defects: D2 CONFIRMED (blocking): C1 `Remotes.Notify:FireServer(1)` x300 prints "Remote event invocation queue exhausted ... did you forget to implement OnServerEvent?" (63 dropped); `src/server/main.server.lua:61` creates `Notify` and never connects `OnServerEvent`. Fix is one no-op connection (tier S, plus a test). D1 desk check NOT CONFIRMED as exploit: `MonetizationService.lua:325` `onPassPurchaseFinished` grants on `purchased == true` for a known pass ID; the event is fired by the engine on `MarketplaceService` (server side), not a remote, so a client cannot fire it; `refreshPasses` re-checks `UserOwnsGamePassAsync` on join. Treated as a "trusted engine event"; optional hardening: confirm with `UserOwnsGamePassAsync` before granting (no Roblox reference was fetched in this review, so this rests on the engine-event model, not a quoted doc line). Studio: step 74-77 and C1 passed as above; no step blocked except the road capture.
+
+## 2026-11-28 CM2-47D2 Notify drains client sends (23a, tier S, no plan)
+- Commit 343cd29: `notify.OnServerEvent:Connect(function() end)` after `notify.Parent = remotes` in `src/server/main.server.lua`, plus an inline source-text case in `tests/headless/run.luau` (inlined because the runner discovers cases only in `tests/studio/Cases`).
+- Checks: stylua PASS; selene 0 errors, 0 warnings; headless 796 run, 796 passed, 0 failed (795 + 1); rojo build PASS.
+- Studio (playtester, run now): source line 65 confirmed; C1 `Notify:FireServer(1)` x300 no error, no "invocation queue exhausted" line (only the pre-existing ContentId 203785492 warning x6); smoke 13/13 PASS (60 s). No failed or blocked step.
+- CM2-47 table row "Notify" marked FIXED 343cd29; 23a ticked.
