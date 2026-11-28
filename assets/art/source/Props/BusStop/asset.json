@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/BusStop",
+	"displayName": "Bus Stop",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 400,
+	"maxMeshParts": 3,
+	"requiredAttachments": ["Light"],
+	"upload": {
+		"modelAssetId": "95277679118496",
+		"sourceSha256": "ae8530aab883b82172e889cb53f443c795cfd4b57059f3e5a2b560b31e07bd60",
+		"uploadedAt": "2026-11-28T09:38:08Z"
+	}
+}

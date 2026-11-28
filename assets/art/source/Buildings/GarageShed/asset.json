@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Buildings/GarageShed",
+	"displayName": "Garage Shed",
+	"tier": "A",
+	"version": 2,
+	"maxTriangles": 1400,
+	"maxMeshParts": 6,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "73560994473229",
+		"sourceSha256": "ec95ab3cdddba8c30cb0bbf9adaa71d0882974895fafa32f605d011a4bc8c8b3",
+		"uploadedAt": "2026-11-28T09:38:19Z"
+	}
+}

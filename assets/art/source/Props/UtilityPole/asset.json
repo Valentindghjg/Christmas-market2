@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/UtilityPole",
+	"displayName": "Utility Pole",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 260,
+	"maxMeshParts": 3,
+	"requiredAttachments": ["WireA", "WireB"],
+	"upload": {
+		"modelAssetId": "106871991039454",
+		"sourceSha256": "27adeb9aef660e36d0cbd69eee47868b0b719cb17c613c757073adf53d29b998",
+		"uploadedAt": "2026-11-28T09:37:28Z"
+	}
+}

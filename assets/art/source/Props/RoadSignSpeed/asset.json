@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/RoadSignSpeed",
+	"displayName": "Road Sign Speed",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 160,
+	"maxMeshParts": 3,
+	"requiredAttachments": ["SignFront"],
+	"upload": {
+		"modelAssetId": "87374830258428",
+		"sourceSha256": "aa7a501451d8c7b375d1ace10a48f2beca40d46f8082313ae087d7ccea300397",
+		"uploadedAt": "2026-11-28T09:37:42Z"
+	}
+}

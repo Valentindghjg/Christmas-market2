@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Props/RoadSignDirection",
+	"displayName": "Road Sign Direction",
+	"tier": "B",
+	"version": 2,
+	"maxTriangles": 300,
+	"maxMeshParts": 3,
+	"requiredAttachments": ["SignTop", "SignBottom"],
+	"upload": {
+		"modelAssetId": "71352111749824",
+		"sourceSha256": "2ae6486ca7def810cb895993b60bb1a01d4e11b5bb0fc2c068d50ab3391c2c36",
+		"uploadedAt": "2026-11-28T09:37:51Z"
+	}
+}
