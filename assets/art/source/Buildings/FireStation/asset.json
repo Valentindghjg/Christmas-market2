@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Buildings/FireStation",
+	"displayName": "Fire Station",
+	"tier": "A",
+	"version": 2,
+	"maxTriangles": 3000,
+	"maxMeshParts": 10,
+	"requiredAttachments": [],
+	"upload": {
+		"modelAssetId": "124488576435548",
+		"sourceSha256": "ecf5f89ef3f3828f0af5ba6575db73f20c8ee82df945a4ca9c86782b0a8b79fb",
+		"uploadedAt": "2026-11-28T09:53:01Z"
+	}
+}

@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"artPath": "Buildings/VillageShop",
+	"displayName": "Village Shop",
+	"tier": "A",
+	"version": 2,
+	"maxTriangles": 3000,
+	"maxMeshParts": 10,
+	"requiredAttachments": ["Light"],
+	"upload": {
+		"modelAssetId": "123988184359557",
+		"sourceSha256": "f03633cb8f4c97b27b21bc9e46a389c3eb2892678a877ab3d432ffc6be917630",
+		"uploadedAt": "2026-11-28T09:52:52Z"
+	}
+}
