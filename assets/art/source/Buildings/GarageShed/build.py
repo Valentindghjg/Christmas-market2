@@ -5,7 +5,7 @@ a diamond gable vent, a stone apron in front of the door and snow drifts at the 
 
 blender -b --factory-startup --python assets/art/source/Buildings/GarageShed/build.py -- --out assets/art/source/Buildings/GarageShed/model.blend
 
-Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/plans/CM2-10I.md row 11.
+Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/archive/plans/CM2-10I.md row 11.
 Quality B; asset.json tier A only because the plan's budget (1400 / 6) exceeds the tier B cap.
 """
 

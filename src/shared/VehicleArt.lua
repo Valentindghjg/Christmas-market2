@@ -1,5 +1,5 @@
 --!strict
--- Vehicle art in the world (CM2-14W, docs/plans/CM2-14W.md): which art path the truck and each customer
+-- Vehicle art in the world (CM2-14W, docs/archive/plans/CM2-14W.md): which art path the truck and each customer
 -- car use, their yaws, the cargo count and where each tree bundle lies on the truck bed, and how the
 -- roof tree settles on the cargo anchor (CM2-14WR). Pure data and maths; VehicleWorld clones the models. All values are PROVISIONAL and visual.
 local LotArt = require(script.Parent.LotArt)

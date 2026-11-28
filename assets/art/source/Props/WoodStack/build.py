@@ -3,7 +3,7 @@ front, two holding stakes and a snow blanket on top.
 
 blender -b --factory-startup --python assets/art/source/Props/WoodStack/build.py -- --out assets/art/source/Props/WoodStack/model.blend
 
-Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/plans/CM2-10D.md.
+Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/archive/plans/CM2-10D.md.
 """
 
 import math

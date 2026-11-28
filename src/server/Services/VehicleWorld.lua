@@ -1,6 +1,6 @@
 --!strict
 -- Builds the supplier truck, the customer cars and the truck's tree-bundle cargo in the world
--- (CM2-14W, docs/plans/CM2-14W.md): the CM2-14 art when ArtAssets has it, else today's primitives.
+-- (CM2-14W, docs/archive/plans/CM2-14W.md): the CM2-14 art when ArtAssets has it, else today's primitives.
 -- Poses are CFrames at ground level (the model pivot is the footprint centre on the wheel plane).
 -- `ctx` comes from WorldService.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

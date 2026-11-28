@@ -3,7 +3,7 @@ insulators at the wire attachments, climbing pegs and snow on the top, the arm a
 
 blender -b --factory-startup --python assets/art/source/Props/UtilityPole/build.py -- --out assets/art/source/Props/UtilityPole/model.blend
 
-Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/plans/CM2-10I.md row 7.
+Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/archive/plans/CM2-10I.md row 7.
 """
 
 import math

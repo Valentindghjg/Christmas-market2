@@ -4,7 +4,7 @@ red scarf and a carrot nose. Faces -Y.
 blender -b --factory-startup --python assets/art/source/Props/Snowman/build.py -- --out assets/art/source/Props/Snowman/model.blend
 
 Origin = footprint centre on the ground, front -Y, studs, Z up. The bottom ball is cut flat at
-z 0 so the snowman stands on the ground. Values: docs/plans/CM2-10D.md.
+z 0 so the snowman stands on the ground. Values: docs/archive/plans/CM2-10D.md.
 """
 
 import math

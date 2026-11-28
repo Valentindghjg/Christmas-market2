@@ -3,7 +3,7 @@
 blender -b --factory-startup --python assets/art/source/Props/SnowPileA/build.py -- --out assets/art/source/Props/SnowPileA/model.blend
 
 Origin = footprint centre on the ground, front -Y, studs, Z up. The mounds sink 0.2 into the
-ground (bbox min z -0.2). Values: docs/plans/CM2-10D.md.
+ground (bbox min z -0.2). Values: docs/archive/plans/CM2-10D.md.
 """
 
 import sys

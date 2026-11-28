@@ -3,7 +3,7 @@ a snow cap. Faces -Y.
 
 blender -b --factory-startup --python assets/art/source/Props/TrashBin/build.py -- --out assets/art/source/Props/TrashBin/model.blend
 
-Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/plans/CM2-10I.md row 3.
+Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/archive/plans/CM2-10I.md row 3.
 """
 
 import math

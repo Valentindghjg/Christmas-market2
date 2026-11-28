@@ -6,7 +6,7 @@ Pattern: CM2-10W (`docs/archive/plans/CM2-10W.md`), CM2-G12a night lights.
 The 110 CM2-10D dressing pieces (snow piles, snowmen, sleds, wood stacks, fir barrels, 10 extra lamps, 8 benches, 10 firs) stand in the village; the new lamps glow at night.
 
 ## Source of truth
-Backlog CM2-10DW; MODEL_INTEGRATION "Map dressing (CM2-10D)" (placement contract, measured sizes, sums) and "Map in the world (CM2-10W)"; plan `docs/plans/CM2-10D.md`. Attribute convention is `ArtPath`/`ArtAssetId`/`ArtVersion` (the CM2-10D plan's `ArtRoot` wording was wrong).
+Backlog CM2-10DW; MODEL_INTEGRATION "Map dressing (CM2-10D)" (placement contract, measured sizes, sums) and "Map in the world (CM2-10W)"; plan `docs/archive/plans/CM2-10D.md`. Attribute convention is `ArtPath`/`ArtAssetId`/`ArtVersion` (the CM2-10D plan's `ArtRoot` wording was wrong).
 
 ## Implementer tier
 Tier: M. Reason: world generation data and placement across MapLayout, MapWorld and two playtest steps; no save, money, remote or inventory change.

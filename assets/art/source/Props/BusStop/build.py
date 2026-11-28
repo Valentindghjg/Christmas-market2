@@ -5,7 +5,7 @@ fascia and a snow layer, a white timetable board at x 2.6; the Light attachment 
 
 blender -b --factory-startup --python assets/art/source/Props/BusStop/build.py -- --out assets/art/source/Props/BusStop/model.blend
 
-Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/plans/CM2-10I.md row 10.
+Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/archive/plans/CM2-10I.md row 10.
 """
 
 import sys

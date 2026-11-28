@@ -6,7 +6,7 @@ tower 4 x 4 at (8.5, 5.5) with an open belfry, a gold bell and a pyramid roof to
 
 blender -b --factory-startup --python assets/art/source/Buildings/FireStation/build.py -- --out assets/art/source/Buildings/FireStation/model.blend
 
-Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/plans/CM2-10I.md row 13.
+Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/archive/plans/CM2-10I.md row 13.
 """
 
 import math

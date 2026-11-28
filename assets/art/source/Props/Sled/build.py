@@ -4,7 +4,7 @@ little snow on the seat. The curl points -Y.
 blender -b --factory-startup --python assets/art/source/Props/Sled/build.py -- --out assets/art/source/Props/Sled/model.blend
 
 Origin = footprint centre on the ground, front -Y, studs, Z up. Everything is shifted by OY in y
-so the curl and the rear end sit symmetric about the origin. Values: docs/plans/CM2-10D.md.
+so the curl and the rear end sit symmetric about the origin. Values: docs/archive/plans/CM2-10D.md.
 """
 
 import math

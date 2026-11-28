@@ -204,10 +204,7 @@ Recorded in full at the top of [PRODUCT_SPEC.md](PRODUCT_SPEC.md). Previous rule
 - Files: .claude/agents/planner.md, .claude/agents/planner-high.md, .claude/agents/implementer.md, .claude/agents/playtester.md, .claude/agents/reviewer.md, .claude/skills/cm2-task/SKILL.md, .claude/skills/cm2-plan/SKILL.md, CLAUDE.md, docs/PRODUCT_SPEC.md, docs/CLAUDE_BACKLOG.md, docs/plans/TEMPLATE.md.
 
 ## 2026-11-24 — owner: own UI look, Swarve pack dropped
-- Owner: Swarve Studios did not answer the licence request, and waiting costs more than the pack is worth. CM2-UI uses no bought or third-party UI set; the 2026-11-24 entry "UI graphics from the Essential UI Pack" is superseded.
-- Target look (PRODUCT_SPEC "UI look"): calm cream panels, dark green and gold as accents, muted red only for close and danger; heavy rounded type; tap targets at least 48 px (primary 56 px on phone); hover grows, press shrinks, soft click; thick outlines, rounded corners, soft shadow.
-- Planner decisions: hover 106 %, press 95 %, 0.1 s tween through a `UIScale` so layout does not move; the font is picked in the CM2-UI plan from Roblox's built-in heavy fonts after a Device Simulator comparison. CM2-UI stays the last task before release (owner decision 2026-11-22).
-- Files: docs/PRODUCT_SPEC.md, docs/CLAUDE_BACKLOG.md (22a (b), (c), (e); owner inputs).
+- Moved by CM2-SLIM run 5 to `docs/archive/DECISION_LOG_2026-11-24_to_2026-11-25.md` (still binding for the cream target look and the 2026-11-25 limits; its pack rule and hover/press values are superseded by "2026-11-26 — owner: own polished UI, no Swarve pack in the game" below).
 
 ## 2026-11-24 — owner: Robux products created (PC-8)
 - Source: reported to the orchestrator by the owner's other Claude session (~19:30); the IDs were not typed by the owner in the hasseln chat. That session checked them with an Open Cloud list GET at 18:32Z (universe 10777859950): all 12 `isForSale = true`, prices as in `docs/RELEASE_CHECKLIST.md`. Icons are own art previews from `assets/art/previews`. The other 15 products were not created. Engineering created and activated nothing.
@@ -369,7 +366,7 @@ Owner (chat, verbatim): "okay dann kommen die wichtigsten zuerst damit am ersten
 - Not covered: Employees and Land page reflow and the 12-13 px Pricing card text; 22a4 CM2-UIP readings decide.
 
 ## 2026-11-28 — CM2-10D map dressing art (engineering)
-- Plan: `docs/plans/CM2-10D.md`. `art.luau doctor` exit 0 (Blender 5.2.2, API key and creator set); all 6 uploaded and normalized (`.rbxm` in `assets/art/rbxm/Props/`, `asset.json` version 2); `verify release.rbxlx` 48 integrated, 0 pending, 0 failed.
+- Plan: `docs/archive/plans/CM2-10D.md`. `art.luau doctor` exit 0 (Blender 5.2.2, API key and creator set); all 6 uploaded and normalized (`.rbxm` in `assets/art/rbxm/Props/`, `asset.json` version 2); `verify release.rbxlx` 48 integrated, 0 pending, 0 failed.
 - Paths, tier, seeds: `Props/SnowPileA` (1101), `Props/SnowPileB` (1102), `Props/Snowman` (1103), `Props/Sled` (1104), `Props/WoodStack` (1105), `Props/FirBarrel` (1106), all tier B; no new palette key. "SnowPile (2 variants)" is named A (low drift) and B (tall heap).
 - Mounds: local bmesh helper (icosphere, `create_icosphere` subdivisions detail+1, per-axis radii, +-3 % vertex jitter, cut flat by `bisect_plane` at the floor: -0.2 on the piles, 0 on the snowman). The cut leaves the hidden underside open.
 - SnowPileA (round 1): the two SnowShade lumps sat at y +0.6 and were nearly hidden inside the drift; now one in front at the left end (-2.0, -0.6) and one behind at the right end (2.0, 0.6), centre z 0.0, rz 0.66.
@@ -380,7 +377,7 @@ Owner (chat, verbatim): "okay dann kommen die wichtigsten zuerst damit am ersten
 - Render rounds: SnowPileA 2, SnowPileB 1, Snowman 1, Sled 2, WoodStack 3, FirBarrel 2.
 
 ## 2026-11-28 — CM2-10I village infrastructure art (engineering)
-- Plan: `docs/plans/CM2-10I.md`, batch B1 (rows 1-6). `art.luau doctor` exit 0; all 6 uploaded and normalized (`.rbxm` in `assets/art/rbxm/Props/`, `asset.json` version 2); `verify release.rbxlx` 54 integrated, 0 pending, 0 failed.
+- Plan: `docs/archive/plans/CM2-10I.md`, batch B1 (rows 1-6). `art.luau doctor` exit 0; all 6 uploaded and normalized (`.rbxm` in `assets/art/rbxm/Props/`, `asset.json` version 2); `verify release.rbxlx` 54 integrated, 0 pending, 0 failed.
 - Paths, tier, seeds: `Props/SnowStake` (1201), `Props/FireHydrant` (1202), `Props/TrashBin` (1203), `Props/UtilityBox` (1204), `Props/MailboxCluster` (1205), `Props/GuardRail` (1206), all tier B; no new palette key. B2 (rows 7-11, seeds 1207-1211) and B3 (VillageShop, FireStation tier A, seeds 1212-1213) follow.
 - Plan deviations (planner): pole spacing 29-115, not ~40 (lots and lanes leave no footing; poles 05, 07, 09 at the gate-front lamp line); bus stops at x -43.6 (x 0 is plot 2/5's car lane); "RoadSign" = two paths (`RoadSignSpeed`, `RoadSignDirection`); stake tip GoldAccent (nearest key to orange).
 - SnowStake: 6-sided MetalDark shaft r 0.12 to z 4, GoldAccent tip r 0.15 (z 4-4.8) and a 0.2 point to z 5; 50 triangles.
@@ -404,7 +401,7 @@ Owner (chat, verbatim): "okay dann kommen die wichtigsten zuerst damit am ersten
 - Render rounds: VillageShop 3, FireStation 3 (round 3 re-rendered three times for small poke-through fixes).
 
 ## 2026-11-28 — CM2-10IW infrastructure in the world (engineering)
-- Plan: `docs/plans/CM2-10IW.md`. The 77 CM2-10I pieces stand in the new group `Map.Infrastructure` from `MapLayout.INFRA_PAIRS` / `INFRA_SINGLES` (contract values verbatim); totals 489 / 203580 / 1572, NightLights 59.
+- Plan: `docs/archive/plans/CM2-10IW.md`. The 77 CM2-10I pieces stand in the new group `Map.Infrastructure` from `MapLayout.INFRA_PAIRS` / `INFRA_SINGLES` (contract values verbatim); totals 489 / 203580 / 1572, NightLights 59.
 - Sign text swapped against the contract: the art's top arrow points model -X (west on the north sign), so "Village Square on N" of the contract becomes "Bridge" on top of the north board and "Village Square" on top of the south board; the speed signs read "20" (`mapSignSpeed`, same in en and de).
 - Wires are straight Beams (no sag) parented to the `from` pole, so a pole that streams out takes its beam with it; no Parts for wires.
 - Night lights reuse `MapWorld.nightLight` with `DayCycle.LampLight` through `addLampLight` (now via `findAttachment`) for `LIT_PATHS` (LampPost, BusStop, VillageShop); no new light config.

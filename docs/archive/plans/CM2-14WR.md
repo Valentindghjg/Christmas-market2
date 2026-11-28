@@ -6,7 +6,7 @@ Pipeline `cm2-task`. Everything is decided; if something is missing, stop and re
 A loaded customer car leaves with its `RoofTree` resting on the roof rack (lowest part 0.05 above `carCargoTop.Y`) and welded to the car, for every car look on both road sides. Step 73 (d) measures that for real.
 
 ## Source of truth
-Backlog 18a5 CM2-14WR; plan `docs/plans/CM2-14W.md` Step 3 `attachRoofTree`, Step 4 (d); archived PROGRESS "CM2-SUPC" (f) (`docs/archive/PROGRESS_2026-11-27_to_2026-11-27_SUPQ-SUPC-14W-SLIM3.md`); MODEL_INTEGRATION "Vehicle art in the world (CM2-14W)" (anchor heights 4.0 / 4.0 / 4.6).
+Backlog 18a5 CM2-14WR; plan `docs/archive/plans/CM2-14W.md` Step 3 `attachRoofTree`, Step 4 (d); archived PROGRESS "CM2-SUPC" (f) (`docs/archive/PROGRESS_2026-11-27_to_2026-11-27_SUPQ-SUPC-14W-SLIM3.md`); MODEL_INTEGRATION "Vehicle art in the world (CM2-14W)" (anchor heights 4.0 / 4.0 / 4.6).
 
 Planner finding (put it in PROGRESS): no weld exists (confirmed in code). The placement maths is probably right. With r = max(X, Z)/2 of a 4.025-long roof tree, the values the playtester read, −0.79..−1.03, match `box.Y − size.Y/2` of the pivot-oriented `GetBoundingBox` (r − 2.45 for r of about 1.4–1.66), which measures the lying tree along its length. So the fix does not depend on the pivot or the box: the server measures every part's oriented box, lifts the tree onto the anchor, then welds it. Step 73 checks every `BasePart` (today only `MeshPart`s, so a primitive roof tree reads `math.huge`) and the welds. On main the step fails on the welds at least.
 

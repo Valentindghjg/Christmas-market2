@@ -4,7 +4,7 @@
 The 77 CM2-10I pieces stand in the village, poles carry wires, road signs show text, bus stops and the shop glow at night.
 
 ## Source of truth
-Backlog CM2-10IW; MODEL_INTEGRATION "Village infrastructure (CM2-10I)" (contract) and "Map in the world (CM2-10W)"; `docs/plans/CM2-10I.md` (W/L maxima, budgets).
+Backlog CM2-10IW; MODEL_INTEGRATION "Village infrastructure (CM2-10I)" (contract) and "Map in the world (CM2-10W)"; `docs/archive/plans/CM2-10I.md` (W/L maxima, budgets).
 
 ## Implementer tier
 Tier: M. Reason: world generation data, wiring and text across MapLayout, MapWorld, Localization and two playtest steps; no save, money, remote or inventory change.

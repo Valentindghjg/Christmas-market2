@@ -4,7 +4,7 @@ The board text is added by CM2-10IW at SignTop and SignBottom (board front plane
 
 blender -b --factory-startup --python assets/art/source/Props/RoadSignDirection/build.py -- --out assets/art/source/Props/RoadSignDirection/model.blend
 
-Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/plans/CM2-10I.md row 9.
+Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/archive/plans/CM2-10I.md row 9.
 """
 
 import sys

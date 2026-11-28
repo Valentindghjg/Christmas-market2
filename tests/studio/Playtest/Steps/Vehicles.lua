@@ -1,5 +1,5 @@
 --!strict
--- Playtest step 73 (full mode): vehicle art in the world (CM2-14W, docs/plans/CM2-14W.md).
+-- Playtest step 73 (full mode): vehicle art in the world (CM2-14W, docs/archive/plans/CM2-14W.md).
 -- Installed by RunPlaytest.execute after Steps/LotArt. On every free plot (neither the player's
 -- nor the shadow's), all at once: (a) the supplier truck pulls in with 9 `TreeBundle`s on its bed
 -- (`syncReceiving` with 12 arriving), (b) it leaves empty, (c) four numbered customer cars park

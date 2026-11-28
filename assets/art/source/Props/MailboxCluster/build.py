@@ -3,7 +3,7 @@ dark doors on -Y, snow on each top and a dark flag on the right box.
 
 blender -b --factory-startup --python assets/art/source/Props/MailboxCluster/build.py -- --out assets/art/source/Props/MailboxCluster/model.blend
 
-Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/plans/CM2-10I.md row 5.
+Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/archive/plans/CM2-10I.md row 5.
 """
 
 import math

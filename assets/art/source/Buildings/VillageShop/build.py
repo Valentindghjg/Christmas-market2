@@ -6,7 +6,7 @@ boxes, one window on each side, a stone chimney to z 20 and snow on every upward
 
 blender -b --factory-startup --python assets/art/source/Buildings/VillageShop/build.py -- --out assets/art/source/Buildings/VillageShop/model.blend
 
-Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/plans/CM2-10I.md row 12.
+Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/archive/plans/CM2-10I.md row 12.
 """
 
 import math

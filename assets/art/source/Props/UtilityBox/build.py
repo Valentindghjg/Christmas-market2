@@ -3,7 +3,7 @@ handles, a shade rain cap and snow on top.
 
 blender -b --factory-startup --python assets/art/source/Props/UtilityBox/build.py -- --out assets/art/source/Props/UtilityBox/model.blend
 
-Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/plans/CM2-10I.md row 4.
+Origin = footprint centre on the ground, front -Y, studs, Z up. Values: docs/archive/plans/CM2-10I.md row 4.
 """
 
 import sys
