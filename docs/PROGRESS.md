@@ -73,3 +73,11 @@ Archived 2026-11-28 (entries CM2-47D2, CM2-SLIM10, CM2-SLIM run 6, CM2-48, CM2-5
 - Own decisions reviewed (all minor): emitter reattached on camera change, Rotation 0-360, Acceleration 0, BrickColor.White().Color, HIDE only while CompanyReady (auto-shows when it turns false), ChildAdded watcher, 9-entry list test.
 - Note: Tutorial `lotManagerButton()` finds nothing while the HUD is hidden (button stashed), harmless; HUD probe must be run after showing again.
 - Studio: deferred (batch), runs inside CM2-RC4 (texture load, snow, key U, rail shows only "Show HUD", probe 0, SLIM9 warning only in the Trees step); queued in "Studio-Test ausstehend". Not run.
+
+## 2026-11-28 CM2-V2-ORD Recent orders with status (launch item 0c, tier M, plan `docs/plans/CM2-V2-ORD.md`)
+- Changes: new `src/shared/OrderStatus.lua` (group, session memory, status), `deliverySummary` adds read-only `groupId`, `createdAt`, `cost` (`wholesaleFor * quantity`, same table `SupplierCart` charges with) and `arrivesIn`, list cap `GameConfig.MaxOpenOrders`; `Supplier.RecentOrders = 4`; `supplierPanelLayout` optional third arg `orderRows`; Supplier tab block (4 rows, title); 4 strings en/de.
+- Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings, 0 parse errors; headless 845 run, 845 passed, 0 failed (836 + 9); ui_scan 0 (implementer); rojo default build PASS.
+- Security: summary stays `{}` payload, own company only, read-only; no new remote, save field or validation; payload grows by 4 small fields per entry, at most `MaxOpenOrders` entries.
+- Own decisions reviewed (all minor): param `clockNow`, `OrderStatus` requires `script.Parent.GameConfig`, non-finite numbers count 0, `renderOrders` at the end of `renderView`, `track` called in `render` after `lastSummary`.
+- Studio: deferred (batch), runs inside CM2-RC4 (probe 0, Preparing -> In Transit -> Delivered, save switch clears rows); queued in "Studio-Test ausstehend". Not run.
+
