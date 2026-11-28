@@ -80,3 +80,6 @@ Archived 2026-11-28 (entries CM2-10I batches B1-B3, CM2-10IW, CM2-SLIM run 5, CM
 - **2026-11-29, reduzierter Umfang:** Stand `debc1cb` ist technisch grün (796/796, Studio 78/78). Fehlt: Telefon-Tutorialzeit (Gate A Zeile 14), Telefon-/Deutsch-Messungen, Telefon-HUD-Entscheidung. Alle Owner-Schritte B1-B6 müssten heute noch erledigt werden. Backlog-Regel: nur wenn diese Seite vor dem 29. fertig ist.
 - **2026-12-06:** Zeit für PC-12, PC-14, PC-15 und die Folgeaufgaben (49T, SUPP, UI3H, UIP, ggf. Fixaufgaben bei FAIL), danach Gate C (Audio, 13D, 44, ARTREF) und die nach dem 28. gestrichenen Punkte.
 - Review (CM2-50a): in/out lists match the backlog launch list (1-3, cut line, Deferred); SHAs exist; no save key, user ID or name in the entry (grep). Checks (reviewer): stylua PASS; selene 0/0; headless 796/796; rojo default build PASS. Studio evidence is the playtester run on `debc1cb` above.
+
+## 2026-11-28 RELEASE_CHECKLIST Part B evidence (docs only)
+- Ticked B1.1 (Max Players 50 to 12 in Creator Hub), B1.2 (Studio API access already on, DataStore GetAsync probe ok), B1.3 (HttpService not touched), B3.1 (all 12 products verified via GetProductInfo, IsForSale true), B3.2 and B3.3 (Hub holds only the 12 products). Gathered by the main session in the owner's Creator Hub and via Studio MCP; no code change, no headless run needed.
