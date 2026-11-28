@@ -15,7 +15,7 @@ Archived 2026-11-28 (entries CM2-43, CM2-14WR, CM2-LEAK22, CM2-HOOKSA, CM2-10D, 
 Archived 2026-11-28 (entries CM2-10I batches B1-B3, CM2-10IW, CM2-SLIM run 5, CM2-47): [archive/PROGRESS_2026-11-28_to_2026-11-28_10I-10IW-SLIM5-47.md](archive/PROGRESS_2026-11-28_to_2026-11-28_10I-10IW-SLIM5-47.md).
 Archived 2026-11-28 (entries CM2-47D2, CM2-SLIM10, CM2-SLIM run 6, CM2-48, CM2-50a, RELEASE_CHECKLIST Part B evidence): [archive/PROGRESS_2026-11-28_to_2026-11-28_47D2-SLIM10-SLIM6-48-50a-RELCHK.md](archive/PROGRESS_2026-11-28_to_2026-11-28_47D2-SLIM10-SLIM6-48-50a-RELCHK.md).
 
-## 2026-11-28 CM2-MUSIC Christmas background music with a saved volume (tier L, plan `docs/plans/CM2-MUSIC.md` incl. Amendments 1 and 2; commit see backlog)
+## 2026-11-28 CM2-MUSIC Christmas background music with a saved volume (tier L, plan `docs/plans/CM2-MUSIC.md` incl. Amendments 1 and 2; commit 298f2df)
 - Code: `MusicSettings` (normalize, step, soundId), `PlayerSettingsService` (`Settings.SetMusicVolume`: validated, 6 per 30 s, busy guard, one write per change), optional profile field `musicVolume` (no VERSION bump), `Music.client.lua` (SoundGroup `Music`, fades, rail panel), `Dialogs.Music`, en+de strings, `docs/AUDIO.md`.
 - Tracks (OWNER DECIDED, licensed library, all AssetTypeId 3, creators APMOfficial/DistrokidOfficial): 9047801895, 140169923347660, 119871365837884, 1838667168. Step 0 queries (Studio Edit): christmas instrumental, christmas piano, jingle bells instrumental, silent night instrumental, winter wonderland, sleigh ride, holiday cozy, christmas jazz, christmas music box, festive calm.
 - Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings; headless 834 run, 834 passed, 0 failed; ui_scan 0 hits; rojo default build PASS.
