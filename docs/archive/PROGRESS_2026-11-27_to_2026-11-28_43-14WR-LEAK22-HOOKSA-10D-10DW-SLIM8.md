@@ -1,0 +1,55 @@
+# Progress archive 2026-11-28 (CM2-SLIM run 5)
+
+Entries CM2-43, CM2-14WR, CM2-LEAK22, CM2-HOOKSA, CM2-10D, CM2-10DW, CM2-SLIM8 moved unchanged from `docs/PROGRESS.md`.
+
+2026-11-27: CM2-43 English-only strings and accessibility (tier S, no plan; backlog 22 stays OPEN, Studio German-locale reading pending)
+Skills: none loaded (tier S). Change: `Localization.LaunchLanguage = "en"` drives `UiKit` (no Roblox-locale read); fragment keys (demandHigh/Low, cartMore, dailyDay, dailyReward*) replaced by whole-sentence keys (supplierBuyRowInfoHigh/Low, cartLinesMore, dailyCardCash/Reputation; adventDoor* take the door number), EN and DE; four concatenation sites in SupplierTab, AdventPanel, QuestPanel; tests in `Localization_Test` (launch language, no dangling edges, composed keys, removed keys gone) and `UiTheme_Test` (WCAG contrast 4.5 body / 3.0 placeholder, TextSize.Small >= 13; DarkText on Red is 2.66 but unused, left to CM2-UI).
+Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 765 run, 765 passed; rojo build PASS. Own decisions accepted (slotted data such as species/size names left alone; server world labels already "en").
+Studio (playtester, e36ff47a, desktop): smoke 13/13 PASS; Advent door text PASS (`Door_1 = "1
+Opened"`, others `"n
+Locked"`; Open state not reachable today); daily strip PASS ("Day 1
+$400", "Day 3
++150 ★", "Day 7
+$2,500"); client locale en-us, no German locale settable. BLOCKED: German-locale screenshot, supplier HIGH/LOW demand text, "+ N more" (no GUI clicks: firesignal/getconnections nil, VirtualInputManager refused). Same run: CM2-TUTHOOK resetTutorial `{ok=true, step="Order"}` and NoSession PASS; CM2-SUPQ label BLOCKED. Console: only the six known ContentId warnings.
+Accept: headless part PASS; Studio German-locale part not met, so line 22 is not ticked; open readings queued in "Studio-Test ausstehend" and folded into 18a4 CM2-SUPP (h). Side effect: save "Playtest A" active, Door 1 opened via adventSet.
+
+
+2026-11-28: CM2-14WR roof tree weld and placement on customer cars (tier M, plan `docs/archive/plans/CM2-14WR.md`; backlog 18a5)
+Cause (planner, code reading): no weld existed; the placement maths was probably right. The CM2-SUPC readings of -0.79..-1.03 match the pivot-oriented `GetBoundingBox` of the lying tree, and step 73 (d) counted only `MeshPart`s and never checked welds. Fix: `VehicleArt.boxBottom`/`roofLift`/`ROOF_CLEARANCE` (0.05); `WorldService.attachRoofTree` settles the tree on the anchor (`settleOnRoof`) and welds every part to `PrimaryPart` (`RoofWeld`, `weldToCar`); step 73 (d) measures all `BasePart`s, checks the welds and that the roof does not slide while the car drives.
+Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 783 run, 783 passed (before the fix 781/783, the 2 new tests red); rojo build PASS. Own decisions accepted (private step-73 tables keyed by car, parked pivot read before sync, slide checks skipped if the car is already destroyed).
+Studio (playtester, e36ff47a): red run with the fix stashed: `[PLAYTEST] FAIL 73 VEHICLE_ART | Plot_03 LeavingCar roof part ArtRoot has no weld to the car` (SUMMARY steps=14 pass=13 fail=1; no clearance FAIL line, as the planner read); with the fix step 73 PASS `trucks=4 cars=16`, 14/14, smoke 13/13. Server readback Plot_01 (facing +1) and Plot_04 (facing -1): clearance 0.050, 7 parts, 7 RoofWeld; client during the drive 68 samples each, clearance 0.050, max slide 0.0000. BLOCKED: visual capture (screen capture edit-time only, the car is gone about 2 s after leaving). Console: only the known rbxassetid://203785492 warning x6, no `[ART] RoofBuildFailed`.
+Accept: (a)-(d) met numerically; 18a5 ticked; CM2-14W queue entry keeps only the phone-size parts (SUPP f).
+
+2026-11-28: CM2-LEAK22 smoke step 22 stray customer (tier S, plan `docs/plans/CM2-LEAK22.md`; backlog 18a6)
+Cause (a), planner by code reading, confirmed by the Studio runs: the stray customer was a live arrival `visit:<n>` on R's plot (natural number; S's lot is empty after preflight, so only R gets one). `arrivalPass` spawned it after steps 71 and 72 ended with `pauseCustomers false` (the loop runs every 5 s, the first unpaused pass spawns at once), and it was still walking because it spawned within the runner's 0.5 s step poll plus step 22's first hook calls. The CM2-SUPC forcing was not the cause: preflight `npcReset` removes all visits and overrides.
+Fix: 71 and 72 no longer unpause; hook `customersPaused`; `RunPlaytest.pauseGuard` fails the step that leaves customers unpaused (02..before 23, smoke and full, not soak) and re-pauses; 22 names each live customer via `describeVisits`; BUILD `cm2-leak22`.
+Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 787 run, 787 passed (783 + 4 new); rojo build PASS. Own decisions accepted (TEST_PLAN BUILD change on the Modes line, test placement).
+Studio (playtester, e36ff47a): probe forced a customer (visit:1 Plot_01 Arriving #8 after shadowJoin; first try NoActiveSave), customersPaused false; two smoke runs `only={71,72,73}` in one Play session 16/16 PASS each, 22 "plots clean, no NPC left, no stray Humanoid"; full run `steps=74 pass=74 fail=0 seconds=809` PASS (unit 787/787); no "customers left unpaused" line. This is also the hasseln end-of-run full run. Console: known 203785492 warning and "[ART] MissingArtAsset Trees/FrostcrownFir/Small" (step 64 negative case, known); unit-test throttle/SaveFailed lines expected.
+BLOCKED: queue phone/locale readings (PC-14: 1564x730, en-us).
+Accept: (a)-(d) met; 18a6 ticked; CM2-UI2 removed from "Studio-Test ausstehend" (its only open item was this full run).
+
+2026-11-28: CM2-HOOKSA StudioTestHook `saveAction` argument shape (tier S, no plan; backlog 18a7)
+Cause: the hook's own shape check (`arg` not a table or `arg.userId` not a number) is the only BadArgument source; the CM2-UI3 callers used another shape. SaveSlotService and Protocol never return BadArgument; the Delete payload key is `confirmName` (`name` gives UnexpectedField). No src change; shape documented in TEST_PLAN "Hook `saveAction` argument shape".
+Tests: `tests/studio/Cases/StudioTestHook_Test.lua` (3 tests: documented Create/Play/Delete ok; wrong shapes BadArgument; Delete with `name` UnexpectedField through the real `Protocol.validateSaveRequest`). Harness: `tests/headless/run.luau` now registers StudioTestService with stubs for Players, HttpService, RunService and Instance (test-only, accepted; no game code touched).
+Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 790 run, 790 passed (787 + 3 new); rojo build PASS. Own decisions accepted (test local names, shadow user id).
+Studio (playtester, e36ff47a): hook Create `{userId = <UserId>, action = "Save.Create", payload = {name = "Hook Create"}}` ok (data name, saveId; new save not active); Delete `{saveId, confirmName = "Hook Create"}` ok, save gone, "Playtest A" kept; smoke 13/13 PASS. Console: known 203785492 warning.
+Accept: (a)-(c) met; 18a7 ticked; 18a4 note updated (saves may go through the hook).
+
+2026-11-28: CM2-10D map dressing art and placement contract (tier MODEL, plan `docs/archive/plans/CM2-10D.md`)
+Result: 6 original tier-B props `Props/{SnowPileA,SnowPileB,Snowman,Sled,WoodStack,FirBarrel}` (seeds 1101-1106; "SnowPile" named A/B), built, rendered, uploaded via Open Cloud and normalized; sources, `model.blend`, previews and `.rbxm` committed (convention of the existing Props). Tris / budget 120/160, 200/240, 499/560, 292/300, 480/520, 284/360; MeshParts 2, 2, 3, 3, 3, 3; render rounds 2, 1, 1, 2, 3, 2. MODEL_INTEGRATION "Map dressing (CM2-10D)" holds the contract (55 entries, 110 pieces); DECISION_LOG entry lists the modeler's own decisions (dimension, snow and bevel details, all minor and inside the plan's latitude). Modeler checklist tier B 1-7 PASS.
+Checks (reviewer, local Windows): stylua PASS; selene (`src tests` and `src tests tools`) 0 errors, 0 warnings; headless 790 run, 790 passed (plan said 787; +3 from CM2-HOOKSA); `tests/tools/art_pipeline.luau` 22/22; rojo build default and release PASS; `art.luau verify release.rbxlx` 48 integrated, 0 pending, 0 failed.
+Studio (playtester, e36ff47a): 6 props under `ReplicatedStorage.ArtAssets.Props`, ArtSource blender, ArtTier B, MeshParts <= 3, no duplicates; smoke + step 21 14/14 PASS ("48 blender models, 266 meshes, 0 failed, 0 duplicates"), no `[ART]` lines. The plan's `ArtRoot` attribute does not exist on any Props model (Bench, LampPost too; convention is ArtPath/ArtAssetId/ArtVersion): plan wording error, not a model defect. Console: known 203785492 warning.
+Note: `K.ball` detail 0 behaves as detail 1 (`max(1, detail)` in the kit), harmless, for the planner.
+Accept: all met; CM2-10D ticked; CM2-10DW next.
+
+2026-11-28: CM2-10DW Map dressing in the world (tier M, plan `docs/archive/plans/CM2-10DW.md`; backlog ticked)
+Change: 6 ART rows, `DRESSING` (55 entries, N/S mirrored = 110 pieces) in `Map.Dressing`, Part fallbacks SnowPileA/B and FirBarrel, step 61 expects 56 lights (22 lamps + 10 dressing lamps). Totals 412 models, 179260 triangles, 1335 MeshParts.
+Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings; headless 791 run, 791 passed (790 + 1); rojo default and release builds PASS; `art.luau verify release.rbxlx` 48 integrated, 0 pending, 0 failed.
+Studio (playtester, Studio e36ff47a, desktop): step 56 "pieces 412 (art 412, fallback 0, skip 0), overlaps 0", Map.Dressing 110; step 61 "56 night lights off on the server, 22 lamps and 10 dressing lamps with one each"; 37, 40, 57 PASS; full run "mode=full steps=74 pass=74 fail=0 seconds=808" PASS (unit 791/791), latest end-of-run full run.
+BLOCKED: visual float/sink capture (Play capture showed the save picker, Edit has no Map); numeric instead: all 110 Dressing bottoms between -0.20 and -0.03 studs. Phone/locale BLOCKED (PC-14). Console: only known rbxassetid://203785492, known MissingArtAsset Trees/FrostcrownFir/Small, test-injected lines.
+Review: matches the plan; own decisions accepted (helper isNew, local wantsFallback; step 61 counts a Dress_* model without a light as non-lamp, 2+ lights fail). Keep-out clearance not re-run by script (relies on the CM2-10D max-size check and the keep-out test).
+
+2026-11-28: CM2-SLIM8 Remove unused Localization keys (tier S, no plan; backlog entry)
+Change: removed `receivingStatus`, `wholesaleQuote`, `soldBack`, `supplierPriceLegend`, `supplierStock` from `en` and `de` (10 lines); `grep -rnw` over `src` and `tests` finds none. Correction: `teleportNoFreePlot` KEPT, it is live via `Localization.SaveErrorKeys` NoFreePlotTeleporting (SaveSlotPicker returns that code); the CM2-SLIM run 4 finding was wrong for that key. Near names `supplierStockingHint`, `soldBackToast` unaffected.
+Checks (reviewer, local Windows): stylua PASS; selene 0 errors, 0 warnings; headless 791 run, 791 passed (unchanged); rojo build PASS; implementer reports ui_scan 0.
+Studio: not run, not needed (removed strings unused, no runtime path).
