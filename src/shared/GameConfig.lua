@@ -147,6 +147,22 @@ GameConfig.Music = {
 	SendDebounceSeconds = 0.75,
 	SetLimit = { limit = 6, window = 30 },
 }
+-- Falling snow around the camera (CM2-V2-SNOW, client/Snow.client.lua). All PROVISIONAL.
+GameConfig.Snow = {
+	Enabled = true,
+	Rate = 60, -- particles per second
+	MaxParticles = 600, -- budget: Rate x LifetimeMax must stay within it
+	LifetimeMin = 5,
+	LifetimeMax = 7,
+	SpeedMin = 5,
+	SpeedMax = 8,
+	Size = 0.25,
+	Transparency = 0.1,
+	AreaSize = 90, -- studs, square
+	HeightAbove = 30, -- studs over the camera
+	MinQualityLevel = 4, -- graphics quality 1 to 3 turns snow off
+	Texture = "rbxasset://textures/particles/sparkles_main.dds",
+}
 GameConfig.AutoPricing = {
 	TargetDisplayStock = 5,
 	MaxDiscountFraction = 0.15,
@@ -672,5 +688,14 @@ GameConfig.Placement = {
 	DecorFences = {},
 	DecorFenceRadius = 5.5, -- covers the 8.6 x 0.6 art and the 10.28 x 0.34 FenceWooden fallback from its centre at any yaw
 }
+
+-- Snow emission rate for a graphics quality level (0 = Automatic counts as full; 1 to 3 is off).
+function GameConfig.snowRate(qualityLevel: number): number
+	local snow = GameConfig.Snow
+	if not snow.Enabled or (qualityLevel >= 1 and qualityLevel < snow.MinQualityLevel) then
+		return 0
+	end
+	return snow.Rate
+end
 
 return GameConfig

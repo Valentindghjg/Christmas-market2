@@ -340,4 +340,16 @@ return function(t)
 		expect.truthy(music.SendDebounceSeconds > 0)
 		expect.truthy(music.SetLimit.limit >= 1 and music.SetLimit.window > 0)
 	end)
+
+	-- CM2-V2-SNOW: the particle budget and the quality gate.
+	t.test("snow config and rate by quality level", function()
+		local snow = GameConfig.Snow
+		expect.truthy(snow.Rate * snow.LifetimeMax <= snow.MaxParticles)
+		expect.truthy(snow.LifetimeMin <= snow.LifetimeMax)
+		expect.truthy(snow.SpeedMin <= snow.SpeedMax)
+		expect.equal(GameConfig.snowRate(0), snow.Rate)
+		expect.equal(GameConfig.snowRate(3), 0)
+		expect.equal(GameConfig.snowRate(4), snow.Rate)
+		expect.equal(GameConfig.snowRate(10), snow.Rate)
+	end)
 end
