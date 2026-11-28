@@ -53,3 +53,9 @@ Archived 2026-11-28 (entries CM2-RC3, CM2-MUSIC, CM2-UICLIP, CM2-RC2, CM2-PARK, 
 - Checks (reviewer, HEAD `a8c8ef3`): stylua PASS; selene 0 errors, 0 warnings, 0 parse errors; headless 848 run, 848 passed, 0 failed. Release build (main session, `../cm2-release` at `a8c8ef3`): `[ART] 61 integrated, 0 pending, 0 failed`, 0 `StudioTestService` instances.
 - Known untested: snow quality 1-3 stopping the snow (BLOCKED, MCP cannot set quality); ORD save switch clearing the rows; phone readings of snow, hide HUD and recent orders -> CM2-UIP queue.
 - Docs: `docs/RELEASE_CHECKLIST.md` (line 17, B6 step 1) and the backlog (header, "Für dich am PC", Status, Release build, item 0/0c, PC-16) name `a8c8ef3`; CM2-RC4 and item 0c ticked; SNOW, ORD, SLIM9 left "Studio-Test ausstehend" (one "CM2-RC4 residual" line stays).
+
+## 2026-11-28 CM2-VIBE1 Light and colour pass (tier M, plan `docs/plans/CM2-VIBE1.md`)
+- Changes: `GameConfig.Lighting` (Static, Day, Night; `DayCycle.NightOutdoorAmbient` moved into it, no other reader), pure `shared/LightingBlend.lua`, `DayNight.client.lua` blends Lighting plus four `CM2*` effects by `nightBlend` (write only on > 0.001 change; Bloom and SunRays off at quality 1-3), identical `Lighting` node (Technology Future, shadows) in `default.project.json` and `release.project.json`.
+- Checks (reviewer): stylua PASS; selene 0 errors, 0 warnings, 0 parse errors; headless 855 run, 855 passed, 0 failed (includes `LightingBlend_Test` and the 2 project-file checks); `rojo build` default and release both OK; `release.project.json` still ignores `StudioTestService`.
+- Implementer own decisions (minor, allowed): require path, only colour arrays rounded, two-way key assert, `table.clone`, colours 4 decimals.
+- Studio: deferred (batch), runs inside CM2-RC5 (client readings at ClockTime 14 and 22, NightLight, snow rate 60, step 61, probe 0; note the `rojo serve` Technology caveat). Not run, nothing claimed.
