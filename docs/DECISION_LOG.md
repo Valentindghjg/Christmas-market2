@@ -367,3 +367,14 @@ Owner (chat, verbatim): "okay dann kommen die wichtigsten zuerst damit am ersten
 - Phone Pricing card is 160 px (pitch 168), so one whole card fits the phone page.
 - Phone Lot Manager window padding 6 px (was 8); tab column width 100 px (PROVISIONAL engineering values).
 - Not covered: Employees and Land page reflow and the 12-13 px Pricing card text; 22a4 CM2-UIP readings decide.
+
+## 2026-11-28 — CM2-10D map dressing art (engineering)
+- Plan: `docs/plans/CM2-10D.md`. `art.luau doctor` exit 0 (Blender 5.2.2, API key and creator set); all 6 uploaded and normalized (`.rbxm` in `assets/art/rbxm/Props/`, `asset.json` version 2); `verify release.rbxlx` 48 integrated, 0 pending, 0 failed.
+- Paths, tier, seeds: `Props/SnowPileA` (1101), `Props/SnowPileB` (1102), `Props/Snowman` (1103), `Props/Sled` (1104), `Props/WoodStack` (1105), `Props/FirBarrel` (1106), all tier B; no new palette key. "SnowPile (2 variants)" is named A (low drift) and B (tall heap).
+- Mounds: local bmesh helper (icosphere, `create_icosphere` subdivisions detail+1, per-axis radii, +-3 % vertex jitter, cut flat by `bisect_plane` at the floor: -0.2 on the piles, 0 on the snowman). The cut leaves the hidden underside open.
+- SnowPileA (round 1): the two SnowShade lumps sat at y +0.6 and were nearly hidden inside the drift; now one in front at the left end (-2.0, -0.6) and one behind at the right end (2.0, 0.6), centre z 0.0, rz 0.66.
+- Snowman: the bottom ball is (1.3, 1.15, 1.3) instead of r 1.3, because 2.6 would break the L 2.4 limit; balls cut at z 0 (bbox min 0); arms are 56 degrees from vertical (34 up) and start inside the torso at x +-0.55 so W stays 3.5; carrot centre y -0.88 so its tip stays inside L.
+- Sled: the whole sled is shifted +0.2 in y (`OY`) so the curl (y -2.1) and the rear end are centred (|min+max| 0.01); slats 1.74 wide (W 1.77). Round 1 built 644 triangles, so only the front bar and the snow keep a bevel (292 / 300); the snow cap is 1.4 x 1.6 x 0.18 sunk 0.03 into the slats (round 1: the thin 1.6 x 1.8 x 0.08 plate read as a table top).
+- WoodStack: end grain is one flat hexagon face per log (4 triangles instead of a 20-triangle disc); round 1 built 580. The flat snow cap read as a board (rounds 1-2), so the top snow is a closed half-icosphere mound (1.55, 1.12, 0.55) at z 3.0 (H 3.57); small snow caps on both stake tops.
+- FirBarrel: hoops unbevelled (round 1 built 412 / 360); each tier's snow is a 7-sided collar 0.3 high, 8 % wider than the tier, starting where the tier is 0.7 of its radius (tier tips at 0.12 of the radius).
+- Render rounds: SnowPileA 2, SnowPileB 1, Snowman 1, Sled 2, WoodStack 3, FirBarrel 2.
