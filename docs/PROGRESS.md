@@ -66,3 +66,9 @@ Defects: D2 CONFIRMED (blocking): C1 `Remotes.Notify:FireServer(1)` x300 prints 
 - Checks: stylua PASS; selene 0 errors, 0 warnings; headless 796 run, 796 passed, 0 failed (795 + 1); rojo build PASS.
 - Studio (playtester, run now): source line 65 confirmed; C1 `Notify:FireServer(1)` x300 no error, no "invocation queue exhausted" line (only the pre-existing ContentId 203785492 warning x6); smoke 13/13 PASS (60 s). No failed or blocked step.
 - CM2-47 table row "Notify" marked FIXED 343cd29; 23a ticked.
+
+## 2026-11-28 CM2-SLIM10 MODEL_INTEGRATION.md shrunk to 29.5 KB (tier S, docs only, no plan)
+- `docs/MODEL_INTEGRATION.md` 39,630 -> 29,462 B; 30 lines moved verbatim (checked line by line) to `docs/archive/MODEL_INTEGRATION_2026-11-28.md` (13,012 B) under their original headings; all 23 headings kept, each section carries an "Archived detail" pointer line.
+- Moved: colliders, attachments, measured sizes and triangle tables, budgets, imports, measured clearances, sums, defect lines. Kept: world frame, keep-out boxes, landmarks, zones, `Dress_`/`Infra_` placement lists, fence/gate, 10W/12W/13W/14W wiring, Map art W x L lines.
+- Citations resolve: `MapLayout.lua` "Map layout (CM2-10)", `LotArt.lua` CM2-GATE, `cm2_kit.py` "Asset pipeline" (all headings kept); no test or tool reads the doc text.
+- Checks: stylua PASS; selene 0 warnings, 0 errors; headless 796 run, 796 passed (unchanged); rojo build PASS. Studio: not run (docs only).
