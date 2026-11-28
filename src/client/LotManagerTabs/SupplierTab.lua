@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(Shared:WaitForChild("GameConfig"))
 local Inventory = require(Shared:WaitForChild("Inventory"))
+local OrderStatus = require(Shared:WaitForChild("OrderStatus"))
 local SupplierCart = require(Shared:WaitForChild("SupplierCart"))
 local UiKit = require(script.Parent.Parent:WaitForChild("UiKit") :: ModuleScript)
 local UiTheme = require(Shared:WaitForChild("UiTheme"))
@@ -94,6 +95,9 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	local statusText = ""
 	local metrics: UiTheme.Metrics = UiTheme.metrics(1920, 1080)
 	local enabledState: { [TextButton]: boolean } = {}
+	-- CM2-V2-ORD: recent orders of this session, never persisted; render(nil) clears them.
+	local orderMemory: { [string]: OrderStatus.Entry } = {}
+	local orderRowCount = 0
 
 	local function setEnabled(button: TextButton, enabled: boolean)
 		enabledState[button] = enabled
@@ -123,6 +127,15 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	for _, wrapped in ipairs({ cartInfo, cartLines, sellHint }) do
 		wrapped.TextWrapped = true
 		wrapped.TextTruncate = Enum.TextTruncate.None
+	end
+
+	local ordersTitle = UiKit.label(page, "RecentOrdersTitle", localized("recentOrdersTitle"), 13)
+	local orderLabels: { TextLabel } = {}
+	for index = 1, GameConfig.Supplier.RecentOrders do
+		local label = UiKit.label(page, "RecentOrder" .. index, "", 13)
+		label.TextWrapped = true
+		label.TextTruncate = Enum.TextTruncate.None
+		orderLabels[index] = label
 	end
 
 	local rows: { Row } = {}
@@ -338,6 +351,26 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		status.Text = text
 	end
 
+	local function renderOrders()
+		local orderRows = OrderStatus.rows(orderMemory, os.clock())
+		local buy = mode == "Buy"
+		for index, label in ipairs(orderLabels) do
+			local row = orderRows[index]
+			if row ~= nil then
+				local eta = row.eta
+				if row.status == "Preparing" then
+					label.Text = localizedFormat("recentOrderPreparing", row.quantity, row.cost, eta // 60, eta % 60)
+				elseif row.status == "InTransit" then
+					label.Text = localizedFormat("recentOrderInTransit", row.quantity, row.cost)
+				else
+					label.Text = localizedFormat("recentOrderDelivered", row.quantity, row.cost)
+				end
+			end
+			label.Visible = buy and row ~= nil
+		end
+		ordersTitle.Visible = buy and #orderRows > 0
+	end
+
 	local function renderView()
 		local buy = mode == "Buy"
 		modeBuy.BackgroundColor3 = if buy then colors.Gold else colors.Sand
@@ -351,9 +384,19 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		cartLines.Visible = buy
 		sellHint.Visible = not buy
 
-		local layout = UiTheme.supplierPanelLayout(metrics, UiKit.contentWidth(page))
+		orderRowCount = if buy then #OrderStatus.rows(orderMemory, os.clock()) else 0
+		local layout = UiTheme.supplierPanelLayout(metrics, UiKit.contentWidth(page), orderRowCount)
 		local rowLayout = UiTheme.supplierRowLayout(UiKit.contentWidth(page), not buy, metrics.compact)
 		local rowsTop = if buy then layout.rowsTopBuy else layout.rowsTopSell
+		place(ordersTitle, { x = 0, y = layout.orders.y, w = layout.width, h = layout.orderTitleHeight })
+		for index, label in ipairs(orderLabels) do
+			place(label, {
+				x = 0,
+				y = layout.orders.y + layout.orderTitleHeight + (index - 1) * layout.orderPitch,
+				w = layout.width,
+				h = layout.orderRowHeight,
+			})
+		end
 		local shownRows = 0
 		for _, row in ipairs(rows) do
 			local visible = buy or sellBound(row.key) > 0
@@ -387,6 +430,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		place(stockingHint, { x = 0, y = footerTop, w = layout.width, h = layout.footerHint })
 		place(customerLine, { x = 0, y = footerTop + layout.footerHint + 2, w = layout.width, h = layout.footerLine })
 		UiKit.setCanvasHeight(page, rowsTop + shownRows * layout.rowPitch + layout.footerHint + layout.footerLine + 16)
+		renderOrders()
 
 		if buy then
 			renderCart()
@@ -415,7 +459,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	-- Boxes come from UiTheme.supplierPanelLayout and follow the screen size.
 	local function applyLayout(m: UiTheme.Metrics)
 		metrics = m
-		local layout = UiTheme.supplierPanelLayout(m, UiKit.contentWidth(page))
+		local layout = UiTheme.supplierPanelLayout(m, UiKit.contentWidth(page), orderRowCount)
 		place(modeBuy, layout.modeBuy)
 		place(modeSell, layout.modeSell)
 		place(refreshLabel, layout.refresh)
@@ -428,6 +472,10 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		place(cartLines, layout.cartLines)
 		for _, item in ipairs({ refreshLabel, status, cartInfo, cartLines, sellHint, stockingHint, customerLine }) do
 			item.TextSize = layout.textSize
+		end
+		ordersTitle.TextSize = layout.textSize
+		for _, label in ipairs(orderLabels) do
+			label.TextSize = layout.textSize
 		end
 		renderView()
 	end
@@ -592,6 +640,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 	task.spawn(function()
 		while page.Parent do
 			updateRefreshLabel()
+			renderOrders()
 			task.wait(1)
 		end
 	end)
@@ -600,6 +649,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 		if summary == nil then
 			-- No data: a switched save starts from its own summary, never the previous one.
 			lastSummary = nil
+			orderMemory = {}
 			mode = "Buy"
 			cart = {}
 			sellQty = {}
@@ -621,6 +671,7 @@ function SupplierTab.create(page: ScrollingFrame, context: TabContext): TabHandl
 			then os.clock() + supplier.refreshIn
 			else nil
 		updateRefreshLabel()
+		OrderStatus.track(orderMemory, summaryPart("deliveries"), os.clock())
 		renderView()
 	end
 

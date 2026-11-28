@@ -773,9 +773,10 @@ end
 
 local STATUS_ORDER = { Delivered = 1, Pending = 2 }
 
-local function deliverySummary(state)
+local function deliverySummary(state, clockNow: number)
 	local orders = {}
 	for orderId, order in pairs(state.pendingOrders) do
+		local quantity = if type(order.quantity) == "number" then order.quantity else 0
 		table.insert(orders, {
 			orderId = orderId,
 			speciesId = order.speciesId,
@@ -783,6 +784,10 @@ local function deliverySummary(state)
 			quantity = order.quantity,
 			status = order.status,
 			dueAt = order.dueAt,
+			groupId = if type(order.requestId) == "string" then "order:" .. order.requestId else orderId,
+			createdAt = if type(order.createdAt) == "number" then order.createdAt else 0,
+			cost = (GameConfig.wholesaleFor(order.speciesId, order.sizeId) or 0) * quantity,
+			arrivesIn = if type(order.dueAt) == "number" then math.max(0, order.dueAt - clockNow) else 0,
 		})
 	end
 	-- Sort before truncating so ready deliveries are never hidden behind pending ones.
@@ -796,7 +801,8 @@ local function deliverySummary(state)
 		end
 		return a.orderId < b.orderId
 	end)
-	while #orders > 10 do
+	-- An order never vanishes before it lands: the cap is the open-order limit.
+	while #orders > GameConfig.MaxOpenOrders do
 		table.remove(orders)
 	end
 	return orders
@@ -855,7 +861,7 @@ function CompanyStateService:_dispatch(session, state, userId: number, request, 
 				plot = table.clone(state.progression),
 				progression = Progression.summary(state),
 				analytics = AnalyticsService.summary(state),
-				deliveries = deliverySummary(state),
+				deliveries = deliverySummary(state, self._clock()),
 				stock = Receiving.totals(state),
 				placementCount = placementCount(state),
 				receiving = BusinessState.receivingSummary(state, self._clock()),

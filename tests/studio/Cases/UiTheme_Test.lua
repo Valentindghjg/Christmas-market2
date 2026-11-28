@@ -699,6 +699,25 @@ return function(t)
 		expect.equal(pc.textSize, 13)
 	end)
 
+	-- CM2-V2-ORD: the "Recent orders" block sits between the cart lines and the rows.
+	t.test("supplier layout makes room for recent orders", function()
+		for _, size in ipairs(SUPPLIER_SIZES) do
+			local m, body = supplierBody(size)
+			local layout = UiTheme.supplierPanelLayout(m, body.w, 4)
+			expect.truthy(UiTheme.inside(layout.orders, body.w - 8, math.huge))
+			expect.truthy(layout.orders.y >= layout.cartLines.y + layout.cartLines.h)
+			expect.truthy(layout.rowsTopBuy >= layout.orders.y + layout.orders.h)
+			expect.truthy(layout.orderTitleHeight + 4 * layout.orderPitch <= layout.orders.h + 4)
+			expect.equal(
+				UiTheme.supplierPanelLayout(m, body.w).rowsTopBuy,
+				UiTheme.supplierPanelLayout(m, body.w, 0).rowsTopBuy
+			)
+		end
+		local pc = UiTheme.metrics(1920, 1022)
+		expect.equal(UiTheme.supplierPanelLayout(pc, 600, 0).rowsTopBuy, 196)
+		expect.equal(UiTheme.supplierPanelLayout(pc, 600, 4).rowsTopBuy, 298)
+	end)
+
 	t.test("supplier rows fit both views", function()
 		for _, size in ipairs(SUPPLIER_SIZES) do
 			local m, body = supplierBody(size)

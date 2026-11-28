@@ -83,6 +83,10 @@ export type SupplierPanelLayout = {
 	status: Box,
 	cartInfo: Box,
 	cartLines: Box,
+	orders: Box,
+	orderTitleHeight: number,
+	orderRowHeight: number,
+	orderPitch: number,
 	rowsTopBuy: number,
 	rowsTopSell: number,
 	rowPitch: number,
@@ -721,13 +725,18 @@ end
 
 -- CM2-SUP: Supplier panel boxes relative to the page, one column on every screen. The width
 -- keeps 8 px clear of the page scroll bar; every button is at least 44 x 44.
-function UiTheme.supplierPanelLayout(m: Metrics, pageWidth: number): SupplierPanelLayout
+-- CM2-V2-ORD: orderRows (default 0) makes room for the "Recent orders" block above the rows.
+function UiTheme.supplierPanelLayout(m: Metrics, pageWidth: number, orderRows: number?): SupplierPanelLayout
 	local W = math.max(0, math.floor(pageWidth) - 8)
+	local n = math.max(0, math.floor(orderRows or 0))
 	local pw = math.floor((W - 88) / 2)
 	if m.compact then
 		-- Phones stack the row text over the controls so 14 px text keeps the full width (22a3c).
 		local mw = math.floor((W - 4) / 2)
 		local ch1 = 40
+		local oldTop = 148 + 2 * ch1
+		local titleHeight = 20
+		local block = if n > 0 then titleHeight + n * 38 + 4 else 0
 		return {
 			modeBuy = box(0, 0, mw, 44),
 			modeSell = box(mw + 4, 0, W - mw - 4, 44),
@@ -739,7 +748,11 @@ function UiTheme.supplierPanelLayout(m: Metrics, pageWidth: number): SupplierPan
 			status = box(0, 70, W, 20),
 			cartInfo = box(0, 142, W, ch1),
 			cartLines = box(0, 144 + ch1, W, ch1),
-			rowsTopBuy = 148 + 2 * ch1,
+			orders = box(0, oldTop, W, math.max(0, block - 4)),
+			orderTitleHeight = titleHeight,
+			orderRowHeight = 36,
+			orderPitch = 38,
+			rowsTopBuy = oldTop + block,
 			rowsTopSell = 198,
 			rowPitch = 92,
 			rowHeight = 88,
@@ -751,6 +764,9 @@ function UiTheme.supplierPanelLayout(m: Metrics, pageWidth: number): SupplierPan
 		}
 	end
 	local h1 = 36
+	local oldTop = 124 + 2 * h1
+	local titleHeight = 18
+	local block = if n > 0 then titleHeight + n * 20 + 4 else 0
 	return {
 		modeBuy = box(0, 0, 140, 44),
 		modeSell = box(144, 0, 140, 44),
@@ -762,7 +778,11 @@ function UiTheme.supplierPanelLayout(m: Metrics, pageWidth: number): SupplierPan
 		status = box(0, 96, W, 18),
 		cartInfo = box(0, 116, W, h1),
 		cartLines = box(0, 118 + h1, W, h1),
-		rowsTopBuy = 124 + 2 * h1,
+		orders = box(0, oldTop, W, math.max(0, block - 4)),
+		orderTitleHeight = titleHeight,
+		orderRowHeight = 18,
+		orderPitch = 20,
+		rowsTopBuy = oldTop + block,
 		rowsTopSell = 118,
 		rowPitch = 48,
 		rowHeight = 44,

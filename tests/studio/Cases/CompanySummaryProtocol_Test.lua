@@ -114,4 +114,63 @@ return function(t)
 		end
 		expect.equal(table.concat(ids, ","), "LotExpansion,ParkingTier,Reputation,Cash")
 	end)
+
+	-- CM2-V2-ORD: the Supplier tab groups, prices and times orders from these read-only fields.
+	t.test("summary deliveries carry group, cost and ETA", function()
+		local ReplicatedStorage = game:GetService("ReplicatedStorage")
+		local BusinessState = require(ReplicatedStorage.Shared.BusinessState)
+		local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
+		local Service = require(game:GetService("ServerScriptService").Server.Services.CompanyStateService)
+		local now = 100
+		local service = Service.new({
+			load = function(_, companyId, ownerUserId)
+				return BusinessState.new(companyId, ownerUserId), nil
+			end,
+			save = function()
+				return true, nil
+			end,
+			release = function()
+				return true, nil
+			end,
+		}, function()
+			return now
+		end)
+		local state = service:loadCompany("personal:42", 42)
+		state.cash = 5000
+		local placed = service:handle("personal:42", 42, {
+			version = 1,
+			requestId = "order_summary_1",
+			action = "Supplier.PlaceOrder",
+			payload = {
+				lines = {
+					{ speciesId = "DouglasFir", sizeId = "Medium", quantity = 2 },
+					{ speciesId = "NobleFir", sizeId = "Small", quantity = 1 },
+				},
+			},
+		})
+		expect.truthy(placed.ok)
+		local function deliveries()
+			local response = service:handle("personal:42", 42, {
+				version = 1,
+				requestId = "order_summary_q" .. tostring(now),
+				action = "Company.GetSummary",
+				payload = {},
+			})
+			expect.truthy(response.ok)
+			return response.data.deliveries
+		end
+		local list = deliveries()
+		expect.equal(#list, 2)
+		expect.equal(string.sub(list[1].groupId, 1, 6), "order:")
+		expect.equal(list[1].groupId, list[2].groupId)
+		for _, entry in ipairs(list) do
+			expect.equal(entry.createdAt, 100)
+			expect.equal(entry.cost, GameConfig.wholesaleFor(entry.speciesId, entry.sizeId) * entry.quantity)
+			expect.equal(entry.arrivesIn, GameConfig.DeliverySeconds)
+		end
+		now = 110
+		for _, entry in ipairs(deliveries()) do
+			expect.equal(entry.arrivesIn, GameConfig.DeliverySeconds - 10)
+		end
+	end)
 end

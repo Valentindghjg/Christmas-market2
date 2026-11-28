@@ -634,6 +634,7 @@ GameConfig.Supplier = {
 	SellBackFraction = 0.25, -- OBSERVED
 	RecommendedPerSpecies = { Small = 1, Medium = 2 }, -- OBSERVED recommended-order shape
 	MaxCartLines = 12, -- PROVISIONAL: species x sizes
+	RecentOrders = 4, -- PROVISIONAL: order rows shown and Delivered entries kept per session (4 bays)
 }
 
 -- OBSERVED size ranges in tenths of a foot; each displayed tree gets a stable height inside its range.
