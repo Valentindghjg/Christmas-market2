@@ -21,6 +21,7 @@ export type Piece = {
 	textKey: string?,
 	boardKey: string?,
 	paint: { number }?,
+	signs: { { attachment: string, textKey: string } }?,
 }
 export type Surface = {
 	id: string,
@@ -78,6 +79,19 @@ local SNOWMAN = "Props/Snowman"
 local SLED = "Props/Sled"
 local WOODSTACK = "Props/WoodStack"
 local FIR_BARREL = "Props/FirBarrel"
+local STAKE = "Props/SnowStake"
+local HYDRANT = "Props/FireHydrant"
+local BIN = "Props/TrashBin"
+local UTILITY_BOX = "Props/UtilityBox"
+local MAILBOX = "Props/MailboxCluster"
+local RAIL = "Props/GuardRail"
+local POLE = "Props/UtilityPole"
+local SIGN_SPEED = "Props/RoadSignSpeed"
+local SIGN_DIRECTION = "Props/RoadSignDirection"
+local BUS_STOP = "Props/BusStop"
+local SHED = "Buildings/GarageShed"
+local SHOP = "Buildings/VillageShop"
+local FIRE = "Buildings/FireStation"
 
 -- W x L (docs "Map art"), triangle and MeshPart budget per model (docs "Map layout (CM2-10)").
 MapLayout.ART = {
@@ -100,6 +114,20 @@ MapLayout.ART = {
 	[SLED] = { w = 1.77, l = 3.99, triangles = 300, meshParts = 3, fallback = nil },
 	[WOODSTACK] = { w = 5.6, l = 2.31, triangles = 520, meshParts = 3, fallback = nil },
 	[FIR_BARREL] = { w = 2.4, l = 2.4, triangles = 360, meshParts = 3, fallback = "FirBarrel" },
+	-- CM2-10IW: W x L are the CM2-10I maxima (docs "Village infrastructure (CM2-10I)").
+	[STAKE] = { w = 0.4, l = 0.4, triangles = 60, meshParts = 2, fallback = "SnowStake" },
+	[HYDRANT] = { w = 1.4, l = 1.4, triangles = 200, meshParts = 3, fallback = nil },
+	[BIN] = { w = 1.6, l = 1.6, triangles = 220, meshParts = 3, fallback = nil },
+	[UTILITY_BOX] = { w = 2.6, l = 1.6, triangles = 160, meshParts = 3, fallback = "UtilityBox" },
+	[MAILBOX] = { w = 3.0, l = 1.2, triangles = 300, meshParts = 3, fallback = nil },
+	[RAIL] = { w = 8.0, l = 1.0, triangles = 240, meshParts = 3, fallback = "GuardRail" },
+	[POLE] = { w = 1.0, l = 3.0, triangles = 260, meshParts = 3, fallback = "UtilityPole" },
+	[SIGN_SPEED] = { w = 2.2, l = 0.6, triangles = 160, meshParts = 3, fallback = nil },
+	[SIGN_DIRECTION] = { w = 5.6, l = 0.6, triangles = 300, meshParts = 3, fallback = nil },
+	[BUS_STOP] = { w = 7.6, l = 3.6, triangles = 400, meshParts = 3, fallback = nil },
+	[SHED] = { w = 9.0, l = 9.0, triangles = 1400, meshParts = 6, fallback = nil },
+	[SHOP] = { w = 24, l = 18, triangles = 3000, meshParts = 10, fallback = nil },
+	[FIRE] = { w = 26, l = 20, triangles = 3000, meshParts = 10, fallback = nil },
 } :: { [string]: ArtEntry }
 
 MapLayout.COUNTS = {
@@ -122,6 +150,19 @@ MapLayout.COUNTS = {
 	[SLED] = 6,
 	[WOODSTACK] = 6,
 	[FIR_BARREL] = 16,
+	[STAKE] = 14,
+	[HYDRANT] = 5,
+	[BIN] = 5,
+	[UTILITY_BOX] = 2,
+	[MAILBOX] = 5,
+	[RAIL] = 16,
+	[POLE] = 20,
+	[SIGN_SPEED] = 2,
+	[SIGN_DIRECTION] = 2,
+	[BUS_STOP] = 2,
+	[SHED] = 2,
+	[SHOP] = 1,
+	[FIRE] = 1,
 } :: { [string]: number }
 
 -- Plots 1-3 sit at z -75 facing +1 (toward the road), plots 4-6 at z 75 facing -1.
@@ -433,6 +474,132 @@ local function dressingPieces(): { Piece }
 	return list
 end
 
+MapLayout.INFRA_CODES = {
+	ST = STAKE,
+	HY = HYDRANT,
+	TB = BIN,
+	UB = UTILITY_BOX,
+	MB = MAILBOX,
+	GR = RAIL,
+	UP = POLE,
+	RS = SIGN_SPEED,
+	RD = SIGN_DIRECTION,
+	BS = BUS_STOP,
+	GS = SHED,
+	VS = SHOP,
+	FS = FIRE,
+} :: { [string]: string }
+
+-- CM2-10IW placement contract (docs "Village infrastructure (CM2-10I)"), sections 1-6: north half,
+-- mirrored to the south by infraPieces; nn 01-36 (the stakes are expanded to seven entries).
+MapLayout.INFRA_PAIRS = {
+	-- 1. Poles (01-10)
+	{ code = "UP", x = -395, z = 22.5, yaw = 0 },
+	{ code = "UP", x = -342, z = 22.5, yaw = 0 },
+	{ code = "UP", x = -292, z = 22.5, yaw = 0 },
+	{ code = "UP", x = -177, z = 27, yaw = 0 },
+	{ code = "UP", x = -82, z = 27, yaw = 0 },
+	{ code = "UP", x = -53, z = 27, yaw = 0 },
+	{ code = "UP", x = 24, z = 27, yaw = 0 },
+	{ code = "UP", x = 53.5, z = 27, yaw = 0 },
+	{ code = "UP", x = 134, z = 27, yaw = 0 },
+	{ code = "UP", x = 168, z = 27, yaw = 0 },
+	-- 2. Gap west (11-14)
+	{ code = "BS", x = -43.6, z = 22.8, yaw = 0 },
+	{ code = "TB", x = -44.5, z = 27.5, yaw = 0 },
+	{ code = "MB", x = -48.5, z = 28, yaw = 0 },
+	{ code = "UB", x = -56, z = 34, yaw = 0 },
+	-- 3. Gap east (15-17)
+	{ code = "GS", x = 60, z = 33, yaw = 270 },
+	{ code = "MB", x = 65.5, z = 24.5, yaw = 0 },
+	{ code = "TB", x = 67, z = 36, yaw = 0 },
+	-- 4. Road (18-21)
+	{ code = "HY", x = -161, z = 23.5, yaw = 0 },
+	{ code = "HY", x = 188.3, z = 22, yaw = 0 },
+	{ code = "RS", x = -256, z = 21.5, yaw = 90 },
+	{ code = "RD", x = -186, z = 31, yaw = 0 },
+	-- 5. Rails (22-29)
+	{ code = "GR", x = -260, z = 17.9, yaw = 0 },
+	{ code = "GR", x = -252, z = 17.9, yaw = 0 },
+	{ code = "GR", x = -198, z = 26, yaw = 90 },
+	{ code = "GR", x = -198, z = 34, yaw = 90 },
+	{ code = "GR", x = -198, z = 42, yaw = 90 },
+	{ code = "GR", x = -238, z = 26, yaw = 90 },
+	{ code = "GR", x = -238, z = 34, yaw = 90 },
+	{ code = "GR", x = -238, z = 42, yaw = 90 },
+	-- 6. Stakes (30-36)
+	{ code = "ST", x = -266, z = 17.9, yaw = 0 },
+	{ code = "ST", x = -285, z = 17.9, yaw = 0 },
+	{ code = "ST", x = -305, z = 17.9, yaw = 0 },
+	{ code = "ST", x = -330, z = 17.9, yaw = 0 },
+	{ code = "ST", x = -355, z = 17.9, yaw = 0 },
+	{ code = "ST", x = -380, z = 17.9, yaw = 0 },
+	{ code = "ST", x = -405, z = 17.9, yaw = 0 },
+} :: { { code: string, x: number, z: number, yaw: number } }
+
+-- Section 7 (37-41): the shop and the fire station face each other across the road; not mirrored.
+MapLayout.INFRA_SINGLES = {
+	{ code = "VS", x = 176, z = 62, yaw = 0 },
+	{ code = "FS", x = 176, z = -62, yaw = 180 },
+	{ code = "MB", x = 170, z = 49.5, yaw = 0 },
+	{ code = "TB", x = 182, z = 49.5, yaw = 0 },
+	{ code = "HY", x = 163, z = -49, yaw = 180 },
+} :: { { code: string, x: number, z: number, yaw: number } }
+
+local function signsOf(code: string, side: string): { { attachment: string, textKey: string } }?
+	if code == "RS" then
+		return { { attachment = "SignFront", textKey = "mapSignSpeed" } }
+	elseif code == "RD" then
+		-- The art's top arrow points model -X (west on the north sign), so N top reads "Bridge".
+		local top, bottom = "mapSignBridge", "mapSignVillageSquare"
+		if side == "S" then
+			top, bottom = bottom, top
+		end
+		return {
+			{ attachment = "SignTop", textKey = top },
+			{ attachment = "SignBottom", textKey = bottom },
+		}
+	end
+	return nil
+end
+
+local function infraPieces(): { Piece }
+	local list: { Piece } = {}
+	for nn, e in ipairs(MapLayout.INFRA_PAIRS) do
+		local path = MapLayout.INFRA_CODES[e.code]
+		local north = fixed(string.format("Infra_%02d_N", nn), path, "Infrastructure", e.x, 0, e.z, e.yaw)
+		local south =
+			fixed(string.format("Infra_%02d_S", nn), path, "Infrastructure", e.x, 0, -e.z, (e.yaw + 180) % 360)
+		north.signs = signsOf(e.code, "N")
+		south.signs = signsOf(e.code, "S")
+		table.insert(list, north)
+		table.insert(list, south)
+	end
+	for k, e in ipairs(MapLayout.INFRA_SINGLES) do
+		local path = MapLayout.INFRA_CODES[e.code]
+		local id = string.format("Infra_%02d", #MapLayout.INFRA_PAIRS + k)
+		table.insert(list, fixed(id, path, "Infrastructure", e.x, 0, e.z, e.yaw))
+	end
+	return list
+end
+
+-- Wires (CM2-10IW): per side the poles 01 -> 10 in order, WireA to WireA and WireB to WireB.
+function MapLayout.wires(): { { from: string, to: string, attachment: string } }
+	local list: { { from: string, to: string, attachment: string } } = {}
+	for _, side in ipairs({ "N", "S" }) do
+		for k = 1, 9 do
+			for _, attachment in ipairs({ "WireA", "WireB" }) do
+				table.insert(list, {
+					from = string.format("Infra_%02d_%s", k, side),
+					to = string.format("Infra_%02d_%s", k + 1, side),
+					attachment = attachment,
+				})
+			end
+		end
+	end
+	return list
+end
+
 local function overlaps(a: Box, b: Box, grow: number): boolean
 	return a.minX - grow < b.maxX and b.minX - grow < a.maxX and a.minZ - grow < b.maxZ and b.minZ - grow < a.maxZ
 end
@@ -543,6 +710,9 @@ function MapLayout.generate(): { Piece }
 		table.insert(list, piece)
 	end
 	for _, piece in dressingPieces() do
+		table.insert(list, piece)
+	end
+	for _, piece in infraPieces() do
 		table.insert(list, piece)
 	end
 	return list

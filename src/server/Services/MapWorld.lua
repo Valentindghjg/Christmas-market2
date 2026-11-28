@@ -20,7 +20,9 @@ export type MapKit = {
 	reportMissing: (string, string) -> (),
 }
 
-local GROUPS = { "Landmarks", "Square", "Street", "Forest", "Rocks", "Mountains", "Dressing" }
+local GROUPS = { "Landmarks", "Square", "Street", "Forest", "Rocks", "Mountains", "Dressing", "Infrastructure" }
+-- Art paths whose model carries a night light (the street lamp, CM2-10IW: bus stops and the shop).
+local LIT_PATHS = { ["Props/LampPost"] = true, ["Props/BusStop"] = true, ["Buildings/VillageShop"] = true }
 local NO_SHADOW_GROUPS = { Forest = true, Rocks = true, Mountains = true, Reserve = true }
 local ROWS = 4
 
@@ -340,18 +342,96 @@ local FALLBACKS: { [string]: (MapKit, Instance, MapLayout.Piece, CFrame) -> Mode
 		model.PrimaryPart = barrel
 		return model
 	end,
+	-- Village infrastructure (CM2-10IW): collider-sized stand-ins until the art is imported.
+	SnowStake = function(kit, parent, piece, pivot)
+		local model = newModel(parent, piece)
+		model.PrimaryPart = offsetPart(
+			kit,
+			model,
+			"Stake",
+			Vector3.new(0.3, 5, 0.3),
+			pivot,
+			Vector3.new(0, 2.5, 0),
+			"GoldAccent",
+			Enum.Material.SmoothPlastic
+		)
+		return model
+	end,
+	GuardRail = function(kit, parent, piece, pivot)
+		local model = newModel(parent, piece)
+		model.PrimaryPart = offsetPart(
+			kit,
+			model,
+			"Rail",
+			Vector3.new(8, 2.4, 0.6),
+			pivot,
+			Vector3.new(0, 1.2, 0),
+			"BarkBrown",
+			Enum.Material.Wood
+		)
+		return model
+	end,
+	UtilityBox = function(kit, parent, piece, pivot)
+		local model = newModel(parent, piece)
+		model.PrimaryPart = offsetPart(
+			kit,
+			model,
+			"Box",
+			Vector3.new(2.4, 3.2, 1.4),
+			pivot,
+			Vector3.new(0, 1.6, 0),
+			"RoofGreen",
+			Enum.Material.SmoothPlastic
+		)
+		return model
+	end,
+	UtilityPole = function(kit, parent, piece, pivot)
+		local model = newModel(parent, piece)
+		local pole = offsetPart(
+			kit,
+			model,
+			"Pole",
+			Vector3.new(0.8, 17.6, 0.8),
+			pivot,
+			Vector3.new(0, 8.8, 0),
+			"BarkBrown",
+			Enum.Material.Wood
+		)
+		local arm = offsetPart(
+			kit,
+			model,
+			"CrossArm",
+			Vector3.new(0.3, 0.3, 3),
+			pivot,
+			Vector3.new(0, 16.6, 0),
+			"BarkBrown",
+			Enum.Material.Wood
+		)
+		arm.CanCollide = false
+		for name, z in { WireA = -1.2, WireB = 1.2 } do
+			local attachment = Instance.new("Attachment")
+			attachment.Name = name
+			attachment.Position = Vector3.new(0, 0.5, z)
+			attachment.Parent = arm
+		end
+		model.PrimaryPart = pole
+		return model
+	end,
 }
 
 -- Night light of a street lamp (CM2-G12a): under the art's `Light` attachment, else the
 -- fallback's Lantern, else the PrimaryPart. Off on the server; the client switches it at night.
-local function addLampLight(model: Model)
-	local parent: Instance? = nil
+local function findAttachment(model: Instance, name: string): Attachment?
 	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("Attachment") and descendant.Name == "Light" then
-			parent = descendant
-			break
+		if descendant:IsA("Attachment") and descendant.Name == name then
+			return descendant
 		end
 	end
+	return nil
+end
+
+local function addLampLight(model: Model)
+	local parent: Instance? = findAttachment(model, "Light")
 	if parent == nil then
 		local lantern = model:FindFirstChild("Lantern")
 		parent = if lantern and lantern:IsA("BasePart") then lantern else model.PrimaryPart
@@ -402,6 +482,32 @@ local function addSignText(kit: MapKit, model: Model, piece: MapLayout.Piece, pi
 	)
 	text.Transparency = 1
 	surfaceText(text, "SignGui", piece.textKey :: string, rgb(UiTheme.Colors.Cream))
+end
+
+-- Road and bus signs (CM2-10IW): text on a clear Part in front of the art's sign attachments.
+local SIGN_SIZES =
+	{ SignFront = Vector2.new(1.4, 1.4), SignTop = Vector2.new(4.2, 0.7), SignBottom = Vector2.new(4.2, 0.7) }
+
+local function addInfraSigns(kit: MapKit, model: Model, piece: MapLayout.Piece, pivot: CFrame)
+	for _, sign in piece.signs :: { { attachment: string, textKey: string } } do
+		local attachment = findAttachment(model, sign.attachment)
+		if attachment ~= nil then
+			local size = SIGN_SIZES[sign.attachment]
+			local text = flatPart(
+				kit,
+				model,
+				"SignText_" .. sign.attachment,
+				Vector3.new(size.X, size.Y, 0.05),
+				CFrame.new(attachment.WorldPosition) * pivot.Rotation * CFrame.new(0, 0, -0.03),
+				Color3.new(1, 1, 1)
+			)
+			text.Transparency = 1
+			local color = if sign.attachment == "SignFront"
+				then paletteColor("MetalDark")
+				else rgb(UiTheme.Colors.Cream)
+			surfaceText(text, "SignGui", sign.textKey, color)
+		end
+	end
 end
 
 -- Surfaces and walls ------------------------------------------------------------------------
@@ -474,8 +580,11 @@ local function placePiece(kit: MapKit, placement: MapLayout.Placement, parent: I
 		model = FALLBACKS[fallback](kit, parent, piece, pivot)
 	end
 	model:SetAttribute("MapPiece", piece.id)
-	if piece.artPath == "Props/LampPost" then
+	if LIT_PATHS[piece.artPath] then
 		addLampLight(model)
+	end
+	if piece.signs then
+		addInfraSigns(kit, model, piece, pivot)
 	end
 	if piece.boardKey then
 		addBoardParts(kit, model, piece, pivot)
@@ -487,6 +596,30 @@ local function placePiece(kit: MapKit, placement: MapLayout.Placement, parent: I
 			if descendant:IsA("BasePart") then
 				descendant.CastShadow = false
 			end
+		end
+	end
+end
+
+-- Wires (CM2-10IW): one straight Beam per MapLayout.wires() entry between the poles' attachments,
+-- parented to the `from` pole so a streamed-out pole takes its beam with it.
+local function wirePoles(group: Instance)
+	for _, entry in MapLayout.wires() do
+		local from = group:FindFirstChild(entry.from)
+		local to = group:FindFirstChild(entry.to)
+		local first = if from then findAttachment(from, entry.attachment) else nil
+		local second = if to then findAttachment(to, entry.attachment) else nil
+		if from ~= nil and first ~= nil and second ~= nil then
+			local beam = Instance.new("Beam")
+			beam.Name = entry.attachment .. "Beam"
+			beam.Attachment0 = first
+			beam.Attachment1 = second
+			beam.Width0 = 0.1
+			beam.Width1 = 0.1
+			beam.Color = ColorSequence.new(paletteColor("MetalDark"))
+			beam.Segments = 1
+			beam.FaceCamera = true
+			beam.LightInfluence = 1
+			beam.Parent = from
 		end
 	end
 end
@@ -532,6 +665,7 @@ function MapWorld.build(world: Instance, kit: MapKit): Folder
 			placePiece(kit, placement, parent)
 		end
 	end
+	wirePoles(groups.Infrastructure)
 	map.Parent = world
 	return map
 end

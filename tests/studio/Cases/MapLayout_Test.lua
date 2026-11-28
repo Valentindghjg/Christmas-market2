@@ -3,12 +3,14 @@
 return function(t)
 	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 	local ArtLibrary = require(Shared:WaitForChild("ArtLibrary"))
+	local Localization = require(Shared:WaitForChild("Localization"))
 	local MapLayout = require(Shared:WaitForChild("MapLayout"))
 	local expect = t.expect
 
 	-- The contract's 298 models left out the 4 benches; its triangle and MeshPart totals include them.
-	-- CM2-10DW adds the 110 dressing pieces (302 -> 412 models, 149700 -> 179700, 1051 -> 1351 budget).
-	local MAX_TRIANGLES, MAX_MESHPARTS, MAX_MODELS = 179700, 1351, 442
+	-- CM2-10DW adds the 110 dressing pieces (302 -> 412 models, 149700 -> 179700, 1051 -> 1351 budget);
+	-- CM2-10IW adds the 77 infrastructure pieces (412 -> 489 models, 179260 -> 203580 triangles, 1335 -> 1572 MeshParts).
+	local MAX_TRIANGLES, MAX_MESHPARTS, MAX_MODELS = 219260, 1635, 532
 
 	local function inside(box, zone)
 		return box.minX >= zone.minX - 1e-9
@@ -111,9 +113,9 @@ return function(t)
 		expect.truthy(triangles <= MAX_TRIANGLES)
 		expect.truthy(meshParts <= MAX_MESHPARTS)
 		expect.truthy(models <= MAX_MODELS)
-		expect.equal(meshParts, 1335)
-		expect.equal(models, 412)
-		expect.equal(triangles, 179260)
+		expect.equal(meshParts, 1572)
+		expect.equal(models, 489)
+		expect.equal(triangles, 203580)
 	end)
 
 	t.test("hides reserve rows only where the lot reaches them, levels 0-6", function()
@@ -224,9 +226,9 @@ return function(t)
 			end
 			return count
 		end
-		expect.equal(size(fallback), 11)
-		expect.equal(size(skip), 8)
-		expect.equal(#missing, 19)
+		expect.equal(size(fallback), 15)
+		expect.equal(size(skip), 17)
+		expect.equal(#missing, 32)
 		local seen = {}
 		for _, entry in ipairs(missing) do
 			expect.equal(entry.code, "MissingArtAsset")
@@ -235,7 +237,7 @@ return function(t)
 		end
 
 		local partial, partialMissing = MapLayout.plan(fakeRoot({ "Environment/ForestFir" }), ArtLibrary.find)
-		expect.equal(#partialMissing, 18)
+		expect.equal(#partialMissing, 31)
 		for _, placement in ipairs(partial) do
 			if placement.piece.artPath == "Environment/ForestFir" then
 				expect.equal(placement.mode, "Art")
@@ -314,6 +316,128 @@ return function(t)
 		end
 		expect.equal(fallback, 62)
 		expect.equal(skip, 20)
+	end)
+
+	t.test("places the 77 infrastructure pieces from the contract (CM2-10IW)", function()
+		expect.equal(#MapLayout.INFRA_PAIRS, 36)
+		expect.equal(#MapLayout.INFRA_SINGLES, 5)
+		local byId = {}
+		local total = 0
+		for _, piece in ipairs(MapLayout.pieces()) do
+			if piece.group == "Infrastructure" then
+				expect.falsy(byId[piece.id])
+				byId[piece.id] = piece
+				total += 1
+			end
+		end
+		expect.equal(total, 77)
+		for nn = 1, 36 do
+			local north = byId[string.format("Infra_%02d_N", nn)]
+			local south = byId[string.format("Infra_%02d_S", nn)]
+			expect.truthy(north ~= nil and south ~= nil)
+			expect.equal(south.artPath, north.artPath)
+			expect.equal(south.x, north.x)
+			expect.equal(south.z, -north.z)
+			expect.equal(south.yaw, (north.yaw + 180) % 360)
+		end
+		for nn = 37, 41 do
+			expect.truthy(byId[string.format("Infra_%02d", nn)] ~= nil)
+		end
+
+		-- Footprints stay >= 1.0 from the sidewalks, approach road, square and the stream channel.
+		local near = {}
+		for _, top in ipairs(MapLayout.surfaceTops()) do
+			if top.id == "Sidewalk_N" or top.id == "Sidewalk_S" or top.id == "ApproachRoad" or top.id == "Square" then
+				table.insert(near, top)
+			end
+		end
+		expect.equal(#near, 4)
+		table.insert(near, { id = "ChannelN", minX = -236, maxX = -200, minZ = 0, maxZ = 380 })
+		table.insert(near, { id = "ChannelS", minX = -236, maxX = -200, minZ = -380, maxZ = 0 })
+		for _, piece in pairs(byId) do
+			local footprint = MapLayout.footprint(piece)
+			for _, box in ipairs(near) do
+				local distance = MapLayout.distance(footprint, box)
+				assert(distance >= 1.0 - 1e-9, string.format("%s is %.3f from %s", piece.id, distance, box.id))
+			end
+		end
+
+		-- Signs: RS says the limit on both; RD reads Bridge on top on the north board, Village Square on the south.
+		local signs = 0
+		for id, piece in pairs(byId) do
+			if piece.signs ~= nil then
+				signs += 1
+				for _, sign in ipairs(piece.signs) do
+					expect.truthy(Localization.Strings.en[sign.textKey] ~= nil)
+				end
+			end
+			if piece.artPath == "Props/RoadSignSpeed" then
+				expect.equal(#piece.signs, 1)
+				expect.equal(piece.signs[1].attachment, "SignFront")
+				expect.equal(piece.signs[1].textKey, "mapSignSpeed")
+			elseif piece.artPath == "Props/RoadSignDirection" then
+				local top = if string.sub(id, -2) == "_N" then "mapSignBridge" else "mapSignVillageSquare"
+				local bottom = if string.sub(id, -2) == "_N" then "mapSignVillageSquare" else "mapSignBridge"
+				expect.equal(#piece.signs, 2)
+				expect.equal(piece.signs[1].attachment, "SignTop")
+				expect.equal(piece.signs[1].textKey, top)
+				expect.equal(piece.signs[2].attachment, "SignBottom")
+				expect.equal(piece.signs[2].textKey, bottom)
+			else
+				expect.falsy(piece.signs)
+			end
+		end
+		expect.equal(signs, 4)
+
+		-- A library without the 13 paths: UP, GR, ST, UB fall back (52), the other 25 are skipped.
+		local isInfra = {}
+		for _, path in pairs(MapLayout.INFRA_CODES) do
+			isInfra[path] = true
+		end
+		local paths = {}
+		for _, path in ipairs(allPaths()) do
+			if not isInfra[path] then
+				table.insert(paths, path)
+			end
+		end
+		local placements = MapLayout.plan(fakeRoot(paths), ArtLibrary.find)
+		local fallback, skip = 0, 0
+		for _, placement in ipairs(placements) do
+			if placement.piece.group == "Infrastructure" then
+				if placement.mode == "Fallback" then
+					fallback += 1
+				elseif placement.mode == "Skip" then
+					skip += 1
+				else
+					error("unexpected mode " .. placement.mode)
+				end
+			end
+		end
+		expect.equal(fallback, 52)
+		expect.equal(skip, 25)
+	end)
+
+	t.test("wires neighbouring poles on each side (CM2-10IW)", function()
+		local byId = {}
+		for _, piece in ipairs(MapLayout.pieces()) do
+			byId[piece.id] = piece
+		end
+		local wires = MapLayout.wires()
+		expect.equal(#wires, 36)
+		local seen = {}
+		for _, wire in ipairs(wires) do
+			local from, to = byId[wire.from], byId[wire.to]
+			expect.truthy(from ~= nil and to ~= nil)
+			expect.equal(from.artPath, "Props/UtilityPole")
+			expect.equal(to.artPath, "Props/UtilityPole")
+			local fromNn, fromSide = string.match(wire.from, "^Infra_(%d+)_([NS])$")
+			local toNn, toSide = string.match(wire.to, "^Infra_(%d+)_([NS])$")
+			expect.equal(fromSide, toSide)
+			expect.equal(tonumber(toNn), tonumber(fromNn) + 1)
+			local key = wire.from .. "/" .. wire.attachment
+			expect.falsy(seen[key])
+			seen[key] = true
+		end
 	end)
 
 	-- CM2-FLICK: coplanar flat surfaces z-fight.

@@ -273,6 +273,9 @@ Localization.Strings = {
 		-- Map signs and leaderboard board titles (CM2-10W).
 		mapWelcome = "Christmas Tree Village",
 		mapDeliveries = "DELIVERIES",
+		mapSignSpeed = "20",
+		mapSignVillageSquare = "Village Square",
+		mapSignBridge = "Bridge",
 		boardCashEarned = "Cash earned",
 		boardReputation = "Reputation",
 		boardHoursPlayed = "Hours played",
@@ -812,6 +815,9 @@ Localization.Strings = {
 		-- Map signs and leaderboard board titles (CM2-10W).
 		mapWelcome = "Weihnachtsbaumdorf",
 		mapDeliveries = "LIEFERUNGEN",
+		mapSignSpeed = "20",
+		mapSignVillageSquare = "Dorfplatz",
+		mapSignBridge = "Brücke",
 		boardCashEarned = "Verdientes Geld",
 		boardReputation = "Ansehen",
 		boardHoursPlayed = "Gespielte Stunden",

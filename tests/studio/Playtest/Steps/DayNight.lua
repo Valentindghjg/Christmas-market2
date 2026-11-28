@@ -3,7 +3,8 @@
 -- Installed by RunPlaytest.execute after Steps/Progression. Step 60 drives the real player's
 -- day clock through dusk and a day rollover and checks the attributes, the summary and the
 -- saved day after a rejoin; step 61 counts the server's night lights (all off on the server):
--- 22 lamps, 10 dressing lamps (CM2-10DW), 2 plot-sign lights and (CM2-GATEW) 2 gate lights per plot = 56.
+-- 22 lamps, 10 dressing lamps (CM2-10DW), 3 infrastructure lights (CM2-10IW), 2 plot-sign lights and
+-- (CM2-GATEW) 2 gate lights per plot = 59.
 return function(ctx: any)
 	local R = ctx.R
 	local actOk = ctx.actOk
@@ -19,6 +20,7 @@ return function(ctx: any)
 	local TAG = ctx.GameConfig.DayCycle.NightLightTag
 	local LAMP_COUNT = 22
 	local DRESSING_LAMPS = 10 -- CM2-10DW
+	local INFRA_LIGHTS = 3 -- CM2-10IW
 	local PLOT_LIGHTS = 6 * 2
 	local GATE_LIGHTS = 6 * 2 -- CM2-GATEW
 
@@ -98,7 +100,7 @@ return function(ctx: any)
 			check((instance :: Light).Enabled == false, "night light enabled on the server: " .. instance:GetFullName())
 			lights += 1
 		end
-		local expected = LAMP_COUNT + DRESSING_LAMPS + PLOT_LIGHTS + GATE_LIGHTS
+		local expected = LAMP_COUNT + DRESSING_LAMPS + INFRA_LIGHTS + PLOT_LIGHTS + GATE_LIGHTS
 		check(lights == expected, string.format("%d night lights, expected %d", lights, expected))
 
 		local world = workspace:FindFirstChild("ChristmasMarketWorld")
@@ -147,11 +149,35 @@ return function(ctx: any)
 			dressingLamps == DRESSING_LAMPS,
 			string.format("%d dressing lamps, expected %d", dressingLamps, DRESSING_LAMPS)
 		)
+
+		local infraLights = 0
+		for _, descendant in (map :: Instance):GetDescendants() do
+			local piece = descendant:GetAttribute("MapPiece")
+			if descendant:IsA("Model") and type(piece) == "string" and string.match(piece, "^Infra_%d%d") then
+				local own = 0
+				for _, inner in descendant:GetDescendants() do
+					if inner:IsA("Light") and CollectionService:HasTag(inner, TAG) then
+						own += 1
+					end
+				end
+				local group = descendant.Parent
+				if own == 1 and group ~= nil and group.Parent == map and group.Name == "Infrastructure" then
+					infraLights += 1
+				else
+					check(own == 0, string.format("%s holds %d night lights", descendant:GetFullName(), own))
+				end
+			end
+		end
+		check(
+			infraLights == INFRA_LIGHTS,
+			string.format("%d infrastructure lights, expected %d", infraLights, INFRA_LIGHTS)
+		)
 		return string.format(
-			"%d night lights off on the server, %d lamps and %d dressing lamps with one each",
+			"%d night lights off on the server, %d lamps and %d dressing lamps with one each, %d infrastructure lights",
 			lights,
 			lamps,
-			dressingLamps
+			dressingLamps,
+			infraLights
 		)
 	end)
 end

@@ -170,6 +170,41 @@ return function(ctx: any)
 			check(title == expectedTitle, string.format("Board_%s title is %s", key, tostring(title)))
 		end
 
+		-- (g2) village infrastructure (CM2-10IW): 36 Beam wires between the poles, sign text on the art
+		local infrastructure = map:FindFirstChild("Infrastructure")
+		check(infrastructure ~= nil, "Map.Infrastructure is missing")
+		local wires = 0
+		for _, descendant in (infrastructure :: Instance):GetDescendants() do
+			if descendant:IsA("Beam") and (descendant.Name == "WireABeam" or descendant.Name == "WireBBeam") then
+				if descendant.Attachment0 ~= nil and descendant.Attachment1 ~= nil then
+					wires += 1
+				end
+			end
+		end
+		check(wires == 36, string.format("%d wires, expected 36", wires))
+		local signTexts = 0
+		for _, piece in MapLayout.pieces() do
+			local model = (infrastructure :: Instance):FindFirstChild(piece.id)
+			if piece.signs ~= nil and model ~= nil then
+				for _, sign in piece.signs do
+					local text = textOf(model, "SignText_" .. sign.attachment, "SignGui")
+					local expectedText = Localization.get("en", sign.textKey)
+					check(
+						text == expectedText,
+						string.format("%s %s says %s", piece.id, sign.attachment, tostring(text))
+					)
+					signTexts += 1
+				end
+			end
+		end
+		local artRoot = ctx.ArtLibrary.root(ReplicatedStorage)
+		if
+			ctx.ArtLibrary.find(artRoot, "Props/RoadSignSpeed") ~= nil
+			and ctx.ArtLibrary.find(artRoot, "Props/RoadSignDirection") ~= nil
+		then
+			check(signTexts == 6, string.format("%d sign texts, expected 6", signTexts))
+		end
+
 		-- (h) the server keeps its frame rate with the map built
 		local frames = 0
 		local started = os.clock()
@@ -182,12 +217,14 @@ return function(ctx: any)
 		check(fps >= 55, string.format("server heartbeat %.1f fps, expected >= 55", fps))
 
 		return string.format(
-			"pieces %d (art %d, fallback %d, skip %d), overlaps 0, walls 4, streaming on, server fps %.0f",
+			"pieces %d (art %d, fallback %d, skip %d), overlaps 0, walls 4, streaming on, server fps %.0f, wires %d, sign texts %d",
 			#placements,
 			art,
 			fallback,
 			skip,
-			fps
+			fps,
+			wires,
+			signTexts
 		)
 	end)
 
