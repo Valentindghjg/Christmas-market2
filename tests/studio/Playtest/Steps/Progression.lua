@@ -1,14 +1,19 @@
 --!strict
--- Playtest steps 58-59 (full mode): the progression ladder (CM2-G9a, docs/archive/plans/CM2-G9a.md).
+-- Playtest steps 58, 59 and 79 (full mode): the progression ladder (CM2-G9a, docs/archive/plans/CM2-G9a.md).
 -- Installed by RunPlaytest.execute after Steps/Map. Both steps work on the shadow S only: step 58
 -- buys every ladder kind once through the real actions (with setProgression fixtures for cash
 -- and prerequisites) and restores S; step 59 moves S's stand through HQ 1-4 and its lot through
 -- levels 0-6 and checks the G19 clearances, then restores S's visuals.
 -- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
--- CM2-G9a: `58 PROGRESSION_LADDER` (S buys lot 1, parking 2, HQ 2 and 4 and the Lot Manager once
--- each through the real actions, a replayed request and a second request charge nothing, the
--- workshop unlocks, S restored) and `59 HQ_FOOTPRINTS` (HQ 1-4 inside KeepClear `Stand` and clear
--- of counter, parking and KeepClear boxes; fence for lot levels 0-6) in `Steps/Progression.lua`.
+-- CM2-G9a: `58 PROGRESSION_LADDER` (S buys lot 1, parking 2, 3, 4 (CM2-PARK: $400, $1,200, $4,200
+-- in order, tier 3 at tier 1 NotNextLevel, one bay with LineL, LineR, Stop per tier, CarPark_DriveR
+-- from tier 2), HQ 2 and 4 and the Lot Manager once each through the real actions, a replayed
+-- request and a second request charge nothing, the workshop unlocks, S restored) and
+-- `59 HQ_FOOTPRINTS` (HQ 1-4 inside KeepClear `Stand` and clear of counter, parking and KeepClear
+-- boxes; fence for lot levels 0-6) in `Steps/Progression.lua`.
+-- CM2-PARK: `79 PARKING_MIGRATION` (needs 02): S on tier 3 keeps it across a rejoin; S's save
+-- rewritten by `legacyParking` as schema 23 on tier 1 (then 2) loads as tier 2 (then 4), cash
+-- unchanged, and within 5 s S's plot shows 2 (then 4) Parking_; S's LotWorker restored.
 return function(ctx: any)
 	local GameConfig = ctx.GameConfig
 	local HttpService = ctx.HttpService
@@ -20,6 +25,8 @@ return function(ctx: any)
 	local call = ctx.call
 	local check = ctx.check
 	local plotFolder = ctx.plotFolder
+	local poll = ctx.poll
+	local shadowJoin = ctx.shadowJoin
 	local snap = ctx.snap
 
 	local Progression = require(ctx.ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Progression")) :: any
@@ -137,7 +144,7 @@ return function(ctx: any)
 		error("summary has no LotManager row", 0)
 	end
 
-	-- Step 58: lot 1, parking 2 and HQ 2 and 4 bought once each, the Lot Manager once, then the
+	-- Step 58: lot 1, parking 2, 3 and 4 and HQ 2 and 4 bought once each, the Lot Manager once, then the
 	-- workshop unlocks; replays and second requests change nothing.
 	local function ladderStep(): string
 		local before = snap(S.userId)
@@ -194,17 +201,29 @@ return function(ctx: any)
 			local fence = visuals():FindFirstChild("LotFence")
 			check(fence ~= nil and fence:FindFirstChild("Back") ~= nil, "LotFence.Back is missing")
 
-			-- Parking tier 2.
-			setProgression({ cash = 600 })
-			actOk(S.userId, "Progression.BuyParking", { tier = 2 })
-			local spaces = 0
-			for _, child in visuals():GetChildren() do
-				if string.sub(child.Name, 1, 8) == "Parking_" then
-					spaces += 1
+			-- Parking tiers 2, 3 and 4 (CM2-PARK): in order only, each for its exact price, one bay each.
+			expectCode(act(S.userId, "Progression.BuyParking", { tier = 3 }), "NotNextLevel", "parking 3 at tier 1")
+			for _, step in { { tier = 2, cost = 400 }, { tier = 3, cost = 1200 }, { tier = 4, cost = 4200 } } do
+				setProgression({ cash = step.cost })
+				actOk(S.userId, "Progression.BuyParking", { tier = step.tier })
+				check(snap(S.userId).cash == 0, string.format("parking %d did not cost $%d", step.tier, step.cost))
+				local spaces = 0
+				for _, child in visuals():GetChildren() do
+					if string.sub(child.Name, 1, 8) == "Parking_" then
+						spaces += 1
+						for _, mark in { "LineL", "LineR", "Stop" } do
+							check(child:FindFirstChild(mark) ~= nil, child.Name .. " has no " .. mark)
+						end
+					end
 				end
+				check(
+					spaces == step.tier,
+					string.format("%d Parking_ parts at tier %d, expected %d", spaces, step.tier, step.tier)
+				)
+				-- CM2-PARK Amendment 1: the right drive comes with space 2.
+				check(visuals():FindFirstChild("CarPark_DriveR") ~= nil, "no CarPark_DriveR at tier " .. step.tier)
 			end
-			check(spaces == 4, spaces .. " Parking_ parts, expected 4")
-			expectCode(act(S.userId, "Progression.BuyParking", { tier = 2 }), "AlreadyOwned", "second parking 2")
+			expectCode(act(S.userId, "Progression.BuyParking", { tier = 4 }), "AlreadyOwned", "second parking 4")
 
 			-- HQ 2 (Timber Pavilion).
 			setProgression({ cash = 2500, reputation = 250 })
@@ -237,7 +256,7 @@ return function(ctx: any)
 			)
 		end
 		check((restored.staff.LotManager or 0) == rememberedManager, "restore: LotManager differs")
-		return "lot 1 once, parking 2 once, HQ 2 and 4, Lot Manager once, workshop unlocked, restored"
+		return "lot 1 once, parking 2, 3, 4 once, HQ 2 and 4, Lot Manager once, workshop unlocked, restored"
 	end
 
 	-- Step 59 (G19): every HQ tier stays inside the Stand box and clear of the counter, parking and
@@ -380,6 +399,80 @@ return function(ctx: any)
 		)
 	end
 
+	-- Step 79 (CM2-PARK): a rejoin keeps the parking tier; an old schema 23 save on tier 1 or 2
+	-- (legacyParking) loads as tier 2 or 4 with the same spaces and unchanged cash.
+	local function parkingMigrationStep(): string
+		local before = snap(S.userId)
+		local cash = before.cash
+		local lotWorker = before.staff.LotWorker or 0
+		local out = false
+		local function rejoin()
+			shadowJoin(0)
+			out = false
+		end
+		local function leave()
+			call("shadowLeave", nil)
+			out = true
+		end
+		local function parkingCount(): number
+			local folder = sPlot():FindFirstChild("ProgressionVisuals")
+			local count = 0
+			for _, child in (if folder then folder:GetChildren() else {}) do
+				if string.sub(child.Name, 1, 8) == "Parking_" then
+					count += 1
+				end
+			end
+			return count
+		end
+		local ok, failure = pcall(function()
+			-- Case A: a rejoin keeps the tier.
+			setProgression({ parkingTier = 3 })
+			leave()
+			rejoin()
+			local tierA = snap(S.userId).progression.parkingTier
+			check(tierA == 3, "rejoin: parking tier " .. tostring(tierA) .. ", expected 3")
+			-- Cases B and C: old tier 1 -> 2, old tier 2 -> 4.
+			for _, case in { { old = 1, new = 2 }, { old = 2, new = 4 } } do
+				leave()
+				call("legacyParking", { tier = case.old })
+				rejoin()
+				local now = snap(S.userId)
+				check(
+					now.progression.parkingTier == case.new,
+					string.format(
+						"old tier %d loaded as %s, expected %d",
+						case.old,
+						tostring(now.progression.parkingTier),
+						case.new
+					)
+				)
+				check(
+					now.cash == cash,
+					string.format("old tier %d: cash %s, expected %s", case.old, tostring(now.cash), tostring(cash))
+				)
+				local shown = poll(function()
+					return parkingCount() == case.new
+				end, 5)
+				check(
+					shown,
+					string.format(
+						"old tier %d: %d Parking_ on S's plot, expected %d",
+						case.old,
+						parkingCount(),
+						case.new
+					)
+				)
+			end
+		end)
+		if out then
+			pcall(rejoin)
+		end
+		call("setStaff", { employeeId = "LotWorker", count = lotWorker })
+		check(ok, tostring(failure))
+		return "rejoin 3, old 1 -> 2, old 2 -> 4, cash kept"
+	end
+
 	addStep("58", "PROGRESSION_LADDER", { "02" }, ladderStep)
 	addStep("59", "HQ_FOOTPRINTS", { "02" }, footprintStep)
+	addStep("79", "PARKING_MIGRATION", { "02" }, parkingMigrationStep)
 end

@@ -198,7 +198,7 @@ return function(t)
 	-- CM2-N1: a walking customer's order waits in the space its car parked in.
 	t.test("an order takes the given parking space", function()
 		local state = BusinessState.new("personal:42", 42)
-		state.progression.parkingTier = 2
+		state.progression.parkingTier = 4
 		local sale = { placementId = "placement:a", speciesId = "FrasierFir", sizeId = "Medium", salePrice = 82 }
 		local created, order = Orders.createFromSale(state, sale, 100, 3)
 		expect.truthy(created)
@@ -211,6 +211,7 @@ return function(t)
 
 	t.test("claimed spaces count and are skipped", function()
 		local state = BusinessState.new("personal:42", 42)
+		state.progression.parkingTier = 2
 		local claims = { [1] = "visit:1" }
 		expect.equal(Orders.parkingSpaces(state), 2)
 		expect.equal(Orders.activeCustomers(state, claims), 1)
@@ -244,8 +245,8 @@ return function(t)
 		expect.equal(state.sales, GameConfig.Customers.BaseParkingSpaces)
 		expect.equal(state.drivePastCustomers, 1)
 		-- Parking upgrades raise the number of cars that can wait.
-		state.progression.parkingTier = 2
-		expect.equal(Orders.freeParking(state), 2)
+		state.progression.parkingTier = 4
+		expect.equal(Orders.freeParking(state), 3)
 	end)
 
 	t.test("carry and load through the authoritative action protocol", function()
@@ -353,13 +354,13 @@ return function(t)
 	t.test("parking purchases add to the base spaces", function()
 		local Progression = require(Services:WaitForChild("ProgressionService"))
 		local state = BusinessState.new("personal:42", 42)
-		state.cash = 600
+		state.cash = 400
 		expect.equal(Orders.parkingSpaces(state), GameConfig.Customers.BaseParkingSpaces)
 		local ok, tier = Progression.buyParking(state, 2)
 		expect.truthy(ok)
 		expect.equal(tier, 2)
 		expect.equal(state.cash, 0)
-		expect.equal(Orders.parkingSpaces(state), 4)
+		expect.equal(Orders.parkingSpaces(state), 2)
 		local again, reason = Progression.buyParking(state, 2)
 		expect.falsy(again)
 		expect.equal(reason, "AlreadyOwned")

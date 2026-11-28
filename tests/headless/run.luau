@@ -103,6 +103,7 @@ local sourcePaths = {
 	ModalCoordinator = "src/shared/ModalCoordinator.lua",
 	NpcLook = "src/shared/NpcLook.lua",
 	NpcPath = "src/shared/NpcPath.lua",
+	ParkingArt = "src/shared/ParkingArt.lua",
 	PricingView = "src/shared/PricingView.lua",
 	QuestBoard = "src/shared/QuestBoard.lua",
 	Progression = "src/shared/Progression.lua",

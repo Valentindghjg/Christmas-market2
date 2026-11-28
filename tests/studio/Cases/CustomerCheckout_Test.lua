@@ -132,7 +132,7 @@ return function(t)
 
 	local function addCompany(h, companyId: string, plotId: string, trees: number, cashier: number)
 		local state = h.service:loadCompany(companyId, 42)
-		state.progression.parkingTier = 2
+		state.progression.parkingTier = 4
 		state.staff.Cashier = cashier
 		h.cashierReady[companyId] = cashier >= 1
 		for index = 1, trees do

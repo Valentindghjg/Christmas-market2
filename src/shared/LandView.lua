@@ -74,7 +74,10 @@ function LandView.statusLine(kind: string, section: any): Line
 			args = { { nameKey = LandView.levelNameKey(id) }, level, section.maxLevel, section.storage },
 		}
 	elseif kind == "Parking" then
-		return { key = "landParkingStatus", args = { section.tier, section.spaces } }
+		if section.spaces == 1 then
+			return { key = "landParkingStatusOne", args = { section.tier, section.maxTier } }
+		end
+		return { key = "landParkingStatus", args = { section.tier, section.maxTier, section.spaces } }
 	end
 	return {
 		key = "landHqStatus",

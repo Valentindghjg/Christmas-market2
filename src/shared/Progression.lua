@@ -72,6 +72,24 @@ function Progression.migrate18(old)
 	}
 end
 
+-- Schema 23 -> 24 (CM2-PARK): parking tiers 1 and 2 held 2 and 4 spaces; they become tiers 2
+-- and 4, which hold the same spaces. Other values pass through (validate rejects them); no
+-- money moves. The input is not mutated.
+function Progression.migrate23(old)
+	if type(old) ~= "table" then
+		local fresh = Progression.new()
+		fresh.parkingTier = 2
+		return fresh
+	end
+	local migrated = table.clone(old)
+	if old.parkingTier == 1 then
+		migrated.parkingTier = 2
+	elseif old.parkingTier == 2 then
+		migrated.parkingTier = 4
+	end
+	return migrated
+end
+
 function Progression.lotLevel(state): number
 	return savedLevel(state, "lotExpansion", 0, Config.LotExpansion.maxLevel)
 end

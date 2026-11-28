@@ -68,15 +68,29 @@ return function(t)
 		local parkingNext = LandView.nextLine("Parking", summary.parking.next)
 		expect.equal(parkingNext.key, "landNextParking")
 		expect.equal(parkingNext.args[1], 2)
-		expect.equal(parkingNext.args[2], 4)
-		expect.equal(parkingNext.args[3], "$600")
+		expect.equal(parkingNext.args[2], 2)
+		expect.equal(parkingNext.args[3], "$400")
 		local hqNext = LandView.nextLine("HQ", summary.hq.next)
 		expect.equal(hqNext.key, "landNextHq")
 		expect.equal(hqNext.args[1].nameKey, "hq_TimberPavilion")
 		expect.equal(hqNext.args[2], "$2,500")
-		expect.equal(LandView.statusLine("Parking", summary.parking).key, "landParkingStatus")
+		expect.equal(LandView.statusLine("Parking", summary.parking).key, "landParkingStatusOne")
 		expect.equal(LandView.statusLine("HQ", summary.hq).args[3].nameKey, "hq_SalesTent")
 		expect.equal(LandView.nextLine("Parking", nil).key, "landMaxed")
+	end)
+
+	-- CM2-PARK: "Parking tier n of 4", with "1 space" on the fresh tier.
+	t.test("parking status reads tier n of 4", function()
+		local state = BusinessState.new("personal:42", 42)
+		local fresh = LandView.statusLine("Parking", Progression.summary(state).parking)
+		expect.equal(fresh.key, "landParkingStatusOne")
+		expect.equal(table.concat(fresh.args, ","), "1,4")
+		state.progression.parkingTier = 3
+		local three = LandView.statusLine("Parking", Progression.summary(state).parking)
+		expect.equal(three.key, "landParkingStatus")
+		expect.equal(table.concat(three.args, ","), "3,4,3")
+		state.progression.parkingTier = 4
+		expect.equal(LandView.nextLine("Parking", Progression.summary(state).parking.next).key, "landMaxed")
 	end)
 
 	t.test("every key exists in both languages", function()
@@ -87,6 +101,7 @@ return function(t)
 			"landWorkshopTitle",
 			"landLotStatus",
 			"landParkingStatus",
+			"landParkingStatusOne",
 			"landHqStatus",
 			"landNextLot",
 			"landNextParking",

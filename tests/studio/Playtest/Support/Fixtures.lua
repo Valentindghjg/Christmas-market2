@@ -273,6 +273,11 @@ return function(ctx: any)
 		if shadowJoined then
 			call("setDay", { userId = S.userId, elapsed = 0 })
 		end
+		-- CM2-PARK: the steps assume 4 parking spaces (a fresh save has 1).
+		call("setProgression", { userId = R.userId, parkingTier = 4 })
+		if shadowJoined then
+			call("setProgression", { userId = S.userId, parkingTier = 4 })
+		end
 		settleDeliveries(R.userId)
 		local drained = "none"
 		local cleared = 0

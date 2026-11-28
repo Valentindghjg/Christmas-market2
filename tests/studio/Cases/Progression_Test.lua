@@ -1,7 +1,7 @@
 --!strict
 -- CM2-G9a: the progression ladder (shared/Progression.lua): config and evidence tags, the purchase
 -- check against the summary rows, single-level targets, the G19 footprint and fence clearance,
--- the Elf Workshop, the HQ queue patience and the schema 18 migration.
+-- the Elf Workshop, the HQ queue patience and the schema 18 and 23 migrations.
 return function(t)
 	local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 	local BusinessState = require(Shared:WaitForChild("BusinessState"))
@@ -76,11 +76,16 @@ return function(t)
 		return false
 	end
 
-	t.test("ladder config has 6 levels, 2 parking tiers and 4 HQ tiers with tags", function()
+	t.test("ladder config has 6 levels, 4 parking tiers and 4 HQ tiers with tags", function()
 		expect.equal(Config.LotExpansion.maxLevel, 6)
 		expect.equal(#Config.LotExpansion.levels, 6)
-		expect.equal(Config.Parking.maxTier, 2)
-		expect.equal(#Config.Parking.tiers, 2)
+		expect.equal(Config.Parking.maxTier, 4)
+		expect.equal(#Config.Parking.tiers, 4)
+		-- CM2-PARK: the HQ parking gate is one config line; each HQ tier reads it.
+		expect.equal(table.concat(Config.HqParkingGate, ","), "1,2,3,4")
+		for level, tier in Config.HQ.tiers do
+			expect.equal(tier.requiredParkingTier, Config.HqParkingGate[level])
+		end
 		expect.equal(Config.HQ.maxLevel, 4)
 		expect.equal(#Config.HQ.tiers, 4)
 		local lotIds = {}
@@ -112,8 +117,13 @@ return function(t)
 		local Observed = GameConfig.Evidence.Observed
 		expect.equal(Config.LotExpansion.levels[1].cashCost, 1200)
 		expect.equal(Config.LotExpansion.levels[1].evidence, Observed)
-		expect.equal(Config.Parking.tiers[2].cashCost, 600)
-		expect.equal(Config.Parking.tiers[2].spaces, 4)
+		-- CM2-PARK (owner decided 2026-11-28): one space per tier for $0, $400, $1,200, $4,200.
+		local parking = {}
+		for _, tier in Config.Parking.tiers do
+			expect.equal(tier.evidence, GameConfig.Evidence.OwnerDecided)
+			table.insert(parking, string.format("%d:%d", tier.spaces, tier.cashCost))
+		end
+		expect.equal(table.concat(parking, ","), "1:0,2:400,3:1200,4:4200")
 		local pavilion = Config.HQ.tiers[2]
 		expect.equal(pavilion.cashCost, 2500)
 		expect.equal(pavilion.requiredReputation, 250)
@@ -150,9 +160,9 @@ return function(t)
 			end
 		end
 		expect.equal(state.progression.lotExpansion, 6)
-		expect.equal(state.progression.parkingTier, 2)
+		expect.equal(state.progression.parkingTier, 4)
 		expect.equal(state.progression.hqLevel, 4)
-		expect.equal(purchases, 10)
+		expect.equal(purchases, 12)
 	end)
 
 	t.test("offer rows match the purchase check", function()
@@ -380,5 +390,26 @@ return function(t)
 		expect.equal(migrated({ lotExpansion = 3, parkingSpaces = 4, hqTier = "ChristmasPavilion" }), "3,2,2")
 		expect.equal(migrated(nil), "0,1,1")
 		expect.equal(migrated("broken"), "0,1,1")
+	end)
+
+	-- CM2-PARK: old tiers 1 and 2 (2 and 4 spaces) become tiers 2 and 4 with the same spaces.
+	t.test("migrate23 maps old parking tiers", function()
+		local function tierOf(old): any
+			return Progression.migrate23({ lotExpansion = 3, parkingTier = old, hqLevel = 2 }).parkingTier
+		end
+		expect.equal(tierOf(1), 2)
+		expect.equal(tierOf(2), 4)
+		expect.equal(tierOf(3), 3)
+		expect.equal(tierOf("x"), "x")
+		expect.equal(Progression.migrate23(nil).parkingTier, 2)
+		expect.equal(Progression.migrate23(nil).lotExpansion, 0)
+		expect.equal(Progression.migrate23(nil).hqLevel, 1)
+		local old = { lotExpansion = 5, parkingTier = 2, hqLevel = 3 }
+		local result = Progression.migrate23(old)
+		expect.equal(result.lotExpansion, 5)
+		expect.equal(result.hqLevel, 3)
+		expect.equal(result.parkingTier, 4)
+		expect.equal(old.parkingTier, 2)
+		expect.truthy(result ~= old)
 	end)
 end

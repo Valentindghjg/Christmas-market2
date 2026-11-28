@@ -19,10 +19,10 @@ return function(t)
 	end
 
 	t.test("door, aisle and queue points follow the layout", function()
-		samePoint(NpcPath.door(1), -1.5, 33)
-		samePoint(NpcPath.door(4), 18.5, 33)
-		samePoint(NpcPath.parkingSpot(1), -5, 40)
-		samePoint(NpcPath.parkingSpot(4), 15, 40)
+		samePoint(NpcPath.door(1), -10, 33)
+		samePoint(NpcPath.door(4), 26, 33)
+		samePoint(NpcPath.parkingSpot(1), -13.5, 40)
+		samePoint(NpcPath.parkingSpot(4), 22.5, 40)
 		local entryX = { -1.5, 1.5, -3.5, 3.5 }
 		for space = 1, 4 do
 			near(NpcPath.aisle(space).z, 20)

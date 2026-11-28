@@ -4,7 +4,9 @@
 -- day clock through dusk and a day rollover and checks the attributes, the summary and the
 -- saved day after a rejoin; step 61 counts the server's night lights (all off on the server):
 -- 22 lamps, 10 dressing lamps (CM2-10DW), 3 infrastructure lights (CM2-10IW), 2 plot-sign lights and
--- (CM2-GATEW) 2 gate lights per plot = 59.
+-- (CM2-GATEW) 2 gate lights per plot = 59, plus (CM2-PARK) one light per car park lamp
+-- (`CarPark_Lamp_<k>`, 2 per occupied plot: plots whose ProgressionVisuals hold `CarPark_DriveL`),
+-- so 63 with R and S.
 return function(ctx: any)
 	local R = ctx.R
 	local actOk = ctx.actOk
@@ -23,6 +25,7 @@ return function(ctx: any)
 	local INFRA_LIGHTS = 3 -- CM2-10IW
 	local PLOT_LIGHTS = 6 * 2
 	local GATE_LIGHTS = 6 * 2 -- CM2-GATEW
+	local LAMPS_PER_CAR_PARK = #ctx.GameConfig.Placement.CarPark.Fixtures.Lamps -- CM2-PARK
 
 	local function setDay(elapsed: number): any
 		return call("setDay", { userId = R.userId, elapsed = elapsed })
@@ -100,10 +103,31 @@ return function(ctx: any)
 			check((instance :: Light).Enabled == false, "night light enabled on the server: " .. instance:GetFullName())
 			lights += 1
 		end
-		local expected = LAMP_COUNT + DRESSING_LAMPS + INFRA_LIGHTS + PLOT_LIGHTS + GATE_LIGHTS
+		-- CM2-PARK: every occupied plot's car park adds one light per lamp.
+		local world = workspace:FindFirstChild("ChristmasMarketWorld")
+		local plots = world and world:FindFirstChild("Plots")
+		local carParks = 0
+		for _, plot in (if plots then plots:GetChildren() else {}) do
+			local visuals = plot:FindFirstChild("ProgressionVisuals")
+			if visuals and visuals:FindFirstChild("CarPark_DriveL") then
+				carParks += 1
+				for k = 1, LAMPS_PER_CAR_PARK do
+					local lamp = visuals:FindFirstChild("CarPark_Lamp_" .. k)
+					check(lamp ~= nil, plot.Name .. " has no CarPark_Lamp_" .. k)
+					local own = 0
+					for _, inner in (lamp :: Instance):GetDescendants() do
+						if inner:IsA("Light") and CollectionService:HasTag(inner, TAG) then
+							own += 1
+						end
+					end
+					check(own == 1, string.format("%s holds %d night lights", (lamp :: Instance):GetFullName(), own))
+				end
+			end
+		end
+		local parkingLights = LAMPS_PER_CAR_PARK * carParks
+		local expected = LAMP_COUNT + DRESSING_LAMPS + INFRA_LIGHTS + PLOT_LIGHTS + GATE_LIGHTS + parkingLights
 		check(lights == expected, string.format("%d night lights, expected %d", lights, expected))
 
-		local world = workspace:FindFirstChild("ChristmasMarketWorld")
 		local map = world and world:FindFirstChild("Map")
 		check(map ~= nil, "ChristmasMarketWorld.Map is missing")
 		local lamps = 0
@@ -173,11 +197,12 @@ return function(ctx: any)
 			string.format("%d infrastructure lights, expected %d", infraLights, INFRA_LIGHTS)
 		)
 		return string.format(
-			"%d night lights off on the server, %d lamps and %d dressing lamps with one each, %d infrastructure lights",
+			"%d night lights off on the server, %d lamps and %d dressing lamps with one each, %d infrastructure lights, %d car park lights",
 			lights,
 			lamps,
 			dressingLamps,
-			infraLights
+			infraLights,
+			parkingLights
 		)
 	end)
 end

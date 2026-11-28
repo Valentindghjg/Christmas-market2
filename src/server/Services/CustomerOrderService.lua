@@ -37,7 +37,7 @@ local function sortedOrders(state)
 	return orders
 end
 
--- The spaces of the save's parking tier (CM2-G9a): tier 1 has the observed 2, tier 2 has 4.
+-- The spaces of the save's parking tier (CM2-G9a, CM2-PARK): tiers 1 to 4 hold 1 to 4 spaces.
 function CustomerOrderService.parkingSpaces(state): number
 	return Progression.parkingSpaces(state)
 end

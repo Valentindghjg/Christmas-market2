@@ -15,7 +15,7 @@ local SupplierCart = require(script.Parent.SupplierCart)
 local Tutorial = require(script.Parent.Tutorial)
 
 local BusinessState = {}
-BusinessState.SCHEMA_VERSION = 23
+BusinessState.SCHEMA_VERSION = 24
 
 local SAVE_SIZES = { Solo = true, Duo = true, Trio = true, Quad = true }
 local MEMBER_ROLES = { Owner = true, Member = true }
@@ -365,6 +365,11 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 		-- Schema 23 (CM2-45): event shop purchases per save.
 		state.eventPurchases = {}
 	end
+	if state.schemaVersion == 23 then
+		state.schemaVersion = 24
+		-- Schema 24 (CM2-PARK): parking tiers 1 to 4 with 1 to 4 spaces; old tiers keep every space.
+		state.progression = Progression.migrate23(state.progression)
+	end
 	if state.schemaVersion == BusinessState.SCHEMA_VERSION then
 		if type(state.pendingOrders) == "table" then
 			BusinessState.pruneCompletedOrders(state)
@@ -396,7 +401,7 @@ function BusinessState.migrate(state, companyId: string?, ownerUserId: number?)
 	state.layout = { placements = {} }
 	state.reservations = {}
 	state.staff = { Cashier = 0, LotWorker = 0, LotManager = 0 }
-	state.progression = Progression.new()
+	state.progression = Progression.migrate23(Progression.new()) -- the v1 save had the old 2 spaces
 	state.customerVisits = sales(state)
 	state.abandonedCustomers = 0
 	state.walkedOutCustomers = 0

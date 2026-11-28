@@ -1,5 +1,5 @@
 --!strict
--- Playtest steps 37-40 (full mode) and their helpers: walking customers (CM2-N1). Since
+-- Playtest steps 37-40 and 78 (full mode) and their helpers: walking customers (CM2-N1). Since
 -- CM2-N2 the player checks out the customer at the counter by prompt (serveCounter).
 -- Installed by RunPlaytest.execute (CM2-RF).
 -- Step details (moved from docs/TEST_PLAN.md, CM2-FAST):
@@ -14,7 +14,11 @@
 -- rejoin removes the reserved customer, its car and the reservation within 5 s; no stray Humanoid),
 -- `40 NPC_REAL_ARRIVAL` (CM2-N1 fix round 1: with 2 Douglas Medium shown, `npcNextArrival {userId,
 -- 8}` and unpaused customers bring a live arrival with customer number 8 on R's plot within 12 s;
--- it walks the 10 states with 0 snaps, the player loads its order and sales rise by at least 1)
+-- it walks the 10 states with 0 snaps, the player loads its order and sales rise by at least 1),
+-- `78 NPC_ONE_SPACE` (CM2-PARK: R on parking tier 1 shows Parking_1, CarPark_DriveL (no DriveR),
+-- sign and lamps, lamp heads with NightLight; while customer 8 holds space 1 the live car 20 is held (npcSnapshot
+-- `held`), no second visit; once 8 is loaded, 20 arrives on space 1 within 12 s, the hold ends,
+-- drive-pasts unchanged; R back on tier 4, also on failure)
 -- Step 37 first checks that each plot's `StarterSalesTent` lies within KeepClear `Stand` ± 0.5
 -- (AABB over every part's corners) and is lot-aligned (±1°), with every part in `LotStructure`, and
 -- that the player's character parts are in `PlayerCharacter`; a snap FAIL lists the visit's
@@ -548,6 +552,85 @@ return function(ctx: any)
 		return "live arrival bought order #" .. tostring(number)
 	end
 	addStep("40", "NPC_REAL_ARRIVAL", { "03" }, withNpcCleanup(npcRealArrivalStep))
+
+	-- CM2-PARK: on a 1-space car park the next live car is held until the space frees.
+	local function heldOnR(): boolean
+		for _, entry in npcSnapshot().held do
+			if entry.plotId == R.plotId then
+				return true
+			end
+		end
+		return false
+	end
+
+	local function npcOneSpaceStep(): string?
+		ensureDouglas(2)
+		local start = snap(R.userId)
+		call("setProgression", { userId = R.userId, parkingTier = 1 })
+		local ok, failure = pcall(function()
+			local plot = plotFolder(R.plotId)
+			local visuals = plot and plot:FindFirstChild("ProgressionVisuals")
+			check(visuals ~= nil, "R's plot has no ProgressionVisuals")
+			local folder = visuals :: Instance
+			local pads = 0
+			for _, child in folder:GetChildren() do
+				if string.sub(child.Name, 1, 8) == "Parking_" then
+					pads += 1
+				end
+			end
+			check(
+				pads == 1 and folder:FindFirstChild("Parking_1") ~= nil,
+				pads .. " Parking_ at tier 1, expected Parking_1"
+			)
+			for _, name in { "CarPark_DriveL", "CarPark_Sign", "CarPark_Lamp_1", "CarPark_Lamp_2" } do
+				check(folder:FindFirstChild(name) ~= nil, "R's car park has no " .. name)
+			end
+			check(folder:FindFirstChild("CarPark_DriveR") == nil, "R's car park shows CarPark_DriveR at tier 1")
+			for _, name in { "CarPark_Lamp_1", "CarPark_Lamp_2" } do
+				local head = (folder:FindFirstChild(name) :: Instance):FindFirstChild("Head")
+				check(head ~= nil and head:FindFirstChild("NightLight") ~= nil, name .. ".Head has no NightLight")
+			end
+			local first = npcVisit(8)
+			local firstVisit = findNpc(npcSnapshot(), first)
+			check(
+				firstVisit ~= nil and firstVisit.space == 1,
+				first .. " is on space " .. tostring(firstVisit and firstVisit.space)
+			)
+			call("npcNextArrival", { userId = R.userId, profile = 20 })
+			call("pauseCustomers", false)
+			check(poll(heldOnR, 12), "no held car on R's plot within 12 s")
+			check(npcOnPlot(R.plotId) == 1, npcOnPlot(R.plotId) .. " visits on R's 1-space plot, expected 1")
+			local customer: any = nil
+			local waiting = poll(function()
+				serveCounter()
+				customer = findNpc(npcSnapshot(), first)
+				check(customer ~= nil, first .. " vanished before WaitingAtCar")
+				return customer.state == "WaitingAtCar"
+			end, 150)
+			check(waiting, first .. " not WaitingAtCar within 150 s")
+			loadAndAwaitDeparture(first, customer.orderNumber)
+			local arrived = poll(function()
+				for _, visit in npcSnapshot().visits do
+					if visit.plotId == R.plotId and visit.customerNumber == 20 and visit.space == 1 then
+						return not heldOnR()
+					end
+				end
+				return false
+			end, 12)
+			call("pauseCustomers", true)
+			check(arrived, "customer 20 did not arrive on space 1 (held car released) within 12 s")
+			local final = snap(R.userId)
+			check(
+				final.drivePastCustomers == start.drivePastCustomers,
+				string.format("drive-pasts %d -> %d", start.drivePastCustomers, final.drivePastCustomers)
+			)
+		end)
+		call("pauseCustomers", true)
+		call("setProgression", { userId = R.userId, parkingTier = 4 })
+		check(ok, tostring(failure))
+		return "one space: car 2 held, entered after car 1 left, no drive-past"
+	end
+	addStep("78", "NPC_ONE_SPACE", { "03" }, withNpcCleanup(npcOneSpaceStep))
 
 	-- CM2-N2: step 41 (Steps/Checkout.lua) uses these.
 	ctx.npcVisit = npcVisit

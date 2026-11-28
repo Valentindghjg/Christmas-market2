@@ -125,6 +125,7 @@ return function(t)
 
 	t.test("visitForTest needs a free parking space", function()
 		local service = displayedCompany(3)
+		expect.truthy(service:setProgressionForTest(COMPANY, { parkingTier = 2 }))
 		expect.truthy(service:visitForTest(COMPANY, 8))
 		expect.truthy(service:visitForTest(COMPANY, 32))
 		local ok, reason = service:visitForTest(COMPANY, 56)

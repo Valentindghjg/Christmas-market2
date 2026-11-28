@@ -1106,7 +1106,8 @@ function CompanyStateService:sessionToken(companyId: string): number?
 end
 
 -- A customer car arrives: needs an unreserved displayed tree and a free parking space, then
--- claims the lowest free space. A full lot with trees counts a drive-past. No revision.
+-- claims the lowest free space. A full car park refuses with NoParking and counts no drive-past:
+-- the car is held until a space frees (CM2-PARK). No revision.
 function CompanyStateService:npcArrive(companyId: string, visitId: string, forcedNumber: number?)
 	local session = self._sessions[companyId]
 	if not session or type(visitId) ~= "string" then
@@ -1124,10 +1125,7 @@ function CompanyStateService:npcArrive(companyId: string, visitId: string, force
 			return false, "NoStock"
 		end
 		if CustomerOrderService.freeParking(state, session.npcClaims) < 1 then
-			-- Counted for analytics only; it is saved with the next real change or lock renewal.
-			if next(state.layout.placements) ~= nil then
-				state.drivePastCustomers += 1
-			end
+			-- No drive-past: the car is held (CustomerNpcService) and retries next pass (CM2-PARK).
 			return false, "NoParking"
 		end
 		local space = CustomerOrderService.freeParkingSpace(state, session.npcClaims)

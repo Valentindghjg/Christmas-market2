@@ -48,6 +48,7 @@ return function(t)
 			return roll or 0
 		end)
 		local state = service:loadCompany(COMPANY, 42)
+		state.progression.parkingTier = 2
 		for index = 1, trees do
 			douglas(state, "douglas_" .. index, -35 + 7 * index)
 		end
@@ -79,7 +80,7 @@ return function(t)
 		local third, thirdCode = service:npcArrive(COMPANY, "visit:3")
 		expect.falsy(third)
 		expect.equal(thirdCode, "NoParking")
-		expect.equal(state.drivePastCustomers, 1)
+		expect.equal(state.drivePastCustomers, 0) -- CM2-PARK: the car is held, not counted
 		expect.equal(state.revision, revision)
 		-- Fix round 1 (F7): the playtest reads the server clock from the snapshot.
 		local snapshot = service:snapshotForTest(COMPANY) :: any

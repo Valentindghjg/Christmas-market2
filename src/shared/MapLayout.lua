@@ -499,11 +499,11 @@ MapLayout.INFRA_PAIRS = {
 	{ code = "UP", x = -342, z = 22.5, yaw = 0 },
 	{ code = "UP", x = -292, z = 22.5, yaw = 0 },
 	{ code = "UP", x = -177, z = 27, yaw = 0 },
-	{ code = "UP", x = -82, z = 27, yaw = 0 },
+	{ code = "UP", x = -75, z = 27, yaw = 0 }, -- CM2-PARK A1: out of the right drive (lot x 35)
 	{ code = "UP", x = -53, z = 27, yaw = 0 },
-	{ code = "UP", x = 24, z = 27, yaw = 0 },
+	{ code = "UP", x = 35, z = 27, yaw = 0 }, -- CM2-PARK A1
 	{ code = "UP", x = 53.5, z = 27, yaw = 0 },
-	{ code = "UP", x = 134, z = 27, yaw = 0 },
+	{ code = "UP", x = 145, z = 27, yaw = 0 }, -- CM2-PARK A1
 	{ code = "UP", x = 168, z = 27, yaw = 0 },
 	-- 2. Gap west (11-14)
 	{ code = "BS", x = -43.6, z = 22.8, yaw = 0 },

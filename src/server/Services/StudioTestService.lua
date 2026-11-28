@@ -11,6 +11,7 @@ local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
 local AdventCalendar = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("AdventCalendar"))
+local BusinessState = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("BusinessState"))
 local DailyRewards = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("DailyRewards"))
 local GameConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameConfig"))
 local Protocol = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Protocol"))
@@ -490,6 +491,51 @@ function StudioTestService.install(context)
 			previous._session = nil
 			return previous
 		end)
+	end
+
+	-- CM2-PARK (step 79): rewrites the shadow's first save as a schema 23 record with old parking
+	-- tier 1 or 2, so its next load runs the 23 -> 24 migration. Only while the shadow is out and
+	-- the stored record is a current, unlocked save; else NotWritten.
+	function commands.legacyParking(arg)
+		local tier = if type(arg) == "table" then arg.tier else nil
+		if tier ~= 1 and tier ~= 2 then
+			return failure("BadArgument")
+		end
+		if companyIdFor(shadowUserId) ~= nil then
+			return failure("ShadowActive")
+		end
+		-- CM2-PARK Amendment 1: shadowLeave drops the cached profile, so reopen it (as shadowJoin).
+		local profile, profileError = saveSlots:openProfile(shadowUserId)
+		if not profile then
+			return failure(tostring(profileError))
+		end
+		local first = saveSlots:listFor(shadowUserId)[1]
+		if first == nil then
+			return failure("NoSave")
+		end
+		local written = false
+		local result = updateSaveRecord(first.saveId, function(previous)
+			written = false
+			if
+				type(previous) ~= "table"
+				or previous.schemaVersion ~= BusinessState.SCHEMA_VERSION
+				or type(previous.progression) ~= "table"
+				or previous._session ~= nil
+			then
+				return nil
+			end
+			previous.schemaVersion = 23
+			previous.progression.parkingTier = tier
+			written = true
+			return previous
+		end)
+		if not result.ok then
+			return result
+		end
+		if not written then
+			return failure("NotWritten")
+		end
+		return success()
 	end
 
 	-- Save-to-server map (CM2-S3). Only saves listed in that user's profile.

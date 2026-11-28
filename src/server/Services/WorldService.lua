@@ -18,6 +18,7 @@ local LotArtWorld = require(script.Parent:WaitForChild("LotArtWorld"))
 local LotFenceWorld = require(script.Parent:WaitForChild("LotFenceWorld"))
 local LotGateWorld = require(script.Parent:WaitForChild("LotGateWorld"))
 local MapWorld = require(script.Parent:WaitForChild("MapWorld"))
+local ParkingWorld = require(script.Parent:WaitForChild("ParkingWorld"))
 local VehicleWorld = require(script.Parent:WaitForChild("VehicleWorld"))
 
 local WorldService = {}
@@ -837,25 +838,8 @@ function WorldService.applyParkingVisual(plotId: string, spaces: number)
 	local visuals = plot:FindFirstChild("ProgressionVisuals") or Instance.new("Folder")
 	visuals.Name = "ProgressionVisuals"
 	visuals.Parent = plot
-	for _, child in visuals:GetChildren() do
-		if string.sub(child.Name, 1, 8) == "Parking_" then
-			child:Destroy()
-		end
-	end
-	for index = 1, math.min(math.floor(spaces), 4) do
-		-- CM2-LOTLAY: a 0.9 thick pad whose top is the car wheel plane and whose foot reaches the map ground.
-		local centre = plot.PrimaryPart.Position + parkingOffset(plot, index)
-		local park = GameConfig.Placement.CarPark
-		local space = part(
-			visuals,
-			"Parking_" .. index,
-			Vector3.new(park.PadWidth, 0.9, park.PadLength),
-			Vector3.new(centre.X, lotTop(plot) + VehicleArt.PARKING_RISE - 0.45, centre.Z),
-			Color3.fromRGB(239, 243, 244),
-			Enum.Material.Concrete
-		)
-		space:SetAttribute("ParkingSpace", index)
-	end
+	-- CM2-PARK: bays (pad, lines, wheel stop) and the car park fixtures (ParkingWorld).
+	ParkingWorld.build(plot, visuals, spaces, FENCE_HELPERS)
 	return true
 end
 

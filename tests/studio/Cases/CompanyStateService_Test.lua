@@ -279,6 +279,7 @@ return function(t)
 			return 0
 		end)
 		local state = service:loadCompany("personal:42", 42)
+		state.progression.parkingTier = 2
 		state.staff.Cashier = 1
 		state.layout.placements.fir_1 = { speciesId = "FrasierFir", sizeId = "Small" }
 		state.layout.placements.fir_2 = { speciesId = "NobleFir", sizeId = "Small" }
@@ -668,6 +669,22 @@ return function(t)
 		expect.equal(pending, 1)
 		expect.equal(stored.cash, 1)
 		expect.equal(stored.spent, cost)
+	end)
+
+	-- CM2-PARK: a parking purchase is idempotent through the action protocol.
+	t.test("a replayed parking purchase charges once", function()
+		local service, state = sharedService(copyingPersistence(), 400)
+		local revision = state.revision
+		local first = act(service, 42, "park_tier_2", "Progression.BuyParking", { tier = 2 })
+		expect.truthy(first.ok)
+		expect.equal(first.data, 2)
+		local replay = act(service, 42, "park_tier_2", "Progression.BuyParking", { tier = 2 })
+		expect.falsy(replay.ok)
+		expect.equal(replay.errorCode, "DuplicateRequest")
+		expect.equal(replay.previousResult, "Success")
+		expect.equal(state.cash, 0)
+		expect.equal(state.progression.parkingTier, 2)
+		expect.equal(state.revision, revision + 1)
 	end)
 
 	t.test("changeTeam saves at once and stays dirty when the save fails", function()

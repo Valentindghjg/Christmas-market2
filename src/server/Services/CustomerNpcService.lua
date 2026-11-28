@@ -94,6 +94,8 @@ function CustomerNpcService.new(deps, options)
 	self._arrivalRate = deps.arrivalRate
 	-- Arrival credit per company (CM2-G12a): each pass adds the arrival rate; an arrival needs 1.
 	self._arrivalCredit = {}
+	-- Held arrivals (CM2-PARK): companyId -> the time the next car started waiting for a space.
+	self._held = {} :: { [string]: number }
 	self._maxPerServer = if type(opts.maxPerServer) == "number" then opts.maxPerServer else Npc.MaxPerServer
 	self._maxPerPlot = if type(opts.maxPerPlot) == "number" then opts.maxPerPlot else Npc.MaxPerPlot
 	self._maxVisitSeconds = if type(opts.maxVisitSeconds) == "number" then opts.maxVisitSeconds else Npc.MaxVisitSeconds
@@ -759,9 +761,16 @@ function CustomerNpcService:arrivalPass(paused: boolean?): number
 			self._arrivalCredit[companyId] = nil
 		end
 	end
+	for companyId in pairs(self._held) do
+		if not liveIds[companyId] then
+			self._held[companyId] = nil
+		end
+	end
 	for _, companyId in ipairs(companyIds) do
 		local plotId = self._plotOf(companyId)
-		if plotId ~= nil then
+		if plotId == nil then
+			self._held[companyId] = nil
+		else
 			local live = {}
 			for _, visit in pairs(self._visits) do
 				if visit.companyId == companyId and not visit.loadTest then
@@ -775,15 +784,25 @@ function CustomerNpcService:arrivalPass(paused: boolean?): number
 					-- A test override forces the next arrival's profile (roll 0); it is cleared
 					-- only once an arrival succeeded.
 					local override = self._arrivalOverrides[companyId]
+					local ok, code
 					if override ~= nil then
-						if self:_arrive(companyId, plotId, override, 0) then
+						ok, code = self:_arrive(companyId, plotId, override, 0)
+					else
+						ok, code = self:_arrive(companyId, plotId, nil, nil)
+					end
+					if ok then
+						if override ~= nil then
 							self._arrivalOverrides[companyId] = nil
-							spawned += 1
-							credit -= 1
 						end
-					elseif self:_arrive(companyId, plotId, nil, nil) then
 						spawned += 1
 						credit -= 1
+						self._held[companyId] = nil
+					elseif code == "NoParking" then
+						-- CM2-PARK: the car waits for a free space; the credit stays, so each
+						-- pass retries and it enters one pass after a space frees.
+						self._held[companyId] = self._held[companyId] or self._now()
+					else
+						self._held[companyId] = nil
 					end
 				end
 				self._arrivalCredit[companyId] = credit
@@ -838,6 +857,7 @@ end
 -- Hard-removes everything; later passes do nothing.
 function CustomerNpcService:shutdown()
 	self._stopped = true
+	self._held = {}
 	for _, visit in ipairs(self:_ordered()) do
 		self:_hardRemove(visit)
 	end
@@ -928,6 +948,13 @@ function CustomerNpcService:snapshot()
 	for _, entry in ipairs(self._decisionLog) do
 		table.insert(decisionLog, table.clone(entry))
 	end
+	local held = {}
+	for companyId, since in pairs(self._held) do
+		table.insert(held, { companyId = companyId, plotId = self._plotOf(companyId), since = since })
+	end
+	table.sort(held, function(a, b)
+		return a.companyId < b.companyId
+	end)
 	return {
 		count = #visits,
 		visits = visits,
@@ -935,7 +962,14 @@ function CustomerNpcService:snapshot()
 		customerSnaps = self._customerSnaps,
 		snapLog = snapLog,
 		decisionLog = decisionLog,
+		held = held,
 	}
+end
+
+-- The time the company's next car started waiting for a free space, or nil (CM2-PARK).
+-- CM2-TRAFFIC may show it on the road.
+function CustomerNpcService:heldSince(companyId: string): number?
+	return self._held[companyId]
 end
 
 -- Studio test instruments only (StudioTestService); never called by gameplay code.
@@ -991,9 +1025,11 @@ function CustomerNpcService:resetForTest(companyId: string?): number
 	local companyIds: { string }
 	if companyId ~= nil then
 		self._arrivalOverrides[companyId] = nil
+		self._held[companyId] = nil
 		companyIds = { companyId }
 	else
 		self._arrivalOverrides = {}
+		self._held = {}
 		companyIds = self._companies:liveCompanyIds()
 	end
 	for _, id in ipairs(companyIds) do

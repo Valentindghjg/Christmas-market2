@@ -338,6 +338,8 @@ GameConfig.Staff = {
 -- Progression ladder (CM2-G9a, docs/archive/plans/CM2-G9a.md): lot expansion, parking and HQ tiers.
 -- O = OBSERVED (REFERENCE_GAME_LIVE_TEST §4.4/§4.5), P = PROVISIONAL; unmarked values are P.
 local O, P = GameConfig.Evidence.Observed, GameConfig.Evidence.Provisional
+-- HQ level -> required parking tier. PROVISIONAL, owner to confirm (DECISION_LOG 2026-11-28 amendment); change only this line.
+local HQ_PARKING_GATE = { 1, 2, 3, 4 }
 GameConfig.Progression = {
 	-- Index = level bought; level 0 is the Starter Lot (O). Each level adds
 	-- Placement.BackDepthPerLevel of depth and Receiving.StoragePerLotExpansion storage.
@@ -352,15 +354,18 @@ GameConfig.Progression = {
 			{ id = "ForestGlade", cashCost = 1000000, requiredReputation = 3500, requiredHqLevel = 4, evidence = P },
 		},
 	},
-	-- Tier 2 is the last: the car lane and Npc.MaxPerPlot hold 4 spaces.
+	-- OWNER DECIDED 2026-11-28 (CM2-PARK): one space per tier; tier 4 is the last (Npc.MaxPerPlot is 4).
 	Parking = {
-		maxTier = 2,
+		maxTier = 4,
 		maxSpaces = 4,
 		tiers = {
-			{ spaces = 2, cashCost = 0, requiredReputation = 0, evidence = O },
-			{ spaces = 4, cashCost = 600, requiredReputation = 0, evidence = O },
+			{ spaces = 1, cashCost = 0, requiredReputation = 0, evidence = GameConfig.Evidence.OwnerDecided },
+			{ spaces = 2, cashCost = 400, requiredReputation = 0, evidence = GameConfig.Evidence.OwnerDecided },
+			{ spaces = 3, cashCost = 1200, requiredReputation = 0, evidence = GameConfig.Evidence.OwnerDecided },
+			{ spaces = 4, cashCost = 4200, requiredReputation = 0, evidence = GameConfig.Evidence.OwnerDecided },
 		},
 	},
+	HqParkingGate = HQ_PARKING_GATE,
 	-- Footprints and heights are the CM2-13a art targets (lot frame), centred on the stand (-8, -4).
 	-- Tiers 3 and 4 map the reference's "Christmas Market Chalet" and "Christmas Lodge" (costs unseen).
 	HQ = {
@@ -371,7 +376,7 @@ GameConfig.Progression = {
 				cashCost = 0,
 				requiredReputation = 0,
 				requiredLotExpansion = 0,
-				requiredParkingTier = 1,
+				requiredParkingTier = HQ_PARKING_GATE[1], -- P
 				newSpecies = 0,
 				checkoutStations = 1,
 				employeeCapacity = 2, -- O
@@ -388,7 +393,7 @@ GameConfig.Progression = {
 				cashCost = 2500, -- O
 				requiredReputation = 250, -- O
 				requiredLotExpansion = 1, -- O
-				requiredParkingTier = 2, -- O
+				requiredParkingTier = HQ_PARKING_GATE[2], -- P
 				newSpecies = 4, -- O
 				checkoutStations = 2, -- O
 				employeeCapacity = 3, -- O
@@ -405,7 +410,7 @@ GameConfig.Progression = {
 				cashCost = 50000,
 				requiredReputation = 1000,
 				requiredLotExpansion = 3,
-				requiredParkingTier = 2,
+				requiredParkingTier = HQ_PARKING_GATE[3], -- P
 				newSpecies = 4,
 				checkoutStations = 2, -- O
 				employeeCapacity = 5, -- O
@@ -422,7 +427,7 @@ GameConfig.Progression = {
 				cashCost = 600000,
 				requiredReputation = 3000,
 				requiredLotExpansion = 5,
-				requiredParkingTier = 2,
+				requiredParkingTier = HQ_PARKING_GATE[4], -- P
 				newSpecies = 4,
 				checkoutStations = 3,
 				employeeCapacity = 6,
@@ -447,8 +452,8 @@ GameConfig.Progression = {
 
 -- Customer cars, parking and order pickup (docs/REFERENCE_GAME_LIVE_TEST.md §3).
 GameConfig.Customers = {
-	-- OBSERVED: parking tier 1 holds 2 customer cars.
-	BaseParkingSpaces = 2,
+	-- OWNER DECIDED 2026-11-28 (CM2-PARK): parking tier 1 holds 1 customer car (replaces the observed 2).
+	BaseParkingSpaces = 1,
 	-- PROVISIONAL: how long a paid customer waits at the car for the tree.
 	PickupPatienceSeconds = 120,
 	-- OBSERVED by arithmetic (REFERENCE header table)
@@ -632,14 +637,19 @@ GameConfig.Placement = {
 	FrontApronDepth = 8, -- the NPC router may walk up to LotHalfDepth + this (z 35)
 	-- Customer parking outside the front fence (CM2-LOTLAY); CM2-PARK/TRAFFIC read only this table.
 	-- Space 1 is nearest the gate; X per space, Depth = pad centre, DoorDepth = the car door.
+	-- CM2-PARK Amendment 1 (owner: 2 spaces left of the gate, 2 right; positions PROVISIONAL):
+	-- spaces 1/3 left inner/outer, 2/4 right; the corridor x -10..10 in front of the gate stays free.
 	CarPark = {
-		X = { -5, 5, -15, 15 },
+		X = { -13.5, 13.5, -22.5, 22.5 },
 		Depth = 40,
-		PadWidth = 8,
+		PadWidth = 7, -- car body 4.6
 		PadLength = 12,
 		DoorOffsetX = 3.5,
 		DoorDepth = 33,
-		Apron = { minX = -28, maxX = 20, minDepth = 27, maxDepth = 59 },
+		Apron = { minX = -26, maxX = 26, minDepth = 27, maxDepth = 59 },
+		-- PROVISIONAL (CM2-PARK): inside the inflated gate-fence obstacles, so no NPC route passes,
+		-- and fence-side of the pads, so no car.
+		Fixtures = { Sign = { x = -21.5, z = 30.5 }, Lamps = { { x = -13.5, z = 30.5 }, { x = 13.5, z = 30.5 } } },
 	},
 	-- decorative fences, lot frame (CM2-13W); none since CM2-LOTLAY (the fence runs are the front runs)
 	DecorFences = {},

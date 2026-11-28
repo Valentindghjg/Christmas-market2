@@ -160,7 +160,7 @@ return function(t)
 
 	local function addCompany(h, companyId: string, plotId: string, trees: number)
 		local state = h.service:loadCompany(companyId, 42)
-		state.progression.parkingTier = 2
+		state.progression.parkingTier = 4
 		-- CM2-N2: a hired Cashier serves the counter after 3 s.
 		state.staff.Cashier = 1
 		for index = 1, trees do
@@ -644,7 +644,8 @@ return function(t)
 			run(h, 0.2)
 		end
 		expect.equal(visit.loadLeg, 3)
-		expect.equal(#visit.waypoints, 2)
+		-- CM2-PARK Amendment 1: door 1 at (-10, 33) adds the fence corner (-5.15, 31.75).
+		expect.equal(#visit.waypoints, 3)
 		expect.truthy(math.abs(visit.waypoints[1].x + 5.15) < 1e-6)
 		expect.truthy(math.abs(visit.waypoints[1].z - 24) < 1e-6)
 		expect.equal(visit.waypointIndex, 1)
@@ -736,6 +737,48 @@ return function(t)
 		end
 		expect.equal(h.npc:arrivalPass(false), 1)
 		expect.equal(h.npc:count(), 1)
+	end)
+
+	-- CM2-PARK: with every space taken the next car is held (no drive-past) and enters once the
+	-- space frees.
+	t.test("a 1-space plot serves 3 customers in sequence", function()
+		local h = harness()
+		local state = addCompany(h, A, PLOT_1, 3)
+		state.progression.parkingTier = 1
+		for n, profile in ipairs({ 8, 20, 32 }) do
+			h.npc:setArrivalOverrideForTest(A, profile)
+			expect.equal(h.npc:arrivalPass(false), 1)
+			local visit = nil
+			for _, entry in ipairs(h.npc:snapshot().visits) do
+				if entry.customerNumber == profile then
+					visit = entry
+				end
+			end
+			expect.truthy(visit)
+			expect.equal(visit.space, 1)
+			expect.equal(h.npc:heldSince(A), nil)
+			expect.equal(h.npc:arrivalPass(false), 0)
+			expect.truthy(h.npc:heldSince(A) ~= nil)
+			expect.equal(claimCount(h, A), 1)
+			local waiting = runUntil(h, visit.visitId, "WaitingAtCar", 200)
+			local number = waiting.orderNumber
+			expect.truthy(h.service:handle(A, 42, {
+				version = 1,
+				requestId = "one_space_carry_" .. n,
+				action = "Order.Carry",
+				payload = { orderNumber = number },
+			}).ok)
+			expect.truthy(h.service:handle(A, 42, {
+				version = 1,
+				requestId = "one_space_load_" .. n,
+				action = "Order.Load",
+				payload = { orderNumber = number, carNumber = number },
+			}).ok)
+			run(h, 2.6)
+			expect.equal(visitOf(h, visit.visitId), nil)
+		end
+		expect.equal(state.sales, 3)
+		expect.equal(state.drivePastCustomers, 0)
 	end)
 
 	-- CM2-SALE1: on the tutorial's Checkout step a live arrival buys even with a high roll.
