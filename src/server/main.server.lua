@@ -61,6 +61,8 @@ shopAction.Parent = remotes
 local notify = remotes:FindFirstChild("Notify") or Instance.new("RemoteEvent")
 notify.Name = "Notify"
 notify.Parent = remotes
+-- Drain and ignore client sends: Notify is server-to-client only (CM2-47 D2).
+notify.OnServerEvent:Connect(function() end)
 
 local function tell(player: Player, key: string, ...: number)
 	notify:FireClient(player, { key = key, args = { ... } })

@@ -258,6 +258,20 @@ assert(#caseNames > 0, "no test cases discovered")
 for _, name in ipairs(caseNames) do
 	runCase(name)
 end
+-- CM2-47 D2: the server entry script must drain client sends on the server-to-client Notify remote.
+total += 1
+do
+	local ok, err = pcall(function()
+		local source = fs.readFile("src/server/main.server.lua")
+		assert(string.find(source, "notify.OnServerEvent:Connect(", 1, true), "Notify.OnServerEvent not connected")
+	end)
+	if ok then
+		print("[PASS] main.server > Notify drains client sends")
+	else
+		failures += 1
+		warn("[FAIL] main.server > Notify drains client sends | " .. tostring(err))
+	end
+end
 print(string.format("[SUMMARY] %d run, %d passed, %d failed", total, total - failures, failures))
 if failures > 0 then
 	process.exit(1)
